@@ -1,21 +1,19 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;                                                              ;;
-;; Copyright (C) KolibriOS team 2004-2007. All rights reserved. ;;
-;; Distributed under terms of the GNU General Public License    ;;
-;;                                                              ;;
-;;                                                              ;;
-;; System service for filesystem call                           ;;
-;; (C) 2004 Ville Turjanmaa, License: GPL                       ;;
-;; 29.04.2006 Elimination of hangup after the                   ;;
-;;            expiration hd_wait_timeout (for LBA) -  Mario79   ;;
-;; 15.01.2005 get file size/attr/date,                          ;;
-;;            file_append (only for hd) - ATV                   ;;
-;; 23.11.2004 test if hd/partition is set - ATV                 ;;
-;; 18.11.2004 get_disk_info and more error codes - ATV          ;;
-;; 08.11.2004 expand_pathz and rename (only for hd) - ATV       ;;
-;; 20.10.2004 Makedir/Removedir (only for hd) - ATV             ;;
-;;                                                              ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;======================================================================================================================
+;;///// fs.inc ///////////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
+;;======================================================================================================================
+;; (c) 2004-2010 KolibriOS team <http://kolibrios.org/>
+;; (c) 2000-2004 MenuetOS <http://menuetos.net/>
+;;======================================================================================================================
+;; This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
+;; License as published by the Free Software Foundation, either version 2 of the License, or (at your option) any later
+;; version.
+;;
+;; This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+;; warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License along with this program. If not, see
+;; <http://www.gnu.org/licenses/>.
+;;======================================================================================================================
 
 iglobal
 dir0:        db  'HARDDISK   '

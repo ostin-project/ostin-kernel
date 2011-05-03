@@ -1,34 +1,24 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;                                                                 ;;
-;; Copyright (C) KolibriOS team 2004-2007. All rights reserved.    ;;
-;; Distributed under terms of the GNU General Public License       ;;
-;;                                                                 ;;
-;;  RTL8139.INC                                                    ;;
-;;                                                                 ;;
-;;  Ethernet driver for Menuet OS                                  ;;
-;;                                                                 ;;
-;;  Version 0.2  11 August 2003                                    ;;
-;;                                                                 ;;
-;;  Driver for chips of RealTek 8139 family                        ;;
-;;  References:                                                    ;;
-;;    www.realtek.com.hw - data sheets                             ;;
-;;    rtl8139.c - linux driver                                     ;;
-;;    8139too.c - linux driver                                     ;;
-;;    ethernet driver template by Mike Hibbett                     ;;
-;;                                                                 ;;
-;;  The copyright statement is                                     ;;
-;;                                                                 ;;
-;;          GNU GENERAL PUBLIC LICENSE                             ;;
-;;             Version 2, June 1991                                ;;
-;;                                                                 ;;
-;;  Copyright 2003 Endre Kozma,                                    ;;
-;;   endre.kozma@axelero.hu                                        ;;
-;;                                                                 ;;
-;;  See file COPYING for details                                   ;;
-;;                                                                 ;;
-;;  10.01.2007 Bugfix for l8139_transmit from Paolo Franchetti     ;;
-;;                                                                 ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;======================================================================================================================
+;;///// rtl8139.inc //////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
+;;======================================================================================================================
+;; (c) 2004-2010 KolibriOS team <http://kolibrios.org/>
+;; (c) 2000-2004 MenuetOS <http://menuetos.net/>
+;;======================================================================================================================
+;; This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
+;; License as published by the Free Software Foundation, either version 2 of the License, or (at your option) any later
+;; version.
+;;
+;; This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+;; warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License along with this program. If not, see
+;; <http://www.gnu.org/licenses/>.
+;;======================================================================================================================
+;; References:
+;; * www.realtek.com.hw - data sheets
+;; * rtl8139.c - linux driver
+;; * 8139too.c - linux driver
+;;======================================================================================================================
 
 	ETH_ALEN	       equ 6
 	ETH_HLEN	       equ (2 * ETH_ALEN + 2)

@@ -1,28 +1,22 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;                                                                 ;;
-;; Copyright (C) KolibriOS team 2004-2007. All rights reserved.    ;;
-;; Distributed under terms of the GNU General Public License       ;;
-;;                                                                 ;;
-;;                                                                 ;;
-;;  I8255X.INC                                                     ;;
-;;                                                                 ;;
-;;  Ethernet driver for Menuet OS                                  ;;
-;;                                                                 ;;
-;;  Version 0.3  11 August 2003                                    ;;
-;;                                                                 ;;
-;;  This driver is based on the eepro100 driver from               ;;
-;;  the etherboot 5.0.6 project. The copyright statement is        ;;
-;;                                                                 ;;
-;;          GNU GENERAL PUBLIC LICENSE                             ;;
-;;             Version 2, June 1991                                ;;
-;;                                                                 ;;
-;;  remaining parts Copyright 2002 Mike Hibbett,                   ;;
-;;   mikeh@oceanfree.net                                           ;;
-;;                                                                 ;;
-;;  See file COPYING for details                                   ;;
-;;                                                                 ;;
-;;                                                                 ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;======================================================================================================================
+;;///// i8255x.inc ///////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
+;;======================================================================================================================
+;; (c) 2004-2008 KolibriOS team <http://kolibrios.org/>
+;; (c) 2000-2004 MenuetOS <http://menuetos.net/>
+;;======================================================================================================================
+;; This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
+;; License as published by the Free Software Foundation, either version 2 of the License, or (at your option) any later
+;; version.
+;;
+;; This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+;; warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License along with this program. If not, see
+;; <http://www.gnu.org/licenses/>.
+;;======================================================================================================================
+;; References:
+;; * eepro100 driver - etherboot 5.0.6 project
+;;======================================================================================================================
 
 ;********************************************************************
 ;   Interface

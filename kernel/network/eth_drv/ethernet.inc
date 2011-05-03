@@ -1,34 +1,22 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;                                                                 ;;
-;; Copyright (C) KolibriOS team 2004-2008. All rights reserved.    ;;
-;; Distributed under terms of the GNU General Public License       ;;
-;;                                                                 ;;
-;;  ETHERNET.INC                                                   ;;
-;;                                                                 ;;
-;;  Ethernet network layer for Menuet OS                           ;;
-;;                                                                 ;;
-;;  This file contains the following:                              ;;
-;;      PCI bus scanning for valid devices                         ;;
-;;      Table of supported ethernet drivers                        ;;
-;;      Code to identify and activate a supported driver           ;;
-;;      ARP handler                                                ;;
-;;      Driver interface to the IP layer                           ;;
-;;      Gateway support                                            ;;
-;;                                                                 ;;
-;;  Individual driver files are included here                      ;;
-;;                                                                 ;;
-;;  The PCI bus scanning code was ported from the etherboot        ;;
-;;  5.0.6 project. The copyright statement for that code is        ;;
-;;                                                                 ;;
-;;          GNU GENERAL PUBLIC LICENSE                             ;;
-;;             Version 2, June 1991                                ;;
-;;                                                                 ;;
-;;  remaining parts Copyright 2002 Mike Hibbett                    ;;
-;;   mikeh@oceanfree.net                                           ;;
-;;                                                                 ;;
-;;  See file COPYING for details                                   ;;
-;;                                                                 ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;======================================================================================================================
+;;///// ethernet.inc /////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
+;;======================================================================================================================
+;; (c) 2004-2011 KolibriOS team <http://kolibrios.org/>
+;; (c) 2000-2004 MenuetOS <http://menuetos.net/>
+;;======================================================================================================================
+;; This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
+;; License as published by the Free Software Foundation, either version 2 of the License, or (at your option) any later
+;; version.
+;;
+;; This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+;; warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License along with this program. If not, see
+;; <http://www.gnu.org/licenses/>.
+;;======================================================================================================================
+;; References:
+;; * PCI bus scanning code - etherboot 5.0.6 project
+;;======================================================================================================================
 
 ;********************************************************************
 ;   Interface

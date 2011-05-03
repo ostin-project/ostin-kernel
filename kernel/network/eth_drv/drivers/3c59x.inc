@@ -1,75 +1,31 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;                                                              ;;
-;; Copyright (C) KolibriOS team 2004-2007. All rights reserved. ;;
-;; Distributed under terms of the GNU General Public License    ;;
-;;                                                              ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; Copyright (c) 2004, Endre Kozma <endre.kozma@axelero.hu>
-;; All rights reserved.
+;;======================================================================================================================
+;;///// 3c59x.inc //////////////////////////////////////////////////////////////////////////////////////////// BSD /////
+;;======================================================================================================================
+;; (c) 2004-2009 KolibriOS team <http://kolibrios.org/>
+;; (c) 2004 Endre Kozma <endre.kozma@axelero.hu>
+;;======================================================================================================================
+;; Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
+;; following conditions are met:
 ;;
-;; Redistribution  and  use  in  source  and  binary  forms, with or without
-;; modification, are permitted provided  that  the following  conditions are
-;; met:
+;; 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following
+;;    disclaimer.
+;; 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the
+;;    following disclaimer in the documentation and/or other materials provided with the distribution.
+;; 3. The name of the author may not be used to endorse or promote products derived from this software without specific
+;;    prior written permission.
 ;;
-;; 1. Redistributions of source code must retain the above  copyright notice,
-;;    this list of conditions and the following disclaimer.
-;;
-;; 2. Redistributions  in  binary form  must  reproduce  the above copyright
-;;    notice, this  list of conditions  and the  following disclaimer in the
-;;    documentation and/or other  materials  provided with  the distribution.
-;;
-;; 3. The name of the author may not be used to  endorse or promote products
-;;    derived from this software without  specific prior  written permission.
-;;
-;; THIS SOFTWARE IS  PROVIDED  BY  THE  AUTHOR  ``AS IS'' AND ANY EXPRESS OR
-;; IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-;; OF  MERCHANTABILITY AND FITNESS  FOR A PARTICULAR  PURPOSE ARE DISCLAIMED.
-;; IN  NO  EVENT  SHALL  THE  AUTHOR  BE  LIABLE  FOR  ANY  DIRECT, INDIRECT,
-;; INCIDENTAL, SPECIAL, EXEMPLARY, OR  CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-;; NOT LIMITED TO, PROCUREMENT OF  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-;; DATA, OR  PROFITS; OR  BUSINESS  INTERRUPTION)  HOWEVER CAUSED AND ON ANY
-;; THEORY OF  LIABILITY, WHETHER IN  CONTRACT,  STRICT  LIABILITY,  OR  TORT
-;; (INCLUDING NEGLIGENCE OR OTHERWISE)  ARISING IN ANY WAY OUT OF THE USE OF
-;; THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;                                                                         ;;
-;;  3C59X.INC                                                              ;;
-;;                                                                         ;;
-;;  Ethernet driver for Menuet OS                                          ;;
-;;                                                                         ;;
-;;  Driver for 3Com fast etherlink 3c59x and                               ;;
-;;         etherlink XL 3c900 and 3c905 cards                              ;;
-;;  References:                                                            ;;
-;;    www.3Com.com - data sheets                                           ;;
-;;    DP83840A.pdf - ethernet physical layer                               ;;
-;;    3c59x.c - linux driver                                               ;;
-;;    ethernet driver template by Mike Hibbett                             ;;
-;;                                                                         ;;
-;;  Credits                                                                ;;
-;;   Mike Hibbett,                                                         ;;
-;;         who kindly supplied me with a 3Com905C-TX-M card                ;;
-;;                                                                         ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;  History
-;;  =======
-;;  $Log: 3C59X.INC,v $
-;;  Revision 1.3  2004/07/11 12:21:12  kozma
-;;  Support of vortex chips (3c59x) added.
-;;  Support of 3c920 and 3c982 added.
-;;  Corrections.
-;;
-;;  Revision 1.2  2004/06/12 19:40:20  kozma
-;;  Function e3c59x_set_available_media added in order to set
-;;  the default media in case auto detection finds no valid link.
-;;  Incorrect mii check removed (3c900 Cyclone works now).
-;;  Cleanups.
-;;
-;;  Revision 1.1  2004/06/12 18:27:15  kozma
-;;  Initial revision
-;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+;; THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+;; AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+;; NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+;; HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+;; OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+;;======================================================================================================================
+;; References:
+;; * www.3Com.com - data sheets
+;; * DP83840A.pdf - ethernet physical layer
+;; * 3c59x.c - linux driver
+;;======================================================================================================================
 
 ; comment the next line out if you don't want debug info printed
 ; on the debug board. This option adds a lot of bytes to the driver

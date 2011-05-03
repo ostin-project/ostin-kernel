@@ -1,24 +1,22 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;                                                              ;;
-;; Copyright (C) KolibriOS team 2004-2007. All rights reserved. ;;
-;; Distributed under terms of the GNU General Public License    ;;
-;;                                                              ;;
-;;  ICMP.INC                                                    ;;
-;;                                                              ;;
-;;  Internet Control Message Protocol ( RFC 792 )               ;;
-;;                                                              ;;
-;;  Last revision: 11.11.2006                                   ;;
-;;                                                              ;;
-;;  This file contains the following:                           ;;
-;;   icmp_rx - processes ICMP-packets received by the IP layer  ;;
-;;                                                              ;;
-;;  Changes history:                                            ;;
-;;   22.09.2003 - [Mike Hibbett] : mikeh@oceanfree.net          ;;
-;;   11.11.2006 - [Johnny_B] and [smb]                          ;;
-;;                                                              ;;
-;;   Current status:                                            ;;
-;;	This implemetation of ICMP proto supports message of ECHO type.
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;======================================================================================================================
+;;///// icmp.inc /////////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
+;;======================================================================================================================
+;; (c) 2004-2007 KolibriOS team <http://kolibrios.org/>
+;; (c) 2003 MenuetOS <http://menuetos.net/>
+;;======================================================================================================================
+;; This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
+;; License as published by the Free Software Foundation, either version 2 of the License, or (at your option) any later
+;; version.
+;;
+;; This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+;; warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License along with this program. If not, see
+;; <http://www.gnu.org/licenses/>.
+;;======================================================================================================================
+;; References:
+;; * RFC 792 "Internet Control Message Protocol"
+;;======================================================================================================================
 
 struc ICMP_PACKET
 {  .Type            db   ?  ;+00

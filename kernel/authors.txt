@@ -1,0 +1,50 @@
+This is a collection of notices previously located in source files' headers.
+Its aim is to mention everyone involved in kernel development prior to Ostin project introduction.
+For currently active contributors, please refer to VCS logs.
+
+Main OS coding/design:
+
+  Ville Mikael Turjanmaa <villemt@itu.jyu.fi>
+
+Other contributors (in alphabetic order):
+
+  Alexey <kgaz@crosswinds.net>
+  Alexey Teplov (<Lrz>) <200_u_200@mail.ru>
+  Alver <aleksandr-kn@yandex.ru>
+  Andrey Halyavin (halyavin) <halyavin@land.ru>
+  Andrey Ignatiev (andrew_programmer)
+  Artem Jerdev (art_zh) <artem@jerdev.co.uk>
+  Asper <asper.85@mail.ru>
+  ATV
+  BadBugsKiller <bugskiller@tut.by>
+  drh3xx
+  Endre Kozma <endre.kozma@axelero.hu>
+  Evgeny Grechnikov (Diamond) <diamondz@land.ru>
+  Felix Kaiser <info@felix-kaiser.de>
+  Hidnplayr <hidnplayr@gmail.com>
+  Iliya Mihailov (Ghost) <ghost.nsk@gmail.com>
+  Ivan Poddubny <ivan.poddubny@gmail.com>
+  Jan-Michael Brummer <buzz2@gmx.de>
+  Jarek Pelczar <jpelczar@interia.pl>
+  Johnny_B
+  Juan M. Caravaca <bitrider@wanadoo.es>
+  <kristol@nic.fi>
+  Lasse Kuusijarvi <kuusijar@lut.fi>
+  Marat Zakiyanov (Mario79) <mario79@bk.ru>
+  Mihail Lisovin (Mihasik)
+  Mihail Semenyako (mike.dld) <mike.dld@gmail.com>
+  Mike Hibbett <mikeh@oceanfree.net>
+  NoName
+  Paolo Franchetti <pfranz73@tiscali.it>
+  Paolo Minazzi <paolo.minazzi@inwind.it>
+  Paul Butcher <paul.butcher@asa.co.uk>
+  <quickcode@mail.ru>
+  Sergey Kuzmin (Wildwest) <kuzmin_serg@list.ru>
+  Sergey Semyonov (Serge) <ion2@mail.ru>
+  shurf <cit.utc@gmail.com>
+  smb
+  SPraid (simba) <spraid@orel.ru>
+  Trans <trans397@yahoo.com>
+  turbanoff <turbanoff@yandex.ru>
+  VaStaNi <vastani@ukr.net>
+  Victor Prodan <victorprodan@yahoo.com>

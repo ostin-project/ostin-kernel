@@ -1,19 +1,19 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;                                                              ;;
-;; Copyright (C) KolibriOS team 2004-2007. All rights reserved. ;;
-;; Distributed under terms of the GNU General Public License    ;;
-;;                                                              ;;
-;;  PCI16.INC                                                   ;;
-;;                                                              ;;
-;;  16 bit PCI driver code                                      ;;
-;;                                                              ;;
-;;  Version 0.2  December 21st, 2002                            ;;
-;;                                                              ;;
-;;  Author: Victor Prodan, victorprodan@yahoo.com               ;;
-;;                                                              ;;
-;;  See file COPYING for details                                ;;
-;;                                                              ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;======================================================================================================================
+;;///// pci16.inc ////////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
+;;======================================================================================================================
+;; (c) 2004-2007 KolibriOS team <http://kolibrios.org/>
+;; (c) 2002 MenuetOS <http://menuetos.net/>
+;;======================================================================================================================
+;; This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
+;; License as published by the Free Software Foundation, either version 2 of the License, or (at your option) any later
+;; version.
+;;
+;; This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+;; warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License along with this program. If not, see
+;; <http://www.gnu.org/licenses/>.
+;;======================================================================================================================
 
 init_pci_16:
 

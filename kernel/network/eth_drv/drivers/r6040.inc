@@ -1,21 +1,21 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;                                                                 ;;
-;; Copyright (C) KolibriOS team 2004-2011. All rights reserved.    ;;
-;; Distributed under terms of the GNU General Public License       ;;
-;;                                                                 ;;
-;;  R6040 driver for KolibriOS                                     ;;
-;;                                                                 ;;
-;;  based on R6040.c from linux                                    ;;
-;;                                                                 ;;
-;;    Written by Asper (asper.85@mail.ru)                          ;;
-;;            and hidnplayr (hidnplayr@gmail.com)                  ;;
-;;                                                                 ;;
-;;          GNU GENERAL PUBLIC LICENSE                             ;;
-;;             Version 2, June 1991                                ;;
-;;                                                                 ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
+;;======================================================================================================================
+;;///// r6040.inc ////////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
+;;======================================================================================================================
+;; (c) 2011 KolibriOS team <http://kolibrios.org/>
+;;======================================================================================================================
+;; This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
+;; License as published by the Free Software Foundation, either version 2 of the License, or (at your option) any later
+;; version.
+;;
+;; This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+;; warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License along with this program. If not, see
+;; <http://www.gnu.org/licenses/>.
+;;======================================================================================================================
+;; References:
+;; * R6040.c - linux driver
+;;======================================================================================================================
 
 ;********************************************************************
 ;   Interface

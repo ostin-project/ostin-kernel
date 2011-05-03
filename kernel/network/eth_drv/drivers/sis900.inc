@@ -1,29 +1,22 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;                                                                    ;;
-;; Copyright (C) KolibriOS team 2004-2007. All rights reserved.       ;;
-;; Distributed under terms of the GNU General Public License          ;;
-;;                                                                    ;;
-;;  SIS900.INC                                                        ;;
-;;                                                                    ;;
-;;  Ethernet driver for Menuet OS                                     ;;
-;;                                                                    ;;
-;;  Version 0.4  26 April 2004                                        ;;
-;;                                                                    ;;
-;;  This driver is based on the SIS900 driver from                    ;;
-;;  the etherboot 5.0.6 project. The copyright statement is           ;;
-;;                                                                    ;;
-;;          GNU GENERAL PUBLIC LICENSE                                ;;
-;;             Version 2, June 1991                                   ;;
-;;                                                                    ;;
-;;  remaining parts Copyright 2004 Jason Delozier,                    ;;
-;;   cordata51@hotmail.com                                            ;;
-;;                                                                    ;;
-;;  See file COPYING for details                                      ;;
-;;                                                                    ;;
-;;  Updates:                                                          ;;
-;;    Revision Look up table and SIS635 Mac Address by Jarek Pelczar  ;;
-;;                                                                    ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;======================================================================================================================
+;;///// sis900.inc ///////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
+;;======================================================================================================================
+;; (c) 2004-2008 KolibriOS team <http://kolibrios.org/>
+;; (c) 2000-2004 MenuetOS <http://menuetos.net/>
+;;======================================================================================================================
+;; This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
+;; License as published by the Free Software Foundation, either version 2 of the License, or (at your option) any later
+;; version.
+;;
+;; This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+;; warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License along with this program. If not, see
+;; <http://www.gnu.org/licenses/>.
+;;======================================================================================================================
+;; References:
+;; * SIS900 driver - etherboot 5.0.6 project
+;;======================================================================================================================
 
 ;********************************************************************
 ;   Interface

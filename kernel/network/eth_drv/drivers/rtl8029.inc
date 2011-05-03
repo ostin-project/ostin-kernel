@@ -1,30 +1,22 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;                                                                 ;;
-;; Copyright (C) KolibriOS team 2004-2007. All rights reserved.    ;;
-;; Distributed under terms of the GNU General Public License       ;;
-;;                                                                 ;;
-;;  RTL8029.INC                                                    ;;
-;;                                                                 ;;
-;;  Ethernet driver for Menuet OS                                  ;;
-;;                                                                 ;;
-;;  Version 0.2  31 July 2002                                      ;;
-;;                                                                 ;;
-;;  This driver is based on the ns8390 driver from                 ;;
-;;  the etherboot 5.0.6 project. The copyright statement is        ;;
-;;                                                                 ;;
-;;          GNU GENERAL PUBLIC LICENSE                             ;;
-;;             Version 2, June 1991                                ;;
-;;                                                                 ;;
-;;  remaining parts Copyright 2002 Mike Hibbett,                   ;;
-;;   mikeh@oceanfree.net                                           ;;
-;;                                                                 ;;
-;;  See file COPYING for details                                   ;;
-;;                                                                 ;;
-;;  While this implementation handles only PCI bus RTL8029         ;;
-;;  hardware, it can be easily adapted to other NE2000 clone       ;;
-;;  products. I just dont have any to try!                         ;;
-;;                                                                 ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;======================================================================================================================
+;;///// rtl8029.inc //////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
+;;======================================================================================================================
+;; (c) 2004-2007 KolibriOS team <http://kolibrios.org/>
+;; (c) 2000-2004 MenuetOS <http://menuetos.net/>
+;;======================================================================================================================
+;; This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
+;; License as published by the Free Software Foundation, either version 2 of the License, or (at your option) any later
+;; version.
+;;
+;; This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+;; warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License along with this program. If not, see
+;; <http://www.gnu.org/licenses/>.
+;;======================================================================================================================
+;; References:
+;; * ns8390 driver - etherboot 5.0.6 project
+;;======================================================================================================================
 
 ;********************************************************************
 ;   Interface
