@@ -27,8 +27,6 @@
 ;;                                                              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-$Revision: 1288 $
-
 ; socket data structure
 struct SOCKET
   .PrevPtr	  dd ? ; pointer to previous socket in list

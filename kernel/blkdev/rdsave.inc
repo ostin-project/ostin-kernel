@@ -5,9 +5,6 @@
 ;;                                                              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-$Revision: 1491 $
-
-
 iglobal
 saverd_fileinfo:
         dd      2               ; subfunction: write

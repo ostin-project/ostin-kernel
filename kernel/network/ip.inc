@@ -12,9 +12,6 @@
 ;;                                                                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-$Revision: 922 $
-
-
 ; IP underlying protocols numbers
 PROTOCOL_ICMP	  equ	   1
 PROTOCOL_TCP	  equ	   6

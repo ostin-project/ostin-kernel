@@ -16,9 +16,6 @@
 ;;                                                              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-$Revision: 1288 $
-
-
 ; TCP TCB states
 TCB_LISTEN	   equ	      1
 TCB_SYN_SENT	   equ	      2

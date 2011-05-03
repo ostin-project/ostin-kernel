@@ -14,9 +14,6 @@
 ;
 ;-------------------------------------------------------------------------
 
-$Revision: 750 $
-
-
 iglobal
 ; pointer to memory for path replace table,
 ; size of one record is 128 bytes: 64 bytes for search pattern + 64 bytes for replace string

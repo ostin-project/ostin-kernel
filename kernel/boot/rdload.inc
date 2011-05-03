@@ -5,9 +5,6 @@
 ;;                                                              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-$Revision: 593 $
-
-
 ; READ RAMDISK IMAGE FROM HD
 
         cmp   [boot_dev+OS_BASE+0x10000],1

@@ -5,9 +5,6 @@
 ;;                                                              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-$Revision: 750 $
-
-
 include 'dev_fd.inc'
 include 'dev_hdcd.inc'
 include 'getcache.inc'

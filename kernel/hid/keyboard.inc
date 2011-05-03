@@ -5,9 +5,6 @@
 ;; Distributed under terms of the GNU General Public License    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-$Revision: 1874 $
-
-
 ;// mike.dld [
 
 VKEY_LSHIFT   = 0000000000000001b

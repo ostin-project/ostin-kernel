@@ -5,9 +5,6 @@
 ;; Distributed under terms of the GNU General Public License    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-$Revision: 1434 $
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; IRQ0 HANDLER (TIMER INTERRUPT) ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

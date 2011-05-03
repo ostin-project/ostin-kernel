@@ -5,9 +5,6 @@
 ;;                                                              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-$Revision: 1454 $
-
-
 dpl0    equ  10010000b     ; data read       dpl0
 drw0    equ  10010010b      ; data read/write dpl0
 drw3    equ  11110010b      ; data read/write dpl3

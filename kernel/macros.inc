@@ -1,17 +1,4 @@
 
-__REV = 0
-
-macro $Revision a {
-  match =: Num =$,a \{
-    if __REV < Num
-      __REV = Num
-    end if
-  \}
-}
-
-$Revision: 1055 $
-
-
 ; structure definition helper
 macro struct name, [arg]
  {

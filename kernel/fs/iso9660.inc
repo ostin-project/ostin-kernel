@@ -5,9 +5,6 @@
 ;;                                                              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-$Revision: 1531 $
-
-
 uglobal
 cd_current_pointer_of_input    dd  0
 cd_current_pointer_of_input_2  dd  0

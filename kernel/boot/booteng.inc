@@ -11,9 +11,6 @@
 ;
 ;======================================================================
 
-$Revision: 1084 $
-
-
 d80x25_bottom:
           db       '║ KolibriOS is based on MenuetOS and comes with ABSOLUTELY '
           db       'NO WARRANTY         ║'

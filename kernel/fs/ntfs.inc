@@ -5,9 +5,6 @@
 ;;                                                              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-$Revision: 1517 $
-
-
 ntfs_test_bootsec:
 ; in: ebx->buffer, edx=size of partition
 ; out: CF set <=> invalid

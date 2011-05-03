@@ -5,9 +5,6 @@
 ;;                                                              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-$Revision: 1878 $
-
-
 ; Low-level driver for HDD access
 ; DMA support by Mario79
 ; Access through BIOS by diamond

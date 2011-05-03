@@ -5,9 +5,6 @@
 ;;                                                              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-$Revision: 1288 $
-
-
 ;; Copyright (c) 2004, Endre Kozma <endre.kozma@axelero.hu>
 ;; All rights reserved.
 ;;

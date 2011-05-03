@@ -30,9 +30,6 @@
 ;;                                                                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-$Revision: 1644 $
-
-
 	ETH_ALEN	       equ 6
 	ETH_HLEN	       equ (2 * ETH_ALEN + 2)
 	ETH_ZLEN	       equ 60 ; 60 + 4bytes auto payload for

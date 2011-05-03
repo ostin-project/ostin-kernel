@@ -11,8 +11,6 @@
 ;
 ;============================================================================
 
-$Revision: 1289 $
-
 if 0
 ; The code currently does not work. Kill "if 0/end if" only after correcting
 ; to current kernel (dll.inc).

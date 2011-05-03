@@ -57,9 +57,6 @@
 
 include 'macros.inc'
 
-$Revision: 1675 $
-
-
 USE_COM_IRQ     equ 1      ; make irq 3 and irq 4 available for PCI devices
 
 ; Enabling the next line will enable serial output console
@@ -2312,7 +2309,7 @@ iglobal
 version_inf:
   db 0,7,7,0  ; version 0.7.7.0
   db 0		;reserved
-  dd __REV__
+  dd 0
 version_end:
 endg
 
@@ -5323,8 +5320,6 @@ scan_rsdp:
 end if
 
 include "data32.inc"
-
-__REV__ = __REV
 
 uglobals_size = $ - endofcode
 diff16 "end of kernel code",0,$

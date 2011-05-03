@@ -8,9 +8,6 @@
 ;;                                                              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-$Revision: 1322 $
-
-
 n_sector    dd 0  ; temporary save for sector value
 flp_status  dd 0
 clust_tmp_flp dd 0  ; used by analyze_directory and analyze_directory_to_write

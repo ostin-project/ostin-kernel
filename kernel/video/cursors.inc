@@ -5,9 +5,6 @@
 ;;                                                              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-$Revision: 1316 $
-
-
 LOAD_FROM_FILE  equ 0
 LOAD_FROM_MEM   equ 1
 LOAD_INDIRECT   equ 2

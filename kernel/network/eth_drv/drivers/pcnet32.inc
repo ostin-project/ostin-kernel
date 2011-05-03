@@ -28,9 +28,6 @@
 ;;                                                                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-$Revision: 781 $
-
-
 PCNET32_PORT_AUI      equ 0x00
 PCNET32_PORT_10BT     equ 0x01
 PCNET32_PORT_GPSI     equ 0x02

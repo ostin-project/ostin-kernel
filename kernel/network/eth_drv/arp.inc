@@ -18,9 +18,6 @@
 ;;                                                              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-$Revision: 983 $
-
-
 ARP_NO_ENTRY                equ  0
 ARP_VALID_MAPPING           equ  1
 ARP_AWAITING_RESPONSE       equ  2

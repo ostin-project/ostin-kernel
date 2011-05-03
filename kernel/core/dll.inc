@@ -5,9 +5,6 @@
 ;;                                                              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-$Revision: 1491 $
-
-
 DRV_COMPAT   equ  5  ;minimal required drivers version
 DRV_CURRENT  equ  5  ;current drivers model version
 

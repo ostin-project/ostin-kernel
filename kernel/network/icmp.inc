@@ -20,9 +20,6 @@
 ;;	This implemetation of ICMP proto supports message of ECHO type.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-$Revision: 593 $
-
-
 struc ICMP_PACKET
 {  .Type            db   ?  ;+00
    .Code            db   ?  ;+01

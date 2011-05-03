@@ -5,9 +5,6 @@
 ;; Distributed under terms of the GNU General Public License    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-$Revision: 766 $
-
-
 iglobal
   ;function pointers.
   fdc_irq_func	  dd fdc_null

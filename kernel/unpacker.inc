@@ -5,9 +5,6 @@
 ;;                                                              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-$Revision: 1450 $
-
-
 ; void __stdcall unpack(void* packed_data, void* unpacked_data); 
 unpack:
         pushad

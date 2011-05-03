@@ -17,9 +17,6 @@
 ;;                                                              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-$Revision: 1420 $
-
-
 ; If you're planning to write your own video driver I suggest
 ; you replace the VESA12.INC file and see those instructions.
 

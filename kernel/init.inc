@@ -5,9 +5,6 @@
 ;;                                                              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-$Revision: 1455 $
-
-
 MEM_WB     equ 6               ;write-back memory
 MEM_WC     equ 1               ;write combined memory
 MEM_UC     equ 0               ;uncached memory
