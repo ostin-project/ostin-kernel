@@ -49,43 +49,43 @@ read_skin_file:
         ret
 
 struct SKIN_HEADER
-  .ident   dd ?
-  .version dd ?
-  .params  dd ?
-  .buttons dd ?
-  .bitmaps dd ?
+  ident   dd ?
+  version dd ?
+  params  dd ?
+  buttons dd ?
+  bitmaps dd ?
 ends
 
 struct SKIN_PARAMS
-  .skin_height    dd ?
-  .margin.right   dw ?
-  .margin.left    dw ?
-  .margin.bottom  dw ?
-  .margin.top     dw ?
-  .colors.inner   dd ?
-  .colors.outer   dd ?
-  .colors.frame   dd ?
-  .colors_1.inner dd ?
-  .colors_1.outer dd ?
-  .colors_1.frame dd ?
-  .dtp.size       dd ?
-  .dtp.data       db 40 dup (?)
+  skin_height    dd ?
+  margin.right   dw ?
+  margin.left    dw ?
+  margin.bottom  dw ?
+  margin.top     dw ?
+  colors.inner   dd ?
+  colors.outer   dd ?
+  colors.frame   dd ?
+  colors_1.inner dd ?
+  colors_1.outer dd ?
+  colors_1.frame dd ?
+  dtp.size       dd ?
+  dtp.data       db 40 dup (?)
 ends
 
 struct SKIN_BUTTONS
-  .type     dd ?
+  type     dd ?
   .pos:
-    .left   dw ?
-    .top    dw ?
+    left   dw ?
+    top    dw ?
   .size:
-    .width  dw ?
-    .height dw ?
+    width  dw ?
+    height dw ?
 ends
 
 struct SKIN_BITMAPS
-  .kind  dw ?
-  .type  dw ?
-  .data  dd ?
+  kind  dw ?
+  type  dw ?
+  data  dd ?
 ends
 
 load_default_skin:

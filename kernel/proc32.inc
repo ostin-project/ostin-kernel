@@ -76,11 +76,15 @@ macro proc [args]			; define procedure
 prologue@proc equ prologuedef
 
 macro prologuedef procname,flag,parmbytes,localbytes,reglist
- { if parmbytes | localbytes
+ { local loc
+   loc = (localbytes+3) and (not 3)
+   parmbase@proc equ ebp+8
+   localbase@proc equ ebp-loc
+   if parmbytes | localbytes
     push ebp
     mov ebp,esp
     if localbytes
-     sub esp,localbytes
+     sub esp,loc
     end if
    end if
    irps reg, reglist \{ push reg \} }
@@ -92,11 +96,13 @@ macro epiloguedef procname,flag,parmbytes,localbytes,reglist
    if parmbytes | localbytes
     leave
    end if
-   if (flag and 10000b) | (parmbytes=0)
+   if flag and 10000b
     retn
    else
     retn parmbytes
    end if }
+
+close@proc equ
 
 macro define@proc name,statement
  { local params,flag,regs,parmbytes,localbytes,current
@@ -112,24 +118,25 @@ macro define@proc name,statement
 			  flag = 10001b \}
    match =params, params \{ params equ statement
 			    flag = 0 \}
-   virtual at ebp+8
    match =uses reglist=,args, params \{ regs equ reglist
 					params equ args \}
    match =regs =uses reglist, regs params \{ regs equ reglist
 					     params equ \}
    match =regs, regs \{ regs equ \}
+   match prologue:reglist, prologue@proc:<regs> \{ prologue name,flag,parmbytes,localbytes,reglist \}
+   virtual at parmbase@proc
    match =,args, params \{ defargs@proc args \}
    match =args@proc args, args@proc params \{ defargs@proc args \}
-   parmbytes = $ - (ebp+8)
+   parmbytes = $-(parmbase@proc)
    end virtual
    name # % = parmbytes/4
    all@vars equ
    current = 0
-   match prologue:reglist, prologue@proc:<regs> \{ prologue name,flag,parmbytes,localbytes,reglist \}
    macro locals
-   \{ virtual at ebp-localbytes+current
-      macro label . \\{ deflocal@proc .,:, \\}
+   \{ virtual at localbase@proc+current
+      macro label def \\{ match . type,def> \\\{ deflocal@proc .,label,<type \\\} \\}
       struc db [val] \\{ \common deflocal@proc .,db,val \\}
+      struc du [val] \\{ \common deflocal@proc .,du,val \\}
       struc dw [val] \\{ \common deflocal@proc .,dw,val \\}
       struc dp [val] \\{ \common deflocal@proc .,dp,val \\}
       struc dd [val] \\{ \common deflocal@proc .,dd,val \\}
@@ -143,17 +150,17 @@ macro define@proc name,statement
       struc rq cnt \\{ deflocal@proc .,rq cnt, \\} \}
    macro endl
    \{ purge label
-      restruc db,dw,dp,dd,dt,dq
+      restruc db,du,dw,dp,dd,dt,dq
       restruc rb,rw,rp,rd,rt,rq
-      restruc byte,word,dword,pword,tword,qword
-      current = $-(ebp-localbytes)
+      current = $-(localbase@proc)
       end virtual \}
    macro ret operand
    \{ match any, operand \\{ retn operand \\}
-      match , operand \\{ match epilogue:reglist, epilogue@proc:<regs>
-			  \\\{ epilogue name,flag,parmbytes,localbytes,reglist \\\} \\} \}
-   macro finish@proc \{ localbytes = (((current-1) shr 2)+1) shl 2
-			end if \} }
+      match , operand \\{ match epilogue:reglist, epilogue@proc:<regs> \\\{ epilogue name,flag,parmbytes,localbytes,reglist \\\} \\} \}
+   macro finish@proc
+   \{ localbytes = current
+      match close:reglist, close@proc:<regs> \\{ close name,flag,parmbytes,localbytes,reglist \\}
+      end if \} }
 
 macro defargs@proc [arg]
  { common
@@ -164,7 +171,9 @@ macro defargs@proc [arg]
       \{ current@arg equ argname
 	 label ..arg type
 	 argname equ ..arg
-	 if dqword eq type
+	 if qqword eq type
+	   dd ?,?,?,?,?,?,?,?
+	 else if dqword eq type
 	   dd ?,?,?,?
 	 else if tbyte eq type
 	   dd ?,?,?
@@ -184,6 +193,8 @@ macro defargs@proc [arg]
    common
     end if }
 
+macro deflocal@proc name,def,[val] { name def val }
+
 macro deflocal@proc name,def,[val]
  { common
     match vars, all@vars \{ all@vars equ all@vars, \}
@@ -192,13 +203,17 @@ macro deflocal@proc name,def,[val]
     local ..var,..tmp
     ..var def val
     match =?, val \{ ..tmp equ \}
-    match any =dup (=?), val \{ ..tmp equ \}
+    match any =?, val \{ ..tmp equ \}
+    match any (=?), val \{ ..tmp equ \}
+    match =label, def \{ ..tmp equ \}
     match tmp : value, ..tmp : val
      \{ tmp: end virtual
 	initlocal@proc ..var,def value
 	virtual at tmp\}
    common
     match first rest, ..var, \{ name equ first \} }
+
+struc label type { label . type }
 
 macro initlocal@proc name,def
  { virtual at name
@@ -257,8 +272,17 @@ macro local [var]
        match =TBYTE, vartype \\{ varname rt count
 				 restore done@local \\}
        match =DQWORD, vartype \\{ label varname dqword
-				  rq count+count
+				  rq count*2
 				  restore done@local \\}
+       match =QQWORD, vartype \\{ label varname qqword
+				  rq count*4
+				  restore done@local \\}
+       match =XWORD, vartype \\{ label varname xword
+				 rq count*2
+				 restore done@local \\}
+       match =YWORD, vartype \\{ label varname yword
+				 rq count*4
+				 restore done@local \\}
        match , done@local \\{ virtual
 			       varname vartype
 			      end virtual
@@ -280,6 +304,15 @@ macro local [var]
        match =DQWORD, vartype \\{ label varname dqword
 				  dq ?,?
 				  restore done@local \\}
+       match =QQWORD, vartype \\{ label varname qqword
+				  dq ?,?,?,?
+				  restore done@local \\}
+       match =XWORD, vartype \\{ label varname xword
+				 dq ?,?
+				 restore done@local \\}
+       match =YWORD, vartype \\{ label varname yword
+				 dq ?,?,?,?
+				 restore done@local \\}
        match , done@local \\{ varname vartype
 			      restore done@local \\} \}
     match ,done@local

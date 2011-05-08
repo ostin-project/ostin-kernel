@@ -17,10 +17,13 @@ Other contributors (in alphabetic order):
   Asper <asper.85@mail.ru>
   ATV
   BadBugsKiller <bugskiller@tut.by>
+  CleverMouse <theclevermouse@yandex.ru>
+  Dmitry Kartashov (shurf) <cit.utc@gmail.com>
   drh3xx
   Endre Kozma <endre.kozma@axelero.hu>
   Evgeny Grechnikov (Diamond) <diamondz@land.ru>
   Felix Kaiser <info@felix-kaiser.de>
+  Galkov <galkov@inbox.ru>
   Hidnplayr <hidnplayr@gmail.com>
   Iliya Mihailov (Ghost) <ghost.nsk@gmail.com>
   Ivan Poddubny <ivan.poddubny@gmail.com>
@@ -28,9 +31,11 @@ Other contributors (in alphabetic order):
   Jarek Pelczar <jpelczar@interia.pl>
   Johnny_B
   Juan M. Caravaca <bitrider@wanadoo.es>
+  kasTIgar
   <kristol@nic.fi>
   Lasse Kuusijarvi <kuusijar@lut.fi>
   Marat Zakiyanov (Mario79) <mario79@bk.ru>
+  Maxis <zapasnoym@yandex.ru>
   Mihail Lisovin (Mihasik)
   Mihail Semenyako (mike.dld) <mike.dld@gmail.com>
   Mike Hibbett <mikeh@oceanfree.net>
@@ -39,12 +44,13 @@ Other contributors (in alphabetic order):
   Paolo Minazzi <paolo.minazzi@inwind.it>
   Paul Butcher <paul.butcher@asa.co.uk>
   <quickcode@mail.ru>
+  Rus
   Sergey Kuzmin (Wildwest) <kuzmin_serg@list.ru>
   Sergey Semyonov (Serge) <ion2@mail.ru>
-  shurf <cit.utc@gmail.com>
-  smb
+  smb <smb1987@gmail.com>
   SPraid (simba) <spraid@orel.ru>
   Trans <trans397@yahoo.com>
+  tsdima <ts-dima@mail.ru>
   turbanoff <turbanoff@yandex.ru>
   VaStaNi <vastani@ukr.net>
   Victor Prodan <victorprodan@yahoo.com>

@@ -17,31 +17,31 @@
 
 ; socket data structure
 struct SOCKET
-  .PrevPtr	  dd ? ; pointer to previous socket in list
-  .NextPtr	  dd ? ; pointer to next socket in list
-  .Number	  dd ? ; socket number (unique within single process)
-  .PID		  dd ? ; application process id
-  .LocalIP	  dd ? ; local IP address
-  .LocalPort	  dw ? ; local port
-  .RemoteIP	  dd ? ; remote IP address
-  .RemotePort	  dw ? ; remote port
-  .OrigRemoteIP   dd ? ; original remote IP address (used to reset to LISTEN state)
-  .OrigRemotePort dw ? ; original remote port (used to reset to LISTEN state)
-  .rxDataCount	  dd ? ; rx data count
-  .TCBState	  dd ? ; TCB state
-  .TCBTimer	  dd ? ; TCB timer (seconds)
-  .ISS		  dd ? ; initial send sequence
-  .IRS		  dd ? ; initial receive sequence
-  .SND_UNA	  dd ? ; sequence number of unack'ed sent packets
-  .SND_NXT	  dd ? ; bext send sequence number to use
-  .SND_WND	  dd ? ; send window
-  .RCV_NXT	  dd ? ; next receive sequence number to use
-  .RCV_WND	  dd ? ; receive window
-  .SEG_LEN	  dd ? ; segment length
-  .SEG_WND	  dd ? ; segment window
-  .wndsizeTimer   dd ? ; window size timer
-  .lock           dd ? ; lock mutex
-  .rxData	  dd ? ; receive data buffer here
+  PrevPtr	  dd ? ; pointer to previous socket in list
+  NextPtr	  dd ? ; pointer to next socket in list
+  Number	  dd ? ; socket number (unique within single process)
+  PID		  dd ? ; application process id
+  LocalIP	  dd ? ; local IP address
+  LocalPort	  dw ? ; local port
+  RemoteIP	  dd ? ; remote IP address
+  RemotePort	  dw ? ; remote port
+  OrigRemoteIP   dd ? ; original remote IP address (used to reset to LISTEN state)
+  OrigRemotePort dw ? ; original remote port (used to reset to LISTEN state)
+  rxDataCount	  dd ? ; rx data count
+  TCBState	  dd ? ; TCB state
+  TCBTimer	  dd ? ; TCB timer (seconds)
+  ISS		  dd ? ; initial send sequence
+  IRS		  dd ? ; initial receive sequence
+  SND_UNA	  dd ? ; sequence number of unack'ed sent packets
+  SND_NXT	  dd ? ; bext send sequence number to use
+  SND_WND	  dd ? ; send window
+  RCV_NXT	  dd ? ; next receive sequence number to use
+  RCV_WND	  dd ? ; receive window
+  SEG_LEN	  dd ? ; segment length
+  SEG_WND	  dd ? ; segment window
+  wndsizeTimer   dd ? ; window size timer
+  lock           dd ? ; lock mutex
+  rxData	  dd ? ; receive data buffer here
 ends
 
 ; TCP opening modes
