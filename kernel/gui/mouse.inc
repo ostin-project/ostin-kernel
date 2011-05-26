@@ -78,8 +78,8 @@ mouse_check_events: ;//////////////////////////////////////////////////////////
         and     [mouse.state.buttons], 0
         jmp     .exit
 
-        ; is there any system button under cursor?
-    @@: call    mouse._.find_sys_button_under_cursor
+    @@: ; is there any system button under cursor?
+        call    mouse._.find_sys_button_under_cursor
         or      eax, eax
         jz      .check_buttons_released
 
@@ -234,7 +234,7 @@ mouse._.left_button_press_handler: ;///////////////////////////////////////////
         mov     [mouse.active_sys_window.pslot], esi
         lea     eax, [edi + WDATA.box]
         mov     ebx, mouse.active_sys_window.old_box
-        mov     ecx, BOX.sizeof
+        mov     ecx, sizeof.BOX
         call    memmove
         mov     ebx, mouse.active_sys_window.new_box
         call    memmove
@@ -305,7 +305,7 @@ mouse._.left_button_release_handler: ;/////////////////////////////////////////
         shl     eax, 5
         add     eax, window_data + WDATA.box
         mov     ebx, mouse.active_sys_window.old_box
-        mov     ecx, BOX.sizeof
+        mov     ecx, sizeof.BOX
         call    memmove
 
         mov     eax, mouse.active_sys_window.old_box
@@ -376,7 +376,7 @@ mouse._.move_handler: ;////////////////////////////////////////////////////////
 
         mov     eax, mouse.active_sys_window.new_box
         mov     ebx, mouse.active_sys_window.old_box
-        mov     ecx, BOX.sizeof
+        mov     ecx, sizeof.BOX
         call    memmove
 
         mov     dl, [mouse.active_sys_window.action]
@@ -395,16 +395,19 @@ mouse._.move_handler: ;////////////////////////////////////////////////////////
         jge     @f
         xor     eax, eax
         mov     [mouse.active_sys_window.new_box.left], eax
+
     @@: add     eax, [mouse.active_sys_window.new_box.width]
         cmp     eax, [Screen_Max_X]
         jl      @f
         sub     eax, [Screen_Max_X]
         sub     [mouse.active_sys_window.new_box.left], eax
+
     @@: mov     eax, [mouse.active_sys_window.new_box.top]
         or      eax, eax
         jge     @f
         xor     eax, eax
         mov     [mouse.active_sys_window.new_box.top], eax
+
     @@: add     eax, [mouse.active_sys_window.new_box.height]
         cmp     eax, [Screen_Max_Y]
         jle     .call_window_handler
@@ -427,6 +430,7 @@ mouse._.move_handler: ;////////////////////////////////////////////////////////
         jge     @f
         add     [mouse.active_sys_window.new_box.left], eax
         mov     [mouse.active_sys_window.new_box.width], 127
+
     @@: mov     eax, [mouse.active_sys_window.new_box.left]
         or      eax, eax
         jge     .check_resize_s
@@ -455,6 +459,7 @@ mouse._.move_handler: ;////////////////////////////////////////////////////////
         jge     @f
         mov     eax, ecx
         mov     [mouse.active_sys_window.new_box.height], eax
+
     @@: add     eax, [mouse.active_sys_window.new_box.top]
         cmp     eax, [Screen_Max_Y]
         jle     .check_resize_e
@@ -480,6 +485,7 @@ mouse._.move_handler: ;////////////////////////////////////////////////////////
         jge     @f
         mov     eax, 127
         mov     [mouse.active_sys_window.new_box.width], eax
+
     @@: add     eax, [mouse.active_sys_window.new_box.left]
         cmp     eax, [Screen_Max_X]
         jle     .call_window_handler
@@ -498,7 +504,7 @@ mouse._.move_handler: ;////////////////////////////////////////////////////////
         push    esi
         mov     esi, mouse.active_sys_window.old_box
         mov     edi, mouse.active_sys_window.new_box
-        mov     ecx, BOX.sizeof / 4
+        mov     ecx, sizeof.BOX / 4
         repe
         cmpsd
         pop     esi
@@ -561,16 +567,16 @@ mouse._.find_sys_button_under_cursor: ;////////////////////////////////////////
         ; check if any process button contains cursor
         mov     eax, [BTN_ADDR]
         mov     ecx, [eax]
-        imul    esi, ecx, SYS_BUTTON.sizeof
+        imul    esi, ecx, sizeof.SYS_BUTTON
         add     esi, eax
         inc     ecx
-        add     esi, SYS_BUTTON.sizeof
+        add     esi, sizeof.SYS_BUTTON
 
   .next_button:
         dec     ecx
         jz      .not_found
 
-        add     esi, -SYS_BUTTON.sizeof
+        add     esi, -sizeof.SYS_BUTTON
 
         ; does it belong to our process?
         cmp     dx, [esi + SYS_BUTTON.pslot]

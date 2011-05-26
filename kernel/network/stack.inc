@@ -73,34 +73,6 @@ SOCKET_INTERFACE     equ   53
 ;stack_data           equ   0x704000
 ;stack_data_end       equ   0x71ffff
 
-; 32 bit word
-stack_config         equ   stack_data
-
-; 32 bit word - IP Address in network format
-stack_ip             equ   stack_data + 4
-
-; 1 byte. 0 == inactive, 1 = active
-ethernet_active      equ   stack_data + 9
-
-
-; TODO :: empty memory area
-
-; Address of selected socket
-;sktAddr              equ   stack_data + 32
-; Parameter to checksum routine - data ptr
-checkAdd1            equ   stack_data + 36
-; Parameter to checksum routine - 2nd data ptr
-checkAdd2            equ   stack_data + 40
-; Parameter to checksum routine - data size
-checkSize1           equ   stack_data + 44
-; Parameter to checksum routine - 2nd data size
-checkSize2           equ   stack_data + 46
-; result of checksum routine
-checkResult          equ   stack_data + 48
-
-; holds the TCP/UDP pseudo header. SA|DA|0|prot|UDP len|
-pseudoHeader         equ   stack_data + 50
-
 ; receive and transmit IP buffer allocation
 ;sockets              equ   stack_data + 62
 Next_free2 equ stack_data + 62;Next_free2           equ   sockets + (SOCKETBUFFSIZE * NUM_SOCKETS)
@@ -639,7 +611,7 @@ notsis100:
 
     ;  101 : return length of IPOUT QUEUE
     mov     ebx, IPOUT_QUEUE
-    call    queueSize                       
+    call    queueSize
     ret
 
 notsis101:

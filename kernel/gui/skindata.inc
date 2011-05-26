@@ -19,7 +19,7 @@
 ;
 
 iglobal
-  _skin_file_default db '/sys/DEFAULT.SKN',0
+  _skin_file_default db '/sys/DEFAULT.SKN', 0
 endg
 
 struct SKIN_DATA
@@ -45,17 +45,14 @@ struct SKIN_BUTTON
 ends
 
 uglobal
-
-align 4
-
-skin_udata:
-  _skinh            dd ?
-
-  _skinmargins: ;   rw 4
-    .right          dw ?
-    .left           dw ?
-    .bottom         dw ?
-    .top            dw ?
+  align 4
+  skin_udata:
+    _skinh    dd ?
+    _skinmargins: ;   rw 4
+      .right  dw ?
+      .left   dw ?
+      .bottom dw ?
+      .top    dw ?
 
   skin_btn_close    SKIN_BUTTON
   skin_btn_minimize SKIN_BUTTON
@@ -63,8 +60,6 @@ skin_udata:
   skin_active       SKIN_DATA
   skin_inactive     SKIN_DATA
 
-align 4
-
-skin_udata.end:
-
+  align 4
+  skin_udata.end:
 endg

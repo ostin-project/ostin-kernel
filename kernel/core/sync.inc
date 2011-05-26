@@ -15,6 +15,7 @@
 ;;======================================================================================================================
 
 if ~defined sync_inc
+
 sync_inc_fix:
 sync_inc fix sync_inc_fix
 
@@ -26,6 +27,7 @@ macro SimpleMutex name
     name#.type = 1
 ;  endg
 }
+
 macro WaitSimpleMutex name
 {
   local start_wait,ok
@@ -44,10 +46,12 @@ ok=$
   pop  eax
   sti
 }
+
 macro ReleaseSimpleMutex name
 {
   mov  [name],dword 0
 }
+
 macro TryWaitSimpleMutex name  ;result in eax and in flags
 {
   local ok,try_end
@@ -60,6 +64,7 @@ ok=$
   inc  eax
 try_end=$
 }
+
 macro SimpleCriticalSection name
 {
 ;  iglobal
@@ -68,6 +73,7 @@ macro SimpleCriticalSection name
     name#.type=2
 ;  endg
 }
+
 macro WaitSimpleCriticalSection name
 {
   local start_wait,first_wait,inc_counter,end_wait
@@ -93,6 +99,7 @@ end_wait=$
   sti
   pop   eax
 }
+
 macro ReleaseSimpleCriticalSection name
 {
   local release_end
@@ -101,6 +108,7 @@ macro ReleaseSimpleCriticalSection name
   mov   [name],dword 0
 release_end=$
 }
+
 macro TryWaitSimpleCriticalSection name ;result in eax and in flags
 {
   local ok,try_end
@@ -117,6 +125,8 @@ ok=$
   inc   eax
 try_end=$
 }
+
 _cli equ call MEM_HeapLock
 _sti equ call MEM_HeapUnLock
+
 end if

@@ -19,72 +19,77 @@
 
         xor     cx, cx
         mov     es, cx
-        mov     di, 0x9080
-        mov     byte [es:di-1], cl
+        mov     di, 0x09080
+        mov     byte[es:di-1], cl
         cmp     [preboot_biosdisk], 1
         jnz     bdde
-        mov     dl, 80h
+        mov     dl, 0x080
+
 bdds:
-        mov     ah, 15h
+        mov     ah, 0x15
         push    cx dx di
-        int     13h
+        int     0x13
         pop     di dx cx
         jc      bddc
         test    ah, ah
         jz      bddc
         inc     cx
-        mov     ah, 48h
+        mov     ah, 0x48
         push    ds
         push    es
         pop     ds
-        mov     si, 0xA000
-        mov     word [si], 1Eh
-        mov     ah, 48h
-        int     13h
+        mov     si, 0x0a000
+        mov     word[si], 0x1e
+        mov     ah, 0x48
+        int     0x13
         pop     ds
         jc      bddc2
-        inc     byte [es:0x907F]
-        cmp     word [es:si], 1Eh
+        inc     byte[es:0x0907f]
+        cmp     word[es:si], 0x1e
         jb      bddl
-        cmp     word [es:si+1Ah], 0xFFFF
+        cmp     word[es:si + 0x1a], 0x0ffff
         jz      bddl
         mov     al, dl
         stosb
         push    ds
-        lds     si, [es:si+1Ah]
-        mov     al, [si+6]
-        and     al, 0xF
+        lds     si, [es:si + 0x1a]
+        mov     al, [si + 6]
+        and     al, 0x0f
         stosb
-        mov     al, byte [si+4]
+        mov     al, byte[si + 4]
         shr     al, 4
         and     ax, 1
-        cmp     word [si], 1F0h
+        cmp     word[si], 0x1F0
         jz      @f
         inc     ax
         inc     ax
-        cmp     word [si], 170h
+        cmp     word[si], 0x170
         jz      @f
-	or	ax,-1
-;        mov     ax, -1
-@@:
-        stosw
+        or      ax, -1
+;       mov     ax, -1
+
+    @@: stosw
         pop     ds
         jmp     bddc2
+
 bddl:
         mov     al, dl
         stosb
-	xor	ax,ax
-	stosb
-	dec	ax
-	stosw
-;        mov     al, 0
-;        stosb
-;        mov     ax, -1
-;        stosw
+        xor     ax,ax
+        stosb
+        dec     ax
+        stosw
+;       mov     al, 0
+;       stosb
+;       mov     ax, -1
+;       stosw
+
 bddc2:
         cmp     cl, [es:0x475]
         jae     bdde
+
 bddc:
         inc     dl
         jnz     bdds
+
 bdde:

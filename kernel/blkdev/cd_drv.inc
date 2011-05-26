@@ -20,13 +20,11 @@
 ; Автор части исходного текста Кулаков Владимир Геннадьевич
 ; Адаптация, доработка и разработка Mario79,<Lrz>
 
-; Максимальное количество повторений операции чтения
-MaxRetr equ 10
-; Предельное время ожидания готовности к приему команды
-; (в тиках)
-BSYWaitTime equ 1000  ;2
-NoTickWaitTime equ 0xfffff
-CDBlockSize equ 2048
+MaxRetr        equ 10       ; Максимальное количество повторений операции чтения
+BSYWaitTime    equ 1000     ; Предельное время ожидания готовности к приему команды (в тиках)
+NoTickWaitTime equ 0x0fffff
+CDBlockSize    equ 2048
+
 ;********************************************
 ;*        ЧТЕНИЕ СЕКТОРА С ПОВТОРАМИ        *
 ;* Многократное повторение чтения при сбоях *
@@ -36,65 +34,70 @@ ReadCDWRetr:
 ; input  : eax = block to read
 ;          ebx = destination
 ;-----------------------------------------------------------
-    pushad
-    mov   eax,[CDSectorAddress]
-    mov   ebx,[CDDataBuf_pointer]
-    call  cd_calculate_cache
-    xor   edi,edi
-    add   esi,8
-    inc   edi
-.hdreadcache:
-;    cmp   dword [esi+4],0       ; empty
-;    je    .nohdcache
-    cmp   [esi],eax             ; correct sector
-    je    .yeshdcache
-.nohdcache:
-    add   esi,8
-    inc   edi
-    dec   ecx
-    jnz   .hdreadcache
-    call  find_empty_slot_CD_cache       ; ret in edi
+        pushad
+        mov     eax, [CDSectorAddress]
+        mov     ebx, [CDDataBuf_pointer]
+        call    cd_calculate_cache
+        xor     edi, edi
+        add     esi, 8
+        inc     edi
 
-    push  edi
-    push  eax
-    call  cd_calculate_cache_2
-    shl   edi,11
-    add   edi,eax
-    mov   [CDDataBuf_pointer],edi
-    pop   eax
-    pop   edi
+  .hdreadcache:
+;       cmp     dword[esi + 4],0 ; empty
+;       je      .nohdcache
+        cmp     [esi], eax ; correct sector
+        je      .yeshdcache
 
-    call  ReadCDWRetr_1
-    cmp   [DevErrorCode],0
-    jne   .exit
+  .nohdcache:
+        add     esi, 8
+        inc     edi
+        dec     ecx
+        jnz     .hdreadcache
+        call    find_empty_slot_CD_cache       ; ret in edi
 
-    mov   [CDDataBuf_pointer],ebx
-    call  cd_calculate_cache_1
-    lea   esi,[edi*8+esi]
-    mov   [esi],eax             ; sector number
-;    mov   dword [esi+4],1       ; hd read - mark as same as in hd
-.yeshdcache:
-    mov   esi,edi
-    shl   esi,11    ;9
-    push  eax
-    call  cd_calculate_cache_2
-    add   esi,eax
-    pop   eax
-    mov   edi,ebx   ;[CDDataBuf_pointer]
-    mov   ecx,512   ;/4
-    cld
-    rep   movsd                 ; move data
-.exit:
-    popad
-    ret
+        push    edi
+        push    eax
+        call    cd_calculate_cache_2
+        shl     edi, 11
+        add     edi, eax
+        mov     [CDDataBuf_pointer], edi
+        pop     eax
+        pop     edi
+
+        call    ReadCDWRetr_1
+        cmp     [DevErrorCode], 0
+        jne     .exit
+
+        mov     [CDDataBuf_pointer], ebx
+        call    cd_calculate_cache_1
+        lea     esi,[edi * 8 + esi]
+        mov     [esi], eax ; sector number
+;       mov     dword[esi + 4], 1 ; hd read - mark as same as in hd
+
+  .yeshdcache:
+        mov     esi, edi
+        shl     esi, 11 ; 9
+        push    eax
+        call    cd_calculate_cache_2
+        add     esi, eax
+        pop     eax
+        mov     edi, ebx ; [CDDataBuf_pointer]
+        mov     ecx, 512 ; /4
+        cld
+        rep     movsd ; move data
+
+  .exit:
+        popad
+        ret
 
 ReadCDWRetr_1:
         pushad
 
-; Цикл, пока команда не выполнена успешно или не
-; исчерпано количество попыток
-        mov       ECX,MaxRetr
-@@NextRetr:
+        ; Цикл, пока команда не выполнена успешно или не
+        ; исчерпано количество попыток
+        mov     ecx, MaxRetr
+
+  .NextRetr:
 ; Подать команду
 ;*************************************************
 ;*      ПОЛНОЕ ЧТЕНИЕ СЕКТОРА КОМПАКТ-ДИСКА      *
@@ -107,89 +110,82 @@ ReadCDWRetr_1:
 ;* CDSectorAddress - адрес считываемого сектора. *
 ;* Данные считывается в массив CDDataBuf.        *
 ;*************************************************
-;ReadCD:
-	push	ecx
-;        pusha
-; Задать размер сектора
-;        mov       [CDBlockSize],2048 ;2352
-; Очистить буфер пакетной команды
-        call  clear_packet_buffer
-; Сформировать пакетную команду для считывания
-; сектора данных
-; Задать код команды Read CD
-        mov   [PacketCommand],byte 0x28  ;0xBE
-; Задать адрес сектора
-        mov   AX,word [CDSectorAddress+2]
-        xchg  AL,AH
-        mov   word [PacketCommand+2],AX
-        mov   AX,word [CDSectorAddress]
-        xchg  AL,AH
-        mov   word [PacketCommand+4],AX
-;        mov   eax,[CDSectorAddress]
-;        mov   [PacketCommand+2],eax
-; Задать количество считываемых секторов
-        mov   [PacketCommand+8],byte 1
-; Задать считывание данных в полном объеме
-;        mov     [PacketCommand+9],byte 0xF8
-; Подать команду
-        call  SendPacketDatCommand
-        pop   ecx
-;        ret
+        push    ecx
+;       pusha
+        ; Задать размер сектора
+;       mov     [CDBlockSize], 2048 ; 2352
+        ; Очистить буфер пакетной команды
+        call    clear_packet_buffer
+        ; Сформировать пакетную команду для считывания сектора данных
+        ; Задать код команды Read CD
+        mov     byte[PacketCommand], 0x28  ; 0x0be
+        ; Задать адрес сектора
+        mov     ax, word[CDSectorAddress + 2]
+        xchg    al, ah
+        mov     word[PacketCommand + 2], ax
+        mov     ax, word[CDSectorAddress]
+        xchg    al, ah
+        mov     word[PacketCommand + 4], ax
+;       mov     eax, [CDSectorAddress]
+;       mov     [PacketCommand + 2], eax
+        ; Задать количество считываемых секторов
+        mov     byte[PacketCommand + 8], 1
+        ; Задать считывание данных в полном объеме
+;       mov     byte[PacketCommand + 9], 0x0f8
+        ; Подать команду
+        call    SendPacketDatCommand
+        pop     ecx
+;       ret
 
-;        cmp       [DevErrorCode],0
-	test  eax,eax
-        jz    @@End_4
+;       cmp     [DevErrorCode], 0
+        test    eax, eax
+        jz      .End_4
 
-        or    ecx,ecx           ;{SPraid.simba} (for cd load)
-        jz    @@End_4
-        dec   ecx
+        or      ecx, ecx ; for cd load
+        jz      .End_4
+        dec     ecx
 
-        cmp   [timer_ticks_enable],0
-        jne   @f
-        mov   eax,NoTickWaitTime
-.wait:
-        dec   eax
-;        test  eax,eax
-        jz    @@NextRetr
-        jmp       .wait
-@@:
+        cmp     [timer_ticks_enable], 0
+        jne     @f
+        mov     eax, NoTickWaitTime
+
+  .wait:
+;       test    eax, eax
+        dec     eax
+        jz      .NextRetr
+        jmp     .wait
+
+    @@:
 ; Задержка на 2,5 секунды
-;       mov     EAX,[timer_ticks]
-;       add     EAX,50  ;250
+;       mov     eax, [timer_ticks]
+;       add     eax, 50 ; 250
 ;@@Wait:
 ;       call    change_task
-;       cmp     EAX,[timer_ticks]
-;       ja      @@Wait
-        loop  @@NextRetr
-@@End_4:
-	mov	dword [DevErrorCode],eax
+;       cmp     eax, [timer_ticks]
+;       ja      .Wait
+        loop    .NextRetr
+
+  .End_4:
+        mov     dword [DevErrorCode],eax
         popad
         ret
 
 
-; Универсальные процедуры, обеспечивающие выполнение
-;             пакетных команд в режиме PIO
+; Универсальные процедуры, обеспечивающие выполнение пакетных команд в режиме PIO
 
-; Максимально допустимое время ожидания реакции
-; устройства на пакетную команду (в тиках)
+; Максимально допустимое время ожидания реакции устройства на пакетную команду (в тиках)
+MaxCDWaitTime equ 1000 ; 200 ; 10 секунд
 
-MaxCDWaitTime equ 1000 ;200 ;10 секунд
 uglobal
-; Область памяти для формирования пакетной команды
-PacketCommand:   rb 12  ;DB 12 DUP (?)
-; Область памяти для приема данных от дисковода
-;CDDataBuf       DB 4096 DUP (0)
-; Размер принимаемого блока данных в байтах
-;CDBlockSize     DW ?
-; Адрес считываемого сектора данных
-CDSectorAddress: DD ?
-; Время начала очередной операции с диском
-TickCounter_1 DD 0
-; Время начала ожидания готовности устройства
-WURStartTime DD 0
-; указатель буфера для считывания
-CDDataBuf_pointer dd 0
+  PacketCommand     rb 12   ; Область памяти для формирования пакетной команды
+; CDDataBuf         rb 4096 ; Область памяти для приема данных от дисковода
+; CDBlockSize       dw ?    ; Размер принимаемого блока данных в байтах
+  CDSectorAddress   dd ?    ; Адрес считываемого сектора данных
+  TickCounter_1     dd ?    ; Время начала очередной операции с диском
+  WURStartTime      dd ?    ; Время начала ожидания готовности устройства
+  CDDataBuf_pointer dd ?    ; указатель буфера для считывания
 endg
+
 ;****************************************************
 ;*    ПОСЛАТЬ УСТРОЙСТВУ ATAPI ПАКЕТНУЮ КОМАНДУ,    *
 ;* ПРЕДУСМАТРИВАЮЩУЮ ПЕРЕДАЧУ ОДНОГО СЕКТОРА ДАННЫХ *
@@ -203,134 +199,141 @@ endg
 ; return eax DevErrorCode
 ;****************************************************
 SendPacketDatCommand:
-	xor	eax,eax
-;        mov	byte [DevErrorCode],al
-; Задать режим CHS
-        mov     byte [ATAAddressMode],al
-; Послать ATA-команду передачи пакетной команды
-        mov     byte [ATAFeatures],al
-        mov     byte [ATASectorCount],al
-        mov     byte [ATASectorNumber],al
+        xor     eax, eax
+;       mov     [DevErrorCode], al
+        ; Задать режим CHS
+        mov     [ATAAddressMode], al
+        ; Послать ATA-команду передачи пакетной команды
+        mov     [ATAFeatures], al
+        mov     [ATASectorCount], al
+        mov     [ATASectorNumber], al
         ; Загрузить размер передаваемого блока
-        mov     [ATAHead],al
-;        mov     AX,[CDBlockSize]
-        mov     [ATACylinder],CDBlockSize
-        mov     [ATACommand],0A0h
+        mov     [ATAHead], al
+;       mov     ax, [CDBlockSize]
+        mov     [ATACylinder], CDBlockSize
+        mov     [ATACommand], 0x0a0
         call    SendCommandToHDD_1
-	test	eax,eax
-;        cmp     [DevErrorCode],0 ;проверить код ошибки
-        jnz     @@End_8    ;закончить, сохранив код ошибки
+        test    eax, eax
+;       cmp     [DevErrorCode], 0 ; проверить код ошибки
+        jnz     .End_8 ; закончить, сохранив код ошибки
 
-; Ожидание готовности дисковода к приему
-; пакетной команды
-        mov     DX,[ATABasePortAddr]
-        add     DX,7     ;порт 1х7h
-        mov     ecx,NoTickWaitTime
-@@WaitDevice0:
-        cmp     [timer_ticks_enable],0
+        ; Ожидание готовности дисковода к приему пакетной команды
+        mov     dx, [ATABasePortAddr]
+        add     dx, 7 ; порт 1х7h
+        mov     ecx, NoTickWaitTime
+
+  .WaitDevice0:
+        cmp     [timer_ticks_enable], 0
         jne     @f
         dec     ecx
-;        test    ecx,ecx
-        jz      @@Err1_1
+;       test    ecx, ecx
+        jz      .Err1_1
         jmp     .test
-@@:
-        call    change_task
+
+    @@: call    change_task
         ; Проверить время выполнения команды
-        mov     EAX,[timer_ticks]
-        sub     EAX,[TickCounter_1]
-        cmp     EAX,BSYWaitTime
-        ja      @@Err1_1   ;ошибка тайм-аута
+        mov     eax, [timer_ticks]
+        sub     eax, [TickCounter_1]
+        cmp     eax, BSYWaitTime
+        ja      .Err1_1 ; ошибка тайм-аута
+
+  .test:
         ; Проверить готовность
-.test:
-        in      AL,DX
-        test    AL,80h   ;состояние сигнала BSY
-        jnz     @@WaitDevice0
-        test    AL,1     ;состояние сигнала ERR
-        jnz     @@Err6
-        test    AL,08h   ;состояние сигнала DRQ
-        jz      @@WaitDevice0
-; Послать пакетную команду
+        in      al, dx
+        test    al, 0x080 ; состояние сигнала BSY
+        jnz     .WaitDevice0
+        test    al, 0x01 ; состояние сигнала ERR
+        jnz     .Err6
+        test    al, 0x08 ; состояние сигнала DRQ
+        jz      .WaitDevice0
+
+        ; Послать пакетную команду
         cli
-        mov     DX,[ATABasePortAddr]
-        mov     AX,[PacketCommand]
-        out     DX,AX
-        mov     AX,[PacketCommand+2]
-        out     DX,AX
-        mov     AX,[PacketCommand+4]
-        out     DX,AX
-        mov     AX,[PacketCommand+6]
-        out     DX,AX
-        mov     AX,[PacketCommand+8]
-        out     DX,AX
-        mov     AX,[PacketCommand+10]
-        out     DX,AX
+        mov     dx, [ATABasePortAddr]
+        mov     ax, word[PacketCommand]
+        out     dx, ax
+        mov     ax, word[PacketCommand + 2]
+        out     dx, ax
+        mov     ax, word[PacketCommand + 4]
+        out     dx, ax
+        mov     ax, word[PacketCommand + 6]
+        out     dx, ax
+        mov     ax, word[PacketCommand + 8]
+        out     dx, ax
+        mov     ax, word[PacketCommand + 10]
+        out     dx, ax
         sti
-; Ожидание готовности данных
-        mov     DX,[ATABasePortAddr]
-        add     DX,7   ;порт 1х7h
-        mov     ecx,NoTickWaitTime
-@@WaitDevice1:
-        cmp     [timer_ticks_enable],0
+
+        ; Ожидание готовности данных
+        mov     dx, [ATABasePortAddr]
+        add     dx, 7 ; порт 1х7h
+        mov     ecx, NoTickWaitTime
+
+  .WaitDevice1:
+        cmp     [timer_ticks_enable], 0
         jne     @f
         dec     ecx
-;        test    ecx,ecx
-        jz      @@Err1_1
+;       test    ecx, ecx
+        jz      .Err1_1
         jmp     .test_1
-@@:
-        call    change_task
+
+    @@: call    change_task
         ; Проверить время выполнения команды
-        mov     EAX,[timer_ticks]
-        sub     EAX,[TickCounter_1]
-        cmp     EAX,MaxCDWaitTime
-        ja      @@Err1_1   ;ошибка тайм-аута
+        mov     eax, [timer_ticks]
+        sub     eax, [TickCounter_1]
+        cmp     eax, MaxCDWaitTime
+        ja      .Err1_1 ; ошибка тайм-аута
+
+  .test_1:
         ; Проверить готовность
-.test_1:
-        in      AL,DX
-        test    AL,80h   ;состояние сигнала BSY
-        jnz     @@WaitDevice1
-        test    AL,1     ;состояние сигнала ERR
-        jnz     @@Err6_temp
-        test    AL,08h   ;состояние сигнала DRQ
-        jz      @@WaitDevice1
-; Принять блок данных от контроллера
-        mov     EDI,[CDDataBuf_pointer] ;0x7000  ;CDDataBuf
+        in      al, dx
+        test    al, 0x080 ; состояние сигнала BSY
+        jnz     .WaitDevice1
+        test    al, 0x01 ; состояние сигнала ERR
+        jnz     .Err6_temp
+        test    al, 0x08 ; состояние сигнала DRQ
+        jz      .WaitDevice1
+        ; Принять блок данных от контроллера
+        mov     edi, [CDDataBuf_pointer] ; 0x7000 ; CDDataBuf
         ; Загрузить адрес регистра данных контроллера
-        mov     DX,[ATABasePortAddr] ;порт 1x0h
+        mov     dx, [ATABasePortAddr] ; порт 1x0h
         ; Загрузить в счетчик размер блока в байтах
-        xor     ecx,ecx
-        mov     CX,CDBlockSize
+        xor     ecx, ecx
+        mov     cx, CDBlockSize
         ; Вычислить размер блока в 16-разрядных словах
-        shr     CX,1 ;разделить размер блока на 2
+        shr     cx, 1 ; разделить размер блока на 2
         ; Принять блок данных
         cli
         cld
         rep     insw
         sti
-; Успешное завершение приема данных
-@@End_8:
-	xor	eax,eax
+
+  .End_8:
+        ; Успешное завершение приема данных
+        xor     eax, eax
         ret
 
-; Записать код ошибки
-@@Err1_1:
-	xor	eax,eax
-	inc	eax
-	ret
-;        mov     [DevErrorCode],1
-;	ret
-@@Err6_temp:
-	mov	eax,7
-	ret
-;        mov     [DevErrorCode],7
-;	ret
-@@Err6:
-	mov	eax,6
-	ret
-;        mov     [DevErrorCode],6
-;@@End_8:
-;        ret
+  .Err1_1:
+        ; Записать код ошибки
+        xor     eax, eax
+        inc     eax
+        ret
+;       mov     [DevErrorCode], 1
+;       ret
 
+  .Err6_temp:
+        mov     eax, 7
+        ret
+;       mov     [DevErrorCode], 7
+;       ret
 
+  .Err6:
+        mov     eax, 6
+        ret
+;       mov     [DevErrorCode], 6
+
+; .End_8:
+;       ret
 
 ;***********************************************
 ;*  ПОСЛАТЬ УСТРОЙСТВУ ATAPI ПАКЕТНУЮ КОМАНДУ, *
@@ -343,89 +346,95 @@ SendPacketDatCommand:
 ;***********************************************
 SendPacketNoDatCommand:
         pushad
-	xor	eax,eax
-;        mov     byte [DevErrorCode],al
-; Задать режим CHS
-        mov     byte [ATAAddressMode],al
-; Послать ATA-команду передачи пакетной команды
-        mov     byte [ATAFeatures],al
-        mov     byte [ATASectorCount],al
-        mov     byte [ATASectorNumber],al
-        mov     word [ATACylinder],ax
-        mov     byte [ATAHead],al
-        mov     [ATACommand],0A0h
+        xor     eax, eax
+;       mov     [DevErrorCode], al
+        ; Задать режим CHS
+        mov     [ATAAddressMode],al
+        ; Послать ATA-команду передачи пакетной команды
+        mov     [ATAFeatures], al
+        mov     [ATASectorCount], al
+        mov     [ATASectorNumber], al
+        mov     [ATACylinder], ax
+        mov     [ATAHead], al
+        mov     [ATACommand], 0x0a0
         call    SendCommandToHDD_1
-;        cmp     [DevErrorCode],0 ;проверить код ошибки
-	test	eax,eax
-        jnz     @@End_9  ;закончить, сохранив код ошибки
-; Ожидание готовности дисковода к приему
-; пакетной команды
-        mov     DX,[ATABasePortAddr]
-        add     DX,7   ;порт 1х7h
-@@WaitDevice0_1:
+;       cmp     [DevErrorCode], 0 ; проверить код ошибки
+        test    eax, eax
+        jnz     .End_9  ; закончить, сохранив код ошибки
+        ; Ожидание готовности дисковода к приему пакетной команды
+        mov     dx, [ATABasePortAddr]
+        add     dx, 7 ; порт 1х7h
+
+  .WaitDevice0_1:
         call    change_task
         ; Проверить время ожидания
-        mov     EAX,[timer_ticks]
-        sub     EAX,[TickCounter_1]
-        cmp     EAX,BSYWaitTime
-        ja      @@Err1_3   ;ошибка тайм-аута
+        mov     eax, [timer_ticks]
+        sub     eax, [TickCounter_1]
+        cmp     eax, BSYWaitTime
+        ja      .Err1_3 ; ошибка тайм-аута
         ; Проверить готовность
-        in      AL,DX
-        test    AL,80h   ;состояние сигнала BSY
-        jnz     @@WaitDevice0_1
-        test    AL,1     ;состояние сигнала ERR
-        jnz     @@Err6_1
-        test    AL,08h   ;состояние сигнала DRQ
-        jz      @@WaitDevice0_1
-; Послать пакетную команду
-;        cli
-        mov     DX,[ATABasePortAddr]
-        mov     AX,word [PacketCommand]
-        out     DX,AX
-        mov     AX,word [PacketCommand+2]
-        out     DX,AX
-        mov     AX,word [PacketCommand+4]
-        out     DX,AX
-        mov     AX,word [PacketCommand+6]
-        out     DX,AX
-        mov     AX,word [PacketCommand+8]
-        out     DX,AX
-        mov     AX,word [PacketCommand+10]
-        out     DX,AX
-;        sti
-	cmp [ignore_CD_eject_wait],1
-	je  @@clear_DEC
-; Ожидание подтверждения приема команды
-        mov     DX,[ATABasePortAddr]
-        add     DX,7   ;порт 1х7h
-@@WaitDevice1_1:
+        in      al, dx
+        test    al, 0x080 ; состояние сигнала BSY
+        jnz     .WaitDevice0_1
+        test    al, 0x01 ; состояние сигнала ERR
+        jnz     .Err6_1
+        test    al, 0x08 ; состояние сигнала DRQ
+        jz      .WaitDevice0_1
+
+        ; Послать пакетную команду
+;       cli
+        mov     dx, [ATABasePortAddr]
+        mov     ax, word[PacketCommand]
+        out     dx, ax
+        mov     ax, word[PacketCommand + 2]
+        out     dx, ax
+        mov     ax, word[PacketCommand + 4]
+        out     dx, ax
+        mov     ax, word[PacketCommand + 6]
+        out     dx, ax
+        mov     ax, word[PacketCommand + 8]
+        out     dx, ax
+        mov     ax, word[PacketCommand + 10]
+        out     dx, ax
+;       sti
+        cmp     [ignore_CD_eject_wait], 1
+        je      .clear_DEC
+        ; Ожидание подтверждения приема команды
+        mov     dx, [ATABasePortAddr]
+        add     dx, 7 ; порт 1х7h
+
+  .WaitDevice1_1:
         call    change_task
         ; Проверить время выполнения команды
-        mov     EAX,[timer_ticks]
-        sub     EAX,[TickCounter_1]
-        cmp     EAX,MaxCDWaitTime
-        ja      @@Err1_3   ;ошибка тайм-аута
+        mov     eax, [timer_ticks]
+        sub     eax, [TickCounter_1]
+        cmp     eax, MaxCDWaitTime
+        ja      .Err1_3 ; ошибка тайм-аута
         ; Ожидать освобождения устройства
-        in      AL,DX
-        test    AL,80h   ;состояние сигнала BSY
-        jnz     @@WaitDevice1_1
-        test    AL,1     ;состояние сигнала ERR
-        jnz     @@Err6_1
-        test    AL,40h   ;состояние сигнала DRDY
-        jz      @@WaitDevice1_1
-@@clear_DEC:
-	and     [DevErrorCode],0
+        in      al,dx
+        test    al, 0x080 ; состояние сигнала BSY
+        jnz     .WaitDevice1_1
+        test    al, 0x01 ; состояние сигнала ERR
+        jnz     .Err6_1
+        test    al, 0x40 ; состояние сигнала DRDY
+        jz      .WaitDevice1_1
+
+  .clear_DEC:
+        and     [DevErrorCode], 0
         popad
         ret
-; Записать код ошибки
-@@Err1_3:
-        xor	eax,eax
-	inc	eax
-        jmp @@End_9
-@@Err6_1:
-        mov     eax,6
-@@End_9:
-	mov     [DevErrorCode],eax
+
+  .Err1_3:
+        ; Записать код ошибки
+        xor     eax, eax
+        inc     eax
+        jmp     .End_9
+
+  .Err6_1:
+        mov     eax, 6
+
+  .End_9:
+        mov     [DevErrorCode], eax
         popad
         ret
 
@@ -449,126 +458,132 @@ SendPacketNoDatCommand:
 ;* возвращен код ошибки в eax                       *
 ;****************************************************
 SendCommandToHDD_1:
-;        pushad
-;        mov   	[DevErrorCode],0	not need 
-; Проверить значение кода режима
-        cmp     [ATAAddressMode],1
-        ja      @@Err2_4
-; Проверить корректность номера канала
-        mov     BX,[ChannelNumber]
-        cmp     BX,1
-        jb      @@Err3_4
-        cmp     BX,2
-        ja      @@Err3_4
-; Установить базовый адрес
-        dec     BX
-        shl     BX,1
-        movzx   ebx,bx
-        mov     AX,[ebx+StandardATABases]
-        mov     [ATABasePortAddr],AX
-; Ожидание готовности HDD к приему команды
+;       pushad
+;       mov     [DevErrorCode], 0 ; not need
+        ; Проверить значение кода режима
+        cmp     [ATAAddressMode], 1
+        ja      .Err2_4
+        ; Проверить корректность номера канала
+        mov     bx, [ChannelNumber]
+        cmp     bx, 1
+        jb      .Err3_4
+        cmp     bx, 2
+        ja      .Err3_4
+        ; Установить базовый адрес
+        dec     bx
+        shl     bx, 1
+        movzx   ebx, bx
+        mov     ax, [ebx + StandardATABases]
+        mov     [ATABasePortAddr], ax
+        ; Ожидание готовности HDD к приему команды
         ; Выбрать нужный диск
-        mov     DX,[ATABasePortAddr]
-        add     DX,6    ;адрес регистра головок
-        mov     AL,[DiskNumber]
-        cmp     AL,1    ;проверить номера диска
-        ja      @@Err4_4
-        shl     AL,4
-        or      AL,10100000b
-        out     DX,AL
+        mov     dx, [ATABasePortAddr]
+        add     dx, 6 ; адрес регистра головок
+        mov     al, [DiskNumber]
+        cmp     al, 1 ; проверить номера диска
+        ja      .Err4_4
+        shl     al, 4
+        or      al, 10100000b
+        out     dx, al
         ; Ожидать, пока диск не будет готов
-        inc     DX
-        mov     eax,[timer_ticks]
-        mov     [TickCounter_1],eax
-        mov     ecx,NoTickWaitTime
-@@WaitHDReady_2:
-        cmp    [timer_ticks_enable],0
+        inc     dx
+        mov     eax, [timer_ticks]
+        mov     [TickCounter_1], eax
+        mov     ecx, NoTickWaitTime
+
+  .WaitHDReady_2:
+        cmp    [timer_ticks_enable], 0
         jne    @f
         dec    ecx
-;        test   ecx,ecx
-        jz     @@Err1_4
+;       test   ecx, ecx
+        jz     .Err1_4
         jmp    .test
-@@:
-        call    change_task
-        ; Проверить время ожидания
-        mov     eax,[timer_ticks]
-        sub     eax,[TickCounter_1]
-        cmp     eax,BSYWaitTime ;300    ;ожидать 3 сек.
-        ja      @@Err1_4   ;ошибка тайм-аута
-        ; Прочитать регистр состояния
-.test:
-        in      AL,DX
-        ; Проверить состояние сигнала BSY
-        test    AL,80h
-        jnz     @@WaitHDReady_2
-        ; Проверить состояние сигнала DRQ
-        test    AL,08h
-        jnz     @@WaitHDReady_2
 
-; Загрузить команду в регистры контроллера
+    @@: call    change_task
+        ; Проверить время ожидания
+        mov     eax, [timer_ticks]
+        sub     eax, [TickCounter_1]
+        cmp     eax, BSYWaitTime ; 300 ; ожидать 3 сек.
+        ja      .Err1_4 ; ошибка тайм-аута
+        ; Прочитать регистр состояния
+
+  .test:
+        in      al,dx
+        ; Проверить состояние сигнала BSY
+        test    al, 0x080
+        jnz     .WaitHDReady_2
+        ; Проверить состояние сигнала DRQ
+        test    al, 0x08
+        jnz     .WaitHDReady_2
+
+        ; Загрузить команду в регистры контроллера
         cli
-        mov     DX,[ATABasePortAddr]
-        inc     DX      ;регистр "особенностей"
-        mov     AL,[ATAFeatures]
-        out     DX,AL
-        inc     DX      ;счетчик секторов
-        mov     AL,[ATASectorCount]
-        out     DX,AL
-        inc     DX      ;регистр номера сектора
-        mov     AL,[ATASectorNumber]
-        out     DX,AL
-        inc     DX      ;номер цилиндра (младший байт)
-        mov     AX,[ATACylinder]
-        out     DX,AL
-        inc     DX      ;номер цилиндра (старший байт)
-        mov     AL,AH
-        out     DX,AL
-        inc     DX      ;номер головки/номер диска
-        mov     AL,[DiskNumber]
-        shl     AL,4
-        cmp     [ATAHead],0Fh ;проверить номер головки
-        ja      @@Err5_4
-        or      AL,[ATAHead]
-        or      AL,10100000b
-        mov     AH,[ATAAddressMode]
-        shl     AH,6
-        or      AL,AH
-        out     DX,AL
-; Послать команду
-        mov     AL,[ATACommand]
-        inc     DX      ;регистр команд
-        out     DX,AL
+        mov     dx, [ATABasePortAddr]
+        inc     dx ; регистр "особенностей"
+        mov     al, [ATAFeatures]
+        out     dx, al
+        inc     dx ; счетчик секторов
+        mov     al, [ATASectorCount]
+        out     dx, al
+        inc     dx ; регистр номера сектора
+        mov     al, [ATASectorNumber]
+        out     dx, al
+        inc     dx ; номер цилиндра (младший байт)
+        mov     ax, [ATACylinder]
+        out     dx, al
+        inc     dx ; номер цилиндра (старший байт)
+        mov     al, ah
+        out     dx, al
+        inc     dx ; номер головки/номер диска
+        mov     al, [DiskNumber]
+        shl     al, 4
+        cmp     [ATAHead], 0x0f ; проверить номер головки
+        ja      .Err5_4
+        or      al, [ATAHead]
+        or      al, 010100000b
+        mov     ah, [ATAAddressMode]
+        shl     ah, 6
+        or      al, ah
+        out     dx, al
+        ; Послать команду
+        mov     al, [ATACommand]
+        inc     dx ; регистр команд
+        out     dx, al
         sti
-; Сбросить признак ошибки
-;        mov     [DevErrorCode],0
-@@End_10:
-	xor	eax,eax
-	ret
-; Записать код ошибки
-@@Err1_4:
-	xor	eax,eax
-	inc	eax
-;        mov     [DevErrorCode],1
-	ret
-@@Err2_4:
-	mov	eax,2
-;        mov     [DevErrorCode],2
-	ret
-@@Err3_4:
-	mov	eax,3
-;        mov     [DevErrorCode],3
-	ret
-@@Err4_4:
-	mov	eax,4
-;        mov     [DevErrorCode],4
-	ret
-@@Err5_4:
-	mov	eax,5
-;        mov     [DevErrorCode],5
-; Завершение работы программы
-	ret
-;        sti
-;        popad
+        ; Сбросить признак ошибки
+;       mov     [DevErrorCode], 0
+
+  .End_10:
+        xor     eax, eax
+        ret
+
+  .Err1_4:
+        ; Записать код ошибки
+        xor     eax, eax
+        inc     eax
+;       mov     [DevErrorCode], 1
+        ret
+
+  .Err2_4:
+        mov     eax, 2
+;       mov     [DevErrorCode], 2
+        ret
+
+  .Err3_4:
+        mov     eax, 3
+;       mov     [DevErrorCode], 3
+        ret
+
+  .Err4_4:
+        mov     eax, 4
+;       mov     [DevErrorCode], 4
+        ret
+
+  .Err5_4:
+        mov     eax, 5
+;       mov     [DevErrorCode], 5
+        ; Завершение работы программы
+        ret
 
 ;*************************************************
 ;*    ОЖИДАНИЕ ГОТОВНОСТИ УСТРОЙСТВА К РАБОТЕ    *
@@ -579,40 +594,43 @@ SendCommandToHDD_1:
 ;*************************************************
 WaitUnitReady:
         pusha
-; Запомнить время начала операции
-        mov     EAX,[timer_ticks]
-        mov     [WURStartTime],EAX
-; Очистить буфер пакетной команды
-        call  clear_packet_buffer
-; Сформировать команду TEST UNIT READY
-        mov     [PacketCommand],word 00h
-; ЦИКЛ ОЖИДАНИЯ ГОТОВНОСТИ УСТРОЙСТВА
-        mov     ecx,NoTickWaitTime
-@@SendCommand:
+        ; Запомнить время начала операции
+        mov     eax, [timer_ticks]
+        mov     [WURStartTime], eax
+        ; Очистить буфер пакетной команды
+        call    clear_packet_buffer
+        ; Сформировать команду TEST UNIT READY
+        mov     word[PacketCommand], 0
+        ; ЦИКЛ ОЖИДАНИЯ ГОТОВНОСТИ УСТРОЙСТВА
+        mov     ecx, NoTickWaitTime
+
+  .SendCommand:
         ; Подать команду проверки готовности
         call    SendPacketNoDatCommand
-        cmp     [timer_ticks_enable],0
+        cmp     [timer_ticks_enable], 0
         jne     @f
-        cmp     [DevErrorCode],0
-        je      @@End_11
+        cmp     [DevErrorCode], 0
+        je      .End_11
+;       cmp     ecx, 0
         dec     ecx
-;        cmp     ecx,0
         jz      .Error
-        jmp     @@SendCommand
-@@:
-        call    change_task
+        jmp     .SendCommand
+
+    @@: call    change_task
         ; Проверить код ошибки
-        cmp     [DevErrorCode],0
-        je      @@End_11
+        cmp     [DevErrorCode], 0
+        je      .End_11
         ; Проверить время ожидания готовности
-        mov     EAX,[timer_ticks]
-        sub     EAX,[WURStartTime]
-        cmp     EAX,MaxCDWaitTime
-        jb      @@SendCommand
-.Error:
+        mov     eax,[timer_ticks]
+        sub     eax,[WURStartTime]
+        cmp     eax,MaxCDWaitTime
+        jb      .SendCommand
+
+  .Error:
         ; Ошибка тайм-аута
-        mov     [DevErrorCode],1
-@@End_11:
+        mov     [DevErrorCode], 1
+
+  .End_11:
         popa
         ret
 
@@ -625,18 +643,18 @@ WaitUnitReady:
 ;*************************************************
 prevent_medium_removal:
         pusha
-; Очистить буфер пакетной команды
-        call  clear_packet_buffer
-; Задать код команды
-        mov  [PacketCommand],byte 0x1E
-; Задать код запрета
-    mov  [PacketCommand+4],byte 11b
-; Подать команду
-        call SendPacketNoDatCommand
-        mov  eax,ATAPI_IDE0_lock
-        add  eax,[cdpos]
-        dec  eax
-        mov  [eax],byte 1
+        ; Очистить буфер пакетной команды
+        call    clear_packet_buffer
+        ; Задать код команды
+        mov     [PacketCommand], 0x1e
+        ; Задать код запрета
+        mov     [PacketCommand + 4], 011b
+        ; Подать команду
+        call    SendPacketNoDatCommand
+        mov     eax, ATAPI_IDE0_lock
+        add     eax, [cdpos]
+        dec     eax
+        mov     byte[eax], 1
         popa
         ret
 
@@ -649,18 +667,18 @@ prevent_medium_removal:
 ;*************************************************
 allow_medium_removal:
         pusha
-; Очистить буфер пакетной команды
-        call  clear_packet_buffer
-; Задать код команды
-        mov  [PacketCommand],byte 0x1E
-; Задать код запрета
-    mov  [PacketCommand+4],byte 00b
-; Подать команду
-        call SendPacketNoDatCommand
-        mov  eax,ATAPI_IDE0_lock
-        add  eax,[cdpos]
-        dec  eax
-        mov  [eax],byte 0
+        ; Очистить буфер пакетной команды
+        call    clear_packet_buffer
+        ; Задать код команды
+        mov     [PacketCommand], 0x1e
+        ; Задать код запрета
+        mov     [PacketCommand + 4], 0
+        ; Подать команду
+        call    SendPacketNoDatCommand
+        mov     eax, ATAPI_IDE0_lock
+        add     eax, [cdpos]
+        dec     eax
+        mov     byte[eax], 0
         popa
         ret
 
@@ -673,14 +691,14 @@ allow_medium_removal:
 ;*************************************************
 LoadMedium:
         pusha
-; Очистить буфер пакетной команды
-        call  clear_packet_buffer
-; Сформировать команду START/STOP UNIT
+        ; Очистить буфер пакетной команды
+        call    clear_packet_buffer
+        ; Сформировать команду START/STOP UNIT
         ; Задать код команды
-        mov     [PacketCommand],word 1Bh
+        mov     word[PacketCommand], 0x1b
         ; Задать операцию загрузки носителя
-        mov     [PacketCommand+4],word 00000011b
-; Подать команду
+        mov     word[PacketCommand + 4], 00000011b
+        ; Подать команду
         call    SendPacketNoDatCommand
         popa
         ret
@@ -694,14 +712,14 @@ LoadMedium:
 ;*************************************************
 EjectMedium:
         pusha
-; Очистить буфер пакетной команды
-        call  clear_packet_buffer
-; Сформировать команду START/STOP UNIT
+        ; Очистить буфер пакетной команды
+        call    clear_packet_buffer
+        ; Сформировать команду START/STOP UNIT
         ; Задать код команды
-        mov     [PacketCommand],word 1Bh
+        mov     word[PacketCommand], 0x1b
         ; Задать операцию извлечения носителя
-        mov     [PacketCommand+4],word 00000010b
-; Подать команду
+        mov     word[PacketCommand + 4], 00000010b
+        ; Подать команду
         call    SendPacketNoDatCommand
         popa
         ret
@@ -717,145 +735,156 @@ EjectMedium:
 align 4
 check_ATAPI_device_event:
         pusha
-    mov  eax,[timer_ticks]
-    sub  eax,[timer_ATAPI_check]
-    cmp  eax,100
-    jb   .end_1
-    mov  al,[DRIVE_DATA+1]
-    and al,11b
-    cmp al,10b
-    jz  .ide3
-.ide2_1:
-    mov  al,[DRIVE_DATA+1]
-    and al,1100b
-    cmp al,1000b
-    jz  .ide2
-.ide1_1:
-    mov  al,[DRIVE_DATA+1]
-    and al,110000b
-    cmp al,100000b
-    jz  .ide1
-.ide0_1:
-    mov  al,[DRIVE_DATA+1]
-    and al,11000000b
-    cmp al,10000000b
-    jz  .ide0
-.end:
+        mov     eax, [timer_ticks]
+        sub     eax, [timer_ATAPI_check]
+        cmp     eax, 100
+        jb      .end_1
 
-    sti
-    mov  eax,[timer_ticks]
-    mov  [timer_ATAPI_check],eax
-.end_1:
+        mov     al, [DRIVE_DATA + 1]
+        and     al, 011b
+        cmp     al, 010b
+        jz      .ide3
+
+  .ide2_1:
+        mov     al, [DRIVE_DATA + 1]
+        and     al, 01100b
+        cmp     al, 01000b
+        jz      .ide2
+
+  .ide1_1:
+        mov     al, [DRIVE_DATA + 1]
+        and     al, 0110000b
+        cmp     al, 0100000b
+        jz      .ide1
+
+  .ide0_1:
+        mov     al, [DRIVE_DATA + 1]
+        and     al, 011000000b
+        cmp     al, 010000000b
+        jz      .ide0
+
+  .end:
+        sti
+        mov     eax, [timer_ticks]
+        mov     [timer_ATAPI_check], eax
+
+  .end_1:
         popa
         ret
 
-.ide3:
-    cli
-    cmp  [ATAPI_IDE3_lock],1
-    jne  .ide2_1
-    cmp  [IDE_Channel_2],0
-    jne  .ide1_1
-    cmp  [cd_status],0
-    jne  .end
-        mov  [IDE_Channel_2],1
-    call reserve_ok2
-        mov  [ChannelNumber],2
-        mov  [DiskNumber],1
-        mov      [cdpos],4
-        call GetEvent_StatusNotification
-        cmp  [CDDataBuf+4],byte 1
-        je   .eject_ide3
-        call syscall_cdaudio.free
-    jmp  .ide2_1
-.eject_ide3:
-    call .eject
-        call syscall_cdaudio.free
-    jmp  .ide2_1
+  .ide3:
+        cli
+        cmp     [ATAPI_IDE3_lock], 1
+        jne     .ide2_1
+        cmp     [IDE_Channel_2], 0
+        jne     .ide1_1
+        cmp     [cd_status], 0
+        jne     .end
+        mov     [IDE_Channel_2], 1
+        call    reserve_ok2
+        mov     [ChannelNumber], 2
+        mov     [DiskNumber], 1
+        mov     [cdpos], 4
+        call    GetEvent_StatusNotification
+        cmp     byte[CDDataBuf + 4], 1
+        je      .eject_ide3
+        call    syscall_cdaudio.free
+        jmp     .ide2_1
 
-.ide2:
-    cli
-    cmp  [ATAPI_IDE2_lock],1
-    jne  .ide1_1
-    cmp  [IDE_Channel_2],0
-    jne  .ide1_1
-    cmp  [cd_status],0
-    jne  .end
-        mov  [IDE_Channel_2],1
-    call  reserve_ok2
-        mov  [ChannelNumber],2
-        mov  [DiskNumber],0
-        mov     [cdpos],3
-        call GetEvent_StatusNotification
-        cmp  [CDDataBuf+4],byte 1
-        je   .eject_ide2
-        call syscall_cdaudio.free
-    jmp  .ide1_1
-.eject_ide2:
-    call .eject
-        call syscall_cdaudio.free
-    jmp  .ide1_1
+  .eject_ide3:
+        call    .eject
+        call    syscall_cdaudio.free
+        jmp     .ide2_1
 
-.ide1:
-    cli
-    cmp  [ATAPI_IDE1_lock],1
-    jne  .ide0_1
-    cmp  [IDE_Channel_1],0
-    jne  .end
-    cmp  [cd_status],0
-    jne  .end
-        mov  [IDE_Channel_1],1
-    call reserve_ok2
-        mov  [ChannelNumber],1
-        mov  [DiskNumber],1
-        mov     [cdpos],2
-        call GetEvent_StatusNotification
-        cmp  [CDDataBuf+4],byte 1
-        je   .eject_ide1
-        call syscall_cdaudio.free
-    jmp  .ide0_1
-.eject_ide1:
-    call .eject
-        call syscall_cdaudio.free
-    jmp  .ide0_1
+  .ide2:
+        cli
+        cmp     [ATAPI_IDE2_lock], 1
+        jne     .ide1_1
+        cmp     [IDE_Channel_2], 0
+        jne     .ide1_1
+        cmp     [cd_status], 0
+        jne     .end
+        mov     [IDE_Channel_2], 1
+        call     reserve_ok2
+        mov     [ChannelNumber], 2
+        mov     [DiskNumber], 0
+        mov     [cdpos], 3
+        call    GetEvent_StatusNotification
+        cmp     byte[CDDataBuf + 4], 1
+        je      .eject_ide2
+        call    syscall_cdaudio.free
+        jmp     .ide1_1
 
-.ide0:
-    cli
-    cmp  [ATAPI_IDE0_lock],1
-    jne  .end
-    cmp  [IDE_Channel_1],0
-    jne  .end
-    cmp  [cd_status],0
-    jne  .end
-        mov  [IDE_Channel_1],1
-    call reserve_ok2
-        mov  [ChannelNumber],1
-        mov  [DiskNumber],0
-        mov     [cdpos],1
-        call GetEvent_StatusNotification
-        cmp  [CDDataBuf+4],byte 1
-        je   .eject_ide0
-        call syscall_cdaudio.free
-    jmp  .end
-.eject_ide0:
-    call .eject
-        call syscall_cdaudio.free
-    jmp  .end
+  .eject_ide2:
+        call    .eject
+        call    syscall_cdaudio.free
+        jmp     .ide1_1
 
-.eject:
-        call clear_CD_cache
-        call allow_medium_removal
-        mov  [ignore_CD_eject_wait],1
-        call EjectMedium
-        mov  [ignore_CD_eject_wait],0
+  .ide1:
+        cli
+        cmp     [ATAPI_IDE1_lock], 1
+        jne     .ide0_1
+        cmp     [IDE_Channel_1], 0
+        jne     .end
+        cmp     [cd_status], 0
+        jne     .end
+        mov     [IDE_Channel_1], 1
+        call    reserve_ok2
+        mov     [ChannelNumber], 1
+        mov     [DiskNumber], 1
+        mov     [cdpos], 2
+        call    GetEvent_StatusNotification
+        cmp     byte[CDDataBuf + 4], 1
+        je      .eject_ide1
+        call    syscall_cdaudio.free
+        jmp     .ide0_1
+
+  .eject_ide1:
+        call    .eject
+        call    syscall_cdaudio.free
+        jmp     .ide0_1
+
+  .ide0:
+        cli
+        cmp     [ATAPI_IDE0_lock], 1
+        jne     .end
+        cmp     [IDE_Channel_1], 0
+        jne     .end
+        cmp     [cd_status], 0
+        jne     .end
+        mov     [IDE_Channel_1], 1
+        call    reserve_ok2
+        mov     [ChannelNumber], 1
+        mov     [DiskNumber], 0
+        mov     [cdpos], 1
+        call    GetEvent_StatusNotification
+        cmp     byte[CDDataBuf + 4], 1
+        je      .eject_ide0
+        call    syscall_cdaudio.free
+        jmp     .end
+
+  .eject_ide0:
+        call    .eject
+        call    syscall_cdaudio.free
+        jmp     .end
+
+  .eject:
+        call    clear_CD_cache
+        call    allow_medium_removal
+        mov     [ignore_CD_eject_wait], 1
+        call    EjectMedium
+        mov     [ignore_CD_eject_wait], 0
         ret
-iglobal
-timer_ATAPI_check dd 0
-ATAPI_IDE0_lock db 0
-ATAPI_IDE1_lock db 0
-ATAPI_IDE2_lock db 0
-ATAPI_IDE3_lock db 0
-ignore_CD_eject_wait db 0
+
+uglobal
+  timer_ATAPI_check    dd ?
+  ATAPI_IDE0_lock      db ?
+  ATAPI_IDE1_lock      db ?
+  ATAPI_IDE2_lock      db ?
+  ATAPI_IDE3_lock      db ?
+  ignore_CD_eject_wait db ?
 endg
+
 ;*************************************************
 ;* Получить сообщение о событии или состоянии    *
 ;*                  устройства                   *
@@ -866,18 +895,18 @@ endg
 ;*************************************************
 GetEvent_StatusNotification:
         pusha
-        mov     [CDDataBuf_pointer],CDDataBuf
-; Очистить буфер пакетной команды
+        mov     [CDDataBuf_pointer], CDDataBuf
+        ; Очистить буфер пакетной команды
         call  clear_packet_buffer
-; Задать код команды
-        mov     [PacketCommand],byte 4Ah
-        mov     [PacketCommand+1],byte 00000001b
-; Задать запрос класса сообщений
-        mov     [PacketCommand+4],byte 00010000b
-; Размер выделенной области
-        mov     [PacketCommand+7],byte 8h
-        mov     [PacketCommand+8],byte 0h
-; Подать команду
+        ; Задать код команды
+        mov     [PacketCommand], 0x4a
+        mov     [PacketCommand + 1], 00000001b
+        ; Задать запрос класса сообщений
+        mov     [PacketCommand + 4], 00010000b
+        ; Размер выделенной области
+        mov     [PacketCommand + 7], 8
+        mov     [PacketCommand + 8], 0
+        ; Подать команду
         call    SendPacketDatCommand
         popa
         ret
@@ -891,19 +920,18 @@ GetEvent_StatusNotification:
 ;*************************************************
 Read_TOC:
         pusha
-        mov     [CDDataBuf_pointer],CDDataBuf
-; Очистить буфер пакетной команды
-        call  clear_packet_buffer
-; Сформировать пакетную команду для считывания
-; сектора данных
-        mov       [PacketCommand],byte 0x43
+        mov     [CDDataBuf_pointer], CDDataBuf
+        ; Очистить буфер пакетной команды
+        call    clear_packet_buffer
+        ; Сформировать пакетную команду для считывания сектора данных
+        mov     [PacketCommand], 0x43
         ; Задать формат
-        mov       [PacketCommand+2],byte 1
-; Размер выделенной области
-        mov     [PacketCommand+7],byte 0xFF
-        mov     [PacketCommand+8],byte 0h
-; Подать команду
-        call  SendPacketDatCommand
+        mov     [PacketCommand + 2], 1
+        ; Размер выделенной области
+        mov     [PacketCommand + 7], 0x0ff
+        mov     [PacketCommand + 8], 0
+        ; Подать команду
+        call    SendPacketDatCommand
         popa
         ret
 
@@ -916,20 +944,20 @@ Read_TOC:
 ;*************************************************
 ;ReadCapacity:
 ;       pusha
-;; Очистить буфер пакетной команды
-;       call  clear_packet_buffer
-;; Задать размер буфера в байтах
-;       mov     [CDBlockSize],8
-;; Сформировать команду READ CAPACITY
-;       mov     [PacketCommand],word 25h
-;; Подать команду
+;       ; Очистить буфер пакетной команды
+;       call    clear_packet_buffer
+;       ; Задать размер буфера в байтах
+;       mov     [CDBlockSize], 8
+;       ; Сформировать команду READ CAPACITY
+;       mov     word[PacketCommand], 0x25
+;       ; Подать команду
 ;       call    SendPacketDatCommand
 ;       popa
 ;       ret
 
 clear_packet_buffer:
-; Очистить буфер пакетной команды
-        and     [PacketCommand],dword 0
-        and     [PacketCommand+4],dword 0
-        and     [PacketCommand+8],dword 0
+        ; Очистить буфер пакетной команды
+        and     dword[PacketCommand], 0
+        and     dword[PacketCommand + 4], 0
+        and     dword[PacketCommand + 8], 0
         ret

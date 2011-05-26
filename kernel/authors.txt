@@ -32,6 +32,7 @@ Other contributors (in alphabetic order):
   Johnny_B
   Juan M. Caravaca <bitrider@wanadoo.es>
   kasTIgar
+  kmeaw
   <kristol@nic.fi>
   Lasse Kuusijarvi <kuusijar@lut.fi>
   Marat Zakiyanov (Mario79) <mario79@bk.ru>
@@ -43,6 +44,7 @@ Other contributors (in alphabetic order):
   Paolo Franchetti <pfranz73@tiscali.it>
   Paolo Minazzi <paolo.minazzi@inwind.it>
   Paul Butcher <paul.butcher@asa.co.uk>
+  Protopopius
   <quickcode@mail.ru>
   Rus
   Sergey Kuzmin (Wildwest) <kuzmin_serg@list.ru>

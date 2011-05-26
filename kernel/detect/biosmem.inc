@@ -18,35 +18,39 @@
 ; diamond, 2009
 
         push    ds
-; first call to fn E820
-        mov     eax, 0xE820
+        ; first call to fn E820
+        mov     eax, 0x0e820
         xor     ebx, ebx
         mov     es, bx
         mov     ds, bx
-        mov     di, 0x9104
-        mov     [di-4], ebx ; no blocks yet
+        mov     di, 0x09104
+        mov     [di - 4], ebx ; no blocks yet
         mov     ecx, 20
-        mov     edx, 0x534D4150
-        int     15h
+        mov     edx, 0x534d4150
+        int     0x15
         jc      no_E820
-        cmp     eax, 0x534D4150
+        cmp     eax, 0x534d4150
         jnz     no_E820
+
 e820_mem_loop:
-        cmp     byte [di+16], 1 ; ignore non-free areas
+        cmp     byte[di + 16], 1 ; ignore non-free areas
         jnz     e820_mem_next
-        inc     byte [0x9100]
+        inc     byte[0x09100]
         add     di, 20
+
 e820_mem_next:
-; consequent calls to fn E820
+        ; consequent calls to fn E820
         test    ebx, ebx
         jz      e820_test_done
-        cmp     byte [0x9100], 32
+        cmp     byte[0x09100], 32
         jae     e820_test_done
-        mov     eax, 0xE820
+        mov     eax, 0x0e820
         int     15h
         jc      e820_test_done
         jmp     e820_mem_loop
+
 no_E820:
-; let's hope for mem_test from init.inc
+        ; let's hope for mem_test from init.inc
+
 e820_test_done:
         pop     ds

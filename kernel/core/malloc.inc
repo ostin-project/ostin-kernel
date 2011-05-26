@@ -22,1016 +22,922 @@
 ; Source ftp://gee.cs.oswego.edu/pub/misc/malloc.c
 ; License http://creativecommons.org/licenses/publicdomain.
 
-
-; eax= size
-
-; temp
-;  esi= nb
-;  ebx= idx
-;
-align 16 
+align 16
 malloc:
-           push esi
+        ; eax= size
+        ; temp
+        ;  esi= nb
+        ;  ebx= idx
 
-; nb = ((size+7)&~7)+8;
+        push    esi
 
-           mov esi, eax    ;size
-           add esi, 7
-           and esi, -8
-           add esi, 8
+        ; nb = ((size+7)&~7)+8;
+        mov     esi, eax ; size
+        add     esi, 7
+        and     esi, -8
+        add     esi, 8
 
-           mov ebx, mst.mutex
-           call wait_mutex    ;ebx
+        mov     ebx, mst.mutex
+        call    wait_mutex ; ebx
 
-           cmp esi, 256
-           jae .large
+        cmp     esi, 256
+        jae     .large
 
-           mov ecx, esi
-           shr ecx, 3
-           or eax, -1
-           shl eax, cl
-           and eax, [mst.smallmap]
-           jz .small
+        mov     ecx, esi
+        shr     ecx, 3
+        or      eax, -1
+        shl     eax, cl
+        and     eax, [mst.smallmap]
+        jz      .small
 
-           push ebp
-           push edi
+        push    ebp
+        push    edi
 
-           bsf eax, eax
-           mov ebx, eax
+        bsf     eax, eax
+        mov     ebx, eax
 
-; psize= idx<<3;
-; B = &ms.smallbins[idx];
-; p = B->fd;
-; F = p->fd;
-; rsize= psize-nb;
+        ; psize= idx<<3;
+        ; B = &ms.smallbins[idx];
+        ; p = B->fd;
+        ; F = p->fd;
+        ; rsize= psize-nb;
+        lea     ebp, [eax * 8] ; ebp= psize
+        shl     eax, 4
+        lea     edi, [mst.smallbins + eax] ; edi= B
+        mov     edx, [edi + 8] ; edx= p
+        mov     eax, [edx + 8] ; eax= F
+        mov     ecx, ebp
+        sub     ecx, esi ; ecx= rsize
 
-           lea ebp, [eax*8]               ;ebp= psize
-           shl eax, 4
-           lea edi, [mst.smallbins+eax]   ;edi= B
-           mov edx, [edi+8]               ;edx= p
-           mov eax, [edx+8]               ;eax= F
-           mov ecx, ebp
-           sub ecx, esi                   ;ecx= rsize
+        ; if (B == F)
+        cmp     edi, eax
+        jne     @f
 
-; if (B == F)
-           cmp edi, eax
-           jne @F
+        btr     [mst.smallmap], ebx
 
-           btr [mst.smallmap], ebx
-@@:
+        ; B->fd = F;
+        ; F->bk = B;
+        ; if(rsize<16)
+    @@: cmp     ecx, 16
+        mov     [edi + 8], eax
+        mov     [eax + 12], edi
+        jae     .split
 
-; B->fd = F;
-; F->bk = B;
-; if(rsize<16)
+        ; p->head = psize|PINUSE_BIT|CINUSE_BIT;
+        ; (p + psize)->head |= PINUSE_BIT;
+        lea     eax, [edx + 8]
+        or      dword[edx + ebp + 4], 1
 
-           cmp ecx, 16
-           mov [edi+8], eax
-           mov [eax+12], edi
-           jae .split
+        or      ebp, 3
+        mov     [edx + 4], ebp
 
-; p->head = psize|PINUSE_BIT|CINUSE_BIT;
-; (p + psize)->head |= PINUSE_BIT;
+        pop     edi
+        pop     ebp
 
-           lea eax, [edx+8]
-           or dword [edx+ebp+4], 1
+  .done:
+        pop     esi
+        mov     [mst.mutex], 0
+        ret
 
-           or ebp, 3
-           mov [edx+4], ebp
+  .split:
+        lea     ebx, [edx + 8] ; ebx=mem
 
-           pop edi
-           pop ebp
-.done:
-           pop esi
-           mov [mst.mutex], 0
-           ret
-.split:
-           lea ebx, [edx+8]               ;ebx=mem
+        ; r = chunk_plus_offset(p, nb);
+        ; p->head = nb|PINUSE_BIT|CINUSE_BIT;
+        ; r->head = rsize|PINUSE_BIT;
+        lea     eax, [edx + esi] ; eax= r
+        or      esi, 3
+        mov     [edx + 4], esi
 
-; r = chunk_plus_offset(p, nb);
-; p->head = nb|PINUSE_BIT|CINUSE_BIT;
-; r->head = rsize|PINUSE_BIT;
+        mov     edx, ecx
+        or      edx, 1
+        mov     [eax + 4], edx
 
-           lea eax, [edx+esi]             ;eax= r
-           or esi, 3
-           mov [edx+4], esi
+        ; (r + rsize)->prev_foot = rsize;
+        mov     [eax + ecx], ecx
 
-           mov edx, ecx
-           or edx, 1
-           mov [eax+4], edx
+        ; I  = rsize>>3;
+        shr     ecx, 3
 
-; (r + rsize)->prev_foot = rsize;
+        ; ms.smallmap |=  1<< I;
+        bts     [mst.smallmap], ecx
 
-           mov [eax+ecx], ecx
+        ; B = &ms.smallbins[I];
 
-; I  = rsize>>3;
+        shl     ecx, 4
+        pop     edi
+        pop     ebp
+        add     ecx, mst.smallbins         ;ecx= B
 
-           shr ecx, 3
+        mov     edx, [ecx + 8]               ; F = B->fd;
+        mov     [ecx + 8], eax               ; B->fd = r;
+        mov     [edx + 12], eax              ; F->bk = r;
+        mov     [eax + 8], edx               ; r->fd = F;
+        mov     [eax + 12], ecx              ; r->bk = B;
+        mov     eax, ebx
+        pop     esi
+        mov     [mst.mutex], 0
+        ret
 
-;      ms.smallmap |=  1<< I;
-           bts [mst.smallmap], ecx
+  .small:
+        ; if (ms.treemap != 0 && (mem = malloc_small(nb)) != 0)
+        mov     eax,[mst.treemap]
+        test    eax,eax
+;       cmp     [mst.treemap], 0
+        jz      .from_top
+        mov     eax, esi
+        call    malloc_small
+        test    eax, eax
+        jz      .from_top
+        pop     esi
+        and     [mst.mutex], 0
+        ret
 
-; B = &ms.smallbins[I];
+  .large:
+        ; if (ms.treemap != 0 && (mem = malloc_large(nb)) != 0)
+        cmp     [mst.treemap], 0
+        je      .from_top
 
-           shl ecx, 4
-           pop edi
-           pop ebp
-           add ecx, mst.smallbins         ;ecx= B
+        call    malloc_large ; esi= nb
+        test    eax, eax
+        jne     .done
 
-           mov edx, [ecx+8]               ; F = B->fd;
-           mov [ecx+8], eax               ; B->fd = r;
-           mov [edx+12], eax              ; F->bk = r;
-           mov [eax+8], edx               ; r->fd = F;
-           mov [eax+12], ecx              ; r->bk = B;
-           mov eax, ebx
-           pop esi
-           mov [mst.mutex], 0
-           ret
-.small:
+  .from_top:
+        ; if (nb < ms.topsize)
+        mov     eax, [mst.topsize]
+        cmp     esi, eax
+        jae     .fail
 
-; if (ms.treemap != 0 && (mem = malloc_small(nb)) != 0)
-;;;;;;;;;;; start a change <lrz>
-	   mov	eax,[mst.treemap]
-	   test	eax,eax
-;;;;;;;;;;; end the change <lrz>
-;           cmp [mst.treemap], 0
-           jz .from_top
-           mov eax, esi
-           call malloc_small
-           test eax, eax
-           jz .from_top
-           pop esi
-           and [mst.mutex], 0
-           ret
-.large:
+        ; rsize = ms.topsize -= nb;
+        ; p = ms.top;
+        mov ecx, [mst.top]
+        sub eax, esi
+        mov [mst.topsize], eax
 
-; if (ms.treemap != 0 && (mem = malloc_large(nb)) != 0)
+        ; r = ms.top = chunk_plus_offset(p, nb);
+        ; r->head = rsize | PINUSE_BIT;
+        ; p->head = nb |PINUSE_BIT|CINUSE_BIT;
+        lea     edx, [ecx + esi]
+        or      eax, 1
+        mov     [mst.top], edx
+        or      esi, 3
+        mov     [edx + 4], eax
+        mov     [ecx + 4], esi
+        lea     eax, [ecx + 8]
+        pop     esi
+        and     [mst.mutex], 0
+        ret
 
-           cmp [mst.treemap], 0
-           je .from_top
-
-           call malloc_large  ;esi= nb
-           test eax, eax
-           jne .done
-.from_top:
-
-; if (nb < ms.topsize)
-
-           mov eax, [mst.topsize]
-           cmp esi, eax
-           jae .fail
-
-; rsize = ms.topsize -= nb;
-; p = ms.top;
-
-           mov ecx, [mst.top]
-           sub eax, esi
-           mov [mst.topsize], eax
-
-; r = ms.top = chunk_plus_offset(p, nb);
-; r->head = rsize | PINUSE_BIT;
-; p->head = nb |PINUSE_BIT|CINUSE_BIT;
-
-           lea edx, [ecx+esi]
-           or eax, 1
-           mov [mst.top], edx
-           or esi, 3
-           mov [edx+4], eax
-           mov [ecx+4], esi
-           lea eax, [ecx+8]
-           pop esi
-           and [mst.mutex], 0
-           ret
-.fail:
-           xor eax, eax
-           pop esi
-           and [mst.mutex], 0
-           ret
-
-; param
-;  eax= mem
+  .fail:
+        xor     eax, eax
+        pop     esi
+        and     [mst.mutex], 0
+        ret
 
 free:
-           push edi
-           mov edi, eax
-           add edi, -8
+        ; param
+        ;  eax= mem
 
-; if(p->head & CINUSE_BIT)
+        push    edi
+        mov     edi, eax
+        add     edi, -8
 
-           test byte [edi+4], 2
-           je .fail
+        ; if(p->head & CINUSE_BIT)
+        test    byte[edi + 4], 2
+        je      .fail
 
-           mov ebx, mst.mutex
-           call wait_mutex    ;ebx
+        mov     ebx, mst.mutex
+        call    wait_mutex ; ebx
 
-; psize = p->head & (~3);
+        ; psize = p->head & (~3);
+        mov     eax, [edi + 4]
+        push    esi
+        mov     esi, eax
+        and     esi, -4
 
-           mov eax, [edi+4]
-           push esi
-           mov esi, eax
-           and esi, -4
+        ; next = chunk_plus_offset(p, psize);
+        ; if(!(p->head & PINUSE_BIT))
+        test    al, 1
+        lea     ebx, [esi + edi]
+        jne     .next
 
-; next = chunk_plus_offset(p, psize);
-; if(!(p->head & PINUSE_BIT))
+        ; prevsize = p->prev_foot;
+        ; prev=p - prevsize;
+        ; psize += prevsize;
+        ; p = prev;
+        mov     ecx, [edi] ; ecx= prevsize
+        add     esi, ecx ; esi= psize
+        sub     edi, ecx ; edi= p
 
-           test al, 1
-           lea ebx, [esi+edi]
-           jne .next
+        ; if (prevsize < 256)
+        cmp     ecx, 256
+        jae     .unlink_large
 
-; prevsize = p->prev_foot;
-; prev=p - prevsize;
-; psize += prevsize;
-; p = prev;
+        mov     eax, [edi + 8] ; F = p->fd;
+        mov     edx, [edi + 12] ; B = p->bk;
 
-           mov ecx, [edi]  ;ecx= prevsize
-           add esi, ecx              ;esi= psize
-           sub edi, ecx              ;edi= p
+        ; if (F == B)
+        ; ms.smallmap &=  ~(1<< I);
+        shr     ecx, 3
+        cmp     eax, edx
+        jne     @f
+        btr     [mst.smallmap], ecx
 
-; if (prevsize < 256)
+    @@: mov     [eax + 12], edx ; F->bk = B;
+        mov     [edx + 8], eax ; B->fd = F
+        jmp     .next
 
-           cmp ecx, 256
-           jae .unlink_large
+  .unlink_large:
+        mov     edx, edi
+        call    unlink_large_chunk
 
-           mov eax, [edi+8]          ;F = p->fd;
-           mov edx, [edi+12]         ;B = p->bk;
 
-; if (F == B)
-; ms.smallmap &=  ~(1<< I);
-           shr ecx, 3
-           cmp eax, edx
-           jne @F
-           btr [mst.smallmap], ecx
-@@:
-           mov [eax+12], edx           ;F->bk = B;
-           mov [edx+8], eax            ;B->fd = F
-           jmp .next
-.unlink_large:
-           mov edx, edi
-           call unlink_large_chunk
-.next:
+  .next:
+        ; if(next->head & PINUSE_BIT)
+        mov     eax, [ebx + 4]
+        test    al, 1
+        jz      .fail2
 
-; if(next->head & PINUSE_BIT)
+        ; if (! (next->head & CINUSE_BIT))
+        test    al, 2
+        jnz     .fix_next
 
-           mov eax, [ebx+4]
-           test al, 1
-           jz .fail2
+        ; if (next == ms.top)
+        cmp     ebx, [mst.top]
+        jne     @f
 
-; if (! (next->head & CINUSE_BIT))
+        ; tsize = ms.topsize += psize;
+        mov     eax, [mst.topsize]
+        add     eax, esi
+        mov     [mst.topsize], eax
 
-           test al, 2
-           jnz .fix_next
+        ; ms.top = p;
+        ; p->head = tsize | PINUSE_BIT;
+        or      eax, 1
+        mov     [mst.top], edi
+        mov     [edi + 4], eax
 
-; if (next == ms.top)
+  .fail2:
+        and     [mst.mutex], 0
+        pop     esi
 
-           cmp ebx, [mst.top]
-           jne @F
+  .fail:
+        pop     edi
+        ret
 
-; tsize = ms.topsize += psize;
+        ; nsize = next->head & ~INUSE_BITS;
+    @@: and     eax, -4
+        add     esi, eax ; psize += nsize;
 
-           mov eax, [mst.topsize]
-           add eax, esi
-           mov [mst.topsize], eax
+        ; if (nsize < 256)
+        cmp     eax, 256
+        jae     .unl_large
 
-; ms.top = p;
-; p->head = tsize | PINUSE_BIT;
+        mov     edx, [ebx + 8] ; F = next->fd
+        mov     ebx, [ebx + 12] ; B = next->bk
 
-           or eax, 1
-           mov [mst.top], edi
-           mov [edi+4], eax
-.fail2:
-           and [mst.mutex], 0
-           pop esi
-.fail:
-           pop edi
-           ret
-@@:
+        ; if (F == B)
+        cmp     edx, ebx
+        jne     @f
+        mov     ecx, eax
+        shr     ecx, 3
+        btr     [mst.smallmap], ecx
 
-; nsize = next->head & ~INUSE_BITS;
+    @@: mov     [edx + 12], ebx ; F->bk = B
 
-           and eax, -4
-           add esi, eax                ;psize += nsize;
+        ; p->head = psize|PINUSE_BIT;
+        mov     ecx, esi
+        mov     [ebx + 8], edx
+        or      ecx, 1
+        mov     [edi + 4], ecx
 
-; if (nsize < 256)
+        ; (p+psize)->prev_foot = psize;
+        mov     [esi + edi], esi
 
-           cmp eax, 256
-           jae .unl_large
+        ; insert_chunk(p,psize);
+        mov     eax, esi
+        pop     esi
+        mov     ecx, edi
+        pop     edi
+        jmp     insert_chunk
 
-           mov edx, [ebx+8]            ;F = next->fd
-           mov ebx, [ebx+12]           ;B = next->bk
-
-; if (F == B)
-
-           cmp edx, ebx
-           jne @F
-           mov ecx, eax
-           shr ecx, 3
-           btr [mst.smallmap], ecx
-@@:
-           mov [edx+12], ebx           ;F->bk = B
+  .unl_large:
+        ; unlink_large_chunk((tchunkptr)next);
+        mov     edx, ebx
+        call    unlink_large_chunk
 
 ; p->head = psize|PINUSE_BIT;
+        mov     ecx, esi
+        or      ecx, 1
+        mov     [edi + 4], ecx
 
-           mov ecx, esi
-           mov [ebx+8], edx
-           or ecx, 1
-           mov [edi+4], ecx
+        ; (p+psize)->prev_foot = psize;
+        mov     [esi + edi], esi
 
-; (p+psize)->prev_foot = psize;
+        ; insert_chunk(p,psize);
+        mov     eax, esi
+        pop     esi
+        mov     ecx, edi
+        pop     edi
+        jmp     insert_chunk
 
-           mov [esi+edi], esi
+  .fix_next:
+        ; (p+psize)->prev_foot = psize;
+        ; next->head &= ~PINUSE_BIT;
+        ; p->head = psize|PINUSE_BIT;
+        and     eax, -2
+        mov     edx, esi
+        mov     [ebx + 4], eax
+        or      edx, 1
+        mov     [edi + 4], edx
 
-; insert_chunk(p,psize);
+        ; (p+psize)->prev_foot = psize;
+        mov     [esi + edi], esi
 
-           mov eax, esi
-           pop esi
-           mov ecx, edi
-           pop edi
-           jmp insert_chunk
-.unl_large:
-
-; unlink_large_chunk((tchunkptr)next);
-
-           mov edx, ebx
-           call unlink_large_chunk
-; p->head = psize|PINUSE_BIT;
-
-           mov ecx, esi
-           or ecx, 1
-           mov [edi+4], ecx
-
-; (p+psize)->prev_foot = psize;
-
-           mov [esi+edi], esi
-
-; insert_chunk(p,psize);
-
-           mov eax, esi
-           pop esi
-           mov ecx, edi
-           pop edi
-           jmp insert_chunk
-.fix_next:
-
-; (p+psize)->prev_foot = psize;
-; next->head &= ~PINUSE_BIT;
-; p->head = psize|PINUSE_BIT;
-
-           and eax, -2
-           mov edx, esi
-           mov [ebx+4], eax
-           or edx, 1
-           mov [edi+4], edx
-
-; (p+psize)->prev_foot = psize;
-
-           mov [esi+edi], esi
-; insert_chunk(p,psize);
-
-           mov eax, esi
-           pop esi
-           mov ecx, edi
-           pop edi
-           jmp insert_chunk
-
-; param
-;  ecx = chunk
-;  eax = size
+        ; insert_chunk(p,psize);
+        mov     eax, esi
+        pop     esi
+        mov     ecx, edi
+        pop     edi
+        jmp     insert_chunk
 
 insert_chunk:
+        ; param
+        ;  ecx = chunk
+        ;  eax = size
 
-           cmp eax, 256
-           push esi
-           mov esi, ecx
-           jae .large
+        cmp     eax, 256
+        push    esi
+        mov     esi, ecx
+        jae     .large
 
-; I  = S>>3;
-; ms.smallmap |=  1<< I;
+        ; I  = S>>3;
+        ; ms.smallmap |=  1<< I;
+        shr     eax, 3
+        bts     [mst.smallmap], eax
 
-           shr eax, 3
-           bts [mst.smallmap], eax
+        ; B = &ms.smallbins[I];
+        shl     eax, 4
+        add     eax, mst.smallbins
+        mov     edx, [eax + 8] ; F = B->fd
+        mov     [eax + 8], esi ; B->fd = P
+        mov     [edx + 12], esi ; F->bk = P
+        mov     [esi + 8], edx ; P->fd = F
+        mov     [esi + 12], eax ; P->bk = B
+        pop     esi
+        and     [mst.mutex], 0
+        ret
 
-; B = &ms.smallbins[I];
-
-           shl eax, 4
-           add eax, mst.smallbins
-           mov edx, [eax+8]            ;F = B->fd
-           mov [eax+8], esi            ;B->fd = P
-           mov [edx+12], esi           ;F->bk = P
-           mov [esi+8], edx            ;P->fd = F
-           mov [esi+12], eax           ;P->bk = B
-           pop esi
-           and [mst.mutex], 0
-           ret
-.large:
-           mov ebx, eax
-           call insert_large_chunk
-           pop esi
-           and [mst.mutex], 0
-           ret
-
-
-; param
-;  esi= chunk
-;  ebx= size
+  .large:
+        mov     ebx, eax
+        call    insert_large_chunk
+        pop     esi
+        and     [mst.mutex], 0
+        ret
 
 insert_large_chunk:
+        ; param
+        ;  esi= chunk
+        ;  ebx= size
 
-; I = compute_tree_index(S);
+        ; I = compute_tree_index(S);
+        mov     edx, ebx
+        shr     edx, 8
+        bsr     eax, edx
+        lea     ecx, [eax + 7]
+        mov     edx, ebx
+        shr     edx, cl
+        and     edx, 1
+        lea     ecx, [edx + eax * 2]
 
-           mov edx, ebx
-           shr edx, 8
-           bsr eax, edx
-           lea ecx, [eax+7]
-           mov edx, ebx
-           shr edx, cl
-           and edx, 1
-           lea ecx, [edx+eax*2]
+        ; X->index = I;
+        mov     [esi + 28], ecx
 
-; X->index = I;
-           mov dword [esi+28], ecx
+        ; X->child[0] = X->child[1] = 0;
+        and     dword[esi + 20], 0
+        and     dword[esi + 16], 0
 
-; X->child[0] = X->child[1] = 0;
-           and dword [esi+20], 0
-           and dword [esi+16], 0
+        ; H = &ms.treebins[I];
+        mov     eax, ecx
+        lea     edx, [mst.treebins + eax * 4]
 
-; H = &ms.treebins[I];
+        ; if (!(ms.treemap & 1<<I))
+        bt      [mst.treemap], ecx
+        jc      .tree
 
-           mov eax, ecx
-           lea edx, [mst.treebins+eax*4]
+        ; ms.treemap |= 1<<I;
+        bts     [mst.treemap], ecx
+        ; *H = X;
+        mov     dword [edx], esi
+        jmp     .done
 
-; if (!(ms.treemap & 1<<I))
-           bt [mst.treemap], ecx
-           jc .tree
+  .tree:
+        ; T = *H;
+        mov     edx, [edx]
 
-; ms.treemap |= 1<<I;
-           bts [mst.treemap], ecx
-; *H = X;
-           mov dword [edx], esi
-           jmp .done
-.tree:
+        ; K = S << leftshift_for_tree_index(I);
+        mov     eax, ecx
+        shr     eax, 1
+        sub     ecx, 31
+        mov     edi, 37
+        sub     edi, eax
+        neg     ecx
+        sbb     ecx, ecx
+        and     ecx, edi
+        mov     eax, ebx
+        shl     eax, cl ; eax= K
 
-; T = *H;
-           mov edx, [edx]
+        jmp     .loop
 
-; K = S << leftshift_for_tree_index(I);
-           mov eax, ecx
-           shr eax, 1
-           sub ecx, 31
-           mov edi, 37
-           sub edi, eax
-           neg ecx
-           sbb ecx, ecx
-           and ecx, edi
-           mov eax, ebx
-           shl eax, cl     ;eax= K
+  .not_eq_size:
+        ; C = &(T->child[(K >> 31) & 1]);
+        mov     ecx, eax
+        shr     ecx, 31
+        lea     ecx, [edx + ecx * 4 + 16]
 
-           jmp .loop
-.not_eq_size:
+        ; K <<= 1;
+        ; if (*C != 0)
+        mov     edi, [ecx]
+        add     eax, eax
+        test    edi, edi
+        jz      .insert_child
 
-; C = &(T->child[(K >> 31) & 1]);
-           mov ecx, eax
-           shr ecx, 31
-           lea ecx, [edx+ecx*4+16]
+        ; T = *C;
+        mov edx, edi
 
-; K <<= 1;
-; if (*C != 0)
-           mov edi, [ecx]
-           add eax, eax
-           test edi, edi
-           jz .insert_child
+  .loop:
+        ; for (;;)
+        ; if ((T->head & ~INUSE_BITS) != S)
+        mov     ecx, [edx + 4]
+        and     ecx, not 3
+        cmp     ecx, ebx
+        jne     .not_eq_size
 
-; T = *C;
-           mov edx, edi
-.loop:
+        ; F = T->fd;
+        mov     eax, [edx + 8]
 
-; for (;;)
-; if ((T->head & ~INUSE_BITS) != S)
+        ; T->fd = F->bk = X;
+        mov     [eax + 12], esi
+        mov     [edx + 8], esi
 
-           mov ecx, [edx+4]
-           and ecx, not 3
-           cmp ecx, ebx
-           jne .not_eq_size
+        ; X->fd = F;
+        ; X->bk = T;
+        ; X->parent = 0;
+        and     dword[esi + 24], 0
+        mov     [esi + 8], eax
+        mov     [esi + 12], edx
+        ret
 
-; F = T->fd;
-           mov eax, [edx+8]
+  .insert_child:
+        ; *C = X;
+        mov     [ecx], esi
 
-; T->fd = F->bk = X;
-           mov [eax+12], esi
-           mov [edx+8], esi
+  .done:
+        ; X->parent = T;
+        mov     [esi + 24], edx
 
-; X->fd = F;
-; X->bk = T;
-; X->parent = 0;
-
-           and dword [esi+24], 0
-           mov [esi+8], eax
-           mov [esi+12], edx
-           ret
-.insert_child:
-
-; *C = X;
-           mov [ecx], esi
-.done:
-
-; X->parent = T;
-           mov [esi+24], edx
-
-; X->fd = X->bk = X;
-           mov [esi+12], esi
-           mov [esi+8], esi
-           ret
-
-
-; param
-;  edx= chunk
+        ; X->fd = X->bk = X;
+        mov     [esi + 12], esi
+        mov     [esi + 8], esi
+        ret
 
 unlink_large_chunk:
+        ; param
+        ;  edx= chunk
 
-           mov eax, [edx+12]
-           cmp eax, edx
-           push edi
-           mov edi, [edx+24]
-           je @F
+        mov     eax, [edx + 12]
+        cmp     eax, edx
+        push    edi
+        mov     edi, [edx + 24]
+        je      @f
 
-           mov ecx, [edx+8]           ;F = X->fd
-           mov [ecx+12], eax          ;F->bk = R;
-           mov [eax+8], ecx           ;R->fd = F
-           jmp .parent
-@@:
-           mov eax, [edx+20]
-           test eax, eax
-           push esi
-           lea esi, [edx+20]
-           jne .loop
+        mov     ecx, [edx + 8] ; F = X->fd
+        mov     [ecx + 12], eax ; F->bk = R;
+        mov     [eax + 8], ecx ; R->fd = F
+        jmp     .parent
 
-           mov eax, [edx+16]
-           test eax, eax
-           lea esi, [edx+16]
-           je .l2
-.loop:
-           cmp dword [eax+20], 0
-           lea ecx, [eax+20]
-           jne @F
+    @@: mov     eax, [edx + 20]
+        test    eax, eax
+        push    esi
+        lea     esi, [edx + 20]
+        jne     .loop
 
-           cmp dword [eax+16], 0
-           lea ecx, [eax+16]
-           je .l1
-@@:
-           mov eax, [ecx]
-           mov esi, ecx
-           jmp .loop
-.l1:
-           mov dword [esi], 0
-.l2:
-           pop esi
-.parent:
-           test edi, edi
-           je .done
+        mov     eax, [edx + 16]
+        test    eax, eax
+        lea     esi, [edx + 16]
+        je      .l2
 
-           mov ecx, [edx+28]
-           cmp edx, [mst.treebins+ecx*4]
-           lea ecx, [mst.treebins+ecx*4]
-           jne .l3
+  .loop:
+        cmp     dword[eax + 20], 0
+        lea     ecx, [eax + 20]
+        jne     @f
 
-           test eax, eax
-           mov [ecx], eax
-           jne .l5
+        cmp     dword[eax + 16], 0
+        lea     ecx, [eax + 16]
+        je      .l1
 
-           mov ecx, [edx+28]
-           btr [mst.treemap], ecx
-           pop edi
-           ret
- 
-.l3:
-           cmp [edi+16], edx
-           jne @F
+    @@: mov     eax, [ecx]
+        mov     esi, ecx
+        jmp     .loop
 
-           mov [edi+16], eax
-           jmp .l4
- 
-@@:
-           mov [edi+20], eax
- 
-.l4:
-           test eax, eax
-           je .done
- 
-.l5:
-           mov [eax+24], edi
-           mov ecx, [edx+16]
-           test ecx, ecx
-           je .l6
+  .l1:
+        mov     dword[esi], 0
 
-           mov [eax+16], ecx
-           mov [ecx+24], eax
- 
-.l6:
-           mov edx, [edx+20]
-           test edx, edx
-           je .done
+  .l2:
+        pop     esi
 
-           mov [eax+20], edx
-           mov [edx+24], eax
- 
-.done:
-           pop edi
-           ret
+  .parent:
+        test    edi, edi
+        je      .done
 
-; param
-;  esi= nb
+        mov     ecx, [edx + 28]
+        cmp     edx, [mst.treebins + ecx * 4]
+        lea     ecx, [mst.treebins + ecx * 4]
+        jne     .l3
+
+        test    eax, eax
+        mov     [ecx], eax
+        jne     .l5
+
+        mov     ecx, [edx + 28]
+        btr     [mst.treemap], ecx
+        pop     edi
+        ret
+
+  .l3:
+        cmp     [edi + 16], edx
+        jne     @f
+
+        mov     [edi + 16], eax
+        jmp     .l4
+
+
+    @@: mov     [edi + 20], eax
+
+  .l4:
+        test    eax, eax
+        je      .done
+
+  .l5:
+        mov     [eax + 24], edi
+        mov     ecx, [edx + 16]
+        test    ecx, ecx
+        je      .l6
+
+        mov     [eax + 16], ecx
+        mov     [ecx + 24], eax
+
+  .l6:
+        mov     edx, [edx + 20]
+        test    edx, edx
+        je      .done
+
+        mov     [eax + 20], edx
+        mov     [edx + 24], eax
+
+  .done:
+        pop edi
+        ret
 
 malloc_small:
-           push ebp
-           mov ebp, esi
+        ; param
+        ;  esi= nb
 
-           push edi
+        push    ebp
+        mov     ebp, esi
 
-           bsf eax,[mst.treemap]
-           mov ecx, [mst.treebins+eax*4]
+        push    edi
 
-; rsize = (t->head & ~INUSE_BITS) - nb;
+        bsf     eax, [mst.treemap]
+        mov     ecx, [mst.treebins + eax * 4]
 
-           mov edi, [ecx+4]
-           and edi, -4
-           sub edi, esi
- 
-.loop:
-           mov ebx, ecx
- 
-.loop_1:
+        ; rsize = (t->head & ~INUSE_BITS) - nb;
+        mov     edi, [ecx + 4]
+        and     edi, -4
+        sub     edi, esi
 
-; while ((t = leftmost_child(t)) != 0)
+  .loop:
+        mov ebx, ecx
 
-           mov eax, [ecx+16]
-           test eax, eax
-           jz @F
-           mov ecx, eax
-           jmp .l1
- 
-@@:
-           mov ecx, [ecx+20]
- 
-.l1:
-           test ecx, ecx
-           jz .unlink
+  .loop_1:
+        ; while ((t = leftmost_child(t)) != 0)
+        mov     eax, [ecx + 16]
+        test    eax, eax
+        jz      @f
+        mov     ecx, eax
+        jmp     .l1
 
-; trem = (t->head & ~INUSE_BITS) - nb;
+    @@: mov     ecx, [ecx + 20]
 
-           mov eax, [ecx+4]
-           and eax, -4
-           sub eax, ebp
+  .l1:
+        test    ecx, ecx
+        jz      .unlink
 
-; if (trem < rsize)
+        ; trem = (t->head & ~INUSE_BITS) - nb;
+        mov     eax, [ecx + 4]
+        and     eax, -4
+        sub     eax, ebp
 
-           cmp eax, edi
-           jae .loop_1
+        ; if (trem < rsize)
+        cmp     eax, edi
+        jae     .loop_1
 
-; rsize = trem;
+        ; rsize = trem;
+        mov     edi, eax
+        jmp     .loop
 
-           mov edi, eax
-           jmp .loop
 .unlink:
+        ; r = chunk_plus_offset((mchunkptr)v, nb);
+        ; unlink_large_chunk(v);
+        mov     edx, ebx
+        lea     esi, [ebx + ebp]
+        call    unlink_large_chunk
 
+        ; if (rsize < 16)
+        cmp     edi, 16
+        jae     .split
 
-; r = chunk_plus_offset((mchunkptr)v, nb);
-; unlink_large_chunk(v);
+        ; v->head = (rsize + nb)|PINUSE_BIT|CINUSE_BIT;
+        lea     ecx, [edi + ebp]
 
-           mov edx, ebx
-           lea esi, [ebx+ebp]
-           call unlink_large_chunk
+        ; (v+rsize + nb)->head |= PINUSE_BIT;
+        add     edi, ebx
+        lea     eax, [edi + ebp + 4]
+        pop     edi
+        or      ecx, 3
+        mov     [ebx + 4], ecx
+        or      dword[eax], 1
+        pop     ebp
 
-; if (rsize < 16)
+        lea     eax, [ebx + 8]
+        ret
 
-           cmp edi, 16
-           jae .split
-
-; v->head = (rsize + nb)|PINUSE_BIT|CINUSE_BIT;
-
-           lea ecx, [edi+ebp]
-
-; (v+rsize + nb)->head |= PINUSE_BIT;
-
-           add edi, ebx
-           lea eax, [edi+ebp+4]
-           pop edi
-           or ecx, 3
-           mov [ebx+4], ecx
-           or dword [eax], 1
-           pop ebp
-
-           lea eax, [ebx+8]
-           ret
- 
 .split:
+        ; v->head = nb|PINUSE_BIT|CINUSE_BIT;
+        ; r->head = rsize|PINUSE_BIT;
+        ; (r+rsize)->prev_foot = rsize;
 
-; v->head = nb|PINUSE_BIT|CINUSE_BIT;
-; r->head = rsize|PINUSE_BIT;
-; (r+rsize)->prev_foot = rsize;
+        or      ebp, 3
+        mov     edx, edi
+        or      edx, 1
 
-           or ebp, 3
-           mov edx, edi
-           or edx, 1
+        cmp     edi, 256
+        mov     [ebx + 4], ebp
+        mov     [esi + 4], edx
+        mov     [esi + edi], edi
+        jae     .large
 
-           cmp edi, 256
-           mov [ebx+4], ebp
-           mov [esi+4], edx
-           mov [esi+edi], edi
-           jae .large
+        shr     edi, 3
+        bts     [mst.smallmap], edi
 
-           shr edi, 3
-           bts [mst.smallmap], edi
+        mov     eax, edi
+        shl     eax, 4
+        add     eax, mst.smallbins
 
-           mov eax, edi
-           shl eax, 4
-           add eax, mst.smallbins
+        mov     edx, [eax + 8]
+        mov     [eax + 8], esi
+        mov     [edx + 12], esi
+        pop     edi
+        mov     [esi + 12], eax
+        mov     [esi + 8], edx
+        pop     ebp
+        lea     eax, [ebx + 8]
+        ret
 
-           mov edx, [eax+8]
-           mov [eax+8], esi
-           mov [edx+12], esi
-           pop edi
-           mov [esi+12], eax
-           mov [esi+8], edx
-           pop ebp
-           lea eax, [ebx+8]
-           ret
- 
-.large:
-           lea eax, [ebx+8]
-           push eax
-           mov ebx, edi
-           call insert_large_chunk
-           pop eax
-           pop edi
-           pop ebp
-           ret
-
-
-; param
-;  esi= nb
+  .large:
+        lea     eax, [ebx + 8]
+        push    eax
+        mov     ebx, edi
+        call    insert_large_chunk
+        pop     eax
+        pop     edi
+        pop     ebp
+        ret
 
 malloc_large:
-.idx equ esp+4
+        ; param
+        ;  esi= nb
+
+.idx equ esp + 4
 .rst equ esp
 
-           push ebp
-           push esi
-           push edi
-           sub esp, 8
-; v = 0;
-; rsize = -nb;
+        push    ebp
+        push    esi
+        push    edi
+        sub     esp, 8
 
-           mov edi, esi
-           mov ebx, esi
-           xor ebp, ebp
-           neg edi
+        ; v = 0;
+        ; rsize = -nb;
+        mov     edi, esi
+        mov     ebx, esi
+        xor     ebp, ebp
+        neg     edi
 
-; idx = compute_tree_index(nb);
+        ; idx = compute_tree_index(nb);
+        mov     edx, esi
+        shr     edx, 8
+        bsr     eax, edx
+        lea     ecx, [eax + 7]
+        shr     esi, cl
+        and     esi, 1
+        lea     ecx, [esi + eax * 2]
+        mov     [.idx], ecx
 
-           mov edx, esi
-           shr edx, 8
-           bsr eax, edx
-           lea ecx, [eax+7]
-           shr esi, cl
-           and esi, 1
-           lea ecx, [esi+eax*2]
-           mov [.idx], ecx
+        ; if ((t = ms.treebins[idx]) != 0)
+        mov     eax, [mst.treebins + ecx * 4]
+        test    eax, eax
+        jz      .l3
 
-; if ((t = ms.treebins[idx]) != 0)
+        ; sizebits = nb << leftshift_for_tree_index(idx);
+        cmp     ecx, 31
+        jne     @f
+        xor     ecx, ecx
+        jmp     .l1
 
-           mov eax, [mst.treebins+ecx*4]
-           test eax, eax
-           jz .l3
+    @@: mov     edx, ecx
+        shr     edx, 1
+        mov     ecx, 37
+        sub     ecx, edx
 
-; sizebits = nb << leftshift_for_tree_index(idx);
+  .l1:
+        mov     edx, ebx
+        shl     edx, cl
 
-           cmp ecx, 31
-           jne @F
-           xor ecx, ecx
-           jmp .l1
- 
-@@:
-           mov edx, ecx
-           shr edx, 1
-           mov ecx, 37
-           sub ecx, edx
- 
-.l1:
-           mov edx, ebx
-           shl edx, cl
+        ; rst = 0;
+        mov     [.rst], ebp
 
-; rst = 0;
-           mov [.rst], ebp
- 
-.loop:
+  .loop:
+        ; trem = (t->head & ~INUSE_BITS) - nb;
+        mov     ecx, [eax + 4]
+        and     ecx, -4
+        sub     ecx, ebx
 
-; trem = (t->head & ~INUSE_BITS) - nb;
+        ; if (trem < rsize)
+        cmp     ecx, edi
+        jae     @f
+        ; v = t;
+        ; if ((rsize = trem) == 0)
+        test    ecx, ecx
+        mov     ebp, eax
+        mov     edi, ecx
+        je      .l2
 
-           mov ecx, [eax+4]
-           and ecx, -4
-           sub ecx, ebx
+        ; rt = t->child[1];
+    @@: mov     ecx, [eax + 20]
 
-; if (trem < rsize)
+        ; t = t->child[(sizebits >> 31) & 1];
+        mov     esi, edx
+        shr     esi, 31
 
-           cmp ecx, edi
-           jae @F
-; v = t;
-; if ((rsize = trem) == 0)
+        ; if (rt != 0 && rt != t)
+        test    ecx, ecx
+        mov     eax, [eax + esi * 4 + 16]
+        jz      @f
+        cmp     ecx, eax
+        jz      @f
 
-           test ecx, ecx
-           mov ebp, eax
-           mov edi, ecx
-           je .l2
- 
-@@:
+        ; rst = rt;
+        mov [.rst], ecx
 
-; rt = t->child[1];
+        ; if (t == 0)
+    @@: test    eax, eax
+        jz      @f
 
-           mov ecx, [eax+20]
+        ; sizebits <<= 1;
+        add     edx, edx
+        jmp     .loop
 
-; t = t->child[(sizebits >> 31) & 1];
+        ; t = rst;
+    @@: mov     eax, [.rst]
 
-           mov esi, edx
-           shr esi, 31
+  .l2:
+        ; if (t == 0 && v == 0)
+        test    eax, eax
+        jne     .l4
+        test    ebp, ebp
+        jne     .l7
+        mov     ecx, [.idx]
 
-; if (rt != 0 && rt != t)
+  .l3:
+        ; leftbits = (-1<<idx) & ms.treemap;
+        ; if (leftbits != 0)
+        or      edx, -1
+        shl     edx, cl
+        and     edx, [mst.treemap]
+        jz      @f
 
-           test ecx, ecx
-           mov eax, [eax+esi*4+16]
-           jz @F
-           cmp ecx, eax
-           jz @F
+        bsf     eax, edx
+        ; t = ms.treebins[i];
+        mov     eax, [mst.treebins + eax * 4]
 
-; rst = rt;
-           mov [.rst], ecx
- 
-@@:
-; if (t == 0)
+        ; while (t != 0)
+    @@: test    eax, eax
+        jz      .l5
 
-           test eax, eax
-           jz @F
+  .l4:
+        ; trem = (t->head & ~INUSE_BITS) - nb;
+        mov     ecx, [eax + 4]
+        and     ecx, -4
+        sub     ecx, ebx
 
-; sizebits <<= 1;
+        ; if (trem < rsize)
+        cmp     ecx, edi
+        jae     @f
 
-           add edx, edx
-           jmp .loop
- 
-@@:
-; t = rst;
-           mov eax, [.rst]
- 
-.l2:
-; if (t == 0 && v == 0)
+        ; rsize = trem;
+        mov     edi, ecx
+        ; v = t;
+        mov     ebp, eax
 
-           test eax, eax
-           jne .l4
-           test ebp, ebp
-           jne .l7
-           mov ecx, [.idx]
- 
-.l3:
+        ; t = leftmost_child(t);
+    @@: mov     ecx, [eax + 16]
+        test    ecx, ecx
+        je      @f
+        mov     eax, ecx
+        jmp     .l6
 
-; leftbits = (-1<<idx) & ms.treemap;
-; if (leftbits != 0)
+    @@: mov     eax, [eax + 20]
 
-           or edx, -1
-           shl edx, cl
-           and edx, [mst.treemap]
-           jz @F
+  .l6:
+        ; while (t != 0)
+        test    eax, eax
+        jne     .l4
 
-           bsf eax, edx
-; t = ms.treebins[i];
-           mov eax, [mst.treebins+eax*4]
- 
-@@:
+  .l5:
+        ; if (v != 0)
+        test    ebp, ebp
+        jz      .done
 
-; while (t != 0)
-           test eax, eax
-           jz .l5
- 
-.l4:
+  .l7:
+        ; r = chunk_plus_offset((mchunkptr)v, nb);
+        ; unlink_large_chunk(v);
+        mov     edx, ebp
+        lea     esi, [ebx + ebp]
+        call    unlink_large_chunk
 
-; trem = (t->head & ~INUSE_BITS) - nb;
+        ; if (rsize < 16)
+        cmp     edi, 16
+        jae     .large
 
-           mov ecx, [eax+4]
-           and ecx, -4
-           sub ecx, ebx
+        ; v->head = (rsize + nb)|PINUSE_BIT|CINUSE_BIT;
+        lea     ecx, [edi + ebx]
 
-; if (trem < rsize)
+        ; (v+rsize + nb)->head |= PINUSE_BIT;
+        add     edi, ebp
+        lea     eax, [edi + ebx + 4]
+        or      ecx, 3
+        mov     [ebp + 4], ecx
+        or      dword [eax], 1
+        lea     eax, [ebp + 8]
+        add     esp, 8
+        pop     edi
+        pop     esi
+        pop     ebp
+        ret
 
-           cmp ecx, edi
-           jae @F
-; rsize = trem;
+  .large:
+        ; v->head = nb|PINUSE_BIT|CINUSE_BIT;
+        ; r->head = rsize|PINUSE_BIT;
+        mov     edx, edi
+        or      ebx, 3
+        mov     [ebp + 4], ebx
+        or      edx, 1
+        mov     [esi + 4], edx
 
-           mov edi, ecx
-; v = t;
-           mov ebp, eax
- 
-@@:
+        ; (r+rsize)->prev_foot = rsize;
+        ; insert_large_chunk((tchunkptr)r, rsize);
+        mov     [esi + edi], edi
+        mov     eax, edi
+        mov     ecx, esi
+        call    insert_chunk
 
-; t = leftmost_child(t);
+        lea     eax, [ebp + 8]
+        add     esp, 8
+        pop     edi
+        pop     esi
+        pop     ebp
+        ret
 
-           mov ecx, [eax+16]
-           test ecx, ecx
-           je @F
-           mov eax, ecx
-           jmp .l6
- 
-@@:
-           mov eax, [eax+20]
- 
-.l6:
-
-; while (t != 0)
-
-           test eax, eax
-           jne .l4
- 
-.l5:
-
-; if (v != 0)
-
-           test ebp, ebp
-           jz .done
- 
-.l7:
-
-; r = chunk_plus_offset((mchunkptr)v, nb);
-; unlink_large_chunk(v);
-
-           mov edx, ebp
-           lea esi, [ebx+ebp]
-           call unlink_large_chunk
-
-; if (rsize < 16)
-
-           cmp edi, 16
-           jae .large
-
-; v->head = (rsize + nb)|PINUSE_BIT|CINUSE_BIT;
-
-           lea ecx, [edi+ebx]
-
-; (v+rsize + nb)->head |= PINUSE_BIT;
-
-           add edi, ebp
-           lea eax, [edi+ebx+4]
-           or ecx, 3
-           mov [ebp+4], ecx
-           or dword [eax], 1
-           lea eax, [ebp+8]
-           add esp, 8
-           pop edi
-           pop esi
-           pop ebp
-           ret
- 
-.large:
-
-; v->head = nb|PINUSE_BIT|CINUSE_BIT;
-; r->head = rsize|PINUSE_BIT;
-
-           mov edx, edi
-           or ebx, 3
-           mov [ebp+4], ebx
-           or edx, 1
-           mov [esi+4], edx
-
-; (r+rsize)->prev_foot = rsize;
-; insert_large_chunk((tchunkptr)r, rsize);
-
-           mov [esi+edi], edi
-           mov eax, edi
-           mov ecx, esi
-           call insert_chunk
-
-           lea eax, [ebp+8]
-           add esp, 8
-           pop edi
-           pop esi
-           pop ebp
-           ret
- 
-.done:
-           add esp, 8
-           pop edi
-           pop esi
-           pop ebp
-           xor eax, eax
-           ret
+  .done:
+        add     esp, 8
+        pop     edi
+        pop     esi
+        pop     ebp
+        xor     eax, eax
+        ret
 
 init_malloc:
+        stdcall kernel_alloc, 0x40000
 
-           stdcall kernel_alloc, 0x40000
+        mov     [mst.top], eax
+        mov     [mst.topsize], 128 * 1024
+        mov     dword [eax+4], (128 * 1024) or 1
+        mov     eax, mst.smallbins
 
-           mov [mst.top], eax
-           mov [mst.topsize], 128*1024
-           mov dword [eax+4], (128*1024) or 1
-           mov eax, mst.smallbins
- 
-@@:
-           mov [eax+8], eax
-           mov [eax+12], eax
-           add eax, 16
-           cmp eax, mst.smallbins+512
-           jb @B
+    @@: mov     [eax + 8], eax
+        mov     [eax + 12], eax
+        add     eax, 16
+        cmp     eax, mst.smallbins + 512
+        jb      @b
 
-           ret
+        ret

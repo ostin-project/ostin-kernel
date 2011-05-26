@@ -39,43 +39,31 @@
 ;    display 'not used dt: ',`.,13,10
 ;  end if }
 
-struc POINT {
-  .x dd ?
-  .y dd ?
-  .sizeof:
-}
-virtual at 0
- POINT POINT
-end virtual
+struct POINT
+  x dd ?
+  y dd ?
+ends
 
-struc RECT {
-  .left   dd ?
-  .top    dd ?
-  .right  dd ?
-  .bottom dd ?
-  .sizeof:
-}
-virtual at 0
- RECT RECT
-end virtual
+struct RECT
+  left   dd ?
+  top    dd ?
+  right  dd ?
+  bottom dd ?
+ends
 
-struc BOX {
-  .left   dd ?
-  .top    dd ?
-  .width  dd ?
-  .height dd ?
-  .sizeof:
-}
-virtual at 0
- BOX BOX
-end virtual
+struct BOX
+  left   dd ?
+  top    dd ?
+  width  dd ?
+  height dd ?
+ends
 
-struc DISPMODE {
-  .width   rw 1
-  .height  rw 1
-  .bpp     rw 1
-  .freq    rw 1
-}
+struct DISPMODE
+  width  dw ?
+  height dw ?
+  bpp    dw ?
+  freq   dw ?
+ends
 
 ; constants definition
 WSTATE_NORMAL    = 00000000b
@@ -89,24 +77,20 @@ WSTATE_WNDDRAWN  = 00000010b
 WSTYLE_HASCAPTION     = 00010000b
 WSTYLE_CLIENTRELATIVE = 00100000b
 
-struc TASKDATA
-{
-  .event_mask  dd ?
-  .pid         dd ?
-               dw ?
-  .state       db ?
-               db ?
-               dw ?
-  .wnd_number  db ?
-               db ?
-  .mem_start   dd ?
-  .counter_sum dd ?
-  .counter_add dd ?
-  .cpu_usage   dd ?
-}
-virtual at 0
- TASKDATA TASKDATA
-end virtual
+struct TASKDATA
+  event_mask  dd ?
+  pid         dd ?
+              dw ?
+  state       db ?
+              db ?
+              dw ?
+  wnd_number  db ?
+              db ?
+  mem_start   dd ?
+  counter_sum dd ?
+  counter_add dd ?
+  cpu_usage   dd ?
+ends
 
 TSTATE_RUNNING        = 0
 TSTATE_RUN_SUSPENDED  = 1
@@ -116,195 +100,138 @@ TSTATE_TERMINATING    = 4
 TSTATE_WAITING        = 5
 TSTATE_FREE           = 9
 
-; structures definition
-struc WDATA {
-  .box             BOX
-  .cl_workarea     dd ?
-  .cl_titlebar     dd ?
-  .cl_frames       dd ?
-  .reserved        db ?
-  .fl_wstate       db ?
-  .fl_wdrawn       db ?
-  .fl_redraw       db ?
-  .sizeof:
-}
-virtual at 0
- WDATA WDATA
-end virtual
-label WDATA.fl_wstyle byte at WDATA.cl_workarea + 3
+struct WDATA
+  box           BOX
+  union
+    cl_workarea dd ?
+    struct
+                rb 3
+      fl_wstyle db ?
+    ends
+  ends
+  cl_titlebar   dd ?
+  cl_frames     dd ?
+  reserved      db ?
+  fl_wstate     db ?
+  fl_wdrawn     db ?
+  fl_redraw     db ?
+ends
 
-struc APPDATA
-{
-  .app_name        db 11  dup(?)
-                   db 5   dup(?)
+struct APPDATA_DEBUG_REGS
+  dr0 dd ?
+  dr1 dd ?
+  dr2 dd ?
+  dr3 dd ?
+  dr7 dd ?
+ends
 
-  .fpu_state       dd ?            ;+16
-  .ev_count_       dd ? ;unused    ;+20
-  .exc_handler     dd ?            ;+24
-  .except_mask     dd ?            ;+28
-  .pl0_stack       dd ?            ;+32
-  .heap_base       dd ?            ;+36
-  .heap_top        dd ?            ;+40
-  .cursor          dd ?            ;+44
-  .fd_ev           dd ?            ;+48
-  .bk_ev           dd ?            ;+52
-  .fd_obj          dd ?            ;+56
-  .bk_obj          dd ?            ;+60
-  .saved_esp       dd ?            ;+64
-  .io_map          rd 2            ;+68
-  .dbg_state       dd ?            ;+76
-  .cur_dir         dd ?            ;+80
-  .wait_timeout    dd ?            ;+84
-  .saved_esp0      dd ?            ;+88
-  .wait_begin      dd ?            ;+92   +++
-  .wait_test       dd ?            ;+96   +++
-  .wait_param      dd ?            ;+100  +++
-  .tls_base        dd ?            ;+104
-  .dlls_list_ptr   dd ?            ;+108
-                   db 16 dup(?)    ;+112
+struct APPDATA
+  app_name        rb 11
+                  rb 5
+  fpu_state       dd ?
+  ev_count_       dd ? ; unused
+  exc_handler     dd ?
+  except_mask     dd ?
+  pl0_stack       dd ?
+  heap_base       dd ?
+  heap_top        dd ?
+  cursor          dd ?
+  fd_ev           dd ?
+  bk_ev           dd ?
+  fd_obj          dd ?
+  bk_obj          dd ?
+  saved_esp       dd ?
+  io_map          rd 2
+  dbg_state       dd ?
+  cur_dir         dd ?
+  wait_timeout    dd ?
+  saved_esp0      dd ?
+  wait_begin      dd ?
+  wait_test       dd ?
+  wait_param      dd ?
+  tls_base        dd ?
+  dlls_list_ptr   dd ?
+                  rb 16
+  wnd_shape       dd ?
+  wnd_shape_scale dd ?
+                  dd ?
+  mem_size        dd ?
+  saved_box       BOX
+  ipc_start       dd ?
+  ipc_size        dd ?
+  event_mask      dd ?
+  debugger_slot   dd ?
+                  dd ?
+  keyboard_mode   db ?
+                  rb 3
+  dir_table       dd ?
+  dbg_event_mem   dd ?
+  dbg_regs        APPDATA_DEBUG_REGS
+  wnd_caption     dd ?
+  wnd_clientbox   BOX
+ends
 
-  .wnd_shape       dd ?            ;+128
-  .wnd_shape_scale dd ?            ;+132
-                   dd ?            ;+136
-  .mem_size        dd ?            ;+140
-  .saved_box       BOX
-  .ipc_start       dd ?
-  .ipc_size        dd ?
-  .event_mask      dd ?
-  .debugger_slot   dd ?
-                   dd ?
-  .keyboard_mode   db ?
-                   db 3   dup(?)
-  .dir_table       dd ?
-  .dbg_event_mem   dd ?
-  .dbg_regs:
-  .dbg_regs.dr0    dd ?
-  .dbg_regs.dr1    dd ?
-  .dbg_regs.dr2    dd ?
-  .dbg_regs.dr3    dd ?
-  .dbg_regs.dr7    dd ?
-  .wnd_caption     dd ?
-  .wnd_clientbox   BOX
-}
-virtual at 0
- APPDATA APPDATA
-end virtual
+struct MUTEX
+  count dd ?
+  next  dd ?
+  prev  dd ?
+ends
 
-;// mike.dld, 2006-29-01 ]
-
-struc MUTEX
-{
-    .count  rd 1
-    .next   rd 1
-    .prev   rd 1
-}
-
-virtual at 0
- MUTEX MUTEX
-end virtual
-
-
-; Core functions
-include "core/sync.inc"     ; macros for synhronization objects
-include "core/sys32.inc"    ; process management
-include "core/sched.inc"    ; process scheduling
-include "core/syscall.inc"  ; system call
-include "core/fpu.inc"      ; all fpu/sse support
-include "core/memory.inc"
-include "core/heap.inc"     ; kernel and app heap
-include "core/malloc.inc"   ; small kernel heap
-include "core/taskman.inc"
-include "core/dll.inc"
-include "core/peload.inc"   ;
-include "core/exports.inc"
-include "core/string.inc"
-include "core/v86.inc"      ; virtual-8086 manager
-
-; GUI stuff
-include "gui/window.inc"
-include "gui/event.inc"
-include "gui/font.inc"
-include "gui/button.inc"
-
-; shutdown
-
-; file system
-
-include "fs/fs.inc"       ; syscall
-include "fs/fat32.inc"    ; read / write for fat32 filesystem
-include "fs/ntfs.inc"     ; read / write for ntfs filesystem
-include "fs/fat12.inc"    ; read / write for fat12 filesystem
-include "blkdev/rd.inc"   ; ramdisk read /write
-include "fs/fs_lfn.inc"    ; syscall, version 2
-include "fs/iso9660.inc"  ; read for iso9660 filesystem CD
-include "fs/ext2.inc"     ; read / write for ext2 filesystem
-
-; sound
-
-include "sound/playnote.inc" ; player Note for Speaker PC
-
-; display
-
-include "video/vesa12.inc"   ; Vesa 1.2 functions
-include "video/vesa20.inc"   ; Vesa 2.0 functions
-include "video/blitter.inc"  ;
-include "video/vga.inc"      ; VGA 16 color functions
-include "video/cursors.inc"  ; cursors functions
-
-; Network Interface & TCPIP Stack
-
-include "network/stack.inc"
-
-;include "drivers/uart.inc"
-
-
-; Mouse pointer
-
-include "gui/mouse.inc"
-
-; Window skinning
-
-include "gui/skincode.inc"
-
-; Pci functions
+include "blkdev/cd_drv.inc"
+include "blkdev/cdrom.inc"
+include "blkdev/fdc.inc"
+include "blkdev/flp_drv.inc"
+include "blkdev/hd_drv.inc"
+include "blkdev/ide_cache.inc"
+include "blkdev/rd.inc"
 
 include "bus/pci/pci32.inc"
 
-; Floppy drive controller
+include "core/conf_lib.inc"
+include "core/dll.inc"
+include "core/exports.inc"
+include "core/ext_lib.inc"
+include "core/fpu.inc"
+include "core/heap.inc"
+include "core/malloc.inc"
+include "core/memory.inc"
+include "core/peload.inc"
+include "core/sched.inc"
+include "core/string.inc"
+include "core/sync.inc"
+include "core/sys32.inc"
+include "core/syscall.inc"
+include "core/taskman.inc"
+include "core/v86.inc"
 
-include "blkdev/fdc.inc"
-include "blkdev/flp_drv.inc"
+include "fs/ext2.inc"
+include "fs/fat12.inc"
+include "fs/fat32.inc"
+include "fs/fs.inc"
+include "fs/fs_lfn.inc"
+include "fs/iso9660.inc"
+include "fs/ntfs.inc"
+include "fs/parse_fn.inc"
 
-; IDE cache
-include "blkdev/ide_cache.inc"
-
-; HD drive controller
-include "blkdev/hd_drv.inc"
-
-; CD drive controller
-
-include "blkdev/cdrom.inc"
-include "blkdev/cd_drv.inc"
-
-; Character devices
+include "gui/button.inc"
+include "gui/event.inc"
+include "gui/font.inc"
+include "gui/mouse.inc"
+include "gui/skincode.inc"
+include "gui/window.inc"
 
 include "hid/keyboard.inc"
 include "hid/mousedrv.inc"
-
-; setting date,time,clock and alarm-clock
-
 include "hid/set_dtc.inc"
 
-;% -include
-
-;parser file names
-include "fs/parse_fn.inc"
-
-; work with conf lib
-include "core/conf_lib.inc"
-
-; load external lib
-include "core/ext_lib.inc"
-
-; list of external functions
 include "imports.inc"
+
+include "network/stack.inc"
+
+include "sound/playnote.inc"
+
+include "video/blitter.inc"
+include "video/cursors.inc"
+include "video/vesa12.inc"
+include "video/vesa20.inc"
+include "video/vga.inc"

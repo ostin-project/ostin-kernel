@@ -14,17 +14,16 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-; // Alver 22.06.2008 // {
 align 4
-dtext_asciiz_esi:                          ; for skins title out
-    push eax
-    xor eax, eax
-    inc eax
-    jmp    dtext.1
-; } \\ Alver \\
+dtext_asciiz_esi: ; for skins title out
+        push    eax
+        xor     eax, eax
+        inc     eax
+        jmp     dtext.1
 
 align 4
-dtext:  ; Text String Output (rw by Johnny_B[john@kolibrios.org])
+dtext:
+        ; Text String Output
         ; ebx x & y
         ; ecx style ( 0xX0000000 ) & color ( 0x00RRGGBB )
         ; X = ABnnb:
@@ -34,63 +33,67 @@ dtext:  ; Text String Output (rw by Johnny_B[john@kolibrios.org])
         ; edx start of text
         ; edi 1 force
 
-; // Alver 22.06.2008 // {
-       push eax
+        push    eax
         xor     eax, eax
-.1:
-; } \\ Alver \\
+
+  .1:
         pushad
         call    [_display.disable_mouse]
 
-        movsx   eax, bx         ; eax=y
-        sar     ebx, 16         ; ebx=x
-        xchg    eax, ebx        ; eax=x, ebx=y
+        movsx   eax, bx ; eax=y
+        sar     ebx, 16 ; ebx=x
+        xchg    eax, ebx ; eax=x, ebx=y
         cmp     esi, 255
         jb      .loop
         mov     esi, 255
-.loop:
+
+  .loop:
         test    ecx, ecx
         js      .test_asciiz
         dec     esi
         js      .end
         jmp     @f
-.test_asciiz:
-        cmp     byte [edx], 0
+
+  .test_asciiz:
+        cmp     byte[edx], 0
         jz      .end
-; // Alver 22.06.2008 // {
-        cmp byte [esp+28], 1
-        jne   @f
+        cmp     byte[esp + 28], 1
+        jne     @f
         dec     esi
-        js        .end
-; } \\ Alver \\
-@@:
-        inc     edx
+        js      .end
+
+    @@: inc     edx
         pushad
-        movzx   edx, byte [edx-1]
+        movzx   edx, byte[edx - 1]
         test    ecx, 0x10000000
         jnz     .font2
         mov     esi, 9
-        lea     ebp, [FONT_I+8*edx+edx]
-.symloop1:
-        mov     dl, byte [ebp]
+        lea     ebp, [FONT_I + 8 * edx + edx]
+
+  .symloop1:
+        mov     dl, byte[ebp]
         or      dl, 1 shl 6
-.pixloop1:
+
+  .pixloop1:
         shr     dl, 1
         jz      .pixloop1end
         jnc     .nopix
         call    [putpixel]
         jmp     .pixloop1cont
-.nopix:
+
+  .nopix:
         test    ecx, 0x40000000
         jz      .pixloop1cont
         push    ecx
-        mov     ecx, [esp+4+20h+20h]
+        mov     ecx, [esp + 4 + 0x20 + 0x20]
         call    [putpixel]
         pop     ecx
-.pixloop1cont:
+
+  .pixloop1cont:
         inc     eax
         jmp     .pixloop1
-.pixloop1end:
+
+  .pixloop1end:
         sub     eax, 6
         inc     ebx
         inc     ebp
@@ -99,27 +102,32 @@ dtext:  ; Text String Output (rw by Johnny_B[john@kolibrios.org])
         popad
         add     eax, 6
         jmp     .loop
-.font2:
+
+  .font2:
         add     edx, edx
-        lea     ebp, [FONT_II+4*edx+edx+1]
+        lea     ebp, [FONT_II + 4 * edx + edx + 1]
         push    9
-        movzx   esi, byte [ebp-1]
-.symloop2:
-        mov     dl, byte [ebp]
+        movzx   esi, byte[ebp - 1]
+
+  .symloop2:
+        mov     dl, byte[ebp]
         push    esi
-.pixloop2:
+
+  .pixloop2:
         shr     dl, 1
         jnc     .nopix2
         call    [putpixel]
         jmp     .pixloop2cont
-.nopix2:
+
+  .nopix2:
         test    ecx, 0x40000000
         jz      .pixloop2cont
         push    ecx
-        mov     ecx, [esp+12+20h+20h]
+        mov     ecx, [esp + 12 + 0x20 + 0x20]
         call    [putpixel]
         pop     ecx
-.pixloop2cont:
+
+  .pixloop2cont:
         inc     eax
         dec     esi
         jnz     .pixloop2
@@ -127,13 +135,14 @@ dtext:  ; Text String Output (rw by Johnny_B[john@kolibrios.org])
         sub     eax, esi
         inc     ebx
         inc     ebp
-        dec     dword [esp]
+        dec     dword[esp]
         jnz     .symloop2
         pop     eax
-        add     dword [esp+28], esi
+        add     dword[esp + 28], esi
         popad
         jmp     .loop
-.end:
+
+  .end:
         popad
-        pop  eax                ; << // Alver 22.06.2008 // <<
+        pop     eax
         ret

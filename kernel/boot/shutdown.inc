@@ -17,143 +17,141 @@
 
 align 4
 pr_mode_exit:
-
-; setup stack
-        mov    ax, 0x3000
-        mov    ss, ax
-        mov    esp, 0x0EC00
-; setup ds
+        ; setup stack
+        mov     ax, 0x3000
+        mov     ss, ax
+        mov     esp, 0x0ec00
+        ; setup ds
         push    cs
-        pop    ds
+        pop     ds
 
-        lidt [old_ints_h]
-;remap IRQs
-        mov  al,0x11
-        out  0x20,al
-        call rdelay
-        out  0xA0,al
-        call rdelay
+        lidt    [old_ints_h]
+        ;remap IRQs
+        mov     al, 0x11
+        out     0x20, al
+        call    rdelay
+        out     0x0a0, al
+        call    rdelay
 
-        mov  al,0x08
-        out  0x21,al
-        call rdelay
-        mov  al,0x70
-        out  0xA1,al
-        call rdelay
+        mov     al, 0x08
+        out     0x21, al
+        call    rdelay
+        mov     al, 0x70
+        out     0x0a1, al
+        call    rdelay
 
-        mov  al,0x04
-        out  0x21,al
-        call rdelay
-        mov  al,0x02
-        out  0xA1,al
-        call rdelay
+        mov     al, 0x04
+        out     0x21, al
+        call    rdelay
+        mov     al, 0x02
+        out     0x0a1, al
+        call    rdelay
 
-        mov  al,0x01
-        out  0x21,al
-        call rdelay
-        out  0xA1,al
-        call rdelay
+        mov     al, 0x01
+        out     0x21, al
+        call    rdelay
+        out     0x0a1, al
+        call    rdelay
 
-        mov  al,0xB8
-        out  0x21,al
-        call rdelay
-        mov  al,0xBD
-        out  0xA1,al
+        mov     al, 0x0b8
+        out     0x21, al
+        call    rdelay
+        mov     al, 0x0bd
+        out     0x0a1, al
         sti
 
 temp_3456:
-        xor  ax,ax
-        mov  es,ax
-        mov  al,byte [es:0x9030]
-        cmp  al,1
-        jl   nbw
-        cmp  al,4
-        jle  nbw32
+        xor     ax, ax
+        mov     es, ax
+        mov     al, byte[es:0x09030]
+        cmp     al, 1
+        jl      nbw
+        cmp     al, 4
+        jle     nbw32
 
 nbw:
-        in   al,0x60
-        cmp  al,6
-        jae  nbw
-        mov  bl,al
+        in      al, 0x60
+        cmp     al, 6
+        jae     nbw
+        mov     bl, al
+
 nbw2:
-        in   al,0x60
-        cmp  al,bl
-        je   nbw2
-        cmp  al,240  ;ax,240
-        jne  nbw31
-        mov  al,bl
-        dec  ax
-        jmp  nbw32
+        in      al, 0x60
+        cmp     al, bl
+        je      nbw2
+        cmp     al, 240 ;ax, 240
+        jne     nbw31
+        mov     al, bl
+        dec     ax
+        jmp     nbw32
+
 nbw31:
-        add  bl,128
-        cmp  al,bl
-        jne  nbw
-        sub  al,129
+        add     bl, 128
+        cmp     al, bl
+        jne     nbw
+        sub     al, 129
 
 nbw32:
+        dec     ax
+        dec     ax ; 2 = power off
+        jnz     no_apm_off
+        call    APM_PowerOff
+        jmp     $
 
-        dec  ax
-        dec  ax    ; 2 = power off
-        jnz  no_apm_off
-        call APM_PowerOff
-        jmp  $
 no_apm_off:
-
-        dec  ax    ; 3 = reboot
-        jnz  restart_kernel        ; 4 = restart kernel
-        push 0x40
-        pop  ds
-        mov  word[0x0072],0x1234
-        jmp  0xF000:0xFFF0
-
+        dec     ax ; 3 = reboot
+        jnz     restart_kernel ; 4 = restart kernel
+        push    0x40
+        pop     ds
+        mov     word[0x0072],0x1234
+        jmp     0x0f000:0x0fff0
 
 rdelay:
         ret
 
 APM_PowerOff:
-        mov     ax, 5304h
+        mov     ax, 0x5304
         xor     bx, bx
-        int     15h
-;!!!!!!!!!!!!!!!!!!!!!!!!
-        mov ax,0x5300
-        xor bx,bx
-        int 0x15
-        push ax
+        int     0x15
+        ;!!!!!!!!!!!!!!!!!!!!!!!!
+        mov     ax, 0x5300
+        xor     bx, bx
+        int     0x15
+        push    ax
 
-        mov ax,0x5301
-        xor bx,bx
-        int 0x15
+        mov     ax, 0x5301
+        xor     bx, bx
+        int     0x15
 
-        mov ax,0x5308
-        mov bx,1
-        mov cx,bx
-        int 0x15
+        mov     ax, 0x5308
+        mov     bx, 1
+        mov     cx, bx
+        int     0x15
 
-        mov ax,0x530E
-        xor bx,bx
-        pop cx
-        int 0x15
+        mov     ax, 0x530e
+        xor     bx, bx
+        pop     cx
+        int     0x15
 
-        mov ax,0x530D
-        mov bx,1
-        mov cx,bx
-        int 0x15
+        mov     ax, 0x530d
+        mov     bx, 1
+        mov     cx, bx
+        int     0x15
 
-        mov ax,0x530F
-        mov bx,1
-        mov cx,bx
-        int 0x15
+        mov     ax, 0x530f
+        mov     bx, 1
+        mov     cx, bx
+        int     0x15
 
-        mov ax,0x5307
-        mov bx,1
-        mov cx,3
-        int 0x15
-;!!!!!!!!!!!!!!!!!!!!!!!!
+        mov     ax, 0x5307
+        mov     bx, 1
+        mov     cx, 3
+        int     0x15
+        ;!!!!!!!!!!!!!!!!!!!!!!!!
         ret
 
 restart_kernel:
-
-        mov     ax,0x0003      ; set text mode for screen
+        mov     ax, 0x0003 ; set text mode for screen
         int     0x10
         jmp     0x4000:0000
 
@@ -162,7 +160,7 @@ restart_kernel_4000:
 
         push    ds
         pop     es
-        mov     cx, 0x8000
+        mov     cx, 0x08000
         push    cx
         push    0x7000
         pop     ds
@@ -174,26 +172,25 @@ restart_kernel_4000:
         push    0x2000
         pop     es
         rep     movsw
-        push    0x9000
+        push    0x09000
         pop     ds
         push    0x3000
         pop     es
-        mov     cx, 0xE000/2
+        mov     cx, 0x0e000 / 2
         rep     movsw
 
         wbinvd  ; write and invalidate cache
 
-        mov    al, 00110100b
-        out    43h, al
-        jcxz    $+2
-        mov    al, 0xFF
-        out    40h, al
-        jcxz    $+2
-        out    40h, al
-        jcxz    $+2
+        mov     al, 00110100b
+        out     0x43, al
+        jcxz    $ + 2
+        mov     al, 0x0ff
+        out     0x40, al
+        jcxz    $ + 2
+        out     0x40, al
+        jcxz    $ + 2
         sti
 
-; (hint by Black_mirror)
 ; We must read data from keyboard port,
 ; because there may be situation when previous keyboard interrupt is lost
 ; (due to return to real mode and IRQ reprogramming)
@@ -202,7 +199,7 @@ restart_kernel_4000:
 
 ; bootloader interface
         push    0x1000
-        pop    ds
-        mov    si, kernel_restart_bootblock
-        mov    ax, 'KL'
+        pop     ds
+        mov     si, kernel_restart_bootblock
+        mov     ax, 'KL'
         jmp     0x1000:0000

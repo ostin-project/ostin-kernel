@@ -21,21 +21,16 @@
 
 button.MAX_BUTTONS = 4095
 
-struc SYS_BUTTON
-{
-  .pslot  dw ?
-  .id_lo  dw ?
-  .left   dw ?
-  .width  dw ?
-  .top    dw ?
-  .height dw ?
-  .id_hi  dw ?
-          dw ?
-  .sizeof:
-}
-virtual at 0
-  SYS_BUTTON SYS_BUTTON
-end virtual
+struct SYS_BUTTON
+  pslot  dw ?
+  id_lo  dw ?
+  left   dw ?
+  width  dw ?
+  top    dw ?
+  height dw ?
+  id_hi  dw ?
+         dw ?
+ends
 
 align 4
 ;------------------------------------------------------------------------------
@@ -96,16 +91,16 @@ syscall_button: ;///// system function 8 //////////////////////////////////////
         mov     ax, [CURRENT_TASK]
         stosw
         mov     ax, dx
-        stosw               ; button id number: bits 0-15
+        stosw   ; button id number: bits 0-15
         mov     eax, ebx
         rol     eax, 16
-        stosd               ; x start | x size
+        stosd   ; x start | x size
         mov     eax, ecx
         rol     eax, 16
-        stosd               ; y start | y size
+        stosd   ; y start | y size
         mov     eax, edx
         shr     eax, 16
-        stosw               ; button id number: bits 16-31
+        stosw   ; button id number: bits 16-31
         pop     edx ecx ebx
 
         ; do we also need to draw the button?
@@ -222,18 +217,18 @@ syscall_button.remove_button:
         mov     edi, [BTN_ADDR]
         mov     ebx, [edi]
         inc     ebx
-        imul    esi, ebx, SYS_BUTTON.sizeof
+        imul    esi, ebx, sizeof.SYS_BUTTON
         add     esi, edi
         xor     ecx, ecx
-        add     ecx, -SYS_BUTTON.sizeof
-        add     esi, SYS_BUTTON.sizeof
+        add     ecx, -sizeof.SYS_BUTTON
+        add     esi, sizeof.SYS_BUTTON
 
   .next_button:
         dec     ebx
         jz      .exit
 
-        add     ecx, SYS_BUTTON.sizeof
-        add     esi, -SYS_BUTTON.sizeof
+        add     ecx, sizeof.SYS_BUTTON
+        add     esi, -sizeof.SYS_BUTTON
 
         ; does it belong to our process?
         mov     ax, [CURRENT_TASK]
@@ -250,10 +245,10 @@ syscall_button.remove_button:
         ; okay, undefine it
         push    ebx
         mov     ebx, esi
-        lea     eax, [esi + SYS_BUTTON.sizeof]
+        lea     eax, [esi + sizeof.SYS_BUTTON]
         call    memmove
         dec     dword[edi]
-        add     ecx, -SYS_BUTTON.sizeof
+        add     ecx, -sizeof.SYS_BUTTON
         pop     ebx
         jmp     .next_button
 
@@ -340,16 +335,16 @@ button._.find_button: ;////////////////////////////////////////////////////////
 
         mov     edi, [BTN_ADDR]
         mov     ecx, [edi]
-        imul    esi, ecx, SYS_BUTTON.sizeof
+        imul    esi, ecx, sizeof.SYS_BUTTON
         add     esi, edi
         inc     ecx
-        add     esi, SYS_BUTTON.sizeof
+        add     esi, sizeof.SYS_BUTTON
 
   .next_button:
         dec     ecx
         jz      .not_found
 
-        add     esi, -SYS_BUTTON.sizeof
+        add     esi, -sizeof.SYS_BUTTON
 
         ; does it belong to our process?
         cmp     dx, [esi + SYS_BUTTON.pslot]
@@ -387,13 +382,16 @@ button._.dececx: ;/////////////////////////////////////////////////////////////
         sub     cl, 0x20
         jnc     @f
         xor     cl, cl
+
     @@: sub     ch, 0x20
         jnc     @f
         xor     ch, ch
+
     @@: rol     ecx, 16
         sub     cl, 0x20
         jnc     @f
         xor     cl, cl
+
     @@: rol     ecx, 16
         ret
 
@@ -405,13 +403,16 @@ button._.incecx: ;/////////////////////////////////////////////////////////////
         add     cl, 0x20
         jnc     @f
         or      cl, -1
+
     @@: add     ch, 0x20
         jnc     @f
         or      ch, -1
+
     @@: rol     ecx, 16
         add     cl, 0x20
         jnc     @f
         or      cl, -1
+
     @@: rol     ecx, 16
         ret
 
@@ -423,13 +424,16 @@ button._.incecx2: ;////////////////////////////////////////////////////////////
         add     cl, 0x14
         jnc     @f
         or      cl, -1
+
     @@: add     ch, 0x14
         jnc     @f
         or      ch, -1
+
     @@: rol     ecx, 16
         add     cl, 0x14
         jnc     @f
         or      cl, -1
+
     @@: rol     ecx, 16
         ret
 
@@ -450,13 +454,16 @@ button._.button_dececx: ;//////////////////////////////////////////////////////
     @@: sub     cl, al
         jnc     @f
         xor     cl, cl
+
     @@: sub     ch, al
         jnc     @f
         xor     ch, ch
+
     @@: rol     ecx, 16
         sub     cl, al
         jnc     @f
         xor     cl, cl
+
     @@: rol     ecx, 16
 
         pop     eax

@@ -16,62 +16,67 @@
 ;;======================================================================================================================
 
 iglobal
-  ;function pointers.
-  fdc_irq_func	  dd fdc_null
+  ; function pointers.
+  fdc_irq_func dd \
+    fdc_null
 endg
 
 uglobal
-  dmasize	  db 0x0
-  dmamode	  db 0x0
+  dmasize db ?
+  dmamode db ?
 endg
 
-fdc_init:				;start with clean tracks.
-	mov edi,OS_BASE+0xD201
-	mov al,0
-	mov ecx,160
-	rep stosb
-ret
+fdc_init: ; start with clean tracks.
+        mov     edi, OS_BASE + 0x0d201
+        mov     al, 0
+        mov     ecx, 160
+        rep     stosb
+        ret
 
 fdc_irq:
-	call [fdc_irq_func]
+        call    [fdc_irq_func]
+
 fdc_null:
-ret
+        ret
 
 save_image:
-    call   reserve_flp
-    call   restorefatchain
-    pusha
-    call   check_label
-    cmp    [FDC_Status],0
-    jne    unnecessary_save_image
-    mov    [FDD_Track],0      ; Цилиндр
-    mov    [FDD_Head],0      ; Сторона
-    mov    [FDD_Sector],1      ; Сектор
-    mov    esi,RAMDISK
-    call   SeekTrack
-save_image_1:
-    push   esi
-    call   take_data_from_application_1
-    pop    esi
-    add    esi,512
-    call   WriteSectWithRetr
-;    call   WriteSector
-    cmp    [FDC_Status],0
-    jne    unnecessary_save_image
-    inc    [FDD_Sector]
-    cmp    [FDD_Sector],19
-    jne    save_image_1
-    mov    [FDD_Sector],1
-    inc    [FDD_Head]
-    cmp    [FDD_Head],2
-    jne    save_image_1
-    mov    [FDD_Head],0
-    inc    [FDD_Track]
-    call   SeekTrack
-    cmp    [FDD_Track],80
-    jne    save_image_1
-unnecessary_save_image:
-    mov    [fdc_irq_func],fdc_null
-    popa
-    mov    [flp_status],0
-    ret
+        call    reserve_flp
+        call    restorefatchain
+        pusha
+        call    check_label
+        cmp     [FDC_Status], 0
+        jne     .unnecessary_save_image
+
+        mov     [FDD_Track], 0 ; Цилиндр
+        mov     [FDD_Head], 0 ; Сторона
+        mov     [FDD_Sector], 1 ; Сектор
+        mov     esi, RAMDISK
+        call    SeekTrack
+
+  .save_image_1:
+        push    esi
+        call    take_data_from_application_1
+        pop     esi
+        add     esi, 512
+;       call    WriteSector
+        call    WriteSectWithRetr
+        cmp     [FDC_Status], 0
+        jne     .unnecessary_save_image
+        inc     [FDD_Sector]
+        cmp     [FDD_Sector], 19
+        jne     .save_image_1
+        mov     [FDD_Sector], 1
+        inc     [FDD_Head]
+        cmp     [FDD_Head], 2
+        jne     .save_image_1
+        mov     [FDD_Head], 0
+        inc     [FDD_Track]
+        call    SeekTrack
+        cmp     [FDD_Track], 80
+        jne     .save_image_1
+
+  .unnecessary_save_image:
+        mov     [fdc_irq_func], fdc_null
+        popa
+        mov     [flp_status], 0
+        ret
