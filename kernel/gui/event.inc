@@ -176,15 +176,15 @@ raise_event: ;; EXPORT use
         mov     ecx, sizeof.EVENT_CODE / 4
         cld
         rep     movsd
-  @@:
-        test    byte[ebx + EVENT.state + 3], EVENT_SIGNALED shr 24
+
+    @@: test    byte[ebx + EVENT.state + 3], EVENT_SIGNALED shr 24
         jnz     RemoveEventTo.break ; POPF+RET
-        bt      edx, 28 ;EVENT_WATCHED
+        bt      edx, 28 ; EVENT_WATCHED
         jnc     @f
         test    byte[ebx + EVENT.state + 3], EVENT_WATCHED  shr 24
         jz      RemoveEventTo.break ; POPF+RET
-  @@:
-        or      byte[ebx + EVENT.state + 3], EVENT_SIGNALED shr 24
+
+    @@: or      byte[ebx + EVENT.state + 3], EVENT_SIGNALED shr 24
         add     eax, SLOT_BASE + APP_EV_OFFSET
         xchg    eax, ebx
         jmp     RemoveEventTo

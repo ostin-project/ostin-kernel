@@ -378,17 +378,17 @@ ansi2uni_char:
   .ret:
         ret
 
-        ; 0xE0-0xEF -> 0x440-0x44F
-    @@: cmp     al, 0x0e0
+    @@: ; 0xE0-0xEF -> 0x440-0x44F
+        cmp     al, 0x0e0
         jb      .unk
         cmp     al, 0x0f0
         jae     @f
         add     ax, 0x440 - 0x0e0
         ret
 
-        ; 0xF0 -> 0x401
+    @@: ; 0xF0 -> 0x401
         ; 0xF1 -> 0x451
-    @@: cmp     al, 240 ; 'Ё'
+        cmp     al, 240 ; 'Ё'
         jz      .yo1
         cmp     al, 241 ; 'ё'
         jz      .yo2
@@ -582,8 +582,8 @@ fat_get_name:
         stc
         ret
 
-        ; if this is first entry:
-    @@: test    byte[ebp - 4], 1
+    @@: ; if this is first entry:
+        test    byte[ebp - 4], 1
         jnz     .ret
         ; buffer at ebp contains UNICODE name, convert it to ANSI
         push    esi edi
@@ -758,8 +758,8 @@ bdfe_to_fat_entry:
         and     al, 0x27
         and     byte[edi + 11], 0x10
         or      byte[edi + 11], al
-@@:
-        mov     eax, [edx + 8]
+
+    @@: mov     eax, [edx + 8]
         call    bdfe_to_fat_time
         mov     [edi + 14], ax ; creation time
         mov     eax, [edx  +12]
@@ -1234,8 +1234,8 @@ fat_next_short_name:
         add     edi, 7
         xor     ecx, ecx
 
-        ; after tilde may be only digits and trailing spaces
-    @@: cmp     byte[edi], '~'
+    @@: ; after tilde may be only digits and trailing spaces
+        cmp     byte[edi], '~'
         jz      .break
         cmp     byte[edi], ' '
         jz      .space
@@ -1416,8 +1416,8 @@ fat_gen_short_name:
 ;
 ;  ret ebx = number of written bytes
 ;      eax = 0 ok read or other = errormsg
-@@:
-        mov     eax, ERROR_ACCESS_DENIED
+
+    @@: mov     eax, ERROR_ACCESS_DENIED
         xor     ebx, ebx
         ret
 
@@ -1537,8 +1537,8 @@ fs_RamdiskRewrite:
         xor     ebx, ebx
         ret
 
-        ; delete FAT chain
-    @@: push    edi
+    @@: ; delete FAT chain
+        push    edi
         xor     eax, eax
         mov     dword[edi + 28], eax ; zero size
         xchg    ax, word[edi + 26] ; start cluster
@@ -1895,8 +1895,8 @@ fs_RamdiskRewrite:
 ;
 ;  ret ebx = bytes written (maybe 0)
 ;      eax = 0 ok write or other = errormsg
-@@:
-        push    ERROR_ACCESS_DENIED
+
+    @@: push    ERROR_ACCESS_DENIED
 
 fs_RamdiskWrite.ret0:
         pop     eax
@@ -1989,7 +1989,7 @@ fs_RamdiskWrite:
         jbe     @f
         mov     ecx, ebx
 
-    @@:mov      eax, edi
+    @@: mov     eax, edi
         shl     eax, 9
         add     eax, RAMDISK + 31 * 512 + 0x200
         sub     eax, ebx
@@ -2152,21 +2152,21 @@ fs_RamdiskSetFileEnd:
         pop     eax
         ret
 
-        ; must not be directory
-    @@: test    byte [edi + 11], 0x10
+    @@: ; must not be directory
+        test    byte [edi + 11], 0x10
         jz      @f
         pop     edi
         jmp     .access_denied
 
-        ; file size must not exceed 4Gb
-    @@: cmp     dword[ebx + 4], 0
+    @@: ; file size must not exceed 4Gb
+        cmp     dword[ebx + 4], 0
         jz      @f
         pop     edi
         push    ERROR_END_OF_FILE
         jmp     .ret
 
-        ; set file modification date/time to current
-    @@: call    fat_update_datetime
+    @@: ; set file modification date/time to current
+        call    fat_update_datetime
         mov     eax, [ebx]
         cmp     eax, [edi + 28]
         jb      .truncate
@@ -2190,14 +2190,14 @@ fs_RamdiskSetFileEnd:
         test    eax, eax
         jz      .zero_size
 
-        ; find new last sector
-    @@: sub     eax, 0x200
+    @@: ; find new last sector
+        sub     eax, 0x200
         jbe     @f
         movzx   ecx, word[RAMDISK_FAT + ecx * 2]
         jmp     @b
 
-        ; zero data at the end of last sector
-    @@: push    ecx
+    @@: ; zero data at the end of last sector
+        push    ecx
         mov     edi, ecx
         shl     edi, 9
         lea     edi, [edi + RAMDISK + 31 * 512 + eax + 0x200]

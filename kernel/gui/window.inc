@@ -140,6 +140,7 @@ syscall_display_settings: ;///// system function 48 ///////////////////////////
         cmp     ebx, .sizeof.ftable / 4
         ja      @f
         jmp     [.ftable + ebx * 4]
+
     @@: ret
 
 
@@ -217,10 +218,12 @@ syscall_display_settings.06:
         or      eax, eax
         jge     @f
         xor     eax, eax
+
     @@: mov     [screen_workarea.left], eax
         cmp     ebx, edi
         jle     @f
         mov     ebx, edi
+
     @@: mov     [screen_workarea.right], ebx
 
   .check_horizontal:
@@ -234,10 +237,12 @@ syscall_display_settings.06:
         or      eax, eax
         jge     @f
         xor     eax, eax
+
     @@: mov     [screen_workarea.top], eax
         cmp     ebx, edi
         jle     @f
         mov     ebx, edi
+
     @@: mov     [screen_workarea.bottom], ebx
 
   .check_if_redraw_needed:
@@ -1336,9 +1341,8 @@ end if
         repz    cmpsd
         pop     edi
         jz      .exit
-@@:
 
-        add     esp, -sizeof.BOX
+    @@: add     esp, -sizeof.BOX
 
         mov     ebx, esp
 

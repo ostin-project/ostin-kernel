@@ -336,9 +336,9 @@ drawwindow_IV:
         add     eax, 1 * 65536 - 1
         add     ebx, 1 * 65536 - 1
         test    ax, ax
-        js      no_skin_add_button
+        js      .no_skin_add_button
         test    bx, bx
-        js      no_skin_add_button
+        js      .no_skin_add_button
         mov     esi, [ebp + SKIN_DATA.colors.frame] ; [edi + 24]
         call    draw_rectangle
         dec     ecx
@@ -347,9 +347,9 @@ drawwindow_IV:
         add     eax, 1 * 65536 - 1
         add     ebx, 1 * 65536 - 1
         test    ax, ax
-        js      no_skin_add_button
+        js      .no_skin_add_button
         test    bx, bx
-        js      no_skin_add_button
+        js      .no_skin_add_button
         call    draw_rectangle
 
         cmp     dword[skin_data], 'SKIN'
@@ -363,9 +363,8 @@ drawwindow_IV:
         mov     edi, [common_colours + 4] ; standard grab color
         call    [drawbar]
         jmp     .draw_clientbar
-    @@:
 
-        mov     al,[esp+32+4+4]
+    @@: mov     al, [esp + 32 + 4 + 4]
         call    drawwindow_IV_caption
 
   .draw_clientbar:
@@ -390,13 +389,13 @@ drawwindow_IV:
 
   ._noinside2:
         cmp     dword[skin_data], 'SKIN'
-        jne     no_skin_add_button
+        jne     .no_skin_add_button
 
         ;* close button
         mov     edi, [BTN_ADDR]
         movzx   eax, word[edi]
         cmp     eax, 1000
-        jge     no_skin_add_button
+        jge     .no_skin_add_button
         inc     eax
         mov     [edi], ax
 
@@ -436,7 +435,7 @@ drawwindow_IV:
         mov     edi, [BTN_ADDR]
         movzx   eax, word[edi]
         cmp     eax, 1000
-        jge     no_skin_add_button
+        jge     .no_skin_add_button
         inc     eax
         mov     [edi], ax
 
@@ -472,7 +471,7 @@ drawwindow_IV:
         dec     ebx
         mov     [eax], bx
 
-      no_skin_add_button:
+  .no_skin_add_button:
         pop     edi
         popa
 

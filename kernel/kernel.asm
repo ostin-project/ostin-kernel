@@ -839,8 +839,8 @@ first_app_found:
 
         ; wait until 8042 is ready
         xor     ecx, ecx
-      @@:
-        in      al, 0x64
+
+    @@: in      al, 0x64
         and     al, 00000010b
         loopnz  @b
 
@@ -1934,16 +1934,15 @@ sys_end:
         jz      @f
 
         stdcall user_free, eax
-@@:
 
-        mov     eax, [TASK_BASE]
+    @@: mov     eax, [TASK_BASE]
         mov     [eax + TASKDATA.state], 3 ; terminate this program
 
-    waitterm:
+  .waitterm:
         ; wait here for termination
         mov     ebx, 100
         call    delay_hs
-        jmp     waitterm
+        jmp     .waitterm
 
 sys_system:
         dec     ebx
@@ -2364,8 +2363,8 @@ sys_background:
         jz      @f
         stdcall kernel_free, eax
 
-        ; calculate RAW size
-    @@: xor     eax, eax
+    @@: ; calculate RAW size
+        xor     eax, eax
         inc     eax
         cmp     [BgrDataWidth], eax
         jae     @f
@@ -2466,8 +2465,8 @@ sys_background:
         cmp     esi, 4
         ja      .fin
 
-        ; FIXME: bughere
-    @@: mov     eax, ecx
+    @@: ; FIXME: bughere
+        mov     eax, ecx
         mov     ebx, edx
         add     ebx, [img_background] ;IMG_BACKGROUND
         mov     ecx, esi
@@ -3791,9 +3790,10 @@ sys_putimage_bpp:
         jae     @f
         cmp     word[SCR_MODE], 0x13
         jnz     .doit
-@@:
-        mov     eax, vesa20_putimage
-.doit:
+
+    @@: mov     eax, vesa20_putimage
+
+  .doit:
         inc     [mouse_pause]
         call    eax
         dec     [mouse_pause]
@@ -4377,8 +4377,8 @@ if defined debug_com_base
 
         push    dx ax
 
-        ; Wait for empty transmit register  (yes, this slows down system)
-    @@: mov     dx, debug_com_base + 5
+    @@: ; Wait for empty transmit register  (yes, this slows down system)
+        mov     dx, debug_com_base + 5
         in      al, dx
         test    al, 1 shl 5
         jz      @b
@@ -5031,8 +5031,8 @@ system_shutdown:
         cmp     byte[BOOT_VAR + 0x09030], 1
         jne     @f
         ret
-@@:
-        call    stop_all_services
+
+    @@: call    stop_all_services
         push    3 ; stop playing cd
         pop     eax
         call    sys_cd_audio
@@ -5095,8 +5095,8 @@ else
         call    scan_rsdp
         jnc     .rsdp_found
 
-        ; 2) The BIOS read-only memory space between 0E0000h and 0FFFFFh.
-    @@: mov     eax, 0x0e0000
+    @@: ; 2) The BIOS read-only memory space between 0E0000h and 0FFFFFh.
+        mov     eax, 0x0e0000
         mov     ecx, 0x2000
         call    scan_rsdp
         jc      no_acpi_power_off

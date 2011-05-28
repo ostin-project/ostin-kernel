@@ -59,8 +59,8 @@ hd_read:
         inc     [hd_error]
         jmp     .return_01
 
-        ; DMA read is permitted if [allow_dma_access]=1 or 2
-    @@: cmp     [allow_dma_access], 2
+    @@: ; DMA read is permitted if [allow_dma_access]=1 or 2
+        cmp     [allow_dma_access], 2
         ja      .nodma
         cmp     [dma_hdd], 1
         jnz     .nodma

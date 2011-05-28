@@ -1700,8 +1700,8 @@ fs_HdRewrite:
         xor     ebx, ebx
         ret
 
-        ; delete FAT chain
-    @@: push    edi
+    @@: ; delete FAT chain
+        push    edi
         xor     eax, eax
         mov     dword[edi + 28], eax ; zero size
         xor     ecx, ecx
@@ -2259,8 +2259,8 @@ fs_HdWrite:
         mov     byte[esp + 4], 11
         jmp     .ret
 
-        ; now ebx=start pos, ecx=end pos, both lie inside file
-    @@: sub     ecx, ebx
+    @@: ; now ebx=start pos, ecx=end pos, both lie inside file
+        sub     ecx, ebx
         jz      .ret
 
   .write_loop:
@@ -2286,8 +2286,8 @@ fs_HdWrite:
         jbe     @f
         mov     ecx, ebx
 
-        ; get current sector number
-    @@: mov     eax, edi
+    @@: ; get current sector number
+        mov     eax, edi
         dec     eax
         dec     eax
         imul    eax, [SECTORS_PER_CLUSTER]
@@ -2324,8 +2324,8 @@ fs_HdWrite:
         add     edi, [esp + 4 + 12]
         rep     stosb
 
-        ; zero uninitialized data in the last sector
-    @@: mov     ecx, 0x200
+    @@: ; zero uninitialized data in the last sector
+        mov     ecx, 0x200
         sub     ecx, esi
         jbe     @f
         mov     edi, buffer
@@ -2544,14 +2544,14 @@ fs_HdSetFileEnd:
         push    ERROR_FILE_NOT_FOUND
         jmp     .ret
 
-        ; must not be directory
-    @@: test    byte[edi + 11], 0x10
+    @@: ; must not be directory
+        test    byte[edi + 11], 0x10
         jz      @f
         pop     edi
         jmp     .access_denied
 
-        ; file size must not exceed 4 Gb
-    @@: cmp     dword[ebx + 4], 0
+    @@: ; file size must not exceed 4 Gb
+        cmp     dword[ebx + 4], 0
         jz      @f
         pop     edi
         push    ERROR_END_OF_FILE
@@ -2607,8 +2607,8 @@ fs_HdSetFileEnd:
         mov     byte [esp], 11
         jmp     .pop_ret
 
-        ; now zero new data
-    @@: xor     ebp, ebp
+    @@: ; now zero new data
+        xor     ebp, ebp
         ; edi=current cluster, ebp=sector in cluster
         ; [esp+20]=new size, [esp+4]=old size, [esp]=return code
 
@@ -2685,8 +2685,8 @@ fs_HdSetFileEnd:
         pop     eax
         ret
 
-        ; we will zero data at the end of last sector - remember it
-    @@: push    ecx
+    @@: ; we will zero data at the end of last sector - remember it
+        push    ecx
         ; terminate FAT chain
         push    edx
         mov     eax, ecx
@@ -2707,8 +2707,8 @@ fs_HdSetFileEnd:
         push    0
         mov     eax, ecx
 
-        ; delete FAT chain
-    @@: call    clear_cluster_chain
+    @@: ; delete FAT chain
+        call    clear_cluster_chain
         cmp     [hd_error], 0
         jnz     .device_err4
         ; save directory

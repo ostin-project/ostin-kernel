@@ -157,9 +157,9 @@ start_of_code:
         mov     word[cs:cfgmanager.loader_block], si
         mov     word[cs:cfgmanager.loader_block + 2], ds
 
-        ; if bootloader sets cx = 'HA' and dx = 'RD', then bx contains identifier of source hard disk
+    @@: ; if bootloader sets cx = 'HA' and dx = 'RD', then bx contains identifier of source hard disk
         ; (see comment to bx_from_load)
-    @@: cmp     cx, 'HA'
+        cmp     cx, 'HA'
         jnz     no_hd_load
         cmp     dx, 'RD'
         jnz     no_hd_load
@@ -424,8 +424,8 @@ cfgmanager:
         mov     byte[di], 3
         jmp     .preboot_device_inited
 
-        ; otherwise, set [preboot_device] to 1 (default value - boot from floppy)
-    @@: mov     byte[di], 1
+    @@: ; otherwise, set [preboot_device] to 1 (default value - boot from floppy)
+        mov     byte[di], 1
 
   .preboot_device_inited:
         ; following 4 lines set variables to 1 if its current value is 0
@@ -438,8 +438,8 @@ cfgmanager:
         jnz	@f
         mov	byte[di + preboot_vrrm - preboot_device], 2
 
-        ; notify user
-    @@: _setcursor 5, 2
+    @@: ; notify user
+        _setcursor 5, 2
 
         mov     si, linef
         call    printplain

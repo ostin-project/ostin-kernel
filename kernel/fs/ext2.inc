@@ -425,8 +425,8 @@ ext2_test_block_by_name:
         cmp     al, ah
         je      @B
 
-        ; не подошло
-    @@: pop     esi
+    @@: ; не подошло
+        pop     esi
 
   .next_rec:
         movzx   eax, [ebx + EXT2_DIR_STRUC.rec_len]

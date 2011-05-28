@@ -388,8 +388,8 @@ v86_exc_c:
         cmp     word[esp + v86_regs.cs], ax
         jz      .done
 
-        ; Various system events, which must be handled, result in #GP
-    @@: cmp     bl, 13
+    @@: ; Various system events, which must be handled, result in #GP
+        cmp     bl, 13
         jnz     .nogp
         ; If faulted EIP exceeds 0xFFFF, we have #GP and it is an error
         cmp     word[esp + v86_regs.eip + 2], 0

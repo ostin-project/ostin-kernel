@@ -709,8 +709,8 @@ flp_root_next:
         add     edi, 0x20
         ret     ; CF=0
 
-        ; read next sector
-    @@: inc     dword[eax]
+    @@: ; read next sector
+        inc     dword[eax]
         cmp     dword[eax], 14
         jae     flp_root_first.readerr
         push    [fd_prev_sector]
@@ -1290,8 +1290,8 @@ fs_FloppyRewrite:
         xor     ebx, ebx
         ret
 
-        ; delete FAT chain
-    @@: push    edi
+    @@: ; delete FAT chain
+        push    edi
         xor     eax, eax
         mov     dword[edi + 28], eax ; zero size
         xchg    ax, word[edi + 26] ; start cluster
@@ -1669,8 +1669,7 @@ fs_FloppyRewrite:
         ; ret ebx = bytes written (maybe 0)
         ;     eax = 0 ok write or other = errormsg
 
-@@:
-        push    ERROR_ACCESS_DENIED
+    @@: push    ERROR_ACCESS_DENIED
 
 fs_FloppyWrite.ret0:
         pop     eax
@@ -1779,8 +1778,8 @@ fs_FloppyWrite:
         mov     byte[esp + 4], 11
         jmp     .ret
 
-        ; now ebx=start pos, ecx=end pos, both lie inside file
-    @@: sub     ecx, ebx
+    @@: ; now ebx=start pos, ecx=end pos, both lie inside file
+        sub     ecx, ebx
         jz      .ret
         call    SetUserInterrupts
 
@@ -1808,8 +1807,8 @@ fs_FloppyWrite:
         jbe     @f
         mov     ecx, ebx
 
-        ; load sector if needed
-    @@: cmp     dword[esp + 4], 0 ; we don't need to read uninitialized data
+    @@: ; load sector if needed
+        cmp     dword[esp + 4], 0 ; we don't need to read uninitialized data
         jz      .noread
         cmp     ecx, 0x200 ; we don't need to read sector if it is fully rewritten
         jz      .noread
@@ -1838,8 +1837,8 @@ fs_FloppyWrite:
         add     edi, [esp + 4 + 12]
         rep     stosb
 
-        ; zero uninitialized data in the last sector
-    @@: mov     ecx, 0x200
+    @@: ; zero uninitialized data in the last sector
+        mov     ecx, 0x200
         sub     ecx, esi
         jbe     @f
         mov     edi, FDD_BUFF
@@ -2011,14 +2010,14 @@ fs_FloppySetFileEnd:
         pop     eax
         jmp     .doret
 
-        ; must not be directory
-    @@: test    byte[edi + 11], 0x10
+    @@: ; must not be directory
+        test    byte[edi + 11], 0x10
         jz      @f
         pop     edi
         jmp     .access_denied
 
-        ; file size must not exceed 4 Gb
-    @@: cmp     dword[ebx + 4], 0
+    @@: ; file size must not exceed 4 Gb
+        cmp     dword[ebx + 4], 0
         jz      @f
         pop     edi
         push    ERROR_END_OF_FILE
@@ -2134,14 +2133,14 @@ fs_FloppySetFileEnd:
         test    eax, eax
         jz      .zero_size
 
-        ; find new last sector
-    @@: sub     eax, 0x200
+    @@: ; find new last sector
+        sub     eax, 0x200
         jbe     @f
         movzx   ecx, word[FLOPPY_FAT + ecx * 2]
         jmp     @b
 
-        ; we will zero data at the end of last sector - remember it
-    @@: push    ecx
+    @@: ; we will zero data at the end of last sector - remember it
+        push    ecx
         ; terminate FAT chain
         lea     ecx, [FLOPPY_FAT + ecx + ecx]
         push    dword[ecx]

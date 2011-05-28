@@ -782,8 +782,8 @@ malloc_large:
         mov     edi, ecx
         je      .l2
 
-        ; rt = t->child[1];
-    @@: mov     ecx, [eax + 20]
+    @@: ; rt = t->child[1];
+        mov     ecx, [eax + 20]
 
         ; t = t->child[(sizebits >> 31) & 1];
         mov     esi, edx
@@ -799,16 +799,16 @@ malloc_large:
         ; rst = rt;
         mov [.rst], ecx
 
-        ; if (t == 0)
-    @@: test    eax, eax
+    @@: ; if (t == 0)
+        test    eax, eax
         jz      @f
 
         ; sizebits <<= 1;
         add     edx, edx
         jmp     .loop
 
-        ; t = rst;
-    @@: mov     eax, [.rst]
+    @@: ; t = rst;
+        mov     eax, [.rst]
 
   .l2:
         ; if (t == 0 && v == 0)
@@ -830,8 +830,8 @@ malloc_large:
         ; t = ms.treebins[i];
         mov     eax, [mst.treebins + eax * 4]
 
-        ; while (t != 0)
-    @@: test    eax, eax
+    @@: ; while (t != 0)
+        test    eax, eax
         jz      .l5
 
   .l4:
@@ -849,8 +849,8 @@ malloc_large:
         ; v = t;
         mov     ebp, eax
 
-        ; t = leftmost_child(t);
-    @@: mov     ecx, [eax + 16]
+    @@: ; t = leftmost_child(t);
+        mov     ecx, [eax + 16]
         test    ecx, ecx
         je      @f
         mov     eax, ecx

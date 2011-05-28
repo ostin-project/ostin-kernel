@@ -197,8 +197,8 @@ do_change_task:
         je      @f
         mov     cr3, eax
 
-        ; set tss.esp0
-    @@: Mov     [tss._esp0], eax, [ebx + APPDATA.saved_esp0]
+    @@: ; set tss.esp0
+        Mov     [tss._esp0], eax, [ebx + APPDATA.saved_esp0]
 
         mov     edx, [ebx + APPDATA.tls_base]
         cmp     edx, [esi + APPDATA.tls_base]
@@ -212,8 +212,8 @@ do_change_task:
         mov     dx, app_tls
         mov     fs, dx
 
-; set gs selector unconditionally
-    @@: Mov     gs, ax, graph_data
+    @@: ; set gs selector unconditionally
+        Mov     gs, ax, graph_data
         ; set CR0.TS
         cmp     bh, byte[fpu_owner] ; bh == incoming task (new)
         clts    ; clear a task switch flag
@@ -222,8 +222,8 @@ do_change_task:
         or      eax, CR0_TS
         mov     cr0, eax
 
-        ; set context_counter (only for user pleasure ???)
-    @@: inc     [context_counter]
+    @@: ; set context_counter (only for user pleasure ???)
+        inc     [context_counter]
         ; set debug-registers, if it's necessary
         test    byte[ebx + APPDATA.dbg_state], 1
         jz      @f

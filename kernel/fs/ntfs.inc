@@ -81,8 +81,8 @@ ntfs_test_bootsec:
         test    [ebx + 0x40], al
         jnz     .no
 
-; 8. Same for clusters per IndexAllocationBuffer
-    @@: movsx   eax, byte[ebx + 0x44]
+    @@: ; 8. Same for clusters per IndexAllocationBuffer
+        movsx   eax, byte[ebx + 0x44]
         cmp     al, -31
         jl      .no
         cmp     al, -9
@@ -92,8 +92,8 @@ ntfs_test_bootsec:
         test    [ebx + 0x44], al
         jnz     .no
 
-        ; OK, this is correct NTFS bootsector
-    @@: clc
+    @@: ; OK, this is correct NTFS bootsector
+        clc
         ret
 
     .no:
@@ -298,14 +298,15 @@ ntfs_read_frs_sector:
         shr     ecx, 9
         mov     ebx, [ntfs_data.frs_buffer]
         push    ebx
-@@:
-        call    hd_read
+
+    @@: call    hd_read
         cmp     [hd_error], 0
         jnz     .fail
         add     ebx, 0x200
         inc     eax
         loop    @b
-.fail:
+
+  .fail:
         pop     ebx
         pop     ecx eax
         ret
@@ -390,8 +391,8 @@ ntfs_read_attr:
         jb      @f
         mov     ecx, [ntfs_cur_size]
 
-        ; ecx = number of sequential sectors to read
-    @@: call    hd_read
+    @@: ; ecx = number of sequential sectors to read
+        call    hd_read
         cmp     [hd_error], 0
         jnz     .errread
         add     [ntfs_cur_read], 0x200
@@ -455,8 +456,8 @@ ntfs_read_attr:
         test    eax, eax
         jz      .errret
 
-        ; b) Scan for required attribute and for $ATTR_LIST
-    @@: mov     eax, [ntfs_data.frs_buffer]
+    @@: ; b) Scan for required attribute and for $ATTR_LIST
+        mov     eax, [ntfs_data.frs_buffer]
         movzx   ecx, word[eax + 0x14]
         add     eax, ecx
         mov     ecx, [ntfs_cur_attr]
@@ -946,8 +947,8 @@ ntfs_restore_usa:
         lodsw
         mov     edx, eax
         lea     edi, [ebx + 0x1fe]
-@@:
-        cmp     [edi], dx
+
+    @@: cmp     [edi], dx
         jnz     .err
         lodsw
         stosw

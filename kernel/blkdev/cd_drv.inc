@@ -155,11 +155,11 @@ ReadCDWRetr_1:
         jz      .NextRetr
         jmp     .wait
 
-    @@:
-; Задержка на 2,5 секунды
+    @@: ; Задержка на 2,5 секунды
 ;       mov     eax, [timer_ticks]
 ;       add     eax, 50 ; 250
-;@@Wait:
+;
+; .Wait:
 ;       call    change_task
 ;       cmp     eax, [timer_ticks]
 ;       ja      .Wait

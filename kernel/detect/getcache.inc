@@ -30,8 +30,8 @@
         mov     eax,1024 * 1024
         jmp     .continue
 
-        ; check a lower size of the cache, not less than 128 Kb on the physical device
-    @@: cmp     eax,128 * 1024
+    @@: ; check a lower size of the cache, not less than 128 Kb on the physical device
+        cmp     eax,128 * 1024
         jae     @f
         mov     eax,128 * 1024
 

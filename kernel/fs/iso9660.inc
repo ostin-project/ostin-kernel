@@ -467,8 +467,8 @@ cd_get_parameters_of_file_1:
         inc     eax
         mov     [edi + 4], eax
 
-        ; получаем размер файла в байтах
-    @@: xor     eax,eax
+    @@: ; получаем размер файла в байтах
+        xor     eax,eax
         mov     [edi + 32 + 4], eax
         mov     eax, [ebp - 23]
         mov     [edi + 32], eax

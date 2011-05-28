@@ -132,8 +132,8 @@ syscall_button: ;///// system function 8 //////////////////////////////////////
         je      @f
         call    button._.incecx2
 
-        ; set button height counter
-    @@: mov     edx, edi
+    @@: ; set button height counter
+        mov     edx, edi
 
   .next_line:
         call    button._.button_dececx

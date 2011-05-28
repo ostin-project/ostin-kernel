@@ -442,9 +442,9 @@ file_system_lfn:
         mov     esi, ebp
         xor     ebp, ebp
 
-        ; now [edi] contains handler address, ecx - partition number,
+    @@: ; now [edi] contains handler address, ecx - partition number,
         ; esi points to ASCIIZ string - rest of name
-    @@: jmp     dword[edi]
+        jmp     dword[edi]
 
 ; handlers for devices
 ; in: ecx = 0 => query virtual directory /xxx
@@ -1070,8 +1070,8 @@ max_cur_dir equ 0x1000
         jbe     @f
         mov     edx, edi
 
-        ; source string
-    @@: pop     esi
+    @@: ; source string
+        pop     esi
         ; destination string
         pop     edi
         cmp     edx, 1

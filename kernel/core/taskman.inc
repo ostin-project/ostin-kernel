@@ -212,8 +212,8 @@ endl
         jne     @f
 
         not     edx
-@@:
-        mov     [ebx + APPDATA.tls_base], edx
+
+    @@: mov     [ebx + APPDATA.tls_base], edx
 
 if GREEDY_KERNEL
 
@@ -1140,8 +1140,8 @@ endl
         jne     @f
         mov     edx, tls_app_entry
 
-        ; set window state to 'normal' (non-minimized/maximized/rolled-up) state
-    @@: mov     [ebx + window_data + WDATA.fl_wstate], WSTATE_NORMAL
+    @@: ; set window state to 'normal' (non-minimized/maximized/rolled-up) state
+        mov     [ebx + window_data + WDATA.fl_wstate], WSTATE_NORMAL
         mov     [ebx + window_data + WDATA.fl_redraw], 1
         add     ebx, CURRENT_TASK ; ebx - pointer to information about process
         mov     [ebx + TASKDATA.wnd_number], al ; set window number on screen = process slot

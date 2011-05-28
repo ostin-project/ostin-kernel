@@ -23,6 +23,7 @@ Other contributors (in alphabetic order):
   Endre Kozma <endre.kozma@axelero.hu>
   Evgeny Grechnikov (Diamond) <diamondz@land.ru>
   Felix Kaiser <info@felix-kaiser.de>
+  Frank Sommer (derPENGUIN)
   Galkov <galkov@inbox.ru>
   Hidnplayr <hidnplayr@gmail.com>
   Iliya Mihailov (Ghost) <ghost.nsk@gmail.com>
