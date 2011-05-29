@@ -29,5 +29,5 @@ library \
 import  libini, \
         ini.lib_init, 'lib_init', \
         ini.get_str, 'ini.get_str', \
-        ini.enum_keys,' ini.enum_keys', \
+        ini.enum_keys, 'ini.enum_keys', \
         ini.get_int, 'ini.get_int'

@@ -140,7 +140,7 @@ irq1:
         in      al, 0x60
 
 send_scancode:
-        mov      [keyboard_data],al
+        mov      [keyboard_data], al
 
         ; ch = scancode
         ; cl = ext_code
@@ -148,10 +148,10 @@ send_scancode:
         ; bh = 1 - modifier (Shift/Ctrl/Alt)
         ; bh = 2 - extended code
 
-        mov     ch,al
-        cmp     al, 0x0e0
+        mov     ch, al
+        cmp     al, 0xe0
         je      @f
-        cmp     al, 0x0e1
+        cmp     al, 0xe1
         jne     .normal_code
 
     @@: mov     bh, 2
@@ -166,14 +166,14 @@ send_scancode:
 
     @@: cmp     al, 0x2a
         jne     @f
-        cmp     cl, 0x0e0
+        cmp     cl, 0xe0
         je      .writekey
         mov     eax, VKEY_LSHIFT
         jmp     .modifier
 
     @@: cmp     al, 0x36
         jne     @f
-        cmp     cl, 0x0e0
+        cmp     cl, 0xe0
         je      .writekey
         mov     eax, VKEY_RSHIFT
         jmp     .modifier
@@ -192,7 +192,7 @@ send_scancode:
         test    cl, cl
         jz      .modifier
         mov     al, VKEY_RCONTROL
-        cmp     cl, 0x0e0
+        cmp     cl, 0xe0
         jz      .modifier
         mov     [ext_code], cl
         jmp     .writekey
@@ -328,7 +328,7 @@ send_scancode:
         ;.........................Part1 Start
         test    [kb_state], VKEY_NUMLOCK
         jz      .dowrite
-        cmp     cl, 0x0e0
+        cmp     cl, 0xe0
         jz      .dowrite
 
         cmp     ch, 55
@@ -365,7 +365,7 @@ send_scancode:
         ret
 
 set_lights:
-        mov     al, 0x0ed
+        mov     al, 0xed
         call    kb_write
         mov     al, [kb_lights]
         call    kb_write

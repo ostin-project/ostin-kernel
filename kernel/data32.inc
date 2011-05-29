@@ -165,7 +165,7 @@ gdts:
 
 int_code_l:
 os_code_l:
-  dw 0x0ffff
+  dw 0xffff
   dw 0x0000
   db 0x00
   dw 11011111b * 256 + 10011010b
@@ -173,21 +173,21 @@ os_code_l:
 
 int_data_l:
 os_data_l:
-  dw 0x0ffff
+  dw 0xffff
   dw 0x0000
   db 0x00
   dw 11011111b * 256 + 10010010b
   db 0x00
 
 app_code_l:
-  dw 0x0ffff
+  dw 0xffff
   dw 0
   db 0
   db cpl3
   dw G32 + D32 + 0xf;
 
 app_data_l:
-  dw 0x0ffff
+  dw 0xffff
   dw 0
   db 0
   db drw3
@@ -246,10 +246,10 @@ graph_data_l:
 
 tss0_l:
   dw sizeof.TSS - 1
-  dw tss and 0x0ffff
-  db (tss shr 16) and 0x0ff
+  dw tss and 0xffff
+  db (tss shr 16) and 0xff
   db 10001001b
-  dw (tss shr 16) and 0x0ff00
+  dw (tss shr 16) and 0xff00
 
 tls_data_l:
   dw 0x0fff
@@ -404,16 +404,16 @@ cache_ide2        DRIVE_CACHE
 cache_ide3        DRIVE_CACHE
 
 debug_step_pointer rd 1
-hdd_appl_data     rb 1 ; 0 = system cache, 1 - application cache
-cd_appl_data      rb 1 ; 0 = system cache, 1 - application cache
+hdd_appl_data      rb 1 ; 0 = system cache, 1 - application cache
+cd_appl_data       rb 1 ; 0 = system cache, 1 - application cache
 
 lba_read_enabled   rd 1 ; 0 = disabled , 1 = enabled
 pci_access_enabled rd 1 ; 0 = disabled , 1 = enabled
 timer_ticks_enable rb 1 ; for cd driver
 
-NumBiosDisks      rd 1
-BiosDisksData     rb 0x200
-BiosDiskCaches    rb 0x080 * sizeof.DRIVE_CACHE
-BiosDiskPartitions rd 0x080
+NumBiosDisks       rd 1
+BiosDisksData      rb 0x200
+BiosDiskCaches     rb 0x80 * sizeof.DRIVE_CACHE
+BiosDiskPartitions rd 0x80
 
 IncludeUGlobals

@@ -80,7 +80,7 @@ struct VBE_ModeInfo
                          rb 190 ; char
 ends
 
-virtual at 0x0a000
+virtual at 0xa000
   vi VBE_VGAInfo
   mi VBE_ModeInfo
 
@@ -95,7 +95,7 @@ scroll_end   dw 0 ; end position of scroll bar
 
 long_v_table     equ 9 ; long of visible video table
 size_of_step     equ 10
-scroll_area_size equ (long_v_table-2)
+scroll_area_size equ (long_v_table - 2)
 
 int2str:
         dec     bl
@@ -134,7 +134,7 @@ v_mode_error:
         _setcursor 20, 2
         mov     si, pres_key
         call    printplain
-        xor     eax,eax
+        xor     eax, eax
         int     0x16
         jmp     cfgmanager.d
 ;-------------------------------------------------------
@@ -145,7 +145,7 @@ print_vesa_info:
 
         mov     [es:vi.VESASignature], 'VBE2'
         mov     ax, 0x4f00
-        mov     di, vi ;0x0a000
+        mov     di, vi ;0xa000
         int     0x10
         or      ah, ah
         jz      @f
@@ -223,7 +223,7 @@ calc_vmodes_table:
         jz      @f
         test    [es:mi.ModeAttributes], 00010000b ; picture?
         jz      @f
-        test    [es:mi.ModeAttributes], 010000000b ; LFB?
+        test    [es:mi.ModeAttributes], 10000000b ; LFB?
         jz      @f
 
         cmp     [es:mi.BitsPerPixel], 24 ; It show only videomodes to have support 24 and 32 bpp
@@ -267,7 +267,7 @@ calc_vmodes_table:
 
   .modes_ok.2:
         mov     word[es:bx], -1 ; end video table
-        mov     word[end_cursor] ,bx ; save end cursor position
+        mov     word[end_cursor], bx ; save end cursor position
 
         ;Sort array
 ;       mov     si, modes_table
@@ -404,7 +404,7 @@ check_first_parm:
         jz      .ok_found_mode
         mov     ax, word[x_save]
         mov     bx, word[y_save]
-        mov     si,modes_table
+        mov     si, modes_table
         call    .loops
         test    ax, ax
         jz     .ok_found_mode
@@ -567,9 +567,9 @@ draw_vmodes_table:
         pop     si
         mov     bp, long_v_table ; show rows
 
-  .@@_next_bit:
+  ._next_bit:
         ; clear cursor
-        mov     ax,'  '
+        mov     ax, '  '
         mov     word[ds:_r1 + 21], ax
         mov     word[ds:_r1 + 50], ax
 
@@ -580,14 +580,14 @@ draw_vmodes_table:
         mov     word[ds:_rs + 46], ax
 
         ; draw string
-        cmp     word [es:si + 6], 0x12
+        cmp     word[es:si + 6], 0x12
         je      .show_0x12
-        cmp     word [es:si + 6], 0x13
+        cmp     word[es:si + 6], 0x13
         je      .show_0x13
 
         movzx   eax, word[es:si]
         cmp     ax, -1
-        je      .@@_end
+        je      ._end
         mov     di, _rs + 23
         mov     ecx, 10
         mov     bl, 4
@@ -613,7 +613,7 @@ draw_vmodes_table:
         push    si
         mov     si, _rs
 
-  .@@_sh:
+  ._sh:
         ; add to the string pseudographics for scrollbar
         pop     bx
         push    bx
@@ -622,7 +622,7 @@ draw_vmodes_table:
         jb      @f
         cmp     bx, [scroll_end]
         jae     @f
-        mov     byte[si + 53], 0x0db ; filled bar
+        mov     byte[si + 53], 0xdb ; filled bar
 
     @@: push    bx
         add     bx, size_of_step
@@ -642,12 +642,12 @@ draw_vmodes_table:
 
     @@: call    printplain
         pop     si
-        add     si,size_of_step
+        add     si, size_of_step
 
         dec     bp
-        jnz     .@@_next_bit
+        jnz     ._next_bit
 
-  .@@_end:
+  ._end:
         mov     si, _bt
         call    printplain
         ret
@@ -660,8 +660,8 @@ draw_vmodes_table:
         mov     word[ds:_r1 + 21], '>>'
         mov     word[ds:_r1 + 50], '<<'
 
-    @@: mov     si,_r1
-        jmp     .@@_sh
+    @@: mov     si, _r1
+        jmp     ._sh
 
   .show_0x12:
         push    si
@@ -672,7 +672,7 @@ draw_vmodes_table:
         mov     word[ds:_r2 + 45], '<<'
 
     @@: mov     si, _r2
-        jmp     .@@_sh
+        jmp     ._sh
 
 ;-----------------------------------------------------------------------------
 ;Clear arrea of current video page (0xb800)
@@ -680,7 +680,7 @@ clear_vmodes_table:
         pusha
        ; draw frames
         push    es
-        push    0x0b800
+        push    0xb800
         pop     es
         mov     di, 1444
         xor     ax, ax
@@ -712,9 +712,9 @@ set_vmode:
         mov     bx, word[es:si + 2] ; resolution Y
 
 
-        mov     word[es:0x0900a], ax ; resolution X
-        mov     word[es:0x0900c], bx ; resolution Y
-        mov     word[es:0x0900b], cx ; number of mode
+        mov     [es:BOOT_X_RES], ax ; resolution X
+        mov     [es:BOOT_Y_RES], bx ; resolution Y
+        mov     [es:BOOT_VESA_MODE], cx ; number of mode
 
         cmp     cx, 0x12
         je      .mode0x12_0x13
@@ -727,15 +727,15 @@ set_vmode:
         ; VESA 2 and Vesa 3
         mov     ax, 0x4f01
         and     cx, 0x0fff
-        mov     di, mi ; 0x0a000
+        mov     di, mi ; 0xa000
         int     0x10
         ; LFB
         mov     eax, [es:mi.PhysBasePtr] ; di + 0x28]
-        mov     [es:0x09018], eax
+        mov     [es:BOOT_LFB], eax
         ; ---- vbe voodoo
         BytesPerLine equ 0x10
         mov     ax, [es:di + BytesPerLine]
-        mov     [es:0x09001], ax
+        mov     [es:BOOT_SCANLINE], ax
         ; BPP
         cmp     [es:mi.BitsPerPixel], 16
         jne     .l0
@@ -745,12 +745,12 @@ set_vmode:
 
   .l0:
         mov     al, byte[es:di + 0x19]
-        mov     [es:0x09000], al
+        mov     [es:BOOT_BPP], al
         jmp     .exit
 
   .mode0x12_0x13:
-        mov     byte[es:0x09000], 32
-        or      dword[es:0x09018], 0x0ffffffff ; 0x800000
+        mov     [es:BOOT_BPP], 32
+        or      [es:BOOT_LFB], -1 ; 0x800000
 
   .vesa12:
         ;  VESA 1.2 PM BANK SWITCH ADDRESS
@@ -767,13 +767,13 @@ set_vmode:
         add     eax, ebx
         push    0
         pop     es
-        mov     [es:0x09014], eax
+        mov     [es:BOOT_BANK_SW], eax
 
   .exit:
         ret
 
 
-;       mov     dword[es:0x09018], 0x0a0000
+;       mov     [es:BOOT_LFB], 0xa0000
 ;       ret
 
 ;=============================================================================

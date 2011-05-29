@@ -140,10 +140,10 @@ proc init_kernel_heap
         mov     [ebx + MEM_BLOCK.flags], FREE_BLOCK
 
         mov     [mem_block_mask], eax
-        mov     [mem_block_mask + 4], 0x080000000
+        mov     [mem_block_mask + 4], 0x80000000
 
         mov     [mem_block_list + 63 * 4], ebx
-        mov     byte[mem_block_map], 0x0fc
+        mov     byte[mem_block_map], 0xfc
         and     [heap_mutex], 0
         mov     [heap_blocks], 4095
         mov     [free_blocks], 4094
@@ -220,14 +220,14 @@ alloc_mem_block:
         add     ebx, 4
         cmp     ebx, ecx
         jb      .l1
-        xor     eax,eax
+        xor     eax, eax
         ret
 
   .found:
         btr     [ebx], eax
         mov     [mem_block_start], ebx
         sub     ebx, mem_block_map
-        lea     eax,[eax + ebx * 8]
+        lea     eax, [eax + ebx * 8]
         shl     eax, 5
         add     eax, [mem_block_arr]
         dec     [free_blocks]
@@ -663,11 +663,11 @@ HEAP_TOP  equ 0x5fc00000
 
 align 4
 proc init_heap
-        mov     ebx,[current_slot]
+        mov     ebx, [current_slot]
         mov     eax, [ebx + APPDATA.heap_top]
         test    eax, eax
         jz      @f
-        sub     eax,[ebx + APPDATA.heap_base]
+        sub     eax, [ebx + APPDATA.heap_base]
         sub     eax, 4096
         ret
 
@@ -711,7 +711,7 @@ proc user_alloc stdcall, alloc_size:dword
         mov     eax, [page_tabs + ebx * 4]
         test    al, FREE_BLOCK
         jz      .test_used
-        and     eax, 0x0fffff000
+        and     eax, 0xfffff000
         cmp     eax, ecx ; alloc_size
         jb      .m_next
         jz      @f
@@ -753,7 +753,7 @@ proc user_alloc stdcall, alloc_size:dword
         test    al, USED_BLOCK
         jz      .m_exit
 
-        and     eax, 0x0fffff000
+        and     eax, 0xfffff000
 
   .m_next:
         add     esi, eax
@@ -791,7 +791,7 @@ proc user_alloc_at stdcall, address:dword, alloc_size:dword
         shr     ebx, 12
         mov     eax, [page_tabs + ebx * 4]
         mov     ecx, eax
-        and     ecx, 0x0fffff000
+        and     ecx, 0xfffff000
         add     ecx, esi
         cmp     edx, ecx
         jb      .found
@@ -975,7 +975,7 @@ user_normalize:
   .next_free:
         test    bl, FREE_BLOCK
         jz      .err
-        and     dword [page_tabs + edx * 4], 0
+        and     dword[page_tabs + edx * 4], 0
         add     eax, ebx
         and     eax, not 4095
         or      eax, FREE_BLOCK
@@ -1071,7 +1071,7 @@ user_realloc:
         push    ebx ecx edx
         mov     edx, [current_slot]
         shl     ebx, 12
-        sub     ebx, [APPDATA.mem_size+edx]
+        sub     ebx, [APPDATA.mem_size + edx]
         neg     ebx
         call    update_mem_size
         pop     edx ecx ebx
@@ -1084,7 +1084,7 @@ user_realloc:
         jz      .ret
         push    esi
         mov     esi, [current_slot]
-        mov     esi, [APPDATA.heap_top+esi]
+        mov     esi, [APPDATA.heap_top + esi]
         shr     esi, 12
 
     @@: cmp     edx, esi
@@ -1145,7 +1145,7 @@ user_realloc:
         pop     edi
         mov     edx, [current_slot]
         shl     ebx, 12
-        add     ebx, [APPDATA.mem_size+edx]
+        add     ebx, [APPDATA.mem_size + edx]
         call    update_mem_size
         pop     eax edx ecx
         ret
@@ -1153,8 +1153,8 @@ user_realloc:
   .cant_inplace:
         push    esi edi
         mov     eax, [current_slot]
-        mov     esi, [APPDATA.heap_base+eax]
-        mov     edi, [APPDATA.heap_top+eax]
+        mov     esi, [APPDATA.heap_base + eax]
+        mov     edi, [APPDATA.heap_top + eax]
         shr     esi, 12
         shr     edi, 12
         sub     ebx, ecx
@@ -1228,7 +1228,7 @@ user_realloc:
         call    update_mem_size
         pop     ebx
 
-    @@: mov     dword [page_tabs + esi * 4], 2
+    @@: mov     dword[page_tabs + esi * 4], 2
         inc     esi
         dec     ebx
         jnz     @b
@@ -1269,7 +1269,7 @@ proc alloc_service
         btr     [srv_map], eax
         popf
         shl     eax, 0x02
-        lea     eax,[srv_tab + eax + eax * 8] ; srv_tab + eax * 36
+        lea     eax, [srv_tab + eax + eax * 8] ; srv_tab + eax * 36
         ret
 endp
 
@@ -1489,7 +1489,7 @@ align 4
 
         mov     esi, [esi + SMEM.base]
         shr     esi, 10
-        lea     edi, [page_tabs+eax]
+        lea     edi, [page_tabs + eax]
         add     esi, page_tabs
 
         mov     edx, [access]
@@ -1498,7 +1498,7 @@ align 4
         or      edx, PG_USER + PG_SHARED
 
     @@: lodsd
-        and     eax, 0x0fffff000
+        and     eax, 0xfffff000
         or      eax, edx
         stosd
         loop @b
@@ -1570,7 +1570,7 @@ proc shmem_close stdcall, name:dword
 
         stdcall user_free, [esi + SMAP.base]
 
-        mov     eax,esi
+        mov     eax, esi
         call    [esi + APPOBJ.destroy]
 
     @@: popfd

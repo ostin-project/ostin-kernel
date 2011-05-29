@@ -68,7 +68,7 @@ proc udp_rx stdcall
         ; I will accept the first incoming response to be the one
         ; I bind to, if the socket is opened with a destination IP address of
         ; 255.255.255.255
-        cmp     [ebx + SOCKET.RemoteIP], 0x0ffffffff
+        cmp     [ebx + SOCKET.RemoteIP], 0xffffffff
         je      @f
 
         mov     eax, [edx + IP_PACKET.SourceAddress] ; get the Source address from the IP packet

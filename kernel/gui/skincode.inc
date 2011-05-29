@@ -92,7 +92,7 @@ ends
 
 load_default_skin:
         mov     [_skinh], 22
-        mov     ebx,_skin_file_default
+        mov     ebx, _skin_file_default
         call    read_skin_file
         ret
 
@@ -184,7 +184,7 @@ parse_skin_data:
   .next_bitmap:
         mov     ecx, [ebx + SKIN_BITMAPS.data]
         add     ecx, skin_data
-        mov     [edx + 4],eax
+        mov     [edx + 4], eax
         mov     eax, [ecx + 0]
         mov     [edx + 8], eax
         add     ecx, 8
@@ -232,7 +232,7 @@ parse_skin_data:
         ret
 
 sys_putimage_with_check:
-        or      ebx,ebx
+        or      ebx, ebx
         jz      @f
         call    sys_putimage.forced
 

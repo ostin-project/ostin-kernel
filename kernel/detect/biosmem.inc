@@ -19,11 +19,11 @@
 
         push    ds
         ; first call to fn E820
-        mov     eax, 0x0e820
+        mov     eax, 0xe820
         xor     ebx, ebx
         mov     es, bx
         mov     ds, bx
-        mov     di, 0x09104
+        mov     di, 0x9104
         mov     [di - 4], ebx ; no blocks yet
         mov     ecx, 20
         mov     edx, 0x534d4150
@@ -35,16 +35,16 @@
 e820_mem_loop:
         cmp     byte[di + 16], 1 ; ignore non-free areas
         jnz     e820_mem_next
-        inc     byte[0x09100]
+        inc     byte[0x9100]
         add     di, 20
 
 e820_mem_next:
         ; consequent calls to fn E820
         test    ebx, ebx
         jz      e820_test_done
-        cmp     byte[0x09100], 32
+        cmp     byte[0x9100], 32
         jae     e820_test_done
-        mov     eax, 0x0e820
+        mov     eax, 0xe820
         int     15h
         jc      e820_test_done
         jmp     e820_mem_loop

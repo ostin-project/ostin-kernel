@@ -83,7 +83,7 @@ file_system:
         ; Extract parameters
 ;       add     eax, std_application_base_address ; abs start of info block
 
-        cmp     dword[eax + 0],15 ; GET_DISK_INFO
+        cmp     dword[eax + 0], 15 ; GET_DISK_INFO
         je      fs_info
 
         cmp     dword[CURRENT_TASK], 1 ; no memory checks for kernel requests
@@ -102,7 +102,7 @@ file_system:
         mov     esi, buffer_failed
         call    sys_msg_board_str
 ;       mov     eax, 7
-        mov     dword [esp + 36] ,7
+        mov     dword[esp + 36], 7
         ret
 
 iglobal
@@ -124,7 +124,7 @@ endg
         jz      .error_output
 
   area_in_app_mem:
-        mov     eax,edx
+        mov     eax, edx
 
   no_checks_for_kernel:
   fs_read:
@@ -363,7 +363,7 @@ choice_necessity_partition_1:
         xor     eax, eax
         mov     [hd_entries], eax ; entries in hd cache
         mov     edx, DRIVE_DATA + 2
-        cmp     ecx, 0x080
+        cmp     ecx, 0x80
         jb      search_partition_array
         mov     ecx, 4
 
@@ -467,7 +467,7 @@ old_path_harddisk:
   fs_noharddisk:
         mov     eax, 5 ; file not found
         ; а может быть, возвращать другой код ошибки?
-        mov     ebx, [esp+24+24] ; do not change ebx in application
+        mov     ebx, [esp + 24 + 24] ; do not change ebx in application
 
   file_system_return:
         add     esp, 24

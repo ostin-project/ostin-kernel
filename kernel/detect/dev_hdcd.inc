@@ -95,13 +95,13 @@ ReadHDD_ID:
         ; Послать команду идентификации устройства
         mov     [ATAFeatures], 0
         mov     [ATAHead], 0
-        mov     [ATACommand], 0x0ec
+        mov     [ATACommand], 0xec
         call    SendCommandToHDD
         cmp     [DevErrorCode], 0 ; проверить код ошибки
         jne     .End  ; закончить, сохранив код ошибки
         mov     dx, [ATABasePortAddr]
         add     dx, 7 ; адрес регистра состояни
-        mov     ecx, 0x0ffff
+        mov     ecx, 0x0000ffff
 
   .WaitCompleet:
         ; Проверить время выполнения команды
@@ -109,8 +109,8 @@ ReadHDD_ID:
 ;       cmp     ecx,0
         jz      .Error1 ; ошибка тайм-аута
         ; Проверить готовность
-        in      al,dx
-        test    al, 0x080 ; состояние сигнала BSY
+        in      al, dx
+        test    al, 0x80 ; состояние сигнала BSY
         jnz     .WaitCompleet
         test    al, 1 ; состояние сигнала ERR
         jnz     .Error6
@@ -123,12 +123,12 @@ ReadHDD_ID:
         mov     dx, [ATABasePortAddr] ; регистр данных
         mov     cx, 256 ; число считываемых слов
         rep     insw ; принять блок данных
-	ret
+        ret
 
   .Error1:
         ; Записать код ошибки
         mov     [DevErrorCode], 1
-	ret
+        ret
 
   .Error6:
         mov     [DevErrorCode], 6
@@ -202,7 +202,7 @@ SendCommandToHDD:
         cmp     al, 1 ; проверить номера диска
         ja      .Err4
         shl     al, 4
-        or      al, 010100000b
+        or      al, 10100000b
         out     dx, al
         ; Ожидать, пока диск не будет готов
         inc     dx
@@ -222,7 +222,7 @@ SendCommandToHDD:
         ; Прочитать регистр состояни
         in      al, dx
         ; Проверить состояние сигнала BSY
-        test    al, 0x080
+        test    al, 0x80
         jnz     .WaitHDReady
         ; Проверить состояние сигнала DRQ
         test    al, 0x08
@@ -251,7 +251,7 @@ SendCommandToHDD:
         cmp     [ATAHead], 0x0f ; проверить номер головки
         ja      .Err5
         or      al, [ATAHead]
-        or      al, 010100000b
+        or      al, 10100000b
         mov     ah, [ATAAddressMode]
         shl     ah, 6
         or      al, ah
@@ -304,23 +304,23 @@ ReadCD_ID:
         mov     [ATASectorNumber], 0
         mov     [ATACylinder], 0
         mov     [ATAHead], 0
-        mov     [ATACommand], 0x0a1
+        mov     [ATACommand], 0xa1
         call    SendCommandToHDD
         cmp     [DevErrorCode], 0 ; проверить код ошибки
         jne     .End_1 ; закончить, сохранив код ошибки
         ; Ожидать готовность данных HDD
         mov     dx, [ATABasePortAddr]
         add     dx, 7 ; порт 1х7h
-        mov  	ecx, 0x0ffff
+        mov     ecx, 0x0000ffff
 
   .WaitCompleet_1:
         ; Проверить врем
-        dec  	ecx
-;       cmp  	ecx, 0
+        dec     ecx
+;       cmp     ecx, 0
         jz      .Error1_1 ; ошибка тайм-аута
         ; Проверить готовность
         in      al, dx
-        test    al, 0x080 ; состояние сигнала BSY
+        test    al, 0x80 ; состояние сигнала BSY
         jnz     .WaitCompleet_1
         test    al, 1 ; состояние сигнала ERR
         jnz     .Error6_1
@@ -337,11 +337,11 @@ ReadCD_ID:
 
   .Error1_1:
         ; Записать код ошибки
-        mov     [DevErrorCode],1
+        mov     [DevErrorCode], 1
         ret
 
   .Error6_1:
-        mov     [DevErrorCode],6
+        mov     [DevErrorCode], 6
 
   .End_1:
         ret
@@ -372,13 +372,13 @@ DeviceReset:
         cmp     al, 1 ; проверить номера диска
         ja      .Err4_2
         shl     al, 4
-        or      al, 010100000b
+        or      al, 10100000b
         out     dx, al
         ; Послать команду "Сброс"
         mov     al, 0x08
         inc     dx ; регистр команд
         out     dx, al
-        mov     ecx, 0x080000
+        mov     ecx, 0x00080000
 
   .WaitHDReady_1:
         ; Проверить время ожидани
@@ -386,9 +386,9 @@ DeviceReset:
 ;       cmp     ecx, 0
         je      .Err1_2 ;ошибка тайм-аута
         ; Прочитать регистр состояни
-        in      al,dx
+        in      al, dx
         ; Проверить состояние сигнала BSY
-        test    al, 0x080
+        test    al, 0x80
         jnz     .WaitHDReady_1
         ; Сбросить признак ошибки
         mov     [DevErrorCode], 0

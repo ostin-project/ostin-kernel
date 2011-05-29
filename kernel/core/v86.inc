@@ -48,7 +48,7 @@ v86_create:
         ; first half (0x800 bytes) is page table for addresses 0 - 0x100000,
         ; second half is for V86-to-linear translation.
         ; Third and fourth are for I/O permission map.
-        push    0x08000 ; blocks less than 8 pages are discontinuous
+        push    0x8000 ; blocks less than 8 pages are discontinuous
         call    kernel_alloc
         test    eax, eax
         jz      .fail2
@@ -78,7 +78,7 @@ v86_create:
         add     edi, (OS_BASE shr 20) - 4
         push    esi
         mov     esi, (OS_BASE shr 20) + sys_pgdir
-        mov     ecx, 0x080000000 shr 22
+        mov     ecx, 0x80000000 shr 22
         rep     movsd
 
         mov     eax, [ebx + V86_machine.pagedir] ;root dir also is
@@ -100,9 +100,9 @@ v86_create:
         ; (I have seen one computer with EBDA segment = 0x9D80,
         ; all other computers use less memory)
         mov     ecx, 4
-        mov     edx, 0x09C000
+        mov     edx, 0x9c000
         push    eax
-        lea     edi, [eax + 0x09c * 4]
+        lea     edi, [eax + 0x9c * 4]
 
     @@: lea     eax, [edx + OS_BASE]
         mov     [edi + 0x0800], eax
@@ -115,7 +115,7 @@ v86_create:
         ; addresses 0xC0000 - 0xFFFFF - BIOS code (shared between all machines!)
         ; physical address = 0xC0000
         ; linear address = 0x800C0000
-        mov     ecx, 0x0c0
+        mov     ecx, 0xc0
 
     @@: mov     edx, ecx
         shl     edx, 12
@@ -226,21 +226,21 @@ init_sys_v86:
         mov     [sys_v86_machine], eax
         test    eax, eax
         jz      .ret
-        mov     byte[OS_BASE + 0x500], 0x0cd
+        mov     byte[OS_BASE + 0x500], 0xcd
         mov     byte[OS_BASE + 0x501], 0x13
-        mov     byte[OS_BASE + 0x502], 0x0f4
-        mov     byte[OS_BASE + 0x503], 0x0cd
+        mov     byte[OS_BASE + 0x502], 0xf4
+        mov     byte[OS_BASE + 0x503], 0xcd
         mov     byte[OS_BASE + 0x504], 0x10
-        mov     byte[OS_BASE + 0x505], 0x0f4
+        mov     byte[OS_BASE + 0x505], 0xf4
         mov     esi, eax
         mov     ebx, [eax + V86_machine.pagedir]
         ; one page for stack, two pages for results (0x2000 bytes = 16 sectors)
-        mov     dword[ebx + 0x099 * 4 + 0x1000], 0x099000 or 0111b
-        mov     dword[ebx + 0x099 * 4 + 0x1800], OS_BASE + 0x099000
-        mov     dword[ebx + 0x09a * 4 + 0x1000], 0x09a000 or 0111b
-        mov     dword[ebx + 0x09a * 4 + 0x1800], OS_BASE + 0x09a000
-        mov     dword[ebx + 0x09b * 4 + 0x1000], 0x09b000 or 0111b
-        mov     dword[ebx + 0x09b * 4 + 0x1800], OS_BASE + 0x09b000
+        mov     dword[ebx + 0x099 * 4 + 0x1000], 0x99000 or 0111b
+        mov     dword[ebx + 0x099 * 4 + 0x1800], OS_BASE + 0x99000
+        mov     dword[ebx + 0x09a * 4 + 0x1000], 0x9a000 or 0111b
+        mov     dword[ebx + 0x09a * 4 + 0x1800], OS_BASE + 0x9a000
+        mov     dword[ebx + 0x09b * 4 + 0x1000], 0x9b000 or 0111b
+        mov     dword[ebx + 0x09b * 4 + 0x1800], OS_BASE + 0x9b000
 
 if ~DEBUG_SHOW_IO
 
@@ -303,15 +303,15 @@ v86_start:
         push    dword[ecx + APPDATA.io_map]
         push    dword[ecx + APPDATA.io_map + 4]
         mov     dword[ecx + APPDATA.io_map], eax
-        mov     dword[page_tabs + (tss._io_map_0 shr 10)], eax
+        mov     dword[page_tabs + (tss.io_map_0 shr 10)], eax
         add     eax, 0x1000
         mov     dword[ecx + APPDATA.io_map + 4], eax
-        mov     dword[page_tabs + (tss._io_map_1 shr 10)], eax
+        mov     dword[page_tabs + (tss.io_map_1 shr 10)], eax
 
         push    [ecx + APPDATA.dir_table]
         push    [ecx + APPDATA.saved_esp0]
         mov     [ecx + APPDATA.saved_esp0], esp
-        mov     [tss._esp0], esp
+        mov     [tss.esp0], esp
 
         mov     eax, [esi + V86_machine.pagedir]
         call    get_pg_addr
@@ -402,38 +402,38 @@ v86_exc_c:
         shl     esi, 4
         add     esi, [esp + v86_regs.eip]
         lodsb
-        cmp     al, 0x0cd ; int xx command = CD xx
+        cmp     al, 0xcd ; int xx command = CD xx
         jz      .handle_int
-        cmp     al, 0x0cf
+        cmp     al, 0xcf
         jz      .handle_iret
-        cmp     al, 0x0f3
+        cmp     al, 0xf3
         jz      .handle_rep
-        cmp     al, 0x0ec
+        cmp     al, 0xec
         jz      .handle_in
-        cmp     al, 0x0ed
+        cmp     al, 0xed
         jz      .handle_in_word
-        cmp     al, 0x0ee
+        cmp     al, 0xee
         jz      .handle_out
-        cmp     al, 0x0ef
+        cmp     al, 0xef
         jz      .handle_out_word
-        cmp     al, 0x0e4
+        cmp     al, 0xe4
         jz      .handle_in_imm
-        cmp     al, 0x0e6
+        cmp     al, 0xe6
         jz      .handle_out_imm
-        cmp     al, 0x09c
+        cmp     al, 0x9c
         jz      .handle_pushf
-        cmp     al, 0x09d
+        cmp     al, 0x9d
         jz      .handle_popf
-        cmp     al, 0x0fa
+        cmp     al, 0xfa
         jz      .handle_cli
-        cmp     al, 0x0fb
+        cmp     al, 0xfb
         jz      .handle_sti
         cmp     al, 0x66
         jz      .handle_66
         jmp     .nogp
 
   .handle_int:
-        cmp     word[esp + v86_regs.eip], 0x0ffff
+        cmp     word[esp + v86_regs.eip], 0xffff
         jae     .nogp
         xor     eax, eax
         lodsb
@@ -596,7 +596,7 @@ v86_exc_c:
         iretd
 
   .handle_popf:
-        cmp     word[esp + v86_regs.esp], 0x0ffff
+        cmp     word[esp + v86_regs.esp], 0xffff
         jnz     @f
         mov     bl, 12
         jmp     .nogp
@@ -672,7 +672,7 @@ v86_exc_c:
         iretd
 
   .handle_rep:
-        cmp     word[esp + v86_regs.eip], 0x0ffff
+        cmp     word[esp + v86_regs.eip], 0xffff
         jae     .nogp
         lodsb
         cmp     al, 0x6e
@@ -689,7 +689,7 @@ v86_exc_c:
 
   .handle_in_imm:
   .handle_out_imm:
-        cmp     word[esp + v86_regs.eip], 0x0ffff
+        cmp     word[esp + v86_regs.eip], 0xffff
         jae     .nogp
         lodsb
         movzx   ebx, al
@@ -697,16 +697,16 @@ v86_exc_c:
         jmp     .invalid_io
 
   .handle_66:
-        cmp     word[esp + v86_regs.eip], 0x0ffff
+        cmp     word[esp + v86_regs.eip], 0xffff
         jae     .nogp
         lodsb
-        cmp     al, 0x09c
+        cmp     al, 0x9c
         jz      .handle_pushfd
-        cmp     al, 0x09d
+        cmp     al, 0x9d
         jz      .handle_popfd
-        cmp     al, 0x0ef
+        cmp     al, 0xef
         jz      .handle_out_dword
-        cmp     al, 0x0ed
+        cmp     al, 0xed
         jz      .handle_in_dword
         jmp     .nogp
 
@@ -804,7 +804,7 @@ end if
         xor     eax, eax
 
   .exit:
-        mov     [esp + sizeof.v86_regs + 0x10 + 0x1C], eax
+        mov     [esp + sizeof.v86_regs + 0x10 + 0x1c], eax
         mov     [esp + sizeof.v86_regs + 0x10 + 0x18], ebx
 
         mov     edx, [esp + sizeof.v86_regs + 0x10 + 0x14]
@@ -826,15 +826,15 @@ end if
         shl     ecx, 8
         pop     eax
         mov     [SLOT_BASE + ecx + APPDATA.saved_esp0], eax
-        mov     [tss._esp0], eax
+        mov     [tss.esp0], eax
         pop     eax
         mov     [SLOT_BASE + ecx + APPDATA.dir_table], eax
         pop     ebx
         mov     dword[SLOT_BASE + ecx + APPDATA.io_map + 4], ebx
-        mov     dword[page_tabs + (tss._io_map_1 shr 10)], ebx
+        mov     dword[page_tabs + (tss.io_map_1 shr 10)], ebx
         pop     ebx
         mov     dword[SLOT_BASE + ecx + APPDATA.io_map], ebx
-        mov     dword[page_tabs + (tss._io_map_0 shr 10)], ebx
+        mov     dword[page_tabs + (tss.io_map_0 shr 10)], ebx
         mov     cr3, eax
 ;       mov     [irq_tab + 5 * 4], 0
         sti
@@ -855,7 +855,7 @@ end if
 ;
 ;   @@: add     dx, 8
 ;       in      al, dx
-;       cmp     al, 0x0ff
+;       cmp     al, 0xff
 ;       jz      @f
 ;       test    al, 4
 ;       jnz     .1
@@ -864,13 +864,13 @@ end if
 ;       ret
 ;
 ; .1:
-;       or      al, 0x084
+;       or      al, 0x84
 ;       out     dx, al
 ;
 ; .2:
 ;       mov     dx, 0x30f7
 ;       in      al, dx
-;       mov     byte[BOOT_VAR + 0x48e], 0x0ff
+;       mov     byte[BOOT_VAR + 0x48e], 0xff
 ;       ret
 
 v86_irq:
@@ -943,7 +943,7 @@ v86_irq2:
         out     0x20, al
         cmp     edi, 8
         jb      @f
-        out     0x0a0, al
+        out     0xa0, al
 
     @@: popad
         iretd

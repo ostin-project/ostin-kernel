@@ -79,7 +79,7 @@ esp equ _esp
   if ~_num eq
    if _num eqtype eax
     if _num in <eax, ebx, ecx, edx, edi, ebp, esp>
-     mov esi,_num
+     mov esi, _num
     else if ~_num eq esi
      movzx esi, _num
     end if
@@ -228,7 +228,7 @@ macro DEBUGH_N _sign, _num, _hex {
  else
 ;  add esp, 4 * 8 + 4
 esp equ esp + 4 * 8 + 4
-  mov eax,dword _hex
+  mov eax, dword _hex
 esp equ _esp
 ;  sub esp, 4 * 8 + 4
  end if
@@ -429,7 +429,7 @@ macro __include_debug_strings dummy, [_id, _fmt, _len] {
      a1 = a1 + 1
      a2 = a2 + 1
     else
-     db c1 and 0x0ff
+     db c1 and 0xff
     end if
    end repeat
    db 0

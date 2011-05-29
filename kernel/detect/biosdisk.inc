@@ -19,11 +19,11 @@
 
         xor     cx, cx
         mov     es, cx
-        mov     di, 0x09080
-        mov     byte[es:di-1], cl
+        mov     di, BOOT_BIOS_DISKS
+        mov     byte[es:di - 1], cl
         cmp     [preboot_biosdisk], 1
         jnz     bdde
-        mov     dl, 0x080
+        mov     dl, 0x80
 
 bdds:
         mov     ah, 0x15
@@ -38,16 +38,16 @@ bdds:
         push    ds
         push    es
         pop     ds
-        mov     si, 0x0a000
+        mov     si, 0xa000
         mov     word[si], 0x1e
         mov     ah, 0x48
         int     0x13
         pop     ds
         jc      bddc2
-        inc     byte[es:0x0907f]
+        inc     [es:BOOT_BIOS_DISKS_COUNT]
         cmp     word[es:si], 0x1e
         jb      bddl
-        cmp     word[es:si + 0x1a], 0x0ffff
+        cmp     word[es:si + 0x1a], 0xffff
         jz      bddl
         mov     al, dl
         stosb
@@ -59,7 +59,7 @@ bdds:
         mov     al, byte[si + 4]
         shr     al, 4
         and     ax, 1
-        cmp     word[si], 0x1F0
+        cmp     word[si], 0x1f0
         jz      @f
         inc     ax
         inc     ax
@@ -75,7 +75,7 @@ bdds:
 bddl:
         mov     al, dl
         stosb
-        xor     ax,ax
+        xor     ax, ax
         stosb
         dec     ax
         stosw

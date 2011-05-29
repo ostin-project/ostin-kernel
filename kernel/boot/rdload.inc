@@ -18,7 +18,7 @@
         cmp     [boot_dev + OS_BASE + 0x10000], 1
         jne     no_sys_on_hd
 
-        test    byte[DRIVE_DATA +1], 0x40
+        test    byte[DRIVE_DATA + 1], 0x40
         jz      position_2
         mov     [hdbase], 0x1f0
         mov     [hdid], 0
@@ -121,19 +121,19 @@ no_sys_on_hd:
         ; format_ram_disk
         mov     edi, RAMDISK
         mov     ecx, 0x1080
-        xor     eax,eax
+        xor     eax, eax
 
     @@: stosd
         loop    @b
 
         mov     ecx, 0x58f7f
-        mov     eax, 0x0f6f6f6f6
+        mov     eax, 0xf6f6f6f6
 
     @@: stosd
         loop    @b
 
-        mov     dword[RAMDISK + 0x200], 0x0fffff0 ; fat table
-        mov     dword[RAMDISK + 0x4200], 0x0fffff0
+        mov     dword[RAMDISK + 0x200], 0x00fffff0 ; fat table
+        mov     dword[RAMDISK + 0x4200], 0x00fffff0
 
 not_format_ram_disk:
 yes_sys_on_hd:

@@ -35,10 +35,10 @@ macro diff10 title, l1, l2
   display 13, 10
 }
 
-macro Mov op1,op2,op3 ; op1 = op2 = op3
+macro Mov op1, op2, op3 ; op1 = op2 = op3
 {
-        mov     op2,op3
-        mov     op1,op2
+        mov     op2, op3
+        mov     op1, op2
 }
 
 macro save_ring3_context

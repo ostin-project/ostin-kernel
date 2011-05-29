@@ -105,7 +105,7 @@ map_PE: ; stdcall base:dword, image:dword
         jbe     .L6
         sub     ecx, eax
         add     eax, [edx + 260]
-        lea     edi, [eax+ebp]
+        lea     edi, [eax + ebp]
 
         xor     eax, eax
         rep     stosb
@@ -133,7 +133,7 @@ map_PE: ; stdcall base:dword, image:dword
   .L12:
         lea     ebx, [eax - 8]
         xor     edi, edi
-        shr     ebx,1
+        shr     ebx, 1
         jmp     .L13
 
   .L14:

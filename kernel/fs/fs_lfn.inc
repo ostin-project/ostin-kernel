@@ -125,12 +125,12 @@ file_system_lfn:
         jmp     .parse_normal
 
   .notcurdir:
-        cmp     byte [esi], 0
+        cmp     byte[esi], 0
         jz      .rootdir
         call    process_replace_file_name
 
   .parse_normal:
-        cmp     dword [ebx], 7
+        cmp     dword[ebx], 7
         jne     @f
         mov     edx, [ebx + 4]
         mov     ebx, [ebx + 8]
@@ -558,7 +558,7 @@ fs_OnHd:
         mov     [hdpos], eax
         cmp     ecx, 0x100
         jae     fs_OnHdAndBd.nf
-        cmp     cl, [DRIVE_DATA+1+eax]
+        cmp     cl, [DRIVE_DATA + 1 + eax]
 
 fs_OnHdAndBd:
         jbe     @f
@@ -566,7 +566,7 @@ fs_OnHdAndBd:
   .nf:
         call    free_hd_channel
         and     [hd1_status], 0
-        mov     dword [image_of_eax], 5 ; not found
+        mov     dword[image_of_eax], 5 ; not found
         ret
 
 ;   @@: mov     [fat32part], ecx
@@ -779,7 +779,7 @@ fs_NextRamdisk:
 
 fs_NextFloppy:
         ; we have /fd/1 iff (([DRIVE_DATA] and 0xF0) != 0) and /fd/2 iff (([DRIVE_DATA] and 0x0F) != 0)
-        test    byte[DRIVE_DATA], 0x0f0
+        test    byte[DRIVE_DATA], 0xf0
         jz      .no1
         test    eax, eax
         jnz     .no1
@@ -888,7 +888,7 @@ biosdisk_handler:
         jz      @f
         dec     esi
 
-    @@: add     dl, 0x080
+    @@: add     dl, 0x80
         xor     ecx, ecx
 
     @@: cmp     dl, [BiosDisksData + ecx * 4]
@@ -922,9 +922,9 @@ fs_OnBd:
         ; edx = disk number, ecx = partition number
         ; esi+ebp = name
         call    reserve_hd1
-        add     edx, 0x080
+        add     edx, 0x80
         mov     [hdpos], edx
-        cmp     ecx, [BiosDiskPartitions + (edx - 0x080) * 4]
+        cmp     ecx, [BiosDiskPartitions + (edx - 0x80) * 4]
         jmp     fs_OnHdAndBd
 
 ; This handler is called when virtual root is enumerated
@@ -941,7 +941,7 @@ biosdisk_enum_root:
         jae     .end
         push    eax
         movzx   eax, byte[BiosDisksData + eax * 4]
-        sub     al, 0x080
+        sub     al, 0x80
         push    eax
         mov     al, 'b'
         stosb
@@ -1062,7 +1062,7 @@ max_cur_dir equ 0x1000
         repne   scasb ; find zerro at and string
         jnz     .error ; no zero in cur_dir: internal error, should not happen
 
-        sub     edi,ebx ; lenght for copy
+        sub     edi, ebx ; lenght for copy
         inc     edi
         mov     [esp + 32 + 8], edi ; return in eax
 

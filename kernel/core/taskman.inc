@@ -277,7 +277,7 @@ end virtual
 
         cmp     dword[eax], 'MENU'
         jne     .fail
-        cmp     word[eax + 4],'ET'
+        cmp     word[eax + 4], 'ET'
         jne     .fail
 
         cmp     word[eax + 6], '00'
@@ -687,7 +687,7 @@ check_region:
         cmp     word[CURRENT_TASK + eax + 0x0a], 0
         jnz     .failed
         shl     eax, 3
-        mov     eax, [SLOT_BASE + eax + 0x0b8]
+        mov     eax, [SLOT_BASE + eax + 0xb8]
         test    eax, eax
         jz      .failed
 
@@ -785,9 +785,9 @@ endl
         jbe     @f
         mov     ecx, ebx
 
-    @@: cmp     ecx, 0x08000
+    @@: cmp     ecx, 0x8000
         jna     @f
-        mov     ecx, 0x08000
+        mov     ecx, 0x8000
 
     @@: mov     ebx, [offset]
 
@@ -857,9 +857,9 @@ endl
         jbe     @f
         mov     ecx, ebx
 
-    @@: cmp     ecx, 0x08000
+    @@: cmp     ecx, 0x8000
         jna     @f
-        mov     ecx, 0x08000
+        mov     ecx, 0x8000
 
     @@: mov     ebx, [offset]
 ;       add     ebx, new_app_base
@@ -963,7 +963,7 @@ endl
         mov     [edx + APPDATA.dir_table], ecx ; copy page directory
 
         mov     eax, [ebx + APPDATA.dlls_list_ptr]
-        mov     [edx + APPDATA.dlls_list_ptr],eax
+        mov     [edx + APPDATA.dlls_list_ptr], eax
 
         mov     eax, [ebx + APPDATA.tls_base]
         test    eax, eax
@@ -1062,7 +1062,7 @@ endl
         mov     [eax + SLOT_BASE + APPDATA.io_map + 4], ecx
 
         mov     esi, fpu_data
-        mov     ecx, 512/4
+        mov     ecx, 512 / 4
         rep     movsd
 
         cmp     ebx, [TASK_COUNT]
@@ -1089,10 +1089,10 @@ endl
         push    ebx
         stdcall kernel_alloc, 0x1000
         pop     ebx
-        mov     esi,[current_slot]
-        mov     esi,[esi + APPDATA.cur_dir]
-        mov     ecx,0x1000 / 4
-        mov     edi,eax
+        mov     esi, [current_slot]
+        mov     esi, [esi + APPDATA.cur_dir]
+        mov     ecx, 0x1000 / 4
+        mov     edi, eax
         mov     [ebx + SLOT_BASE + APPDATA.cur_dir], eax
         rep     movsd
 
@@ -1101,9 +1101,9 @@ endl
         mov     dword[CURRENT_TASK + ebx + 0x10], eax
 
   .add_command_line:
-        mov     edx,[params]
-        mov     edx,[edx] ; app_cmdline
-        test    edx,edx
+        mov     edx, [params]
+        mov     edx, [edx] ; app_cmdline
+        test    edx, edx
         jz      @f ; application doesn't need parameters
 
         mov     eax, edx
@@ -1179,7 +1179,7 @@ endl
         mov     eax, [esi + 0x08] ; app_eip
         mov     [ebx + REG_EIP], eax ; app_entry
         mov     dword[ebx + REG_CS], app_code
-        mov     dword[ebx + REG_EFLAGS], EFL_IOPL1+EFL_IF
+        mov     dword[ebx + REG_EFLAGS], EFL_IOPL1 + EFL_IF
 
         mov     eax, [esi + 0x0c] ; app_esp
         mov     [ebx + REG_APP_ESP], eax ; app_stack

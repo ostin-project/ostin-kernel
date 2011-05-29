@@ -808,7 +808,7 @@ proc stateTCB_ESTABLISHED stdcall, sockAddr:DWORD
 
         ; Ignore all packets with sequnce number other than next expected
 
-        ; recv.nxt is in dword [edx+24], in inet format
+        ; recv.nxt is in dword[edx+24], in inet format
         ; recv seq is in [sktAddr]+56, in inet format
         ; just do a comparision
         mov     eax, [ebx + SOCKET.RCV_NXT]
@@ -816,7 +816,7 @@ proc stateTCB_ESTABLISHED stdcall, sockAddr:DWORD
         jne     .exit
 
         ; Did we receive a FIN or RST?
-        test    [edx + 20 + TCP_PACKET.Flags], TH_FIN+TH_RST
+        test    [edx + 20 + TCP_PACKET.Flags], TH_FIN + TH_RST
         jz      .check_ack
 
         ; It was a fin or reset.

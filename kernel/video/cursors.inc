@@ -68,14 +68,14 @@ endl
         add     eax, 128
         mov     [pAnd], eax
         mov     eax, [esi + 4]
-        mov     [width],eax
+        mov     [width], eax
         mov     ebx, [esi + 8]
         shr     ebx, 1
         mov     [height], ebx
 
         mov     edi, [dst]
-        add     edi, 32*31*4
-        mov     [rBase],edi
+        add     edi, 32 * 31 * 4
+        mov     [rBase], edi
 
         mov     esi, [pQuad]
 
@@ -98,7 +98,7 @@ endl
         setc    cl
         mov     ecx, [esi + ecx * 4]
         and     ecx, edx
-        and     edx, 0x0ff000000
+        and     edx, 0xff000000
         or      edx, ecx
         mov     [edi], edx
 
@@ -123,7 +123,7 @@ endl
         add     eax, 0x200
         mov     [pAnd], eax
         mov     eax, [esi + 4]
-        mov     [width],eax
+        mov     [width], eax
         mov     ebx, [esi + 8]
         shr     ebx, 1
         mov     [height], ebx
@@ -147,11 +147,11 @@ endl
         dec     edx
 
         movzx   ecx, byte[ebx]
-        and     cl, 0x0f0
+        and     cl, 0xf0
         shr     ecx, 2
         mov     ecx, [esi + ecx]
         and     ecx, edx
-        and     edx, 0x0ff000000
+        and     edx, 0xff000000
         or      edx, ecx
         mov     [edi], edx
 
@@ -164,7 +164,7 @@ endl
         and     cl, 0x0f
         mov     ecx, [esi + ecx * 4]
         and     ecx, edx
-        and     edx, 0x0ff000000
+        and     edx, 0xff000000
         or      edx, ecx
         mov     [edi + 4], edx
 
@@ -215,7 +215,7 @@ endl
         movzx   ecx, byte[ebx]
         mov     ecx, [esi + ecx * 4]
         and     ecx, edx
-        and     edx, 0x0ff000000
+        and     edx, 0xff000000
         or      edx, ecx
         mov     [edi], edx
 
@@ -256,14 +256,14 @@ endl
         mov     [counter], 32
 
     @@: xor     edx, edx
-        shl     eax,1
+        shl     eax, 1
         setc    dl
         dec     edx
 
         mov     ecx, [ebx]
         and     ecx, 0x00ffffff
         and     ecx, edx
-        and     edx, 0x0ff000000
+        and     edx, 0xff000000
         or      edx, ecx
         mov     [edi], edx
         add     ebx, 3
@@ -294,7 +294,7 @@ proc set_cursor stdcall, hcursor:dword
   .fail:
         mov     eax, [def_cursor]
         mov     ebx, [current_slot]
-        xchg    eax, [ebx+APPDATA.cursor]
+        xchg    eax, [ebx + APPDATA.cursor]
         ret
 endp
 
@@ -304,8 +304,8 @@ endp
 ;  ecx= flags
 create_cursor:
 .src     equ esp
-.flags   equ esp+4
-.hcursor equ esp+8
+.flags   equ esp + 4
+.hcursor equ esp + 8
 
         sub     esp, 4 ; space for .hcursor
         push    ecx
@@ -642,11 +642,11 @@ endl
 
   .pix:
         lodsd
-        test    eax, 0x0ff000000
+        test    eax, 0xff000000
         jz      @f
         mov     [edi], ax
         shr     eax, 16
-        mov     [edi + 2],al
+        mov     [edi + 2], al
 
     @@: add     edi, 3
         dec     ecx
@@ -742,12 +742,12 @@ endl
         mov     ecx, [cur.w]
         mov     esi, edx
         mov     edi, ebx
-        add     edx, 32*4
+        add     edx, 32 * 4
         add     ebx, [BytesPerScanLine]
 
   .pix:
         lodsd
-        test    eax, 0x0ff000000
+        test    eax, 0xff000000
         jz      @f
         mov     [edi], eax
 

@@ -287,7 +287,7 @@ debug_set_drx:
         test    byte[eax + 0x10], 0x55
         jnz     .okret
 ;       imul    eax, ebp, tss_step/32
-;       and     byte [eax + tss_data + TSS._trap], not 1
+;       and     byte[eax + tss_data + TSS._trap], not 1
         and     [ebp * 8 + SLOT_BASE + APPDATA.dbg_state], not 1
 
   .okret:
@@ -308,7 +308,7 @@ debug_set_drx:
   .new:
         ; add new breakpoint
         ; dl=index; dh=flags; esi=address
-        test    dh, 0x0f0
+        test    dh, 0xf0
         jnz     .errret
         mov     cl, dh
         and     cl, 3
@@ -425,7 +425,7 @@ debugger_notify:
         add     esp, 12
         jmp     .ret
 
-    @@: cmp     dword [ecx], 0
+    @@: cmp     dword[ecx], 0
         jg      @f
 
   .2:

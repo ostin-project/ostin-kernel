@@ -99,7 +99,7 @@ Init_FDC_DMA:
         out     0x0b, al
         mov     al, 0
         out     0x0c, al ; reset the flip-flop to a known state.
-        mov     eax, 0x0d000
+        mov     eax, 0xd000
         out     0x04, al ; set the channel 2 starting address to 0
         shr     eax, 8
         out     0x04, al
@@ -128,13 +128,13 @@ FDCDataOutput:
         ; Сбросить переменную состояния контроллера
         mov     [FDC_Status], FDC_Normal
         ; Проверить готовность контроллера к приему данных
-        mov     dx, 0x3F4 ; (порт состояния FDC)
+        mov     dx, 0x3f4 ; (порт состояния FDC)
         mov     ecx, 0x10000 ; установить счетчик тайм-аута
 
   .TestRS:
         in      al, dx ; прочитать регистр RS
-        and     al, 0x0c0 ; выделить разряды 6 и 7
-        cmp     al, 0x080 ; проверить разряды 6 и 7
+        and     al, 0xc0 ; выделить разряды 6 и 7
+        cmp     al, 0x80 ; проверить разряды 6 и 7
         je      .OutByteToFDC
         loop    .TestRS
         ; Ошибка тайм-аута
@@ -169,18 +169,18 @@ FDCDataInput:
 
   .TestRS_1:
         in      al, dx ; прочитать регистр RS
-        and     al, 0x0c0 ; выдлить разряды 6 и 7
-        cmp     al, 0x0c0 ; проверить разряды 6 и 7
+        and     al, 0xc0 ; выдлить разряды 6 и 7
+        cmp     al, 0xc0 ; проверить разряды 6 и 7
         je      .GetByteFromFDC
         loop    .TestRS_1
         ; Ошибка тайм-аута
-        mov     [FDC_Status],FDC_TimeOut
+        mov     [FDC_Status], FDC_TimeOut
         jmp     .End_6
 
   .GetByteFromFDC:
         ; Ввести байт из порта данных
         inc     dx
-        in      al,dx
+        in      al, dx
 
   .End_6:
         pop     dx
@@ -449,7 +449,7 @@ ReadSector:
         mov     [dmamode], 0x46
         call    Init_FDC_DMA
         ; Подать команду "Чтение данных"
-        mov     al, 0x0e6 ; чтение в мультитрековом режиме
+        mov     al, 0xe6 ; чтение в мультитрековом режиме
         call    FDCDataOutput
         mov     al, [FDD_Head]
         shl     al, 2
@@ -466,7 +466,7 @@ ReadSector:
         call    FDCDataOutput
         mov     al, 0x1b ; значение GPL
         call    FDCDataOutput
-        mov     al, 0x0ff ; значение DTL
+        mov     al, 0xff ; значение DTL
         call    FDCDataOutput
         ; Ожидаем прерывание по завершении операции
         call    WaitFDCInterrupt
@@ -474,7 +474,7 @@ ReadSector:
         jne     .Exit_1
         ; Считываем статус завершения операции
         call    GetStatusInfo
-        test    [FDC_ST0], 011011000b
+        test    [FDC_ST0], 11011000b
         jnz     .Err_1
         mov     [FDC_Status], FDC_Normal
         jmp     .Exit_1
@@ -549,13 +549,13 @@ WriteSector:
         call    save_timer_fdd_motor
         ; Установить скорость передачи 500 Кбайт/с
         mov     ax, 0
-        mov     dx, 0x3F7
+        mov     dx, 0x3f7
         out     dx, al
         ; Инициализировать канал прямого доступа к памяти
         mov     [dmamode], 0x4a
         call    Init_FDC_DMA
         ; Подать команду "Запись данных"
-        mov     al, 0x0c5 ; 0x45 ; запись в мультитрековом режиме
+        mov     al, 0xc5 ; 0x45 ; запись в мультитрековом режиме
         call    FDCDataOutput
         mov     al, [FDD_Head]
         shl     al, 2
@@ -572,7 +572,7 @@ WriteSector:
         call    FDCDataOutput
         mov     al, 0x1b ; значение GPL
         call    FDCDataOutput
-        mov     al, 0x0ff ; значение DTL
+        mov     al, 0xff ; значение DTL
         call    FDCDataOutput
         ; Ожидаем прерывание по завершении операции
         call    WaitFDCInterrupt
@@ -580,7 +580,7 @@ WriteSector:
         jne     .Exit_3
         ; Считываем статус завершения операции
         call    GetStatusInfo
-        test    [FDC_ST0], 011000000b  ;11011000b
+        test    [FDC_ST0], 11000000b  ;11011000b
         jnz     .Err_2
         mov     [FDC_Status], FDC_Normal
         jmp     .Exit_3

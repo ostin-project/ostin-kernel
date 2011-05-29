@@ -34,7 +34,7 @@ endl
         ; [gui]
 
         ; mouse_speed
-        lea     eax,[par]
+        lea     eax, [par]
         push    eax
         invoke  ini.get_str, conf_fname, ugui, ugui_mouse_speed, eax, 30, ugui_mouse_speed_def
         pop     eax
@@ -42,7 +42,7 @@ endl
         mov     [mouse_speed_factor], ax
 
         ; mouse_delay
-        lea     eax,[par]
+        lea     eax, [par]
         push    eax
         invoke  ini.get_str, conf_fname, ugui, ugui_mouse_delay, eax, 30, ugui_mouse_delay_def
         pop     eax
@@ -50,7 +50,7 @@ endl
         mov     [mouse_delay], eax
 
         ; midibase
-        lea     eax,[par]
+        lea     eax, [par]
         push    eax
         invoke  ini.get_str, conf_fname, udev, udev_midibase, eax, 30, udev_midibase_def
         pop     eax
@@ -96,7 +96,7 @@ endl
         jz      .do_not_set_net
 
         mov     eax, [stack_config]
-        and     eax, 0x0ffffff80
+        and     eax, 0xffffff80
         add     eax, 3
         mov     [stack_config], eax
         call    ash_eth_enable

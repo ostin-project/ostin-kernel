@@ -137,7 +137,7 @@ proc arp_table_manager stdcall uses ebx esi edi ecx edx, Opcode:DWORD, Index:DWO
 
   .timer_loop:
         movsx   esi, word[ebx + ARP_ENTRY.TTL]
-        cmp     esi, 0x0ffffffff
+        cmp     esi, 0xffffffff
         je      .timer_loop_end ; if TTL==0xFFFF then it's static entry
 
         test    esi, esi
@@ -226,7 +226,7 @@ proc arp_table_manager stdcall uses ebx esi edi ecx edx, Opcode:DWORD, Index:DWO
 
   .add_to_end:
         ;else add to end
-        or      eax,-1 ; set eax=0xFFFFFFFF if adding is impossible
+        or      eax, -1 ; set eax=0xFFFFFFFF if adding is impossible
         mov     ecx, dword[NumARP]
         cmp     ecx, ARP_TABLE_SIZE
         je      .add_exit ; if arp-entries number is equal to arp-table maxsize
@@ -400,7 +400,7 @@ arp_handler:
         ;   Header + Data is in Ether_buffer[]
         ;    It looks to see if the packet is a request to resolve this Hosts
         ;    IP address. If it is, send the ARP reply packet.
-        ;   This Hosts IP address is in dword [stack_ip]  ( in network format )
+        ;   This Hosts IP address is in dword[stack_ip] (in network format)
         ;    This Hosts MAC address is in node_addr[6]
         ;   All registers may be destroyed
 

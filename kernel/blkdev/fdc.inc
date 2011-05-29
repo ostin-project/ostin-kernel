@@ -27,7 +27,7 @@ uglobal
 endg
 
 fdc_init: ; start with clean tracks.
-        mov     edi, OS_BASE + 0x0d201
+        mov     edi, OS_BASE + 0xd201
         mov     al, 0
         mov     ecx, 160
         rep     stosb

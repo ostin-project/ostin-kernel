@@ -95,22 +95,22 @@ pci_api_drv:
 
 pci_fn_0:
         ; PCI function 0: get pci version (AH.AL)
-        movzx   eax, word[BOOT_VAR + 0x09022]
+        movzx   eax, word[BOOT_VAR + BOOT_PCI_DATA + 2]
         ret
 
 pci_fn_1:
         ; PCI function 1: get last bus in AL
-        mov     al, [BOOT_VAR + 0x09021]
+        mov     al, [BOOT_VAR + BOOT_PCI_DATA + 1]
         ret
 
 pci_fn_2:
         ; PCI function 2: get pci access mechanism
-        mov     al, [BOOT_VAR + 0x09020]
+        mov     al, [BOOT_VAR + BOOT_PCI_DATA]
         ret
 
 pci_service_not_supported:
         or      eax, -1
-        mov     [esp + 32],eax
+        mov     [esp + 32], eax
         ret
 
 align 4
@@ -124,7 +124,7 @@ pci_make_config_cmd:
 
         shl     eax, 8 ; move bus to bits 16-23
         mov     ax, bx ; combine all
-        and     eax, 0x0ffffff
+        and     eax, 0x00ffffff
         or      eax, 0x80000000
         ret
 
@@ -135,7 +135,7 @@ pci_read_reg:
         ;     number of bytes to read (1,2,4) coded into AL, bits 0-1
         ;     (0 - byte, 1 - word, 2 - dword)
 
-        cmp     byte[BOOT_VAR + 0x09020], 2 ; what mechanism will we use?
+        cmp     [BOOT_VAR + BOOT_PCI_DATA], 2 ; what mechanism will we use?
         je      .pci_read_reg_2
 
         ; mechanism 1
@@ -152,11 +152,11 @@ pci_read_reg:
 
         ; set up addressing to config data
         mov     eax, ebx
-        and     al, 0x0fc ; make address dword-aligned
+        and     al, 0xfc ; make address dword-aligned
         out     dx, eax
 
         ; get requested DWORD of config data
-        mov     dl, 0x0fc
+        mov     dl, 0xfc
         and     bl, 3
         or      dl, bl ; add to port address first 2 bits of register address
 
@@ -202,11 +202,11 @@ pci_read_reg:
         push    eax
 
         ;store current state of config space
-        mov     dx,0xcf8
-        in      al,dx
-        mov     ah,al
-        mov     dl,0xfa
-        in      al,dx
+        mov     dx, 0x0cf8
+        in      al, dx
+        mov     ah, al
+        mov     dl, 0xfa
+        in      al, dx
 
         xchg    eax, [esp]
         ; out 0x0cfa, bus
@@ -219,7 +219,7 @@ pci_read_reg:
 
         ; compute addr
         shr     bh, 3 ; func is ignored in mechanism 2
-        or      bh, 0x0c0
+        or      bh, 0xc0
         mov     dx, bx
 
         or      esi, esi
@@ -231,15 +231,15 @@ pci_read_reg:
         jmp     .pci_fin_read2
 
   .pci_read_byte2:
-        in      al,dx
+        in      al, dx
         jmp     .pci_fin_read2
 
   .pci_read_word2:
-        in      ax,dx
+        in      ax, dx
         jmp     .pci_fin_read2
 
   .pci_read_dword2:
-        in      eax,dx
+        in      eax, dx
 ;       jmp     pci_fin_read2
 
   .pci_fin_read2:
@@ -247,7 +247,7 @@ pci_read_reg:
         xchg    eax, [esp]
         mov     dx, 0x0cfa
         out     dx, al
-        mov     dl, 0x0f8
+        mov     dl, 0xf8
         mov     al, ah
         out     dx, al
 
@@ -268,7 +268,7 @@ pci_write_reg:
         ;     number of bytes to write (1,2,4) coded into AL, bits 0-1
         ;     (0 - byte, 1 - word, 2 - dword)
 
-        cmp     byte[BOOT_VAR + 0x09020], 2 ; what mechanism will we use?
+        cmp     [BOOT_VAR + BOOT_PCI_DATA], 2 ; what mechanism will we use?
         je      .pci_write_reg_2
 
         ; mechanism 1
@@ -284,10 +284,10 @@ pci_write_reg:
         push    eax
         ; set up addressing to config data
         mov     eax, ebx
-        and     al, 0x0fc ; make address dword-aligned
+        and     al, 0xfc ; make address dword-aligned
         out     dx, eax
         ; write DWORD of config data
-        mov     dl, 0x0fc
+        mov     dl, 0xfc
         and     bl, 3
         or      dl, bl
         mov     eax, ecx
@@ -315,7 +315,7 @@ pci_write_reg:
   .pci_fin_write1:
         ; restore configuration control
         pop     eax
-        mov     dl, 0x0f8
+        mov     dl, 0xf8
         out     dx, eax
 
         xor     eax, eax
@@ -338,19 +338,19 @@ pci_write_reg:
         mov     dx, 0x0cf8
         in      al, dx
         mov     ah, al
-        mov     dl, 0x0fa
+        mov     dl, 0xfa
         in      al, dx
         xchg    eax, [esp]
-        ; out 0xcfa, bus
+        ; out 0x0cfa, bus
         mov     al, ah
         out     dx, al
-        ; out 0xcf8,0x80
-        mov     dl, 0x0f8
-        mov     al, 0x080
+        ; out 0x0cf8,0x80
+        mov     dl, 0xf8
+        mov     al, 0x80
         out     dx, al
         ; compute addr
         shr     bh, 3 ; func is ignored in mechanism 2
-        or      bh, 0x0c0
+        or      bh, 0xc0
         mov     dx, bx
         ; write register
         mov     eax, ecx
@@ -380,7 +380,7 @@ pci_write_reg:
         pop     eax
         mov     dx, 0x0cfa
         out     dx, al
-        mov     dl, 0x0f8
+        mov     dl, 0xf8
         mov     al, ah
         out     dx, al
 
@@ -431,7 +431,7 @@ pci_mmio_map:
         ;   eax = -4 : a port i/o BAR register referred
         ;   eax = -5 : dynamic userspace allocation problem
 
-        and     edx, 0x0ffff
+        and     edx, 0x0000ffff
         cmp     ah, 6
         jc     .bar_0_5
         jz     .bar_rom
@@ -466,7 +466,7 @@ pci_mmio_map:
 
     @@: pop     ecx ; ecx = block size, bytes (expanded to whole page)
         mov     ebx, ecx ; user_alloc destroys eax, ecx, edx, but saves ebx
-        and     eax, 0x0fffffff0
+        and     eax, 0xfffffff0
         push    eax ; store MMIO physical address + keep 2DWords in the stack
         stdcall user_alloc, ecx
         or      eax, eax
@@ -528,7 +528,7 @@ sys_pcibios:
         mov     ax, pci_data_sel
         mov     ds, ax
         mov     eax, ebp
-        mov     ah, 0x0b1
+        mov     ah, 0xb1
         call    pword[cs:pci_bios_entry]
         pop     ds
 
@@ -539,9 +539,9 @@ sys_pcibios:
         cmp     ebp, 1 ; PCI_FUNCTION_ID
         jnz     .not_PCI_BIOS_PRESENT
         mov     edx, 'PCI '
-        mov     al, [OS_BASE + 0x2f0000 + 0x09020]
-        mov     bx, [OS_BASE + 0x2f0000 + 0x09022]
-        mov     cl, [OS_BASE + 0x2f0000 + 0x09021]
+        mov     al, [OS_BASE + 0x2f0000 + BOOT_PCI_DATA]
+        mov     bx, word[OS_BASE + 0x2f0000 + BOOT_PCI_DATA + 2]
+        mov     cl, [OS_BASE + 0x2f0000 + BOOT_PCI_DATA + 1]
         xor     ah, ah
         jmp     .return_abcd
 
@@ -568,7 +568,7 @@ sys_pcibios:
         jmp     .nxt
 
   .dev_not_found:
-        mov     ah, 0x086 ; DEVICE_NOT_FOUND
+        mov     ah, 0x86 ; DEVICE_NOT_FOUND
         jmp     .return_a
 
   .not_FIND_PCI_DEVICE:
@@ -621,7 +621,7 @@ sys_pcibios:
 
   .not_WRITE_CONFIG:
   .unsupported_func:
-        mov     ah, 0x081 ; FUNC_NOT_SUPPORTED
+        mov     ah, 0x81 ; FUNC_NOT_SUPPORTED
 
   .return:
         mov     [esp + 4], edi

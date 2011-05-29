@@ -131,7 +131,7 @@ endl
         add     ecx, [sym]
         mov     [strings], ecx
 
-        lea     eax, [edx+20]
+        lea     eax, [edx + 20]
 
         stdcall fix_coff_symbols, eax, [sym], [edx + COFF_HEADER.nSymbols], [strings], 0
         test    eax, eax
@@ -253,7 +253,7 @@ proc dll.Init, dllentry:dword
         ret
 endp
 
-proc dll.GetProcAddress, exp:dword,sz_name:dword
+proc dll.GetProcAddress, exp:dword, sz_name:dword
         mov     edx, [exp]
 
   .next:
@@ -282,7 +282,7 @@ proc mem.Alloc size ;/////////////////////////////////////////////////////////
 endp
 
 ;-----------------------------------------------------------------------------
-proc mem.ReAlloc mptr,size;///////////////////////////////////////////////////
+proc mem.ReAlloc mptr, size;//////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------
         push    ebx ecx esi edi eax
         mov     eax, [mptr]

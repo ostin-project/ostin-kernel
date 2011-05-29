@@ -46,7 +46,7 @@ sys_cd_audio:
         ret
 
   .nocdpause:
-        mov     eax, 0x0ffffff01
+        mov     eax, 0xffffff01
         ret
 
 sys_cd_atapi_command:
@@ -61,7 +61,7 @@ sys_cd_atapi_command:
         mov     dx, word[cdbase]
         add     dx, 7
         in      al, dx
-        and     al, 0x080
+        and     al, 0x80
         cmp     al, 0
         jnz     .res
         jmp     .cdl6
@@ -92,7 +92,7 @@ sys_cd_atapi_command:
         mov     dx, word[cdbase]
         add     dx, 7
         in      al, dx
-        and     al, 0x088
+        and     al, 0x88
         cmp     al, 0x00
         jz      .cdl5
         mov     esi, 100
@@ -110,7 +110,7 @@ sys_cd_atapi_command:
         out     dx, al
         mov     dx, word[cdbase]
         add     dx, 7
-        mov     al, 0x0ec
+        mov     al, 0xec
         out     dx, al
         mov     esi, 5
         call    delay_ms
@@ -131,7 +131,7 @@ sys_cd_atapi_command:
         mov     al, 128
         out     dx, al
         add     dx, 2
-        mov     al, 0x0a0
+        mov     al, 0xa0
         out     dx, al
         xor     cx, cx
         mov     dx, word[cdbase]
@@ -142,7 +142,7 @@ sys_cd_atapi_command:
         cmp     cx, 100
         jz      .cdl2
         in      al, dx
-        and     ax, 0x088
+        and     ax, 0x88
         cmp     al, 0x08
         jz      .cdl2
         mov     esi, 2
@@ -161,7 +161,7 @@ sys_cdplay:
   .cdplay:
         call    sys_cd_atapi_command
         cli
-        mov     dx, word [cdbase]
+        mov     dx, word[cdbase]
         mov     ax, 0x0047
         out     dx, ax
         mov     al, 1
@@ -184,7 +184,7 @@ sys_cdplay:
         jz      .cdplayok
         mov     ax, [esp + 4]
         dec     ax
-        mov     [esp + 4],ax
+        mov     [esp + 4], ax
         cmp     ax, 0
         jz      .cdplayfail
         jmp     .cdplay

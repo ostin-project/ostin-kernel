@@ -210,7 +210,7 @@ combine_colors:
         push    ecx
         xor     ecx, ecx
         ; byte 2
-        mov     eax, 0x0ff
+        mov     eax, 0xff
         sub     al, [esi + 0]
         mov     ebx, [esp]
         shr     ebx, 16
@@ -227,11 +227,11 @@ combine_colors:
         add     ecx, eax
         shl     ecx, 8
         ; byte 1
-        mov     eax, 0x0ff
+        mov     eax, 0xff
         sub     al, [esi + 1]
         mov     ebx, [esp]
         shr     ebx, 8
-        and     ebx, 0x0ff
+        and     ebx, 0xff
         mul     ebx
         shr     eax, 8
         add     ecx, eax
@@ -244,10 +244,10 @@ combine_colors:
         add     ecx, eax
         shl     ecx, 8
         ; byte 2
-        mov     eax, 0x0ff
+        mov     eax, 0xff
         sub     al, [esi + 2]
         mov     ebx, [esp]
-        and     ebx, 0x0ff
+        and     ebx, 0xff
         mul     ebx
         shr     eax, 8
         add     ecx, eax

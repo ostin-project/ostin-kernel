@@ -61,10 +61,10 @@ playNote:
         mov     al, [countDelayNote]
         dec     al ; decrement counter Delay for Playing Note
         jz      .NewLoadNote@Delay
-        cmp     al, 0x0ff ; this is first Note Play ?
+        cmp     al, 0xff ; this is first Note Play ?
         jne     .NextDelayNote
         ; This is FIRST Note, save counter channel 2 chip 8253
-        mov     al, 0x0b6 ; control byte to timer chip 8253
+        mov     al, 0xb6 ; control byte to timer chip 8253
         out     0x43, al ; Send it to the control port chip 8253
         in      al, 0x42 ; Read Lower byte counter channel 2 chip 8253
         mov     ah, al ; AH = Lower byte counter channel 2
@@ -77,7 +77,7 @@ playNote:
         call    ReadNoteByte
         or      al, al ; THE END ?
         jz      .EndPlayNote
-        cmp     al, 0x081
+        cmp     al, 0x81
         jnc     .NoteforOctave
         mov     [countDelayNote], al
 ;       lodsw   ; load AX - counter for Note!
@@ -89,7 +89,7 @@ playNote:
 
   .EndPlayNote: ; THE END Play Notes!
         in      al, 0x61 ; Get contents of system port B chip 8255
-        and     al, 0x0fc ; Turn OFF timer and speaker
+        and     al, 0xfc ; Turn OFF timer and speaker
         out     0x61, al ; Send out new values to port B chip 8255
         mov     ax, [mem8253r42] ; memorize counter channel 2 timer chip 8253
         xchg    al, ah ; reverse byte in word
@@ -106,19 +106,19 @@ playNote:
   .NotPlayNotes:
         ret
 
-   .NoteforOctave:
-        sub     al, 0x081 ; correction value for delay Note
+  .NoteforOctave:
+        sub     al, 0x81 ; correction value for delay Note
         mov     [countDelayNote], al ; save counter delay this new Note
 ;       lodsb   ; load pack control code
         call    ReadNoteByte
         cmp     al, 0x0ff ; this is PAUSE ?
         jne     .packCode ; no, this is PACK CODE
         in      al, 0x61 ; Get contents of system port B chip 8255
-        and     al, 0x0fc ; Turn OFF timer and speaker
+        and     al, 0xfc ; Turn OFF timer and speaker
         out     0x61, al ; Send out new values to port B chip 8255
         jmp     .saveESI
 
-   .packCode:
+  .packCode:
         mov     cl, al ; save code
         and     al, 0x0f ; clear upper bits
         dec     al ; correction
@@ -129,7 +129,7 @@ playNote:
         shr     cl, 4 ; transform for number Octave
         shr     ax, cl ; calculate from Note this Octave!
 
-   .pokeNote:
+  .pokeNote:
         out     0x42, al ; Lower byte Out to channel 2 timer chip 8253
         mov     al, ah
         out     0x42, al ; Upper byte Out to channel 2 timer chip 8253
@@ -137,7 +137,7 @@ playNote:
         or      al, 3 ; Turn ON timer and speaker
         out     0x61, al ; Send out new values to port B chip 8255
 
-   .saveESI:
+  .saveESI:
 ;       mov     [memAdrNote], esi ; save new header control Delay-Note string
         pop     eax
         ret

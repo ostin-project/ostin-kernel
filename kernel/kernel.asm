@@ -114,23 +114,23 @@ include "detect/biosdisk.inc"
    l.5: in      al, 0x64 ; Enable A20
         test    al, 2
         jnz     l.5
-        mov     al, 0x0d1
+        mov     al, 0xd1
         out     0x64, al
    l.6: in      al, 0x64
         test    al, 2
         jnz     l.6
-        mov     al, 0x0df
+        mov     al, 0xdf
         out     0x60, al
    l.7: in      al, 0x64
         test    al, 2
         jnz     l.7
-        mov     al, 0x0ff
+        mov     al, 0xff
         out     0x64, al
 
         lgdt    [cs:tmp_gdt] ; Load GDT
         mov     eax, cr0 ; protected mode
         or      eax, ecx
-        and     eax, (10011111b shl 24) + 0x0ffffff ; caching enabled
+        and     eax, (10011111b shl 24) + 0x00ffffff ; caching enabled
         mov     cr0, eax
         jmp     pword os_code:B32 ; jmp to enable 32 bit mode
 
@@ -140,13 +140,13 @@ tmp_gdt:
   dd tmp_gdt + 0x10000
   dw 0
 
-  dw 0x0ffff
+  dw 0xffff
   dw 0x0000
   db 0x00
   dw 11011111b * 256 + 10011010b
   db 0x00
 
-  dw 0x0ffff
+  dw 0xffff
   dw 0x0000
   db 0x00
   dw 11011111b * 256 + 10010010b
@@ -175,7 +175,7 @@ B32:
         rep     stosd
 
         mov     edi, 0x40000
-        mov     ecx, (0x090000 - 0x40000) / 4
+        mov     ecx, (0x90000 - 0x40000) / 4
         rep     stosd
 
         ; CLEAR KERNEL UNDEFINED GLOBALS
@@ -262,16 +262,16 @@ high_code:
         mov     cr3, eax           ; flush TLB
 
         ; SAVE REAL MODE VARIABLES
-        mov     ax, [BOOT_VAR + 0x09031]
+        mov     ax, [BOOT_VAR + BOOT_IDE_BASE_ADDR]
         mov     [IDEContrRegsBaseAddr], ax
 
         ; --------------- APM ---------------------
 
         ; init selectors
-        mov     ebx, [BOOT_VAR + 0x09040] ; offset of APM entry point
-        movzx   eax, word[BOOT_VAR + 0x09050] ; real-mode segment base address of protected-mode 32-bit code segment
-        movzx   ecx, word[BOOT_VAR + 0x09052] ; real-mode segment base address of protected-mode 16-bit code segment
-        movzx   edx, word[BOOT_VAR + 0x09054] ; real-mode segment base address of protected-mode 16-bit data segment
+        mov     ebx, [BOOT_VAR + BOOT_APM_ENTRY_OFS] ; offset of APM entry point
+        movzx   eax, [BOOT_VAR + BOOT_APM_CODE32_SEG] ; real-mode segment base address of protected-mode 32-bit code segment
+        movzx   ecx, [BOOT_VAR + BOOT_APM_CODE16_SEG] ; real-mode segment base address of protected-mode 16-bit code segment
+        movzx   edx, [BOOT_VAR + BOOT_APM_DATA16_SEG] ; real-mode segment base address of protected-mode 16-bit data segment
 
         shl     eax, 4
         mov     [apm_code_32 + 2], ax
@@ -291,42 +291,42 @@ high_code:
         mov     dword[apm_entry], ebx
         mov     word[apm_entry + 4], apm_code_32 - gdts
 
-        mov     eax, [BOOT_VAR + 0x09044] ; version & flags
+        mov     eax, dword[BOOT_VAR + BOOT_APM_VERSION] ; version & flags
         mov     [apm_vf], eax
 
         ; -----------------------------------------
 
-;       movzx   eax, byte[BOOT_VAR + 0x09010] ; mouse port
-;       mov     byte[0x0f604], 1 ; al
-        mov     al, [BOOT_VAR + 0x0901f] ; DMA access
+;       movzx   eax, [BOOT_VAR + BOOT_MOUSE_PORT] ; mouse port
+;       mov     byte[0xf604], 1 ; al
+        mov     al, [BOOT_VAR + BOOT_DMA] ; DMA access
         mov     [allow_dma_access], al
-        movzx   eax, byte[BOOT_VAR+0x09000] ; bpp
+        movzx   eax, [BOOT_VAR + BOOT_BPP] ; bpp
         mov     [ScreenBPP], al
 
         mov     [_display.bpp], eax
         mov     [_display.vrefresh], 60
         mov     [_display.disable_mouse], __sys_disable_mouse
 
-        movzx   eax, word[BOOT_VAR + 0x0900a] ; X max
+        movzx   eax, [BOOT_VAR + BOOT_X_RES] ; X max
         mov     [_display.width], eax
         dec     eax
         mov     [Screen_Max_X], eax
         mov     [screen_workarea.right], eax
-        movzx   eax, word[BOOT_VAR + 0x0900c] ; Y max
+        movzx   eax, [BOOT_VAR + BOOT_Y_RES] ; Y max
         mov     [_display.height], eax
         dec     eax
         mov     [Screen_Max_Y], eax
         mov     [screen_workarea.bottom], eax
-        movzx   eax, word[BOOT_VAR + 0x09008] ; screen mode
+        movzx   eax, [BOOT_VAR + BOOT_VESA_MODE] ; screen mode
         mov     [SCR_MODE], eax
-        mov     eax, [BOOT_VAR + 0x09014]; Vesa 1.2 bnk sw add
+        mov     eax, [BOOT_VAR + BOOT_BANK_SW]; Vesa 1.2 bnk sw add
         mov     [BANK_SWITCH], eax
         mov     word[BytesPerScanLine], 640 * 4 ; Bytes PerScanLine
         cmp     word[SCR_MODE], 0x13 ; 320x200
         je      @f
         cmp     word[SCR_MODE], 0x12 ; VGA 640x480
         je      @f
-        movzx   eax, word[BOOT_VAR + 0x09001] ; for other modes
+        movzx   eax, [BOOT_VAR + BOOT_SCANLINE] ; for other modes
         mov     [BytesPerScanLine], ax
         mov     [_display.pitch], eax
 
@@ -334,15 +334,15 @@ high_code:
         mul     [_display.height]
         mov     [_WinMapSize], eax
 
-        mov     esi, BOOT_VAR + 0x09080
-        movzx   ecx, byte[esi-1]
+        mov     esi, BOOT_VAR + BOOT_BIOS_DISKS
+        movzx   ecx, byte[esi - 1]
         mov     [NumBiosDisks], ecx
         mov     edi, BiosDisksData
         rep     movsd
 
         ; GRAPHICS ADDRESSES
-        and     byte[BOOT_VAR + 0x0901e], 0
-        mov     eax, [BOOT_VAR + 0x09018]
+        and     [BOOT_VAR + BOOT_DIRECT_LFB], 0
+        mov     eax, [BOOT_VAR + BOOT_LFB]
         mov     [LFBAddress], eax
 
         cmp     word[SCR_MODE], 0100000000000000b
@@ -398,7 +398,7 @@ high_code:
         ; AMD SYSCALL/SYSRET
         cmp     byte[cpu_vendor], 'A'
         jne     .noSYSCALL
-        mov     eax, 0x080000001
+        mov     eax, 0x80000001
         cpuid
         test    edx, 0x0800 ; bit_11 - SYSCALL/SYSRET support
         jz      .noSYSCALL
@@ -446,19 +446,19 @@ high_code:
 
         lea     esp, [eax + RING0_STACK_SIZE]
 
-        mov     [tss._ss0], os_stack
-        mov     [tss._esp0], esp
-        mov     [tss._esp], esp
-        mov     [tss._cs], os_code
-        mov     [tss._ss], os_stack
-        mov     [tss._ds], app_data
-        mov     [tss._es], app_data
-        mov     [tss._fs], app_data
-        mov     [tss._gs], app_data
-        mov     [tss._io], 128
+        mov     [tss.ss0], os_stack
+        mov     [tss.esp0], esp
+        mov     [tss.esp], esp
+        mov     [tss.cs], os_code
+        mov     [tss.ss], os_stack
+        mov     [tss.ds], app_data
+        mov     [tss.es], app_data
+        mov     [tss.fs], app_data
+        mov     [tss.gs], app_data
+        mov     [tss.io], 128
 
         ; Add IO access table - bit array of permitted ports
-        mov     edi, tss._io_map_0
+        mov     edi, tss.io_map_0
         xor     eax, eax
         not     eax
         mov     ecx, 8192 / 4
@@ -467,7 +467,7 @@ high_code:
         mov     ax, tss0
         ltr     ax
 
-        mov     [LFBSize], 0x0800000
+        mov     [LFBSize], 0x00800000
         call    init_LFB
         call    init_fpu
         call    init_malloc
@@ -482,7 +482,7 @@ high_code:
         add     eax, 0x40000
         mov     [proc_mem_map], eax
 
-        add     eax, 0x08000
+        add     eax, 0x8000
         mov     [proc_mem_pdir], eax
 
         add     eax, ebx
@@ -524,7 +524,7 @@ high_code:
         stdcall kernel_alloc, [_WinMapSize]
         mov     [_WinMapAddress], eax
 
-        xor     eax,eax
+        xor     eax, eax
         inc     eax
         mov     [CURRENT_TASK], eax ; 1
         mov     [TASK_COUNT], eax ; 1
@@ -556,7 +556,7 @@ high_code:
         ; TIMER SET TO 1/100 S
         mov     al, 0x34 ; set to 100Hz
         out     0x43, al
-        mov     al, 0x09b ; lsb 1193180 / 1193
+        mov     al, 0x9b ; lsb 1193180 / 1193
         out     0x40, al
         mov     al, 0x2e ; msb
         out     0x40, al
@@ -565,10 +565,10 @@ high_code:
         ; they are used: when partitions are scanned, hd_read relies on timer
         ; Also enable IRQ2, because in some configurations
         ; IRQs from slave controller are not delivered until IRQ2 on master is enabled
-        mov     al, 0x0fa
+        mov     al, 0xfa
         out     0x21, al
         mov     al, 0x3f
-        out     0x0a1, al
+        out     0xa1, al
 
         ; Enable interrupts in IDE controller
         mov     al, 0
@@ -611,7 +611,7 @@ end if
         stdcall read_file, char, FONT_I, 0, 2304
         stdcall read_file, char2, FONT_II, 0, 2560
 
-        mov     esi,boot_fonts
+        mov     esi, boot_fonts
         call    boot_log
 
         ; PRINT AMOUNT OF MEMORY
@@ -621,10 +621,10 @@ end if
         movzx   ecx, word[boot_y]
         or      ecx, (10 + 29 * 6) shl 16 ; "Determining amount of memory"
         sub     ecx, 10
-        mov     edx, 0x0ffffff
+        mov     edx, 0x00ffffff
         mov     ebx, [MEM_AMOUNT]
         shr     ebx, 20
-        xor     edi,edi
+        xor     edi, edi
         mov     eax, 0x00040000
         inc     edi
         call    display_number.force
@@ -741,7 +741,7 @@ end if
         mov     ebx, edx
         movzx   ecx, word[boot_y]
         add     ecx, (10 + 17 * 6) shl 16 - 10 ; 'CPU frequency is '
-        mov     edx, 0x0ffffff
+        mov     edx, 0x00ffffff
         xor     edi, edi
         mov     eax, 0x00040000
         inc     edi
@@ -789,8 +789,8 @@ no_pal_ega:
         add     esi, 0x1000
         stdcall map_page, esi, [SLOT_BASE + 256 + APPDATA.io_map + 4], PG_MAP
 
-        stdcall map_page, tss._io_map_0, [SLOT_BASE + 256 + APPDATA.io_map], PG_MAP
-        stdcall map_page, tss._io_map_1, [SLOT_BASE + 256 + APPDATA.io_map + 4], PG_MAP
+        stdcall map_page, tss.io_map_0, [SLOT_BASE + 256 + APPDATA.io_map], PG_MAP
+        stdcall map_page, tss.io_map_1, [SLOT_BASE + 256 + APPDATA.io_map + 4], PG_MAP
 
         mov     ax, [OS_BASE + 0x10000 + bx_from_load]
         cmp     ax, 'r1' ; if not rused ram disk - load network configuration from files
@@ -802,7 +802,7 @@ no_st_network:
         ; LOAD FIRST APPLICATION
         cli
 
-        cmp     byte[BOOT_VAR + 0x09030], 1
+        cmp     [BOOT_VAR + BOOT_VRR], 1
         jne     no_load_vrr_m
 
         mov     ebp, vrr_m
@@ -823,7 +823,7 @@ no_load_vrr_m:
         mov     esi, boot_failed
         call    boot_log
 
-        mov     eax, 0x0deadbeef ; otherwise halt
+        mov     eax, 0xdeadbeef ; otherwise halt
         hlt
 
 first_app_found:
@@ -834,7 +834,7 @@ first_app_found:
         pop     dword[CURRENT_TASK] ; set OS task fisrt
 
         ; SET KEYBOARD PARAMETERS
-        mov     al, 0x0f6 ; reset keyboard, scan enabled
+        mov     al, 0xf6 ; reset keyboard, scan enabled
         call    kb_write
 
         ; wait until 8042 is ready
@@ -844,14 +844,14 @@ first_app_found:
         and     al, 00000010b
         loopnz  @b
 
-;       mov     al, 0x0ed ; svetodiody - only for testing!
+;       mov     al, 0xed ; svetodiody - only for testing!
 ;       call    kb_write
 ;       call    kb_read
 ;       mov     al, 0111b
 ;       call    kb_write
 ;       call    kb_read
 
-        mov     al, 0x0f3 ; set repeat rate & delay
+        mov     al, 0xf3 ; set repeat rate & delay
         call    kb_write
 ;       call    kb_read
         mov     al, 0 ; 30 250 ; 00100010b ; 24 500 ; 00100100b ; 20 500
@@ -918,7 +918,7 @@ end if
 ;
 ;       cli     ; guarantee forbidance of interrupts.
 ;       mov     al, 0 ; unmask all irq's
-;       out     0x0a1, al
+;       out     0xa1, al
 ;       out     0x21, al
 ;
 ;       mov     ecx, 32
@@ -927,7 +927,7 @@ end if
 ;
 ;       mov     al, 0x20 ; ready for irqs
 ;       out     0x20, al
-;       out     0x0a0, al
+;       out     0xa0, al
 ;
 ;       loop    ready_for_irqs ; flush the queue
 
@@ -957,7 +957,7 @@ boot_log:
         mov     ebx, 10 * 65536
         mov     bx, word[boot_y]
         add     dword[boot_y], 10
-        mov     ecx, 0x080ffffff ; ASCIIZ string with white color
+        mov     ecx, 0x80ffffff ; ASCIIZ string with white color
         xor     edi, edi
         mov     edx, esi
         inc     edi
@@ -1039,7 +1039,7 @@ include "kernel32.inc"
 
 reserve_irqs_ports:
         push    eax
-        xor     eax,eax
+        xor     eax, eax
         inc     eax
         mov     byte[irq_owner + 4 * 0], al ; timer
 ;       mov     byte[irq_owner + 4 * 1], al ; keyboard
@@ -1069,13 +1069,13 @@ reserve_irqs_ports:
         pop     dword[RESERVED_PORTS + 48 + 0]
         push    0x50
         pop     dword[RESERVED_PORTS + 48 + 4]
-        mov     dword[RESERVED_PORTS + 48 + 8], 0x0df
+        mov     dword[RESERVED_PORTS + 48 + 8], 0xdf
 
         push    1
         pop     dword[RESERVED_PORTS + 64 + 0]
 
-        mov     dword[RESERVED_PORTS + 64 + 4], 0x0e5
-        mov     dword[RESERVED_PORTS + 64 + 8], 0x0ff
+        mov     dword[RESERVED_PORTS + 64 + 4], 0xe5
+        mov     dword[RESERVED_PORTS + 64 + 8], 0xff
 
         ret
 
@@ -1102,10 +1102,10 @@ set_variables:
         loop    .fl60
 
         push    eax
-        mov     ax, [BOOT_VAR + 0x0900c]
+        mov     ax, [BOOT_VAR + BOOT_Y_RES]
         shr     ax, 1
         shl     eax, 16
-        mov     ax, [BOOT_VAR + 0x0900a]
+        mov     ax, [BOOT_VAR + BOOT_X_RES]
         shr     ax, 1
         mov     [MOUSE_X], eax
 
@@ -1153,7 +1153,7 @@ sys_outport:
         jg      .sopl2
 
   .sopl3:
-        test    edi, 0x080000000 ; read ?
+        test    edi, 0x80000000 ; read ?
         jnz     .sopl4
 
         mov     eax, ebx
@@ -1172,9 +1172,9 @@ sys_outport:
   .sopl4:
         mov     dx, cx ; read
         in      al, dx
-        and     eax, 0x0ff
+        and     eax, 0x00ff
         and     dword[esp + 32], 0
-        mov     [esp + 20],eax
+        mov     [esp + 20], eax
         ret
 
 display_number:
@@ -1201,7 +1201,7 @@ display_number:
   .force:
         push    eax
         and     eax, 0x3fffffff
-        cmp     eax, 0x0ffff ; length > 0 ?
+        cmp     eax, 0x0000ffff ; length > 0 ?
         pop     eax
         jge     .cont_displ
         ret
@@ -1209,7 +1209,7 @@ display_number:
   .cont_displ:
         push    eax
         and     eax, 0x3fffffff
-        cmp     eax, 61 * 0x10000 ; length <= 60 ?
+        cmp     eax, 61 shl 16 ; length <= 60 ?
         pop     eax
         jb      .cont_displ2
         ret
@@ -1230,7 +1230,7 @@ display_number:
         test    ah, ah ; DECIMAL
         jnz     .no_display_desnum
         shr     eax, 16
-        and     eax, 0x0c03f
+        and     eax, 0xc03f
 ;       and     eax, 0x3f
         push    eax
         and     eax, 0x3f
@@ -1260,7 +1260,7 @@ display_number:
         cmp     ah, 0x01 ; HEXADECIMAL
         jne     .no_display_hexnum
         shr     eax, 16
-        and     eax, 0x0c03f
+        and     eax, 0xc03f
 ;       and     eax, 0x3f
         push    eax
         and     eax, 0x3f
@@ -1271,7 +1271,7 @@ display_number:
         mov     ebx, 16
 
   .d_hexnum:
-        xor     edx,edx
+        xor     edx, edx
         call    division_64_bits
         div     ebx
 
@@ -1294,7 +1294,7 @@ hexletters = __fdo_hexdigits
         cmp     ah, 0x02 ; BINARY
         jne     .no_display_binnum
         shr     eax, 16
-        and     eax, 0x0c03f
+        and     eax, 0xc03f
 ;       and     eax, 0x3f
         push    eax
         and     eax, 0x3f
@@ -1305,7 +1305,7 @@ hexletters = __fdo_hexdigits
         mov     ebx, 2
 
   .d_binnum:
-        xor     edx,edx
+        xor     edx, edx
         call    division_64_bits
         div     ebx
         add     dl, 48
@@ -1472,25 +1472,25 @@ endg
         dec     ecx
         jnz     noprma
         mov     [cdbase], 0x1f0
-        mov     [cdid], 0x0a0
+        mov     [cdid], 0xa0
 
   noprma:
         dec     ecx
         jnz     noprsl
         mov     [cdbase], 0x1f0
-        mov     [cdid], 0x0b0
+        mov     [cdid], 0xb0
 
   noprsl:
         dec     ecx
         jnz     nosema
         mov     [cdbase], 0x170
-        mov     [cdid], 0x0a0
+        mov     [cdid], 0xa0
 
   nosema:
         dec     ecx
         jnz     nosesl
         mov     [cdbase], 0x170
-        mov     [cdid], 0x0b0
+        mov     [cdid], 0xb0
 
   nosesl:
         ret
@@ -1510,12 +1510,12 @@ endg
         sub     ebx, 2 ; HD BASE
         jnz     nsyse7
 
-        test    ecx,ecx
+        test    ecx, ecx
         jz      nosethd
 
         cmp     ecx, 4
         ja      nosethd
-        mov     [hd_base],cl
+        mov     [hd_base], cl
 
         cmp     ecx, 1
         jnz     noprmahd
@@ -1529,7 +1529,7 @@ endg
         jnz     noprslhd
         mov     [hdbase], 0x1f0
         mov     [hdid], 0x10
-        mov     [hdpos],ecx
+        mov     [hdpos], ecx
 ;       call    set_FAT32_variables
 
   noprslhd:
@@ -1708,7 +1708,7 @@ sys_getsetup:
         dec     ebx
         jnz     .ngsyse9
 
-        mov     eax, [timer_ticks] ; [0x0fdf0]
+        mov     eax, [timer_ticks] ; [0xfdf0]
         mov     [esp + 32], eax
         ret
 
@@ -1837,7 +1837,7 @@ is_input:
         push    edx
         mov     dx, word[midisp]
         in      al, dx
-        and     al, 0x080
+        and     al, 0x80
         pop     edx
         ret
 
@@ -1881,18 +1881,18 @@ sys_midi:
         test    al, al
         jnz     .su1
         mov     dx, word[midisp]
-        mov     al, 0x0ff
+        mov     al, 0xff
         out     dx, al
 
   .su2:
         mov     dx, word[midisp]
-        mov     al, 0x0ff
+        mov     al, 0xff
         out     dx, al
         call    is_input
         test    al, al
         jnz     .su2
         call    get_mpu_in
-        cmp     al, 0x0fe
+        cmp     al, 0xfe
         jnz     .su2
 
   .su3:
@@ -1986,7 +1986,7 @@ sysfn_shutdown: ; 18.9 = system shutdown
         jl      exit_for_anyone
         cmp     ecx, 4
         jg      exit_for_anyone
-        mov     [BOOT_VAR + 0x09030], cl
+        mov     [BOOT_VAR + BOOT_VRR], cl
 
         mov     eax, [TASK_COUNT]
         mov     [SYS_SHUTDOWN], al
@@ -2150,11 +2150,11 @@ sysfn_lastkey: ; 18.12 = return 0 (backward compatibility)
         ret
 
 sysfn_getversion:       ; 18.13 = get kernel ID and version
-     mov edi,ecx
-     mov esi,version_inf
-     mov ecx,version_end-version_inf
-     rep movsb
-     ret
+        mov     edi, ecx
+        mov     esi, version_inf
+        mov     ecx, version_end - version_inf
+        rep     movsb
+        ret
 
 sysfn_waitretrace: ; 18.14 = sys wait retrace
         ;wait retrace functions
@@ -2269,7 +2269,7 @@ sysfn_min_rest_window:
         jz      .error
         cmp     eax, 255 ; varify maximal slot number
         ja      .error
-        movzx   eax, word [WIN_STACK + eax * 2]
+        movzx   eax, word[WIN_STACK + eax * 2]
         shr     ecx, 1
         jc      .restore
 
@@ -2300,8 +2300,8 @@ endg
 
 iglobal
   version_inf:
-    db 0,7,7,0 ; version 0.7.7.0
-    db 0       ;reserved
+    db 0, 7, 7, 0 ; version 0.7.7.0
+    db 0 ; reserved
     dd 0
   version_end:
 endg
@@ -2336,14 +2336,14 @@ uglobal
 endg
 
 sys_background:
-        cmp     ebx,1 ; BACKGROUND SIZE
+        cmp     ebx, 1 ; BACKGROUND SIZE
         jnz     .nosb1
 
-        test    ecx,ecx
-;       cmp     ecx,0
+        test    ecx, ecx
+;       cmp     ecx, 0
         jz      .sbgrr
-        test    edx,edx
-;       cmp     edx,0
+        test    edx, edx
+;       cmp     edx, 0
         jz      .sbgrr
 
     @@: bts     dword[bgrlock], 0
@@ -2419,7 +2419,7 @@ sys_background:
         ja      .ret
 
         mov     ebx, [eax + ecx]
-        and     ebx, 0x0ff000000
+        and     ebx, 0xff000000
         and     edx, 0x00ffffff
         add     edx, ebx
         mov     [eax + ecx], edx
@@ -2494,7 +2494,7 @@ sys_background:
         jz      .nomem
         mov     ebx, eax
         shr     ebx, 12
-        or      dword [page_tabs + (ebx - 1) * 4], DONT_FREE_BLOCK
+        or      dword[page_tabs + (ebx - 1) * 4], DONT_FREE_BLOCK
         mov     esi, [img_background]
         shr     esi, 12
         mov     ecx, [mem_BACKGROUND]
@@ -2535,7 +2535,7 @@ sys_background:
         mov     ebx, ecx
         shr     eax, 12
         mov     ecx, [page_tabs + (eax - 1) * 4]
-        test    cl, USED_BLOCK+DONT_FREE_BLOCK
+        test    cl, USED_BLOCK + DONT_FREE_BLOCK
         jz      .err
         jnp     .err
         push    eax
@@ -2559,7 +2559,7 @@ sys_background:
         ret
 
   .err:
-        and     dword [esp+32], 0
+        and     dword[esp + 32], 0
         ret
 
   .nosb7:
@@ -2609,7 +2609,7 @@ sys_getbackground:
 
         mov     eax, [ecx + eax]
 
-        and     eax, 0x0ffffff
+        and     eax, 0x00ffffff
         mov     [esp + 32], eax
 
   .ret:
@@ -2669,8 +2669,8 @@ sys_getkey:
         shl     eax, 16
         mov     ah, [ecx + 4]
         mov     al, 2
-        and     dword [ecx + 4], 0
-        and     dword [ecx], 0
+        and     dword[ecx + 4], 0
+        and     dword[ecx], 0
         jmp     .ret_eax
 
 align 4
@@ -2685,7 +2685,7 @@ sys_getbutton:
         test    eax, eax
         jz      .exit
         mov     eax, [BTN_BUFF]
-        and     al, 0x0fe ; delete left button bit
+        and     al, 0xfe ; delete left button bit
         mov     byte[BTN_COUNT], 0
         mov     [esp + 32], eax
 
@@ -2706,7 +2706,7 @@ sys_cpuusage:
 
         cmp     ecx, -1 ; who am I ?
         jne     .no_who_am_i
-        mov     ecx,[CURRENT_TASK]
+        mov     ecx, [CURRENT_TASK]
 
   .no_who_am_i:
         cmp     ecx, max_processes
@@ -2850,7 +2850,7 @@ sys_date:
         in      al, 0x71
         mov     cl, al
         sti
-        mov     [esp+32], ecx
+        mov     [esp + 32], ecx
         ret
 
 
@@ -3166,7 +3166,7 @@ redrawscreen:
 ;;;     call    delay_hs
 
 ;       mov     ecx, 0 ; redraw flags for apps
-        xor     ecx,ecx
+        xor     ecx, ecx
 
   .newdw2:
         inc     ecx
@@ -3223,7 +3223,7 @@ redrawscreen:
         cmp     byte[REDRAW_BACKGROUND], 0
         jz      .az
         mov     dl, 0
-        lea     eax, [edi+draw_data - window_data]
+        lea     eax, [edi + draw_data - window_data]
         mov     ebx, [draw_limits.left]
         cmp     ebx, [eax + RECT.left]
         jae     @f
@@ -3307,7 +3307,7 @@ delay_ms: ; delay in 1/1000 sec
         push    eax
         push    ecx
 
-        mov     ecx,esi
+        mov     ecx, esi
         ; <CPU clock fix by Sergey Kuzmin aka Wildwest>
         imul    ecx, 33941
         shr     ecx, 9
@@ -3489,7 +3489,7 @@ get_irq_data:
 
 set_io_access_rights:
         push    edi eax
-        mov     edi, tss._io_map_0
+        mov     edi, tss.io_map_0
 ;       mov     ecx, eax
 ;       and     ecx, 7 ; offset in byte
 ;       shr     eax, 3 ; number of byte
@@ -3570,11 +3570,11 @@ r_f_port_area:
         cli
         pushad  ; start enable io map
 
-        cmp     edx,65536 ; 16384
+        cmp     edx, 65536 ; 16384
         jae     .no_unmask_io ; jge
-        mov     eax,ecx
+        mov     eax, ecx
 ;       push    ebp
-        xor     ebp,ebp ; enable - eax = port
+        xor     ebp, ebp ; enable - eax = port
 
   .new_port_access:
 ;       pushad
@@ -3759,11 +3759,11 @@ drawbackground:
 align 4
 syscall_putimage:
 sys_putimage:
-        test    ecx, 0x080008000
+        test    ecx, 0x80008000
         jnz     .exit
         test    ecx, 0x0000ffff
         jz      .exit
-        test    ecx, 0x0ffff0000
+        test    ecx, 0xffff0000
         jnz     @f
 
   .exit:
@@ -3822,8 +3822,8 @@ sys_putimage_palette:
         mov     eax, [edi + 4]
         sub     eax, [edi]
         push    eax
-        push    dword [edi]
-        push    0x0ffffff80
+        push    dword[edi]
+        push    0xffffff80
         mov     edi, esp
         call    .put_mono_image
         add     esp, 12
@@ -3833,7 +3833,7 @@ sys_putimage_palette:
     @@: cmp     esi, 2
         jnz     @f
         push    edi
-        push    0x0ffffff80
+        push    0xffffff80
         mov     edi, esp
         call    .put_2bit_image
         pop     eax
@@ -3843,7 +3843,7 @@ sys_putimage_palette:
     @@: cmp     esi, 4
         jnz     @f
         push    edi
-        push    0x0ffffff80
+        push    0xffffff80
         mov     edi, esp
         call    .put_4bit_image
         pop     eax
@@ -4003,7 +4003,7 @@ align 16
 putimage_get4bpp:
         push    edx
         mov     edx, [esp + 8]
-        add     byte [edx], 0x080
+        add     byte[edx], 0x80
         jc      @f
         movzx   eax, byte[edx + 1]
         mov     edx, [edx + 4]
@@ -4241,8 +4241,8 @@ _rdtsc:
         ret
 
   .ret_rdtsc:
-        mov     edx, 0x0ffffffff
-        mov     eax, 0x0ffffffff
+        mov     edx, 0xffffffff
+        mov     eax, 0xffffffff
         ret
 
 end if
@@ -4253,31 +4253,31 @@ rerouteirqs:
         mov     al, 0x11 ; icw4, edge triggered
         out     0x20, al
         call    .pic_delay
-        out     0x0a0, al
+        out     0xa0, al
         call    .pic_delay
 
         mov     al, 0x20 ; generate 0x20 +
         out     0x21, al
         call    .pic_delay
         mov     al, 0x28 ; generate 0x28 +
-        out     0x0a1, al
+        out     0xa1, al
         call    .pic_delay
 
         mov     al, 0x04 ; slave at irq2
         out     0x21, al
         call    .pic_delay
         mov     al, 0x02 ; at irq9
-        out     0x0a1, al
+        out     0xa1, al
         call    .pic_delay
 
         mov     al, 0x01 ; 8086 mode
         out     0x21, al
         call    .pic_delay
-        out     0x0a1, al
+        out     0xa1, al
         call    .pic_delay
 
         mov     al, 255 ; mask all irq's
-        out     0x0a1, al
+        out     0xa1, al
         call    .pic_delay
         out     0x21, al
         call    .pic_delay
@@ -4623,7 +4623,7 @@ syscall_openramdiskfile:
 align 4
 syscall_drawrect:
         mov     edi, edx ; color + gradient
-        and     edi, 0x080ffffff
+        and     edi, 0x80ffffff
         test    bx, bx ; x.size
         je      .drectr
         test    cx, cx ; y.size
@@ -4758,14 +4758,14 @@ syscall_getarea:
         mov     eax, edx
         shr     eax, 16
         mov     ebx, edx
-        and     ebx, 0x0ffff
+        and     ebx, 0x0000ffff
         dec     eax
         dec     ebx
         ; eax - x, ebx - y
 
         mov     edx, ecx
         shr     ecx, 16
-        and     edx, 0x0ffff
+        and     edx, 0x0000ffff
         mov     esi, ecx
         ; ecx - size x, edx - size y
 
@@ -4845,8 +4845,8 @@ syscall_getirqowner:
         cmp     dword[irq_rights + ebx * 4], 2
         je      .err
 
-        mov     eax,[irq_owner + ebx * 4]
-        mov     [esp + 32],eax
+        mov     eax, [irq_owner + ebx * 4]
+        mov     [esp + 32], eax
         ret
 
   .err:
@@ -4877,7 +4877,7 @@ stack_driver_stat:
 ;       mov     [check_idle_semaphore], 5
 ;       call    change_task
 
-        mov     [esp + 32],eax
+        mov     [esp + 32], eax
         ret
 
 align 4
@@ -4987,7 +4987,7 @@ sys_apm:
 
         cmp     dx, 3
         ja      @f
-        and     byte[esp + 44], 0x0fe ; emulate func 0..3 as func 0
+        and     byte[esp + 44], 0xfe ; emulate func 0..3 as func 0
         mov     eax, [apm_vf]
         mov     [esp + 32], eax
         shr     eax, 16
@@ -5015,7 +5015,7 @@ sys_apm:
         mov     [esp + 28], ecx
         mov     [esp + 32], eax
         setc    al
-        and     byte[esp + 44], 0x0fe
+        and     byte[esp + 44], 0xfe
         or      [esp + 44], al
         ret
 
@@ -5028,7 +5028,7 @@ undefined_syscall:
 
 align 4
 system_shutdown:
-        cmp     byte[BOOT_VAR + 0x09030], 1
+        cmp     [BOOT_VAR + BOOT_VRR], 1
         jne     @f
         ret
 
@@ -5061,9 +5061,9 @@ system_shutdown:
 
         call    restorefatchain
 
-        mov     al, 0x0ff
+        mov     al, 0xff
         out     0x21, al
-        out     0x0a1, al
+        out     0xa1, al
 
 if 0
 
@@ -5075,7 +5075,7 @@ if 0
         mov     al, 0x05
         out     0x71, al
 
-        mov     al, 0x0fe
+        mov     al, 0xfe
         out     0x64, al
 
         hlt
@@ -5083,7 +5083,7 @@ if 0
 
 else
 
-        cmp     byte[OS_BASE + 0x09030], 2
+        cmp     [OS_BASE + BOOT_VRR], 2
         jnz     no_acpi_power_off
 
         ; scan for RSDP
@@ -5096,7 +5096,7 @@ else
         jnc     .rsdp_found
 
     @@: ; 2) The BIOS read-only memory space between 0E0000h and 0FFFFFh.
-        mov     eax, 0x0e0000
+        mov     eax, 0xe0000
         mov     ecx, 0x2000
         call    scan_rsdp
         jc      no_acpi_power_off
@@ -5242,7 +5242,7 @@ no_acpi_power_off:
         mov     al, 0x05
         out     0x71, al
 
-        mov     al, 0x0fe
+        mov     al, 0xfe
         out     0x64, al
 
         hlt

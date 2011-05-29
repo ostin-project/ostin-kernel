@@ -20,7 +20,7 @@ pr_mode_exit:
         ; setup stack
         mov     ax, 0x3000
         mov     ss, ax
-        mov     esp, 0x0ec00
+        mov     esp, 0xec00
         ; setup ds
         push    cs
         pop     ds
@@ -30,40 +30,40 @@ pr_mode_exit:
         mov     al, 0x11
         out     0x20, al
         call    rdelay
-        out     0x0a0, al
+        out     0xa0, al
         call    rdelay
 
         mov     al, 0x08
         out     0x21, al
         call    rdelay
         mov     al, 0x70
-        out     0x0a1, al
+        out     0xa1, al
         call    rdelay
 
         mov     al, 0x04
         out     0x21, al
         call    rdelay
         mov     al, 0x02
-        out     0x0a1, al
+        out     0xa1, al
         call    rdelay
 
         mov     al, 0x01
         out     0x21, al
         call    rdelay
-        out     0x0a1, al
+        out     0xa1, al
         call    rdelay
 
-        mov     al, 0x0b8
+        mov     al, 0xb8
         out     0x21, al
         call    rdelay
-        mov     al, 0x0bd
-        out     0x0a1, al
+        mov     al, 0xbd
+        out     0xa1, al
         sti
 
 temp_3456:
         xor     ax, ax
         mov     es, ax
-        mov     al, byte[es:0x09030]
+        mov     al, [es:BOOT_VRR]
         cmp     al, 1
         jl      nbw
         cmp     al, 4
@@ -103,8 +103,8 @@ no_apm_off:
         jnz     restart_kernel ; 4 = restart kernel
         push    0x40
         pop     ds
-        mov     word[0x0072],0x1234
-        jmp     0x0f000:0x0fff0
+        mov     word[0x0072], 0x1234
+        jmp     0xf000:0xfff0
 
 rdelay:
         ret
@@ -160,7 +160,7 @@ restart_kernel_4000:
 
         push    ds
         pop     es
-        mov     cx, 0x08000
+        mov     cx, 0x8000
         push    cx
         push    0x7000
         pop     ds
@@ -172,11 +172,11 @@ restart_kernel_4000:
         push    0x2000
         pop     es
         rep     movsw
-        push    0x09000
+        push    0x9000
         pop     ds
         push    0x3000
         pop     es
-        mov     cx, 0x0e000 / 2
+        mov     cx, 0xe000 / 2
         rep     movsw
 
         wbinvd  ; write and invalidate cache
@@ -184,7 +184,7 @@ restart_kernel_4000:
         mov     al, 00110100b
         out     0x43, al
         jcxz    $ + 2
-        mov     al, 0x0ff
+        mov     al, 0xff
         out     0x40, al
         jcxz    $ + 2
         out     0x40, al

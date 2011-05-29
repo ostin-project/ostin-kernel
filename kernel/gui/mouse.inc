@@ -600,7 +600,7 @@ mouse._.find_sys_button_under_cursor: ;////////////////////////////////////////
         shl     edx, 24
         mov     eax, dword[esi + SYS_BUTTON.id_hi - 2]
         mov     ax, [esi + SYS_BUTTON.id_lo]
-        and     eax, 0x0ffffff
+        and     eax, 0x00ffffff
         or      eax, edx
         mov     ebx, dword[esi + SYS_BUTTON.left - 2]
         mov     bx, [esi + SYS_BUTTON.top]

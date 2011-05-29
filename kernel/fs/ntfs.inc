@@ -60,7 +60,7 @@ ntfs_test_bootsec:
         jnz     .no
         cmp     eax, edx
         ja      .no
-        cmp     dword[ebx + 0x3C], 0
+        cmp     dword[ebx + 0x3c], 0
         ja      .no
         push    edx
         movzx   eax, byte[ebx + 13]
@@ -96,7 +96,7 @@ ntfs_test_bootsec:
         clc
         ret
 
-    .no:
+  .no:
         ; No, this bootsector isn't NTFS
         stc
         ret
@@ -117,7 +117,7 @@ ntfs_setup: ; CODE XREF: part_set.inc
         mov     [ntfs_data.mft_cluster], eax
         mov     eax, [ebx + 0x38]
         mov     [ntfs_data.mftmirr_cluster], eax
-        movsx   eax, byte [ebx+0x40]
+        movsx   eax, byte[ebx + 0x40]
         test    eax, eax
         js      .1
         mul     [ntfs_data.sectors_per_cluster]
@@ -132,7 +132,7 @@ ntfs_setup: ; CODE XREF: part_set.inc
 
   .2:
         mov     [ntfs_data.frs_size], eax
-        movsx   eax, byte[ebx+0x44]
+        movsx   eax, byte[ebx + 0x44]
         test    eax, eax
         js      .3
         mul     [ntfs_data.sectors_per_cluster]
@@ -210,7 +210,7 @@ ntfs_setup: ; CODE XREF: part_set.inc
   .scandata:
         cmp     dword[eax], -1
         jz      .fail_free_mft
-        cmp     dword[eax], 0x080
+        cmp     dword[eax], 0x80
         jnz     @f
         cmp     byte[eax + 9], 0
         jz      .founddata
@@ -342,7 +342,7 @@ ntfs_read_attr:
         and     [ntfs_cur_read], 0
         cmp     [ntfs_cur_iRecord], 0
         jnz     .nomft
-        cmp     [ntfs_cur_attr], 0x080
+        cmp     [ntfs_cur_attr], 0x80
         jnz     .nomft
         mov     eax, [ntfs_data.mft_retrieval_end]
         inc     eax
@@ -477,7 +477,7 @@ ntfs_read_attr:
 
   .okattr:
         ; ignore named $DATA attributes (aka NTFS streams)
-        cmp     ecx, 0x080
+        cmp     ecx, 0x80
         jnz     @f
         cmp     byte[eax + 9], 0
         jnz     .scancont
@@ -543,10 +543,10 @@ ntfs_read_attr:
         push    [ntfs_cur_size]
         push    [ntfs_cur_read]
         push    [ntfs_cur_buf]
-        push    dword [ntfs_attr_size]
-        push    dword [ntfs_attr_size + 4]
-        or      dword [ntfs_attr_size], -1
-        or      dword [ntfs_attr_size + 4], -1
+        push    dword[ntfs_attr_size]
+        push    dword[ntfs_attr_size + 4]
+        or      dword[ntfs_attr_size], -1
+        or      dword[ntfs_attr_size + 4], -1
         and     [ntfs_cur_offs], 0
         mov     [ntfs_cur_size], 2
         and     [ntfs_cur_read], 0
@@ -560,8 +560,8 @@ ntfs_read_attr:
         call    .doreadattr
         pop     esi
         mov     edx, 1
-        pop     dword [ntfs_attr_size + 4]
-        pop     dword [ntfs_attr_size]
+        pop     dword[ntfs_attr_size + 4]
+        pop     dword[ntfs_attr_size]
         mov     ebp, [ntfs_cur_read]
         pop     [ntfs_cur_buf]
         pop     [ntfs_cur_read]
@@ -586,7 +586,7 @@ ntfs_read_attr:
         jmp     .scanlist
 
     @@: ; ignore named $DATA attributes (aka NTFS streams)
-        cmp     eax, 0x080
+        cmp     eax, 0x80
         jnz     @f
         cmp     byte[esi + 6], 0
         jnz     .scanlistcont
@@ -623,7 +623,7 @@ ntfs_read_attr:
         add     eax, [eax + 4]
         jmp     @b
 
-    @@: cmp     eax, 0x080
+    @@: cmp     eax, 0x80
         jnz     @f
         cmp     byte[eax + 9], 0
         jnz     .l1
@@ -639,7 +639,7 @@ ntfs_read_attr:
         mov     ecx, [eax + 0x30]
         mov     dword[ntfs_attr_size], ecx
         mov     ecx, [eax + 0x34]
-        mov     dword[ntfs_attr_size+4], ecx
+        mov     dword[ntfs_attr_size + 4], ecx
 
   .testfz:
         xor     eax, eax
@@ -674,7 +674,7 @@ ntfs_read_attr:
         sub     ebp, ntfs_attrlist_buf - 0x1a
         cmp     [ntfs_cur_iRecord], 0
         jnz     @f
-        sub     ebp, ntfs_attrlist_mft_buf-ntfs_attrlist_buf
+        sub     ebp, ntfs_attrlist_mft_buf - ntfs_attrlist_buf
 
     @@: cmp     ebp, 0x400
         jnz     .scanlistfound
@@ -709,7 +709,7 @@ ntfs_read_attr:
         call    .doreadattr
         pop     edx esi
         mov     ebp, [ntfs_cur_read]
-        pop     dword[ntfs_attr_size+4]
+        pop     dword[ntfs_attr_size + 4]
         pop     dword[ntfs_attr_size]
         pop     [ntfs_cur_buf]
         pop     [ntfs_cur_read]
@@ -719,7 +719,7 @@ ntfs_read_attr:
         add     ebp, ntfs_attrlist_buf + 0x200 - 0x1a
         cmp     [ntfs_cur_iRecord], 0
         jnz     .scanliststart
-        add     ebp, ntfs_attrlist_mft_buf-ntfs_attrlist_buf
+        add     ebp, ntfs_attrlist_mft_buf - ntfs_attrlist_buf
         jmp     .scanliststart
 
   .doreadattr:
@@ -738,9 +738,9 @@ ntfs_read_attr:
         add     edx, eax
         add     edx, ecx ; edx -> data
         mov     eax, [ntfs_cur_size]
-        cmp     eax, (0x0ffffffff shr 9) + 1
+        cmp     eax, (0xffffffff shr 9) + 1
         jbe     @f
-        mov     eax, (0x0ffffffff shr 9) + 1
+        mov     eax, (0xffffffff shr 9) + 1
 
     @@: shl     eax, 9
         cmp     eax, esi
@@ -787,7 +787,7 @@ ntfs_read_attr:
         cmp     [ntfs_cur_size], eax
         jb      @f
         mov     [ntfs_cur_size], eax
-        mov     eax, dword [ntfs_attr_size]
+        mov     eax, dword[ntfs_attr_size]
         and     eax, 0x1ff
         mov     [ntfs_cur_tail], eax
 
@@ -887,7 +887,7 @@ ntfs_read_file_record:
         push    [ntfs_cur_size]
         push    [ntfs_cur_buf]
         push    [ntfs_cur_read]
-        mov     [ntfs_cur_attr], 0x-80 ; $DATA
+        mov     [ntfs_cur_attr], 0x80 ; $DATA
         and     [ntfs_cur_iRecord], 0 ; $Mft
         mov     [ntfs_cur_offs], eax
         shr     ecx, 9
@@ -979,7 +979,7 @@ ntfs_decode_mcb_entry:
         pop     ecx
         sub     ecx, 8
         neg     ecx
-        cmp     byte[esi - 1], 0x080
+        cmp     byte[esi - 1], 0x80
         jae     .end
         push    eax
         xor     eax, eax
@@ -993,7 +993,7 @@ ntfs_decode_mcb_entry:
         pop     ecx
         sub     ecx, 8
         neg     ecx
-        cmp     byte[esi - 1], 0x080
+        cmp     byte[esi - 1], 0x80
         cmc
         sbb     eax, eax
         rep     stosb
@@ -1024,7 +1024,7 @@ ntfs_find_lfn:
         mov     [ntfs_cur_iRecord], 5   ; start parse from root cluster
 
   .doit2:
-        mov     [ntfs_cur_attr], 0x090 ; $INDEX_ROOT
+        mov     [ntfs_cur_attr], 0x90 ; $INDEX_ROOT
         and     [ntfs_cur_offs], 0
         mov     eax, [ntfs_data.cur_index_size]
         mov     [ntfs_cur_size], eax
@@ -1145,7 +1145,7 @@ ntfs_find_lfn:
         mov     eax, [esi + eax - 8]
         mul     [ntfs_data.sectors_per_cluster]
         mov     [ntfs_cur_offs], eax
-        mov     [ntfs_cur_attr], 0x0a0 ; $INDEX_ALLOCATION
+        mov     [ntfs_cur_attr], 0xa0 ; $INDEX_ALLOCATION
         mov     [ntfs_cur_size], ebp
         mov     eax, [ntfs_data.cur_index_buf]
         mov     esi, eax
@@ -1155,7 +1155,7 @@ ntfs_find_lfn:
         shl     eax, 9
         cmp     [ntfs_cur_read], eax
         jnz     .notfound
-        cmp     dword [esi], 'INDX'
+        cmp     dword[esi], 'INDX'
         jnz     .notfound
         mov     ebx, esi
         call    ntfs_restore_usa
@@ -1222,7 +1222,7 @@ ntfs_HdRead:
         ret
 
   .found:
-        mov     [ntfs_cur_attr], 0x080 ; $DATA
+        mov     [ntfs_cur_attr], 0x80 ; $DATA
         and     [ntfs_cur_offs], 0
         and     [ntfs_cur_size], 0
         call    ntfs_read_attr
@@ -1262,7 +1262,7 @@ ntfs_HdRead:
         call    ntfs_read_attr.continue
         mov     eax, [ebx]
         and     eax, 0x1ff
-        lea     esi, [ntfs_bitmap_buf+eax]
+        lea     esi, [ntfs_bitmap_buf + eax]
         sub     eax, [ntfs_cur_read]
         jae     .eof0
         neg     eax
@@ -1354,7 +1354,7 @@ ntfs_HdReadFolder:
         ;     eax = 0 ok read or other = errormsg
 
         mov     eax, 5 ; root cluster
-        cmp     byte [esi], 0
+        cmp     byte[esi], 0
         jz      .doit
         call    ntfs_find_lfn
         jnc     .doit2
@@ -1377,7 +1377,7 @@ ntfs_HdReadFolder:
         mov     [ntfs_cur_buf], ntfs_bitmap_buf
         call    ntfs_read_attr
         jc      .notfound
-        mov     [ntfs_cur_attr], 0x090 ; $INDEX_ROOT
+        mov     [ntfs_cur_attr], 0x90 ; $INDEX_ROOT
         and     [ntfs_cur_offs], 0
         mov     eax, [ntfs_data.cur_index_size]
         mov     [ntfs_cur_size], eax
@@ -1468,7 +1468,7 @@ ntfs_HdReadFolder:
         mov     ebx, [ebx]
         ; init header
         mov     edi, edx
-        mov     ecx, 32/4
+        mov     ecx, 32 / 4
         xor     eax, eax
         rep     stosd
         mov     byte[edx], 1 ; version
@@ -1508,7 +1508,7 @@ ntfs_HdReadFolder:
         mov     ecx, 0x400 / 4
         xor     eax, eax
         rep     stosd
-        mov     [ntfs_cur_attr], 0x0b0 ; $BITMAP
+        mov     [ntfs_cur_attr], 0xb0 ; $BITMAP
         and     [ntfs_cur_offs], 0
         mov     [ntfs_cur_size], 2
         call    ntfs_read_attr
@@ -1517,7 +1517,7 @@ ntfs_HdReadFolder:
         and     [ntfs_cur_offs], 0
 
   .dumploop:
-        mov     [ntfs_cur_attr], 0x0a0
+        mov     [ntfs_cur_attr], 0xa0
         mov     [ntfs_cur_size], ebp
         mov     eax, [ntfs_data.cur_index_buf]
         mov     esi, eax
@@ -1560,7 +1560,7 @@ ntfs_HdReadFolder:
         inc     [ntfs_cur_offs]
         test    [ntfs_cur_offs], 0x400 * 8 - 1
         jnz     .dumploop
-        mov     [ntfs_cur_attr], 0x0b0
+        mov     [ntfs_cur_attr], 0xb0
         push    ecx edi
         mov     edi, ntfs_bitmap_buf
         mov     [ntfs_cur_buf], edi
@@ -1590,7 +1590,7 @@ ntfs_HdReadFolder:
         js      @f
         mov     al, ERROR_END_OF_FILE
 
-    @@: mov     [esp + 0x1C], eax
+    @@: mov     [esp + 0x1c], eax
         mov     [esp + 0x10], ebx
         popad
         ret
@@ -1627,7 +1627,7 @@ ntfs_HdReadFolder:
         mov     al, '.'
         push    edi ecx
         lea     ecx, [esi + 1]
-        test    byte [edi - 0x24], 1
+        test    byte[edi - 0x24], 1
         jz      @f
         rep     stosw
         pop     ecx
@@ -1649,7 +1649,7 @@ ntfs_HdReadFolder:
 
   .add_entry:
         ; do not return DOS 8.3 names
-        cmp     byte [esi + 0x51], 2
+        cmp     byte[esi + 0x51], 2
         jz      .ret
         ; do not return system files
         ; ... note that there will be no bad effects if system files also were reported ...
@@ -1667,7 +1667,7 @@ ntfs_HdReadFolder:
         push    ecx esi edi
         movzx   ecx, byte[esi + 0x50]
         add     esi, 0x52
-        test    byte [edi - 0x24], 1
+        test    byte[edi - 0x24], 1
         jz      .ansi
         shr     ecx, 1
         rep     movsd

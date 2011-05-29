@@ -60,7 +60,7 @@ endg
 
 iglobal
   align 4
-  network_free_hint dd 1024/8
+  network_free_hint dd 1024 / 8
 endg
 
 proc net_socket_alloc stdcall uses ebx ecx edx edi
@@ -608,7 +608,7 @@ local sockAddr dd ?
 
         push    eax
 
-        mov     bl, TH_FIN+TH_ACK
+        mov     bl, TH_FIN + TH_ACK
         xor     ecx, ecx
         xor     esi, esi
         stdcall build_tcp_packet, [sockAddr]
@@ -944,7 +944,7 @@ proc socket_write stdcall
 
         mov     eax, pseudoHeader
         mov     [checkAdd1], eax
-        mov     [checkSize1], word 12
+        mov     word[checkSize1], 12
         mov     eax, edx
         add     eax, 20
         mov     [checkAdd2], eax
@@ -966,8 +966,8 @@ proc socket_write stdcall
         mov     [edx + 20 + UDP_PACKET.Checksum], ax
 
         ; Fill in the IP header checksum
-        GET_IHL ecx,edx ; get IP-Header length
-        stdcall checksum_jb,edx,ecx ; buf_ptr, buf_size
+        GET_IHL ecx, edx ; get IP-Header length
+        stdcall checksum_jb, edx, ecx ; buf_ptr, buf_size
         xchg    al, ah
         mov     [edx + IP_PACKET.HeaderChecksum], ax
 

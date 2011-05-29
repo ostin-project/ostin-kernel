@@ -51,7 +51,7 @@ hd_read:
         cmp     [hd_error], 0
         jne     .return_01
         ; Read through BIOS?
-        cmp     [hdpos], 0x080
+        cmp     [hdpos], 0x80
         jae     .bios
         ; hd_read_{dma,pio} use old ATA with 28 bit for sector number
         cmp     eax, 0x10000000
@@ -91,10 +91,10 @@ hd_read:
 ;       add     esi, HD_CACHE + 65536
         push    eax
         call    calculate_cache_2
-        add     esi,eax
+        add     esi, eax
         pop     eax
 
-        mov     edi,ebx
+        mov     edi, ebx
         mov     ecx, 512 / 4
         cld
         rep     movsd ; move data
@@ -150,7 +150,7 @@ hd_read_pio:
 ;       add     edi, HD_CACHE + 65536
         push    eax
         call    calculate_cache_2
-        add     edi,eax
+        add     edi, eax
         pop     eax
 
         mov     ecx, 256
@@ -197,7 +197,7 @@ hd_write:
         mov     edi, 1
 
   .hdwritecache:
-        cmp     dword[esi + 4],0 ; if cache slot is empty
+        cmp     dword[esi + 4], 0 ; if cache slot is empty
         je      .not_in_cache_write
 
         cmp     [esi], eax ; if the slot has the sector
@@ -219,7 +219,7 @@ hd_write:
 ;       lea     esi, [edi * 8 + HD_CACHE]
 ;       push    eax
         call    calculate_cache_1
-        lea     esi,[edi * 8 + esi]
+        lea     esi, [edi * 8 + esi]
 ;       pop     eax
 
         mov     [esi], eax ; sector number
@@ -522,7 +522,7 @@ hdd_irq14:
 ;       mov     [dma_slot_ptr], eax
 ;       mov     [CURRENT_TASK], ebx
 ;       mov     [TASK_BASE], edi
-;       mov     byte [DONT_SWITCH], 1
+;       mov     byte[DONT_SWITCH], 1
 ;       call    do_change_task
 
   .noswitch:
@@ -555,7 +555,7 @@ hdd_irq15:
 ;       mov     [dma_slot_ptr], eax
 ;       mov     [CURRENT_TASK], ebx
 ;       mov     [TASK_BASE], edi
-;       mov     byte [DONT_SWITCH], 1
+;       mov     byte[DONT_SWITCH], 1
 ;       call    do_change_task
 
   .noswitch:
@@ -579,7 +579,7 @@ hd_read_dma:
         mov     eax, [esp + 4]
         sub     eax, [dma_cur_sector]
         shl     eax, 9
-        add     eax, (OS_BASE+IDE_DMA)
+        add     eax, OS_BASE + IDE_DMA
         push    ecx esi edi
         mov     esi, eax
         shl     edi, 9
@@ -640,10 +640,10 @@ hd_read_dma:
         inc     edx
         and     al, 0x0f
         add     al, byte[hdid]
-        add     al, 011100000b
+        add     al, 11100000b
         out     dx, al
         inc     edx
-        mov     al, 0x0c8
+        mov     al, 0xc8
         out     dx, al
         mov     dx, [IDEContrRegsBaseAddr]
         cmp     [hdbase], 0x1f0
@@ -675,8 +675,8 @@ hd_read_dma:
 
     @@: cmp     [hd_error], 0
         jnz     hd_read_error
-        mov     eax,[hdpos]
-        mov     [dma_hdpos],eax
+        mov     eax, [hdpos]
+        mov     [dma_hdpos], eax
         pop     edx
         pop     eax
         mov     [dma_cur_sector], eax
@@ -750,10 +750,10 @@ write_cache_chain:
         inc     edx
         and     al, 0x0f
         add     al, byte[hdid]
-        add     al, 011100000b
+        add     al, 11100000b
         out     dx, al
         inc     edx
-        mov     al, 0x0ca
+        mov     al, 0xca
         out     dx, al
         mov     dx, [IDEContrRegsBaseAddr]
         cmp     [hdbase], 0x1f0
@@ -816,14 +816,14 @@ bd_read:
         ja      .notread
         sub     eax, [bios_cur_sector]
         shl     eax, 9
-        add     eax, OS_BASE + 0x09a000
+        add     eax, OS_BASE + 0x9a000
         push    ecx esi edi
         mov     esi, eax
         shl     edi, 9
 ;       add     edi, HD_CACHE + 0x10000
         push    eax
         call    calculate_cache_2
-        add     edi,eax
+        add     edi, eax
         pop     eax
 
         mov     ecx, 512 / 4
@@ -863,7 +863,7 @@ bd_write_cache_chain:
         shl     esi, 9
         call    calculate_cache_2
         add     esi, eax
-        mov     edi, OS_BASE + 0x09a000
+        mov     edi, OS_BASE + 0x9a000
         movzx   ecx, [cache_chain_size]
         push    ecx
         shl     ecx, 9 - 2
@@ -897,7 +897,7 @@ int13_call:
         ; In current implementation it is protected by common mutex 'hd1_status'
         mov     word[OS_BASE + 0x510], 0x10 ; packet length
         mov     word[OS_BASE + 0x512], cx ; number of sectors
-        mov     dword[OS_BASE + 0x514], 0x09a000000 ; buffer 9A00:0000
+        mov     dword[OS_BASE + 0x514], 0x9a000000 ; buffer 9A00:0000
         mov     dword[OS_BASE + 0x518], eax
         and     dword[OS_BASE + 0x51c], 0
         push    ebx ecx esi edi
@@ -906,12 +906,12 @@ int13_call:
         mov     ecx, sizeof.v86_regs / 4
         xor     eax, eax
         rep     stosd
-        mov     byte [ebx + v86_regs.eax + 1], dl
+        mov     byte[ebx + v86_regs.eax + 1], dl
         mov     eax, [hdpos]
-        lea     eax, [BiosDisksData + (eax - 0x080) * 4]
+        lea     eax, [BiosDisksData + (eax - 0x80) * 4]
         mov     dl, [eax]
-        mov     byte [ebx + v86_regs.edx], dl
-        movzx   edx, byte [eax + 1]
+        mov     byte[ebx + v86_regs.edx], dl
+        movzx   edx, byte[eax + 1]
 ;       mov     dl, 5
         test    edx, edx
         jnz     .hasirq
@@ -924,10 +924,10 @@ int13_call:
         popad
 
     @@: mov     word[ebx + v86_regs.esi], 0x510
-        mov     word[ebx + v86_regs.ss], 0x09000
-        mov     word[ebx + v86_regs.esp], 0x0a000
+        mov     word[ebx + v86_regs.ss], 0x9000
+        mov     word[ebx + v86_regs.esp], 0xa000
         mov     word[ebx + v86_regs.eip], 0x500
-        mov     [ebx+v86_regs.eflags], 0x20200
+        mov     [ebx + v86_regs.eflags], 0x20200
         mov     esi, [sys_v86_machine]
         mov     ecx, 0x502
         push    fs
@@ -936,7 +936,7 @@ int13_call:
         and     [bios_hdpos], 0
         pop     edi esi ecx ebx
         movzx   edx, byte[OS_BASE + 0x512]
-        test    byte [int13_regs_out + v86_regs.eflags], 1
+        test    byte[int13_regs_out + v86_regs.eflags], 1
         jnz     @f
         mov     edx, ecx
 

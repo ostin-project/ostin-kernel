@@ -51,7 +51,7 @@ write_cache:
         jb      .danger
         cmp     eax, [PARTITION_END]
         ja      .danger
-        cmp     [hdpos], 0x080
+        cmp     [hdpos], 0x80
         jae     @f
         ; DMA write is permitted only if [allow_dma_access]=1
         cmp     [allow_dma_access], 2
@@ -226,8 +226,8 @@ calculate_cache:
   .noide:
         push    eax
         mov     eax, [hdpos]
-        sub     eax, 0x080
-        cmp     byte [BiosDisksData + eax * 4 + 2], -1
+        sub     eax, 0x80
+        cmp     byte[BiosDisksData + eax * 4 + 2], -1
         jz      @f
         movzx   eax, byte[BiosDisksData + eax * 4 + 2]
         imul    eax, sizeof.DRIVE_CACHE
@@ -309,7 +309,7 @@ calculate_cache_1:
   .noide:
         push    eax
         mov     eax, [hdpos]
-        sub     eax, 0x080
+        sub     eax, 0x80
         cmp     byte[BiosDisksData + eax * 4 + 2], -1
         jz      @f
         movzx   eax, byte[BiosDisksData + eax * 4 + 2]
@@ -388,8 +388,8 @@ calculate_cache_2:
         ret
 
   .noide:
-        mov     eax,[hdpos]
-        sub     eax, 0x080
+        mov     eax, [hdpos]
+        sub     eax, 0x80
         cmp     byte[BiosDisksData + eax * 4 + 2], -1
         jz      @f
         movzx   eax, byte[BiosDisksData + eax * 4 + 2]
@@ -477,7 +477,7 @@ calculate_cache_3:
   .noide:
         push    eax
         mov     eax, [hdpos]
-        sub     eax, 0x080
+        sub     eax, 0x80
         cmp     byte[BiosDisksData + eax * 4 + 2], -1
         jz      @f
         movzx   eax, byte[BiosDisksData + eax * 4 + 2]
@@ -560,7 +560,7 @@ calculate_cache_4:
   .noide:
         push    eax
         mov     eax, [hdpos]
-        sub     eax, 0x080
+        sub     eax, 0x80
         cmp     byte[BiosDisksData + eax * 4 + 2], -1
         jz      @f
         movzx   eax, byte[BiosDisksData + eax * 4 + 2]
@@ -641,7 +641,7 @@ calculate_cache_5:
   .noide:
         push    eax
         mov     eax, [hdpos]
-        sub     eax, 0x080
+        sub     eax, 0x80
         cmp     byte[BiosDisksData + eax * 4 + 2], -1
         jz      @f
         movzx   eax, byte[BiosDisksData + eax * 4 + 2]
@@ -1078,5 +1078,5 @@ cd_calculate_cache_5:
 ;calculate_linear_to_real:
 ;       shr     eax, 12
 ;       mov     eax, [page_tabs + eax * 4]
-;       and     eax, 0x0fffff000
+;       and     eax, 0xfffff000
 ;       ret

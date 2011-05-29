@@ -16,24 +16,24 @@
 
         pusha
 
-        mov     eax,[pg_data.pages_free]
+        mov     eax, [pg_data.pages_free]
         ; 1/32
-        shr     eax,5
+        shr     eax, 5
         ; round off up to 8 pages
-        shr     eax,3
-        shl     eax,3
+        shr     eax, 3
+        shl     eax, 3
         ; translate pages in butes *4096
-        shl     eax,12
+        shl     eax, 12
         ; check a upper size of the cache, no more than 1 Mb on the physical device
-        cmp     eax,1024 * 1024
+        cmp     eax, 1024 * 1024
         jbe     @f
-        mov     eax,1024 * 1024
+        mov     eax, 1024 * 1024
         jmp     .continue
 
     @@: ; check a lower size of the cache, not less than 128 Kb on the physical device
-        cmp     eax,128 * 1024
+        cmp     eax, 128 * 1024
         jae     @f
-        mov     eax,128 * 1024
+        mov     eax, 128 * 1024
 
     @@:
 
@@ -130,7 +130,7 @@ get_cache_ide:
         add     ebx, edx
         mov     [esi + DRIVE_CACHE.data_pointer], ebx
 
-        cmp     cl,10b
+        cmp     cl, 010b
         je      .cd
         push    ecx
         mov     eax, [esi + DRIVE_CACHE.system_data_size]
@@ -151,7 +151,7 @@ get_cache_ide:
         mov     [esi + DRIVE_CACHE.appl_sad_size], ecx
 
         push    edi
-        mov     edi,[esi + DRIVE_CACHE.data_pointer]
+        mov     edi, [esi + DRIVE_CACHE.data_pointer]
         call    clear_ide_cache
         pop     edi
 
@@ -206,7 +206,7 @@ calculate_for_cd:
         shl     eax, 3
         sub     ebx, eax
         shr     ebx, 11
-        mov     ecx,ebx
+        mov     ecx, ebx
         shl     ebx, 11
         pop     eax
         sub     eax, ebx

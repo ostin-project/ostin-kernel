@@ -22,7 +22,7 @@
 
 MaxRetr        equ 10       ; Максимальное количество повторений операции чтения
 BSYWaitTime    equ 1000     ; Предельное время ожидания готовности к приему команды (в тиках)
-NoTickWaitTime equ 0x0fffff
+NoTickWaitTime equ 0x000fffff
 CDBlockSize    equ 2048
 
 ;********************************************
@@ -70,7 +70,7 @@ ReadCDWRetr:
 
         mov     [CDDataBuf_pointer], ebx
         call    cd_calculate_cache_1
-        lea     esi,[edi * 8 + esi]
+        lea     esi, [edi * 8 + esi]
         mov     [esi], eax ; sector number
 ;       mov     dword[esi + 4], 1 ; hd read - mark as same as in hd
 
@@ -118,7 +118,7 @@ ReadCDWRetr_1:
         call    clear_packet_buffer
         ; Сформировать пакетную команду для считывания сектора данных
         ; Задать код команды Read CD
-        mov     byte[PacketCommand], 0x28  ; 0x0be
+        mov     byte[PacketCommand], 0x28  ; 0xbe
         ; Задать адрес сектора
         mov     ax, word[CDSectorAddress + 2]
         xchg    al, ah
@@ -131,7 +131,7 @@ ReadCDWRetr_1:
         ; Задать количество считываемых секторов
         mov     byte[PacketCommand + 8], 1
         ; Задать считывание данных в полном объеме
-;       mov     byte[PacketCommand + 9], 0x0f8
+;       mov     byte[PacketCommand + 9], 0xf8
         ; Подать команду
         call    SendPacketDatCommand
         pop     ecx
@@ -166,7 +166,7 @@ ReadCDWRetr_1:
         loop    .NextRetr
 
   .End_4:
-        mov     dword [DevErrorCode],eax
+        mov     dword[DevErrorCode], eax
         popad
         ret
 
@@ -211,7 +211,7 @@ SendPacketDatCommand:
         mov     [ATAHead], al
 ;       mov     ax, [CDBlockSize]
         mov     [ATACylinder], CDBlockSize
-        mov     [ATACommand], 0x0a0
+        mov     [ATACommand], 0xa0
         call    SendCommandToHDD_1
         test    eax, eax
 ;       cmp     [DevErrorCode], 0 ; проверить код ошибки
@@ -240,7 +240,7 @@ SendPacketDatCommand:
   .test:
         ; Проверить готовность
         in      al, dx
-        test    al, 0x080 ; состояние сигнала BSY
+        test    al, 0x80 ; состояние сигнала BSY
         jnz     .WaitDevice0
         test    al, 0x01 ; состояние сигнала ERR
         jnz     .Err6
@@ -287,7 +287,7 @@ SendPacketDatCommand:
   .test_1:
         ; Проверить готовность
         in      al, dx
-        test    al, 0x080 ; состояние сигнала BSY
+        test    al, 0x80 ; состояние сигнала BSY
         jnz     .WaitDevice1
         test    al, 0x01 ; состояние сигнала ERR
         jnz     .Err6_temp
@@ -349,14 +349,14 @@ SendPacketNoDatCommand:
         xor     eax, eax
 ;       mov     [DevErrorCode], al
         ; Задать режим CHS
-        mov     [ATAAddressMode],al
+        mov     [ATAAddressMode], al
         ; Послать ATA-команду передачи пакетной команды
         mov     [ATAFeatures], al
         mov     [ATASectorCount], al
         mov     [ATASectorNumber], al
         mov     [ATACylinder], ax
         mov     [ATAHead], al
-        mov     [ATACommand], 0x0a0
+        mov     [ATACommand], 0xa0
         call    SendCommandToHDD_1
 ;       cmp     [DevErrorCode], 0 ; проверить код ошибки
         test    eax, eax
@@ -374,7 +374,7 @@ SendPacketNoDatCommand:
         ja      .Err1_3 ; ошибка тайм-аута
         ; Проверить готовность
         in      al, dx
-        test    al, 0x080 ; состояние сигнала BSY
+        test    al, 0x80 ; состояние сигнала BSY
         jnz     .WaitDevice0_1
         test    al, 0x01 ; состояние сигнала ERR
         jnz     .Err6_1
@@ -411,8 +411,8 @@ SendPacketNoDatCommand:
         cmp     eax, MaxCDWaitTime
         ja      .Err1_3 ; ошибка тайм-аута
         ; Ожидать освобождения устройства
-        in      al,dx
-        test    al, 0x080 ; состояние сигнала BSY
+        in      al, dx
+        test    al, 0x80 ; состояние сигнала BSY
         jnz     .WaitDevice1_1
         test    al, 0x01 ; состояние сигнала ERR
         jnz     .Err6_1
@@ -508,9 +508,9 @@ SendCommandToHDD_1:
         ; Прочитать регистр состояния
 
   .test:
-        in      al,dx
+        in      al, dx
         ; Проверить состояние сигнала BSY
-        test    al, 0x080
+        test    al, 0x80
         jnz     .WaitHDReady_2
         ; Проверить состояние сигнала DRQ
         test    al, 0x08
@@ -540,7 +540,7 @@ SendCommandToHDD_1:
         cmp     [ATAHead], 0x0f ; проверить номер головки
         ja      .Err5_4
         or      al, [ATAHead]
-        or      al, 010100000b
+        or      al, 10100000b
         mov     ah, [ATAAddressMode]
         shl     ah, 6
         or      al, ah
@@ -621,9 +621,9 @@ WaitUnitReady:
         cmp     [DevErrorCode], 0
         je      .End_11
         ; Проверить время ожидания готовности
-        mov     eax,[timer_ticks]
-        sub     eax,[WURStartTime]
-        cmp     eax,MaxCDWaitTime
+        mov     eax, [timer_ticks]
+        sub     eax, [WURStartTime]
+        cmp     eax, MaxCDWaitTime
         jb      .SendCommand
 
   .Error:
@@ -759,8 +759,8 @@ check_ATAPI_device_event:
 
   .ide0_1:
         mov     al, [DRIVE_DATA + 1]
-        and     al, 011000000b
-        cmp     al, 010000000b
+        and     al, 11000000b
+        cmp     al, 10000000b
         jz      .ide0
 
   .end:
@@ -928,7 +928,7 @@ Read_TOC:
         ; Задать формат
         mov     [PacketCommand + 2], 1
         ; Размер выделенной области
-        mov     [PacketCommand + 7], 0x0ff
+        mov     [PacketCommand + 7], 0xff
         mov     [PacketCommand + 8], 0
         ; Подать команду
         call    SendPacketDatCommand

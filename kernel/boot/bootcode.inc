@@ -169,7 +169,7 @@ no_hd_load:
         ; set up stack
         mov     ax, 0x3000
         mov     ss, ax
-        mov     sp, 0x0ec00
+        mov     sp, 0xec00
         ; set up segment registers
         push    cs
         pop     ds
@@ -192,7 +192,7 @@ if lang eq ru
         mov     bp, RU_FNT2 ; RU_FNT2 - Second part
         mov     bx, 0x1000 ; 512 bytes
         mov     cx, 0x20 ; 32 symbols
-        mov     dx, 0x0e0 ; 224 - position of first symbol
+        mov     dx, 0xe0 ; 224 - position of first symbol
         mov     ax, 0x1100
         int     0x10
 
@@ -279,11 +279,11 @@ cpugood:
 
         push    0
         pop     es
-        and     word[es:0x09031], 0
+        and     [es:BOOT_IDE_BASE_ADDR], 0
 
         ; find HDD IDE DMA PCI device
         ; check for PCI BIOS
-        mov     ax, 0x0b101
+        mov     ax, 0xb101
         int     0x1a
         jc      .nopci
         cmp     edx, 'PCI '
@@ -292,19 +292,19 @@ cpugood:
         ; class 1 = mass storage
         ; subclass 1 = IDE controller
         ; a) class 1, subclass 1, programming interface 0x80
-        mov     ax, 0x0b103
+        mov     ax, 0xb103
         mov     ecx, 1 * 0x10000 + 1 * 0x100 + 0x80
         xor     si, si ; device index = 0
         int     0x1a
         jnc     .found
         ; b) class 1, subclass 1, programming interface 0x8A
-        mov     ax, 0x0b103
+        mov     ax, 0xb103
         mov     ecx, 1 * 0x10000 + 1 * 0x100 + 0x8a
         xor     si, si ; device index = 0
         int     0x1a
         jnc     .found
         ; c) class 1, subclass 1, programming interface 0x85
-        mov     ax, 0x0b103
+        mov     ax, 0xb103
         mov     ecx, 1 * 0x10000 + 1 * 0x100 + 0x85
         xor     si, si
         int     0x1a
@@ -312,15 +312,15 @@ cpugood:
 
   .found:
         ; get memory base
-        mov     ax, 0x0b10A
+        mov     ax, 0xb10a
         mov     di, 0x20 ; memory base is config register at 0x20
         int     0x1a
         jc      .nopci
-        and     cx, 0x0fff0 ; clear address decode type
-        mov     [es:0x09031], cx
+        and     cx, 0xfff0 ; clear address decode type
+        mov     [es:BOOT_IDE_BASE_ADDR], cx
 
   .nopci:
-        mov     al, 0x0f6 ; Сброс клавиатуры, разрешить сканирование
+        mov     al, 0xf6 ; Сброс клавиатуры, разрешить сканирование
         out     0x60, al
         xor     cx, cx
 
@@ -332,7 +332,7 @@ wait_loop: ; variant 2
         loopnz  wait_loop
 
         ; set keyboard typematic rate & delay
-        mov     al, 0x0f3
+        mov     al, 0xf3
         out     0x60, al
         xor     cx, cx
 
@@ -348,15 +348,15 @@ wait_loop: ; variant 2
         loopnz  @b
 
         ; --------------- APM ---------------------
-        and     word[es:0x09044], 0 ; ver = 0.0 (APM not found)
+        and     [es:BOOT_APM_VERSION], 0 ; ver = 0.0 (APM not found)
         mov     ax, 0x5300
         xor     bx, bx
         int     0x15
         jc      apm_end ; APM not found
         test    cx, 2
         jz      apm_end ; APM 32-bit protected-mode interface not supported
-        mov     [es:0x09044], ax ; Save APM Version
-        mov     [es:0x09046], cx ; Save APM flags
+        mov     [es:BOOT_APM_VERSION], ax ; Save APM Version
+        mov     [es:BOOT_APM_FLAGS], cx ; Save APM flags
 
         ; Write APM ver ----
         and     ax, 0x0f0f
@@ -375,10 +375,10 @@ wait_loop: ; variant 2
         xor     bx, bx
         int     0x15
 
-        mov     [es:0x09040], ebx
-        mov     [es:0x09050], ax
-        mov     [es:0x09052], cx
-        mov     [es:0x09054], dx
+        mov     [es:BOOT_APM_ENTRY_OFS], ebx
+        mov     [es:BOOT_APM_CODE32_SEG], ax
+        mov     [es:BOOT_APM_CODE16_SEG], cx
+        mov     [es:BOOT_APM_DATA16_SEG], dx
 
 apm_end:
         _setcursor d80x25_top_num, 0
@@ -479,7 +479,7 @@ cfgmanager:
   .show_remarks:
         ; show remarks in gray color
         mov     di, ((21 - num_remarks) * 80 + 2) * 2
-        push    0x0b800
+        push    0xb800
         pop     es
         mov     cx, num_remarks
         mov     si, remarks
@@ -519,7 +519,7 @@ cfgmanager:
 ;       mov     [es:8 * 4], eax
         sti
         ; wait for keypressed
-        xor     ax,ax
+        xor     ax, ax
         int     0x16
         push    ax
         ; restore timer interrupt
@@ -535,7 +535,7 @@ cfgmanager:
         ; clear remarks and restore normal attributes
         push    es
         mov     di, ((21 - num_remarks) * 80 + 2) * 2
-        push    0x0b800
+        push    0xb800
         pop     es
         mov     cx, num_remarks
         mov     ax, ' ' + (1 * 16 + 15) * 0x100
@@ -595,7 +595,7 @@ cfgmanager:
         jne     .pgup
         cmp     word[es:si + 10], -1
         je      .loops
-        add     word[cursor_pos],size_of_step
+        add     word[cursor_pos], size_of_step
         jmp     .loops
 
   .pgup:
@@ -644,7 +644,7 @@ cfgmanager:
         pop     bp
         push    word[es:bp]
         pop     word[x_save]
-        push    word[es:bp +2]
+        push    word[es:bp + 2]
         pop     word[y_save]
         push    word[es:bp + 6]
         pop     word[number_vm]
@@ -739,7 +739,7 @@ else if lang eq et
         cmp     al, 1
         ja      @f
         mov     [time_str + 9], ' '
-        mov     [time_str + 10],' '
+        mov     [time_str + 10], ' '
 
     @@:
 
@@ -770,7 +770,7 @@ end if
         pop     es
         mov     eax, [.oldtimer]
         mov     [es:8 * 4], eax
-        mov     sp, 0x0ec00
+        mov     sp, 0xec00
 
   .continue:
         sti
@@ -832,16 +832,16 @@ end if
 
         ; GRAPHICS ACCELERATION
         ; force yes
-        mov     byte[es:0x0901c], 1
+        mov     [es:BOOT_MTRR], 1
 
         ; DMA ACCESS TO HD
         mov     al, [preboot_dma]
-        mov     [es:0x0901f], al
+        mov     [es:BOOT_DMA], al
 
         ; VRR_M USE
         mov     al, [preboot_vrrm]
-        mov     [es:0x09030], al
-        mov     byte[es:0x0901e], 1
+        mov     [es:BOOT_VRR], al
+        mov     [es:BOOT_DIRECT_LFB], 1
 
         ; BOOT DEVICE
         mov     al, [preboot_device]
@@ -865,20 +865,20 @@ include '../detect/biosmem.inc'
         xor     dx, dx
         int     0x13
         jc      .nocd
-        cmp     bx, 0x0aa55
+        cmp     bx, 0xaa55
         jnz     .nocd
         mov     ah, 0x48
         push    ds
         push    es
         pop     ds
-        mov     si, 0x0a000
+        mov     si, 0xa000
         mov     word[si], 30
         int     0x13
         pop     ds
         jc      .nocd
         push    ds
         lds     si, [es:si + 26]
-        test    byte [ds:si + 10], 0x40
+        test    byte[ds:si + 10], 0x40
         pop     ds
         jz      .nocd
         ; yes - read all floppy by 18 sectors
@@ -892,14 +892,14 @@ include '../detect/biosmem.inc'
   .a1:
         push    cx dx
         mov     al, 18
-        mov     bx, 0x0a000
+        mov     bx, 0xa000
         call    boot_read_floppy
         mov     si, movedesc
         push    es
         push    ds
         pop     es
         mov     cx, 256 * 18
-        mov     ah, 0x087
+        mov     ah, 0x87
         int     0x15
         pop     es
         pop     dx cx
@@ -935,7 +935,7 @@ include '../detect/biosmem.inc'
         mov     cx, 0x0001 ; first logical sector
         xor     dx, dx ; head = 0, drive = 0 (a:)
         mov     al, 1 ; read one sector
-        mov     bx, 0x0b000 ; es:bx -> data area
+        mov     bx, 0xb000 ; es:bx -> data area
         call    boot_read_floppy
         ; fill the necessary parameters to work with a floppy
         mov     ax, word[es:bx + 24]
@@ -975,7 +975,7 @@ include '../detect/biosmem.inc'
         mov     al, byte[BPB_FATSz16] ; no of sectors to read
         add     bx, [BPB_BytsPerSec] ; es:bx -> data area
         call    boot_read_floppy
-        mov     bx, 0x0b000
+        mov     bx, 0xb000
 
         ; and copy them to extended memory
         mov     si, movedesc
@@ -992,7 +992,7 @@ include '../detect/biosmem.inc'
         push    es
         push    ds
         pop     es
-        mov     ah, 0x087
+        mov     ah, 0x87
         int     0x15
         pop     es
         test    ah, ah
@@ -1024,7 +1024,7 @@ sayerr_floppy:
         push    es
         push    ds
         pop     es
-        mov     ah, 0x087
+        mov     ah, 0x87
         int     0x15
         pop     es
         test    ah, ah
@@ -1077,7 +1077,7 @@ sayerr_floppy:
         push    es
         push    ds
         pop     es
-        mov     ah, 0x087
+        mov     ah, 0x87
         int     0x15
         pop     es
 
@@ -1096,7 +1096,7 @@ sayerr_floppy:
         mov     bx, di
         shr     bx, 1 ; bx+di = di*1.5
         jnc     .even
-        test    word[es:bx + di + 0x0b200], 0x0fff0 ; TODO: may not be 0xB200 !!!
+        test    word[es:bx + di + 0x0b200], 0xfff0 ; TODO: may not be 0xB200 !!!
         jmp     @f
 
   .even:
@@ -1131,7 +1131,7 @@ sayerr_floppy:
         shr     ax, 1 ; ax = (BPB_BytsPerSec * BPB_SecPerClus)/2
         mov     cx, ax ; number of words to copy (count words in cluster)
 ;
-        mov     ah, 0x087
+        mov     ah, 0x87
         int     0x15 ; copy data
         test    ah, ah
         popa
@@ -1189,7 +1189,7 @@ no_sys_on_floppy:
         xor     ax, ax
         mov     es, ax
 
-        mov     ax, [es:0x09008] ; vga & 320x200
+        mov     ax, [es:BOOT_VESA_MODE] ; vga & 320x200
         mov     bx, ax
         cmp     ax, 0x13
         je      setgr

@@ -264,7 +264,7 @@ fs_CdReadFolder:
 
 ; .mainloop:
         mov     [cd_counter_block], 0
-        dec     dword [CDSectorAddress]
+        dec     dword[CDSectorAddress]
         push    ecx
 
   .read_to_buffer:
@@ -385,11 +385,11 @@ fs_CdReadFolder:
   .unicode_parent_directory:
         cmp     [cd_counter_block], 2
         je      @f
-        mov     word[edi], 0x2E00 ; '.'
-        add     edi,2
+        mov     word[edi], 0x2e00 ; '.'
+        add     edi, 2
         jmp     .cd_get_parameters_of_file_2
 
-    @@: mov     dword[edi], 0x2E002E00 ; '..'
+    @@: mov     dword[edi], 0x2e002e00 ; '..'
         add     edi, 4
         jmp     .cd_get_parameters_of_file_2
 
@@ -402,7 +402,7 @@ cd_get_parameters_of_file:
 
 cd_get_parameters_of_file_1:
         ; получаем атрибуты файла
-        xor     eax,eax
+        xor     eax, eax
         ; файл не архивировался
         inc     eax
         shl     eax, 1
@@ -421,7 +421,7 @@ cd_get_parameters_of_file_1:
         inc     eax
 
   .hidden:
-        shl     eax,1
+        shl     eax, 1
         ; файл всегда только для чтения, так как это CD
         inc     eax
         mov     [edi], eax
@@ -449,7 +449,7 @@ cd_get_parameters_of_file_1:
         mov     al, [ebp - 14]
         shl     eax, 8
         ;день
-        mov     al, [ebp-13]
+        mov     al, [ebp - 13]
         ;дата создания файла
         mov     [edi + 12], eax
         ;время последнего доступа
@@ -468,7 +468,7 @@ cd_get_parameters_of_file_1:
         mov     [edi + 4], eax
 
     @@: ; получаем размер файла в байтах
-        xor     eax,eax
+        xor     eax, eax
         mov     [edi + 32 + 4], eax
         mov     eax, [ebp - 23]
         mov     [edi + 32], eax
@@ -560,7 +560,7 @@ cd_find_lfn:
         cmp     byte[CDDataBuf + 5], '1'
         jne     .access_denied
         ; сектор является терминатором набор дескрипторов томов?
-        cmp     byte[CDDataBuf], 0x0ff
+        cmp     byte[CDDataBuf], 0xff
         je      .access_denied
         ; сектор является дополнительным и улучшенным дескриптором тома?
         cmp     byte[CDDataBuf], 0x2
@@ -570,12 +570,12 @@ cd_find_lfn:
         jne     .start
 
         ; параметры root директрории
-        mov     eax, [CDDataBuf + 0x09c + 2] ; начало root директрории
-        mov     [CDSectorAddress],eax
-        mov     eax, [CDDataBuf + 0x09c + 10] ; размер root директрории
+        mov     eax, [CDDataBuf + 0x9c + 2] ; начало root директрории
+        mov     [CDSectorAddress], eax
+        mov     eax, [CDDataBuf + 0x9c + 10] ; размер root директрории
         cmp     byte[esi], 0
         jnz     @f
-        mov     [cd_current_pointer_of_input], CDDataBuf + 0x09c
+        mov     [cd_current_pointer_of_input], CDDataBuf + 0x9c
         jmp     .done
 
     @@: ; начинаем поиск
@@ -584,7 +584,7 @@ cd_find_lfn:
         dec     [CDSectorAddress]
 
   .read_to_buffer:
-        inc     dword [CDSectorAddress]
+        inc     dword[CDSectorAddress]
         mov     [CDDataBuf_pointer], CDDataBuf
         call    ReadCDWRetr ; читаем сектор директории
         cmp     [DevErrorCode], 0
@@ -619,7 +619,7 @@ cd_find_lfn:
         mov     eax, [eax + 2 + 8] ; размер директории
         jmp     .mainloop
 
-   .done:
+  .done:
         ; указатель файла найден
         test    ebp, ebp
         jz      @f
@@ -797,7 +797,7 @@ uni2ansi_char:
 
   .rus2:
         ; 0x440-0x44F -> 0xE0-0xEF
-        add     al, 0x0a0
+        add     al, 0xa0
 
   .ascii:
   .doit:

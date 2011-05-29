@@ -45,14 +45,14 @@ Vesa20_getpixel24:
         lea     edi, [eax + eax * 2] ; edi = x*3
         add     edi, ebx ; edi = x*3+(y*y multiplier)
         mov     ecx, [LFB_BASE + edi]
-        and     ecx, 0x0ffffff
+        and     ecx, 0x00ffffff
         ret
 
 Vesa20_getpixel32:
         imul    ebx, [BytesPerScanLine] ; ebx = y * y multiplier
         lea     edi, [ebx + eax * 4] ; edi = x*4+(y*y multiplier)
         mov     ecx, [LFB_BASE + edi]
-        and     ecx, 0x0ffffff
+        and     ecx, 0x00ffffff
         ret
 
 virtual at esp
@@ -98,13 +98,13 @@ vesa20_putimage:
         mov     [putimg.pti], ebx
         ; unpack the size
         mov     eax, ecx
-        and     ecx, 0x0ffff
+        and     ecx, 0xffff
         shr     eax, 16
         mov     [putimg.image_sx], eax
         mov     [putimg.image_sy], ecx
         ; unpack the coordinates
         mov     eax, edx
-        and     edx, 0x0ffff
+        and     edx, 0xffff
         shr     eax, 16
         mov     [putimg.image_cx], eax
         mov     [putimg.image_cy], edx
@@ -163,7 +163,7 @@ vesa20_putimage:
         mov     [putimg.winmap_newline], eax
         ; screen new line increment
         mov     eax, [BytesPerScanLine]
-        movzx   ebx, byte [ScreenBPP]
+        movzx   ebx, byte[ScreenBPP]
         shr     ebx, 3
         imul    ecx, ebx
         sub     eax, ecx
@@ -174,7 +174,7 @@ vesa20_putimage:
         mov     edx, [putimg.abs_cy]
         imul    edx, [BytesPerScanLine]
         mov     eax, [putimg.abs_cx]
-        movzx   ebx, byte [ScreenBPP]
+        movzx   ebx, byte[ScreenBPP]
         shr     ebx, 3
         imul    eax, ebx
         add     edx, eax
@@ -229,7 +229,7 @@ align 4
 
   .correct:
         mov     eax, [putimg.edi]
-        mov     byte[eax], 0x080
+        mov     byte[eax], 0x80
 
     @@: dec     edi
         jnz     .new_line
@@ -254,8 +254,8 @@ align 4
         call    eax
         cmp     [ebp], bl
         jne     .skip
-;       mov     eax, [esi]        ; ecx = RRBBGGRR
-        mov     [LFB_BASE+edx], eax
+;       mov     eax, [esi] ; ecx = RRBBGGRR
+        mov     [LFB_BASE + edx], eax
 
   .skip:
 ;       add     esi, [putimg.source_bpp]
@@ -265,8 +265,8 @@ align 4
         jnz     .new_x
 ;       pop     edx ebp
         add     esi, [putimg.line_increment]
-        add     edx, [putimg.screen_newline] ;[BytesPerScanLine]
-        add     ebp, [putimg.winmap_newline] ;[Screen_Max_X]
+        add     edx, [putimg.screen_newline] ; [BytesPerScanLine]
+        add     ebp, [putimg.winmap_newline] ; [Screen_Max_X]
 ;       inc     ebp
         cmp     [putimg.ebp], putimage_get1bpp
         jz      .correct
@@ -277,7 +277,7 @@ align 4
 
   .correct:
         mov     eax, [putimg.edi]
-        mov     byte[eax], 0x080
+        mov     byte[eax], 0x80
 
     @@: dec     edi
         jnz     .new_line
@@ -380,12 +380,12 @@ __sys_draw_line:
 
         pusha
 
-dl_x1 equ esp+20
-dl_y1 equ esp+16
-dl_x2 equ esp+12
-dl_y2 equ esp+8
-dl_dx equ esp+4
-dl_dy equ esp+0
+dl_x1 equ esp + 20
+dl_y1 equ esp + 16
+dl_x2 equ esp + 12
+dl_y2 equ esp + 8
+dl_dx equ esp + 4
+dl_dy equ esp + 0
 
         xor     edx, edx ; clear edx
         xor     esi, esi ; unpack arguments
@@ -553,7 +553,7 @@ virtual at esp
     .color        dd ?
     .line_inc_scr dd ?
     .line_inc_map dd ?
-    .stack_data = 4*11
+    .stack_data = 4 * 11
 end virtual
 
 align 4
@@ -582,7 +582,7 @@ vesa20_drawbar:
         mov     [drbar.abs_cx], eax
         mov     [drbar.abs_cy], ebx
         ; real_sx = MIN(wnd_sx-bar_cx, bar_sx);
-        mov     ebx, [edi-twdw + WDATA.box.width] ; ebx = wnd_sx
+        mov     ebx, [edi - twdw + WDATA.box.width] ; ebx = wnd_sx
         ; note that WDATA.box.width is one pixel less than real window x-size
         inc     ebx
         sub     ebx, [drbar.bar_cx]
@@ -648,7 +648,7 @@ vesa20_drawbar:
         xchg    eax, ebp
         ; get process number
         mov     ebx, [CURRENT_TASK]
-        cmp     byte [ScreenBPP], 24
+        cmp     byte[ScreenBPP], 24
         jne     draw_bar_end_32
 
 draw_bar_end_24:
@@ -673,8 +673,8 @@ align 4
         cmp     byte[ebp], bl
         jne     .skip
 
-        mov     [LFB_BASE+edx], bh
-        mov     [LFB_BASE+edx + 1], ax
+        mov     [LFB_BASE + edx], bh
+        mov     [LFB_BASE + edx + 1], ax
 
   .skip:
         ; add pixel
@@ -711,7 +711,7 @@ align 4
         cmp     byte[ebp], bl
         jne     .skip
 
-     mov     [LFB_BASE+edx], eax
+        mov     [LFB_BASE + edx], eax
 
   .skip:
         ; add pixel
@@ -837,19 +837,19 @@ vesa20_drawbackground_stretch:
         mov     eax, [BgrDataWidth]
         dec     eax
         xor     edx, edx
-        div     dword [Screen_Max_X]
+        div     dword[Screen_Max_X]
         push    eax ; high
         xor     eax, eax
-        div     dword [Screen_Max_X]
+        div     dword[Screen_Max_X]
         push    eax ; low
         ; the same for height
         mov     eax, [BgrDataHeight]
         dec     eax
         xor     edx, edx
-        div     dword [Screen_Max_Y]
+        div     dword[Screen_Max_Y]
         push    eax ; high
         xor     eax, eax
-        div     dword [Screen_Max_Y]
+        div     dword[Screen_Max_Y]
         push    eax ; low
         ; External loop for all y from start to end
         mov     ebx, [draw_data + 32 + RECT.top] ; y start
@@ -929,14 +929,14 @@ vesa20_drawbackground_stretch:
         ; Registers meaning:
         ; esi = offset in current line, edi -> output
         ; ebp = offset in WinMapAddress
-        ; dword [esp] = offset in bgr data
-        ; qword [esp+4] = x * 2^32 * (BgrDataWidth-1) / (ScreenWidth-1)
-        ; qword [esp+12] = y * 2^32 * (BgrDataHeight-1) / (ScreenHeight-1)
-        ; dword [esp+20] = x
-        ; dword [esp+24] = y
+        ; dword[esp] = offset in bgr data
+        ; qword[esp+4] = x * 2^32 * (BgrDataWidth-1) / (ScreenWidth-1)
+        ; qword[esp+12] = y * 2^32 * (BgrDataHeight-1) / (ScreenHeight-1)
+        ; dword[esp+20] = x
+        ; dword[esp+24] = y
         ; precalculated constants:
-        ; qword [esp+28] = 2^32*(BgrDataHeight-1)/(ScreenHeight-1)
-        ; qword [esp+36] = 2^32*(BgrDataWidth-1)/(ScreenWidth-1)
+        ; qword[esp+28] = 2^32*(BgrDataHeight-1)/(ScreenHeight-1)
+        ; qword[esp+36] = 2^32*(BgrDataWidth-1)/(ScreenWidth-1)
   .sdp3a:
         mov     eax, [_WinMapAddress]
         cmp     byte[ebp + eax], 1
@@ -1012,7 +1012,7 @@ vesa20_drawbackground_stretch:
   .sdpdone:
         add     esp, 44
         popad
-        mov     [EGA_counter],1
+        mov     [EGA_counter], 1
         call    VGA_drawbackground
         ret
 
@@ -1047,7 +1047,7 @@ smooth_line:
         jmp     smooth_line
 
     @@: mov     eax, [draw_data + 32 + RECT.left]
-        mov     [esp+20+8], eax
+        mov     [esp + 20 + 8], eax
         ret
 
 align 16

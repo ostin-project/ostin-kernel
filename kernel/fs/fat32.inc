@@ -97,7 +97,7 @@ endg
 reserve_hd_channel:
         ; BIOS disk accesses are protected with common mutex hd1_status
         ; This must be modified when hd1_status will not be valid!
-        cmp     [hdpos], 0x080
+        cmp     [hdpos], 0x80
         jae     .ret
         cmp     [hdbase], 0x1f0
         jne     .IDE_Channel_2
@@ -144,7 +144,7 @@ reserve_hd_channel:
 
 free_hd_channel:
         ; see comment at reserve_hd_channel
-        cmp     [hdpos], 0x080
+        cmp     [hdpos], 0x80
         jae     .ret
         cmp     [hdbase], 0x1f0
         jne     .IDE_Channel_2
@@ -488,7 +488,7 @@ get_data_cluster:
         dec     edx
 
   .gdcl2:
-        test    edx,edx ; is all read?
+        test    edx, edx ; is all read?
         je      .out_of_read
 
         inc     eax ; next sector
@@ -639,7 +639,7 @@ add_disk_free_space:
         cmp     [hd_error], 0
         jne     .add_not_fs
 
-        cmp     dword[ebx + 0x1fc], 0x0aa550000 ; check sector id
+        cmp     dword[ebx + 0x1fc], 0xaa550000 ; check sector id
         jne     .add_not_fs
 
         add     [ebx + 0x1e8], ecx
@@ -711,7 +711,7 @@ file_read:
         jc      .file_to_read_not_found
 
         mov     eax, [ebx + 28] ; file size
-        test    byte [ebx + 11], 0x10 ; is it directory?
+        test    byte[ebx + 11], 0x10 ; is it directory?
         jz      .read_set_size ; no
 
         mov     eax, [ebx + 20 - 2] ; FAT entry
@@ -898,7 +898,7 @@ get_hd_info:
         dec     ebx ; cluster count
         imul    edx, [SECTORS_PER_CLUSTER], 512 ; cluster size in bytes
         mov     [hd1_status], 0
-        xor     eax,eax
+        xor     eax, eax
         ret
 
   .info_access_denied:
@@ -1766,7 +1766,7 @@ fs_HdRewrite:
 
   .test_short_name_cont:
         lea     eax, [esp + 12 + 12 + 8]
-        call    dword [eax - 8]
+        call    dword[eax - 8]
         jnc     .test_short_name_entry
         jmp     .found
 
@@ -1819,8 +1819,8 @@ fs_HdRewrite:
         push    eax
         lea     eax, [esp + 16 + 8 + 12 + 8]
         mov     [eax], ebp
-        and     dword [eax + 4], 0
-        call    dword [eax - 4]
+        and     dword[eax + 4], 0
+        call    dword[eax - 4]
         pop     eax
         jnc     .scan_dir
 
@@ -1832,9 +1832,9 @@ fs_HdRewrite:
         ret
 
   .scan_dir:
-        cmp     byte [edi], 0
+        cmp     byte[edi], 0
         jz      .free
-        cmp     byte [edi], 0x0e5
+        cmp     byte[edi], 0xe5
         jz      .free
         xor     ecx, ecx
 
@@ -1883,8 +1883,8 @@ fs_HdRewrite:
         loop    @b
         pop     ecx esi
         pop     edi
-        pop     dword [esp + 8 + 12 + 12]
-        pop     dword [esp + 8 + 12 + 12]
+        pop     dword[esp + 8 + 12 + 12]
+        pop     dword[esp + 8 + 12 + 12]
         ; edi points to first entry in free chunk
         dec     ecx
         jz      .nolfn
@@ -2067,7 +2067,7 @@ fs_HdRewrite:
         lea     eax, [esp + 8]
         call    dword[eax + 8]
         mov     [edi + 28], ebx
-        call    dword [eax + 16]
+        call    dword[eax + 16]
         mov     [esp + 32 + 16], ebx
         lea     eax, [ebx + 511]
         shr     eax, 9
@@ -2096,9 +2096,9 @@ fs_HdRewrite:
         mov     ecx, 32 / 4
         rep     movsd
         pop     esi
-        mov     dword[edi -32], '.   '
-        mov     dword[edi -32 + 4], '    '
-        mov     dword[edi -32 + 8], '    '
+        mov     dword[edi - 32], '.   '
+        mov     dword[edi - 32 + 4], '    '
+        mov     dword[edi - 32 + 8], '    '
         mov     byte[edi - 32 + 11], 0x10
         push    esi
         mov     ecx, 32 / 4
@@ -2604,7 +2604,7 @@ fs_HdSetFileEnd:
         jz      @f
 
   .pop_ret11:
-        mov     byte [esp], 11
+        mov     byte[esp], 11
         jmp     .pop_ret
 
     @@: ; now zero new data
@@ -2643,7 +2643,7 @@ fs_HdSetFileEnd:
         jz      .next_cluster
 
   .err_next:
-        mov     byte [esp], 11
+        mov     byte[esp], 11
 
   .next_cluster:
         sub     dword[esp + 20], 0x200
@@ -2736,7 +2736,7 @@ fs_HdSetFileEnd:
         mov     ebx, buffer
         call    hd_read
         pop     eax
-        lea     edi, [buffer+eax]
+        lea     edi, [buffer + eax]
         push    ecx
         mov     ecx, 0x200
         sub     ecx, eax
@@ -2866,11 +2866,11 @@ fs_HdDelete:
         jmp     .pop_ret
 
   .found:
-        cmp     dword [edi], '.   '
+        cmp     dword[edi], '.   '
         jz      .access_denied2
-        cmp     dword [edi], '..  '
+        cmp     dword[edi], '..  '
         jz      .access_denied2
-        test    byte [edi + 11], 0x10
+        test    byte[edi + 11], 0x10
         jz      .dodel
         ; we can delete only empty folders!
         pushad
@@ -2889,7 +2889,7 @@ fs_HdDelete:
   .checkempty:
         cmp     byte[ebx], 0
         jz      .empty
-        cmp     byte[ebx], 0x0e5
+        cmp     byte[ebx], 0xe5
         jnz     .notempty
         add     ebx, 0x20
         cmp     ebx, buffer + 0x200
@@ -2946,7 +2946,7 @@ fs_HdDelete:
         mov     ax, [edi + 26]
         xchg    eax, [esp]
         ; delete folder entry
-        mov     byte[edi], 0x0e5
+        mov     byte[edi], 0xe5
         ; delete LFN (if present)
 
   .lfndel:
@@ -2968,11 +2968,11 @@ fs_HdDelete:
         mov     edi, buffer + 0x200
 
     @@: sub     edi, 0x20
-        cmp     byte [edi], 0x0e5
+        cmp     byte[edi], 0xe5
         jz      .lfndone
-        cmp     byte [edi + 11], 0x0f
+        cmp     byte[edi + 11], 0x0f
         jnz     .lfndone
-        mov     byte [edi], 0x0e5
+        mov     byte[edi], 0xe5
         jmp     .lfndel
 
   .lfndone:

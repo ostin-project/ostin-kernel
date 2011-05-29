@@ -110,7 +110,7 @@ updatecputimes:
 
   .newupdate:
         xor     eax, eax
-        xchg    eax,[edi + TASKDATA.counter_sum]
+        xchg    eax, [edi + TASKDATA.counter_sum]
         mov     [edi + TASKDATA.cpu_usage], eax
         add     edi, 0x20
         loop    .newupdate
@@ -151,7 +151,7 @@ find_next_task:
         call    [ebx + APPDATA.wait_test]
         mov     [esp + 28], eax
         popad
-        or      eax,eax
+        or      eax, eax
         jnz     @f
         ; testing for timeout
         mov     ecx, [timer_ticks]
@@ -163,8 +163,8 @@ find_next_task:
         mov     [edi + TASKDATA.state], 0
 
   .found:
-        mov     [CURRENT_TASK],bh
-        mov     [TASK_BASE],edi
+        mov     [CURRENT_TASK], bh
+        mov     [TASK_BASE], edi
 ;       call    _rdtsc
         rdtsc
         mov     [edi + TASKDATA.counter_add], eax ; for next using update_counters
@@ -188,8 +188,8 @@ do_change_task:
         mov     [esi + APPDATA.saved_esp], esp
         mov     esp, [ebx + APPDATA.saved_esp]
         ; set new thread io-map
-        Mov     dword[page_tabs + ((tss._io_map_0 and -4096) shr 10)], eax, [ebx + APPDATA.io_map]
-        Mov     dword[page_tabs + ((tss._io_map_1 and -4096) shr 10)], eax, [ebx + APPDATA.io_map + 4]
+        Mov     dword[page_tabs + ((tss.io_map_0 and -4096) shr 10)], eax, [ebx + APPDATA.io_map]
+        Mov     dword[page_tabs + ((tss.io_map_1 and -4096) shr 10)], eax, [ebx + APPDATA.io_map + 4]
         ; set new thread memory-map
         mov     ecx, APPDATA.dir_table
         mov     eax, [ebx + ecx] ; offset>0x7F
@@ -198,7 +198,7 @@ do_change_task:
         mov     cr3, eax
 
     @@: ; set tss.esp0
-        Mov     [tss._esp0], eax, [ebx + APPDATA.saved_esp0]
+        Mov     [tss.esp0], eax, [ebx + APPDATA.saved_esp0]
 
         mov     edx, [ebx + APPDATA.tls_base]
         cmp     edx, [esi + APPDATA.tls_base]
@@ -229,7 +229,7 @@ do_change_task:
         jz      @f
         xor     eax, eax
         mov     dr6, eax
-        lea     esi,[ebx + ecx + APPDATA.dbg_regs - APPDATA.dir_table] ; offset>0x7F
+        lea     esi, [ebx + ecx + APPDATA.dbg_regs - APPDATA.dir_table] ; offset>0x7F
         cld
 
 macro lodsReg [reg]

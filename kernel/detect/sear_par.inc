@@ -115,7 +115,7 @@ search_partitions_ide3_1:
         jmp     search_partitions_ide3_1
 
 end_search_partitions_ide:
-        mov     [hdpos], 0x080
+        mov     [hdpos], 0x80
         mov     ecx, [NumBiosDisks]
         test    ecx, ecx
         jz      end_search_partitions
@@ -123,7 +123,7 @@ end_search_partitions_ide:
 start_search_partitions_bd:
         push    ecx
         mov     eax, [hdpos]
-        and     [BiosDiskPartitions + (eax - 0x080) * 4], 0
+        and     [BiosDiskPartitions + (eax - 0x80) * 4], 0
         mov     [known_part], 1
 
 search_partitions_bd:
@@ -135,7 +135,7 @@ search_partitions_bd:
 ;       cmp     [problem_partition], 0
 ;       jne     end_search_partitions_bd
         mov     eax, [hdpos]
-        inc     [BiosDiskPartitions + (eax - 0x080) * 4]
+        inc     [BiosDiskPartitions + (eax - 0x80) * 4]
         call    partition_data_transfer
         add     [transfer_adress], 100
 
@@ -150,8 +150,8 @@ end_search_partitions_bd:
 
 
 partition_data_transfer:
-        mov     edi,[transfer_adress]
-        mov     esi,PARTITION_START ; start of file_system_data
+        mov     edi, [transfer_adress]
+        mov     esi, PARTITION_START ; start of file_system_data
         mov     ecx, (file_system_data_size + 3) / 4
         rep     movsd
         ret

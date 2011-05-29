@@ -35,7 +35,7 @@ FreeEvents = event_start - EVENT.fd ; "виртуальный" event, испол
 
 align 4
 init_events:                                       ;; used from kernel.asm
-        stdcall kernel_alloc,EV_SPACE * sizeof.EVENT
+        stdcall kernel_alloc, EV_SPACE * sizeof.EVENT
         or      eax, eax
         jz      .fail
         ; eax - current event, ebx - previos event below
@@ -74,7 +74,7 @@ create_event: ;; EXPORT use
         ; scratched: ebx,ecx,esi,edi
 
         mov     ebx, [current_slot]
-        add     ebx,APP_OBJ_OFFSET
+        add     ebx, APP_OBJ_OFFSET
         mov     edx, [TASK_BASE]
         mov     edx, [edx + TASKDATA.pid]
         pushfd
@@ -141,8 +141,8 @@ align 4
 NotDummyTest: ;; INTERNAL use (not returned for fail !!!)
         pop     edi
         call    DummyTest ; not returned for fail !!!
-        mov     ebx,eax
-        mov     eax,[ebx+EVENT.pid]
+        mov     ebx, eax
+        mov     eax, [ebx + EVENT.pid]
         push    edi
 
   .small:
@@ -151,7 +151,7 @@ NotDummyTest: ;; INTERNAL use (not returned for fail !!!)
         pushfd
         cli
         call    pid_to_slot ; saved all registers (eax - retval)
-        shl     eax,8
+        shl     eax, 8
         jz      RemoveEventTo.break ; POPF+RET
         jmp     edi ; штатный возврат
 
@@ -170,9 +170,9 @@ raise_event: ;; EXPORT use
         ; scratched: ebx,ecx,esi,edi
 
         call    NotDummyTest ; not returned for fail !!!
-        or      esi,esi
+        or      esi, esi
         jz      @f
-        lea     edi,[ebx + EVENT.code]
+        lea     edi, [ebx + EVENT.code]
         mov     ecx, sizeof.EVENT_CODE / 4
         cld
         rep     movsd
@@ -240,7 +240,7 @@ DummyTest: ;; INTERNAL use (not returned for fail !!!)
         je      .ret
 
     @@: pop     eax
-        xor     eax,eax
+        xor     eax, eax
 
   .ret:
         ret
@@ -355,7 +355,7 @@ destroy_event: ;; EXPORT use
         call    DummyTest ; not returned for fail !!!
 
   .internal:
-        xor     ecx,ecx ; clear common header
+        xor     ecx, ecx ; clear common header
         pushfd
         cli
         mov     [eax + EVENT.magic], ecx
@@ -549,11 +549,11 @@ get_event_for_app: ;; used from f10,f11,f23
         ; eax=2, retval Buttons=3
         cmp     byte[BTN_COUNT], 0
         je      .loop ; empty ???
-        cmp     edx,[TASK_COUNT]
+        cmp     edx, [TASK_COUNT]
         jne     .loop ; not Top ???
         mov     edx, [BTN_BUFF]
         shr     edx, 8
-        cmp     edx, 0x0ffff ;-ID for Minimize-Button of Form
+        cmp     edx, 0xffff ;-ID for Minimize-Button of Form
         jne     .result
         mov     [window_minimize], 1
         dec     byte[BTN_COUNT]

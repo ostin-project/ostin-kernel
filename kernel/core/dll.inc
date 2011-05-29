@@ -86,7 +86,7 @@ proc enable_irq stdcall, irq_line:dword
         mov     edx, 0x21
         cmp     ebx, 8
         jb      @f
-        mov     edx, 0x0a1
+        mov     edx, 0xa1
         sub     ebx, 8
 
     @@: in      al, dx
@@ -191,10 +191,10 @@ align 16
         mov     [check_idle_semaphore], 5
 
   .exit:
-        cmp     dword [esp + 32], 8
+        cmp     dword[esp + 32], 8
         mov     al, 0x20
         jb      @f
-        out     0x0a0, al
+        out     0xa0, al
 
     @@: out     0x20, al
 
@@ -452,7 +452,7 @@ proc get_proc stdcall, exp:dword, sz_name:dword
         test    eax, eax
         jz      .ok
 
-        add     edx,8
+        add     edx, 8
         jmp     .next
 
   .ok:
@@ -463,9 +463,9 @@ proc get_proc stdcall, exp:dword, sz_name:dword
 endp
 
 align 4
-proc get_coff_sym stdcall, pSym:dword,count:dword, sz_sym:dword
+proc get_coff_sym stdcall, pSym:dword, count:dword, sz_sym:dword
     @@: stdcall strncmp, [pSym], [sz_sym], 8
-        test    eax,eax
+        test    eax, eax
         jz      .ok
         add     [pSym], 18
         dec     [count]
@@ -695,7 +695,7 @@ endl
         movzx   ebx, [edi + COFF_SYM.SectionNumber]
         test    ebx, ebx
         jnz     .internal
-        mov     eax, dword [edi + COFF_SYM.Name]
+        mov     eax, dword[edi + COFF_SYM.Name]
         test    eax, eax
         jnz     @f
 
@@ -948,14 +948,14 @@ endl
         add     ebx, edx
         mov     [sym], ebx
         mov     ecx, [edx + COFF_HEADER.nSymbols]
-        add     ecx,ecx
+        add     ecx, ecx
         lea     ecx, [ecx + ecx * 8] ; ecx *= 18 = nSymbols * sizeof.COFF_SYM
         add     ecx, [sym]
         mov     [strings], ecx
 
         lea     ebx, [exports]
-        mov     dword [ebx], kernel_export
-        mov     dword [ebx + 4], 0
+        mov     dword[ebx], kernel_export
+        mov     dword[ebx + 4], 0
         lea     eax, [edx + 20]
 
         stdcall fix_coff_symbols, eax, [sym], [edx + COFF_HEADER.nSymbols], [strings], ebx
@@ -1078,8 +1078,8 @@ endl
 
         ; resolve file name
         mov     ebx, [file_name]
-        lea     edi, [fullname+1]
-        mov     byte [edi - 1], '/'
+        lea     edi, [fullname + 1]
+        mov     byte[edi - 1], '/'
         stdcall get_full_file_name, edi, 259
         test    al, al
         jz      .fail
@@ -1135,9 +1135,9 @@ endl
   .test_prev_dll:
         mov     eax, dword[fileinfo + 24] ; last modified time
         mov     edx, dword[fileinfo + 28] ; last modified date
-        cmp     dword [esi + DLLDESCR.timestamp], eax
+        cmp     dword[esi + DLLDESCR.timestamp], eax
         jnz     .continue_scan
-        cmp     dword [esi + DLLDESCR.timestamp+4], edx
+        cmp     dword[esi + DLLDESCR.timestamp + 4], edx
         jz      .dll_already_loaded
 
   .continue_scan:
@@ -1261,7 +1261,7 @@ endl
         ; and also relocations table for all sections
         mov     edx, [coff]
         mov     ebx, [edx + COFF_HEADER.pSymTable]
-        mov     edi, dword [fileinfo + 32]
+        mov     edi, dword[fileinfo + 32]
         sub     edi, ebx
         jc      .fail_and_free_data
         mov     [esi + DLLDESCR.symbols_lim], edi
@@ -1712,11 +1712,11 @@ irq:
         sub     ecx, 8
         cmp     [irq_actids + ecx * 4], 0
         je      @f
-        in      al, 0x0a1
+        in      al, 0xa1
         bts     eax, ecx
-        out     0x0a1, al
+        out     0xa1, al
         mov     al, 0x20
-        out     0x0a0, al
+        out     0xa0, al
         out     0x20, al
 
   .restart:

@@ -149,7 +149,7 @@ struct EXT2_SB_STRUC
 ends
 
 ext2_test_superblock:
-        cmp     [fs_type], 0x083
+        cmp     [fs_type], 0x83
         jne     .no
 
         mov     eax, [PARTITION_START]
@@ -158,7 +158,7 @@ ext2_test_superblock:
 
         cmp     dword[ebx + 24], 3 ; s_block_size 0,1,2,3
         ja      .no
-        cmp     word[ebx + 56], 0x0ef53 ; s_magic
+        cmp     word[ebx + 56], 0xef53 ; s_magic
         jne     .no
         cmp     word[ebx + 58], 1 ; s_state (EXT_VALID_FS=1)
         jne     .no
@@ -187,7 +187,7 @@ ext2_setup:
         mov     ecx, 512 / 4
         rep     movsd ; copy sb to reserved mem
         mov     ebx, eax
-        mov     [ext2_data.sb],eax
+        mov     [ext2_data.sb], eax
 
         mov     eax, [ebx + EXT2_SB_STRUC.blocks_count]
         sub     eax, [ebx + EXT2_SB_STRUC.first_data_block]
@@ -358,7 +358,7 @@ ext2_get_inode:
         call    ext2_get_block
 
         add     ebx, edx ; локальный номер в блоке
-        mov     eax, [ebx+8] ; номер блока - в терминах ext2
+        mov     eax, [ebx + 8] ; номер блока - в терминах ext2
 
         mov     ecx, [ext2_data.log_block_size]
         shl     eax, cl
@@ -540,7 +540,7 @@ ext2_HdReadFolder:
 
         push    .find_wanted_start
 
- .end_block: ; вылетили из цикла
+  .end_block: ; вылетили из цикла
         mov     ebx, [ext2_data.count_block_in_block]
         sub     [EXT2_counter_blocks], ebx
         jbe     .end_dir
@@ -655,7 +655,7 @@ ext2_HdReadFolder:
         pop     edx
         mov     ebx, [EXT2_read_in_folder]
         mov     ecx, [EXT2_files_in_folder]
-        mov     dword [edx], 1 ; version
+        mov     dword[edx], 1 ; version
         xor     eax, eax
         mov     [edx + 4], ebx
         mov     [edx + 8], ecx
@@ -673,19 +673,19 @@ utf8toansi_str:
 
   .start:
         lodsw
-        cmp     al, 0x080
+        cmp     al, 0x80
         jb      .ascii
 
         xchg    al, ah ; big-endian
-        cmp     ax, 0x0d080
+        cmp     ax, 0xd080
         jz      .yo1
-        cmp     ax, 0x0d191
+        cmp     ax, 0xd191
         jz      .yo2
-        cmp     ax, 0x0d090
+        cmp     ax, 0xd090
         jb      .unk
-        cmp     ax, 0x0d180
+        cmp     ax, 0xd180
         jb      .rus1
-        cmp     ax, 0x0d190
+        cmp     ax, 0xd190
         jb      .rus2
 
   .unk:
@@ -693,19 +693,19 @@ utf8toansi_str:
         jmp     .doit
 
   .yo1:
-        mov     al, 0x0f0 ; Ё capital
+        mov     al, 0xf0 ; Ё capital
         jmp     .doit
 
   .yo2:
-        mov     al, 0x0f1 ; ё small
+        mov     al, 0xf1 ; ё small
         jmp     .doit
 
   .rus1:
-        sub     ax, 0x0d090 - 0x080
+        sub     ax, 0xd090 - 0x80
         jmp     .doit
 
   .rus2:
-        sub     ax, 0x0d18f - 0x0ef
+        sub     ax, 0xd18f - 0xef
 
   .doit:
         stosb
@@ -911,7 +911,7 @@ ext2_find_lfn:
         cmp     eax, esi ; нашли имя?
         jz      .next_block_folder
 
-        cmp     byte [esi],0
+        cmp     byte[esi], 0
         jz      .get_inode_ret
 
         cmp     [ebx + EXT2_DIR_STRUC.file_type], EXT2_FT_DIR
@@ -1314,7 +1314,7 @@ ext2_balloc:
         dec     edx ; номер в последнем блоке
 
 
-    .no_space:
+  .no_space:
         xor     eax, eax
         ret
 

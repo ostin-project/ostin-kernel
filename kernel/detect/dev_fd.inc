@@ -28,7 +28,7 @@
 
         mov     al, 0x10
         out     0x70, al
-        mov     cx, 0x0ff
+        mov     cx, 0x00ff
 
 wait_cmos:
         dec     cx

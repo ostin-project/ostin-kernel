@@ -21,7 +21,7 @@ MEM_UC equ 0 ; uncached memory
 align 4
 proc mem_test
         ; if we have BIOS with fn E820, skip the test
-        cmp     dword[BOOT_VAR - OS_BASE + 0x09100], 0
+        cmp     dword[BOOT_VAR - OS_BASE + 0x9100], 0
         jnz     .ret
 
         mov     eax, cr0
@@ -41,12 +41,12 @@ proc mem_test
 
         and     eax, not (CR0_CD + CR0_NW) ; enable caching
         mov     cr0, eax
-        inc     dword[BOOT_VAR - OS_BASE + 0x09100]
+        inc     dword[BOOT_VAR - OS_BASE + 0x9100]
         xor     eax, eax
-        mov     [BOOT_VAR - OS_BASE + 0x09104], eax
-        mov     [BOOT_VAR - OS_BASE + 0x09108], eax
-        mov     [BOOT_VAR - OS_BASE + 0x0910c], edi
-        mov     [BOOT_VAR - OS_BASE + 0x09110], eax
+        mov     [BOOT_VAR - OS_BASE + 0x9104], eax
+        mov     [BOOT_VAR - OS_BASE + 0x9108], eax
+        mov     [BOOT_VAR - OS_BASE + 0x910c], edi
+        mov     [BOOT_VAR - OS_BASE + 0x9110], eax
 
   .ret:
         ret
@@ -55,7 +55,7 @@ endp
 align 4
 proc init_mem
         ; calculate maximum allocatable address and number of allocatable pages
-        mov     edi, BOOT_VAR - OS_BASE + 0x09104
+        mov     edi, BOOT_VAR - OS_BASE + 0x9104
         mov     ecx, [edi - 4]
         xor     esi, esi ; esi will hold total amount of memory
         xor     edx, edx ; edx will hold maximum allocatable address
@@ -85,7 +85,7 @@ proc init_mem
         jnc     @f
 
   .overflow:
-        mov     eax, 0x0fffff000
+        mov     eax, 0xfffff000
 
     @@: cmp     edx, eax
         jae     @f
@@ -207,7 +207,7 @@ proc init_page_map
         rep     stosd
 
         ; scan through memory map and mark free areas as available
-        mov     ebx, BOOT_VAR - OS_BASE + 0x09104
+        mov     ebx, BOOT_VAR - OS_BASE + 0x9104
         mov     edx, [ebx - 4]
 
   .scanmap:
@@ -292,7 +292,7 @@ endp
 align 4
 
 init_BIOS32:
-        mov     edi, 0x0e0000
+        mov     edi, 0xe0000
 
   .pcibios_nxt:
         cmp     dword[edi], '_32_' ; "magic" word
@@ -300,7 +300,7 @@ init_BIOS32:
 
   .pcibios_nxt2:
         add     edi, 0x10
-        cmp     edi, 0x0ffff0
+        cmp     edi, 0x000ffff0
         je      .BIOS32_not_found
         jmp     .pcibios_nxt
 

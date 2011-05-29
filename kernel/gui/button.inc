@@ -331,7 +331,7 @@ button._.find_button: ;////////////////////////////////////////////////////////
 
         mov     edx, eax
         shr     edx, 24
-        and     eax, 0x0ffffff
+        and     eax, 0x00ffffff
 
         mov     edi, [BTN_ADDR]
         mov     ecx, [edi]
@@ -353,7 +353,7 @@ button._.find_button: ;////////////////////////////////////////////////////////
         ; does id match?
         mov     edi, dword[esi + SYS_BUTTON.id_hi - 2]
         mov     di, [esi + SYS_BUTTON.id_lo]
-        and     edi, 0x0ffffff
+        and     edi, 0x00ffffff
         cmp     eax, edi
         jne     .next_button
 

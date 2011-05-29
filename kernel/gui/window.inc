@@ -691,7 +691,7 @@ drawwindow_I_caption: ;////////////////////////////////////////////////////////
         add     eax, [esi + WDATA.box.width]
         dec     eax
         mov     ecx, [esi + WDATA.cl_titlebar]
-        test    ecx, 0x080000000
+        test    ecx, 0x80000000
         jz      @f
         sub     ecx, 0x00040404
         mov     [esi + WDATA.cl_titlebar], ecx
@@ -794,7 +794,7 @@ drawwindow_III_caption: ;/////////////////////////////////////////////////////
         jz      @f
         add     ecx, 0x00040404
 
-    @@: test    ecx, 0x080000000
+    @@: test    ecx, 0x80000000
         jz      @f
         sub     ecx, 0x00040404
 
@@ -1806,7 +1806,7 @@ end virtual
         pop     edx ebx
         add     eax, edi
         call    .read_byte
-        test    al,al
+        test    al, al
         jz      @f
         mov     eax, esi
         mov     [ebp], al
@@ -2099,7 +2099,7 @@ window._.draw_window_caption: ;////////////////////////////////////////////////
 
   .dodraw:
         mov     ecx, [common_colours + 16]
-        or      ecx, 0x080000000
+        or      ecx, 0x80000000
         xor     edi, edi
         call    dtext_asciiz_esi
 

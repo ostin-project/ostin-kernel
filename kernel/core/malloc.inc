@@ -141,8 +141,8 @@ malloc:
 
   .small:
         ; if (ms.treemap != 0 && (mem = malloc_small(nb)) != 0)
-        mov     eax,[mst.treemap]
-        test    eax,eax
+        mov     eax, [mst.treemap]
+        test    eax, eax
 ;       cmp     [mst.treemap], 0
         jz      .from_top
         mov     eax, esi
@@ -428,7 +428,7 @@ insert_large_chunk:
         ; ms.treemap |= 1<<I;
         bts     [mst.treemap], ecx
         ; *H = X;
-        mov     dword [edx], esi
+        mov     dword[edx], esi
         jmp     .done
 
   .tree:
@@ -887,7 +887,7 @@ malloc_large:
         lea     eax, [edi + ebx + 4]
         or      ecx, 3
         mov     [ebp + 4], ecx
-        or      dword [eax], 1
+        or      dword[eax], 1
         lea     eax, [ebp + 8]
         add     esp, 8
         pop     edi
@@ -931,7 +931,7 @@ init_malloc:
 
         mov     [mst.top], eax
         mov     [mst.topsize], 128 * 1024
-        mov     dword [eax+4], (128 * 1024) or 1
+        mov     dword[eax + 4], (128 * 1024) or 1
         mov     eax, mst.smallbins
 
     @@: mov     [eax + 8], eax

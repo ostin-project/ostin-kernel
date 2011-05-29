@@ -95,7 +95,7 @@ floppy_fileread:
         ret
 
   .fdc_status_error_1:
-        xor     eax,eax
+        xor     eax, eax
         mov     [flp_status], eax
         mov     eax, 10
         or      ebx, -1
@@ -106,12 +106,12 @@ floppy_fileread:
         call    expand_filename
 
   .frfloppy_1:
-        test    ebx,ebx
+        test    ebx, ebx
         jnz     .frfl5_1
         mov     ebx, 1
 
   .frfl5_1:
-        test    ecx,ecx
+        test    ecx, ecx
         jnz     .frfl6_1
         mov     ecx, 1
 
@@ -155,7 +155,7 @@ floppy_fileread:
         mov     eax, 5 ; file not found ?
         or      ebx, -1
         add     esp, 32 + 28
-        mov     [flp_status],0
+        mov     [flp_status], 0
         ret
 
   .fdc_status_error_3_2:
@@ -200,7 +200,7 @@ floppy_fileread:
         call    read_chs_sector
         cmp     [FDC_Status], 0
         jne     .fdc_status_error_5
-        mov     edi,[esp + 8]
+        mov     edi, [esp + 8]
         call    give_back_application_data_1
         add     dword[esp + 8], 512
         dec     dword[esp + 12] ; last wanted cluster ?
@@ -350,13 +350,13 @@ calculatefatchain_flp:
         shl     eax, 4
         and     eax, 0x0fffffff ; 2 ok
         shr     ax, 4 ; 1 ok
-        mov     dword[edi],eax
+        mov     dword[edi], eax
         add     edi, 4
-        mov     dword[edi],ebx
+        mov     dword[edi], ebx
         add     edi, 4
-        mov     dword[edi],ecx
+        mov     dword[edi], ecx
         add     edi, 4
-        mov     dword[edi],edx
+        mov     dword[edi], edx
         add     edi, 4
         add     esi, 12
 
@@ -556,7 +556,7 @@ get_cluster_of_a_path_flp:
         jmp     .search_end_of_path_flp_2
 
   .search_end_of_path_flp_1:
-        cmp     byte[edx + 12] ,0
+        cmp     byte[edx + 12], 0
         je      .found_end_of_path_flp
 
   .search_end_of_path_flp_2:
@@ -704,7 +704,7 @@ uglobal
 endg
 
 flp_root_next:
-        cmp     edi, OS_BASE + 0x0d200 - 0x20
+        cmp     edi, OS_BASE + 0xd200 - 0x20
         jae     @f
         add     edi, 0x20
         ret     ; CF=0
@@ -756,7 +756,7 @@ flp_rootmem_extend_dir:
         ret
 
 flp_notroot_next:
-        cmp     edi, OS_BASE + 0x0d200 - 0x20
+        cmp     edi, OS_BASE + 0xd200 - 0x20
         jae     flp_notroot_next_sector
         add     edi, 0x20
         ret     ; CF=0
@@ -814,7 +814,7 @@ flp_notroot_end_write:
         ret
 
 flp_notroot_next_write:
-        cmp     edi, OS_BASE + 0x0d200
+        cmp     edi, OS_BASE + 0xd200
         jae     @f
         ret
 
@@ -950,7 +950,7 @@ fs_FloppyRead:
         mov     ecx, eax
         mov     byte[esp], 6 ; EOF
 
-    @@: movzx   edi, word [edi+26]
+    @@: movzx   edi, word[edi + 26]
 
   .new:
         jecxz   .done
@@ -1073,7 +1073,7 @@ fs_FloppyReadFolder:
         cmp     byte[edi + 11], 0x0f
         jnz     .do_bdfe
         add     edi, 0x20
-        cmp     edi, OS_BASE + 0x0d200
+        cmp     edi, OS_BASE + 0xd200
         jb      .do_bdfe
         pop     eax
         inc     eax
@@ -1107,11 +1107,11 @@ fs_FloppyReadFolder:
 
   .l2:
         add     edi, 0x20
-        cmp     edi, OS_BASE + 0x0d200
+        cmp     edi, OS_BASE + 0xd200
         jb      .l1
         pop     eax
         inc     eax
-        dec     byte[esp+262*2+12]
+        dec     byte[esp + 262 * 2 + 12]
         jz      .done
         jns     @f
         ; read next sector from FAT
@@ -1120,7 +1120,7 @@ fs_FloppyReadFolder:
         cmp     eax, 0x0ff8
         jae     .done
         add     eax, 31
-        mov     byte [esp + 262 * 2 + 12], 0
+        mov     byte[esp + 262 * 2 + 12], 0
 
     @@: jmp     .main_loop
 
@@ -1378,7 +1378,7 @@ fs_FloppyRewrite:
         ; we need ceil(strlen(esi)/13) additional entries = floor((strlen(esi)+12+13)/13) total
         xor     eax, eax
 
-    @@: cmp     byte [esi], 0
+    @@: cmp     byte[esi], 0
         jz      @f
         inc     esi
         inc     eax
@@ -1414,7 +1414,7 @@ fs_FloppyRewrite:
   .scan_dir:
         cmp     byte[edi], 0
         jz      .free
-        cmp     byte[edi], 0x0e5
+        cmp     byte[edi], 0xe5
         jz      .free
         xor     ecx, ecx
 
@@ -1428,7 +1428,7 @@ fs_FloppyRewrite:
         jnz     .fsfrfe3
         push    eax
         lea     eax, [esp + 12 + 8 + 12 + 8]
-        call    dword [eax + 16] ; extend directory
+        call    dword[eax + 16] ; extend directory
         pop     eax
         jnc     .scan_dir
         add     esp, 8 + 8 + 12 + 28
@@ -1993,7 +1993,7 @@ fs_FloppySetFileEnd:
         call    read_flp_fat
         cmp     [FDC_Status], 0
         jnz     ret11
-        cmp     byte [esi], 0
+        cmp     byte[esi], 0
         jnz     @f
 
   .access_denied:
@@ -2223,7 +2223,7 @@ fs_FloppySetFileInfo:
         call    read_flp_fat
         cmp     [FDC_Status], 0
         jnz     ret11
-        cmp     byte [esi], 0
+        cmp     byte[esi], 0
         jnz     @f
         mov     eax, 2 ; unsupported
         ret
@@ -2260,7 +2260,7 @@ fs_FloppyDelete:
         push    11
         jmp     .pop_ret
 
-    @@: cmp     byte [esi], 0
+    @@: cmp     byte[esi], 0
         jnz     @f
 
         ; cannot delete root!
@@ -2301,7 +2301,7 @@ fs_FloppyDelete:
   .checkempty:
         cmp     byte[ebx], 0
         jz      .empty
-        cmp     byte[ebx], 0x0e5
+        cmp     byte[ebx], 0xe5
         jnz     .notempty
         add     ebx, 0x20
         cmp     ebx, FDD_BUFF + 0x200
@@ -2334,7 +2334,7 @@ fs_FloppyDelete:
         movzx   eax, word[edi + 26]
         xchg    eax, [esp]
         ; delete folder entry
-        mov     byte[edi], 0x0e5
+        mov     byte[edi], 0xe5
         ; delete LFN (if present)
 
   .lfndel:
@@ -2356,11 +2356,11 @@ fs_FloppyDelete:
         mov     edi, FDD_BUFF + 0x200
 
     @@: sub     edi, 0x20
-        cmp     byte[edi], 0x0e5
+        cmp     byte[edi], 0xe5
         jz      .lfndone
         cmp     byte[edi + 11], 0x0f
         jnz     .lfndone
-        mov     byte[edi], 0x0e5
+        mov     byte[edi], 0xe5
         jmp     .lfndel
 
   .lfndone:

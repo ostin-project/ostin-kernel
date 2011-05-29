@@ -99,7 +99,7 @@ local buffer_number dd ?
 
         ; Validate the IP checksum
         mov     dx, word[ebx + IP_PACKET.HeaderChecksum]
-        xchg    dh,dl ; Get the checksum in intel format
+        xchg    dh, dl ; Get the checksum in intel format
 
         mov     [ebx + IP_PACKET.HeaderChecksum], 0 ; clear checksum field - need to when recalculating checksum
         ;  this needs two data pointers and two size #.
@@ -125,7 +125,7 @@ local buffer_number dd ?
         ; - it is a broadcast packet, which we need for dhcp
 
         mov     eax, [ebx + IP_PACKET.DestinationAddress]
-        cmp     eax, 0x0ffffffff
+        cmp     eax, 0xffffffff
         je      @f
         mov     ecx, [stack_ip]
         and     eax, [subnet_mask]
@@ -134,7 +134,7 @@ local buffer_number dd ?
         jne     .dump.2
         mov     eax, [ebx + IP_PACKET.DestinationAddress]
         or      eax, [subnet_mask]
-        cmp     eax, 0x0ffffffff
+        cmp     eax, 0xffffffff
         jne     .dump.2
 
     @@: mov     al, [ebx + IP_PACKET.VersionAndIHL]
@@ -149,7 +149,7 @@ local buffer_number dd ?
         je      .dump.4 ; if TTL==0 then dump it
 
         mov     ax, [ebx + IP_PACKET.FlagsAndFragmentOffset]
-        and     ax, 0x0ffbf ; get flags
+        and     ax, 0xffbf ; get flags
 ;       DEBUGF  1, "K : ip_rx - flags: %x - 0000\n", ax
         cmp     ax, 0 ; if some flags was set then we dump this packet
         jnz     .dump.5 ; the flags should be used for fragmented packets

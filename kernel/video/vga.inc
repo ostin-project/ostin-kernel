@@ -150,7 +150,7 @@ checkVga_N13:
     @@: ret
 
   .novesal:
-        mov     [novesachecksum],ecx
+        mov     [novesachecksum], ecx
         mov     ecx, 0
         movzx   eax, word[MOUSE_Y]
         cmp     eax, 100
@@ -189,7 +189,7 @@ checkVga_N13:
 
   .m13pix:
         lodsd
-        test    eax,eax
+        test    eax, eax
         jz      .save_pixel
         push    eax
         mov     ebx, eax
@@ -197,11 +197,11 @@ checkVga_N13:
         shr     eax, 5
         and     ebx, (128 + 64 + 32) * 256 ; green
         shr     ebx, 8 + 2
-        add     eax,ebx
+        add     eax, ebx
         pop     ebx
         and     ebx, (128 + 64) * 256 * 256 ; red
         shr     ebx, 8 + 8
-        add     eax,ebx
+        add     eax, ebx
 
   .save_pixel:
         stosb
@@ -242,7 +242,7 @@ VGA_drawbackground:
 
 VGA_draw_long_line:
         mov     dx, 0x3ce
-        mov     ax, 0x0ff08
+        mov     ax, 0xff08
         cli
         out     dx, ax
         mov     ax, 0x0005
@@ -253,7 +253,7 @@ VGA_draw_long_line:
         dec     ebx
         jnz     .m12pix
         mov     dx, 0x3c4
-        mov     ax, 0x0ff02
+        mov     ax, 0xff02
         out     dx, ax
         mov     dx, 0x3ce
         mov     ax, 0x0205
@@ -344,7 +344,7 @@ VGA_putpixel:
         ; eax = x
         ; ebx = y
 
-        mov     ecx,eax
+        mov     ecx, eax
         mov     eax, [esp + 32 - 8 + 4] ; color
         shl     ebx, 9
         lea     ebx, [ebx + ebx * 4] ; умножение на 5
@@ -432,10 +432,10 @@ VGA_draw_bar:
         pushad
         sub     ecx, eax
         sub     edx, ebx
-        and     eax, 0x0ffff
-        and     ebx, 0x0ffff
-        and     ecx, 0x0ffff
-        and     edx, 0x0ffff
+        and     eax, 0xffff
+        and     ebx, 0xffff
+        and     ecx, 0xffff
+        and     edx, 0xffff
         call    VGA_draw_bar_1
         popad
 
@@ -447,7 +447,7 @@ VGA_draw_bar_1:
         add     ebx, [eax - twdw + 4]
         mov     eax, [eax - twdw + 0]
         add     eax, [temp.cx]
-        and     eax, 0x0fff8
+        and     eax, 0xfff8
         shl     ebx, 9
         lea     ebx, [ebx + ebx * 4] ; умножение на 5
         lea     ebx, [ebx + eax * 4] ; + x*BytesPerPixel (Vesa2.0 32)

@@ -25,7 +25,7 @@ cross_order:
         mov     esi, edi
         movzx   edi, byte[esp + 28 + 4]
         sub     edi, 53
-        call    dword [servetable + edi * 4]
+        call    dword[servetable + edi * 4]
         ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -37,7 +37,7 @@ cross_order:
 align 32
 sysenter_entry:
         ; Настраиваем стек
-        mov     esp, [ss:tss._esp0]
+        mov     esp, [ss:tss.esp0]
         sti
         push    ebp ; save app esp + 4
         mov     ebp, [ebp] ; ebp - original ebp
@@ -83,10 +83,10 @@ i40:
 align 32
 syscall_entry:
 ;       cli     ; syscall clear IF
-        xchg    esp, [ss:tss._esp0]
+        xchg    esp, [ss:tss.esp0]
         push    ecx
         lea     ecx, [esp + 4]
-        xchg    ecx, [ss:tss._esp0]
+        xchg    ecx, [ss:tss.esp0]
         sti
         push    ecx
         mov     ecx, [ecx]

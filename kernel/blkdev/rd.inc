@@ -33,11 +33,11 @@ calculatefatchain:
         shr     cx, 4 ; 5 ok
         shld    ebx, eax, 12
         and     ebx, 0x0fffffff ; 4 ok
-        shr     bx,4 ; 3 ok
+        shr     bx, 4 ; 3 ok
         shl     eax, 4
         and     eax, 0x0fffffff ; 2 ok
         shr     ax, 4 ; 1 ok
-        mov     [edi],eax
+        mov     [edi], eax
         mov     [edi + 4], ebx
         mov     [edi + 8], ecx
         mov     [edi + 12], edx
@@ -64,7 +64,7 @@ restorefatchain:
         shl     eax, 4
         shl     bx, 4
         shr     ebx, 4
-        shrd    eax,ebx, 8
+        shrd    eax, ebx, 8
         shr     ebx, 8
         mov     [edi], eax
         mov     [edi + 4], bx
@@ -121,7 +121,7 @@ expand_filename:
 
         mov     esi, eax
 
-        mov     eax,edi
+        mov     eax, edi
         mov     dword[eax + 0], '    '
         mov     dword[eax + 4], '    '
         mov     dword[eax + 8], '    '
@@ -183,7 +183,7 @@ fileread:
   .oorr:
         mov     eax, 5 ; out of root range (fnf)
         xor     ebx, ebx
-        dec     ebx ; 0x0ffffffff
+        dec     ebx ; 0xffffffff
         ret
 
   .fr_do:
@@ -320,7 +320,7 @@ uni2ansi_str:
         lodsw
         test    ax, ax
         jz      .done
-        cmp     ax, 0x080
+        cmp     ax, 0x80
         jb      .ascii
         cmp     ax, 0x401
         jz      .yo1
@@ -352,7 +352,7 @@ uni2ansi_str:
 
   .rus2:
         ; 0x440-0x44F -> 0xE0-0xEF
-        add     al, 0x0a0
+        add     al, 0xa0
 
   .ascii:
   .doit:
@@ -368,22 +368,22 @@ ansi2uni_char:
 
         mov     ah, 0
         ; 0x00-0x7F - trivial map
-        cmp     al, 0x080
+        cmp     al, 0x80
         jb      .ret
         ; 0x80-0xAF -> 0x410-0x43F
-        cmp     al, 0x0b0
+        cmp     al, 0xb0
         jae     @f
-        add     ax, 0x410 - 0x080
+        add     ax, 0x410 - 0x80
 
   .ret:
         ret
 
     @@: ; 0xE0-0xEF -> 0x440-0x44F
-        cmp     al, 0x0e0
+        cmp     al, 0xe0
         jb      .unk
-        cmp     al, 0x0f0
+        cmp     al, 0xf0
         jae     @f
-        add     ax, 0x440 - 0x0e0
+        add     ax, 0x440 - 0xe0
         ret
 
     @@: ; 0xF0 -> 0x401
@@ -423,7 +423,7 @@ char_toupper:
         cmp     al, 239 ; 'я'
         ja      .ret
         ; 0xE0-0xEF -> 0x90-0x9F
-        sub     al, 224-144 ; 'р'-'Р'
+        sub     al, 224 - 144 ; 'р'-'Р'
 
   .ret:
         ret
@@ -450,7 +450,7 @@ fat_get_name:
 
         cmp     byte[edi], 0
         jz      .no
-        cmp     byte[edi], 0x0e5
+        cmp     byte[edi], 0xe5
         jnz     @f
 
   .no:
@@ -463,7 +463,7 @@ fat_get_name:
         jnz     .no
         push    ecx
         push    edi ebp
-        test    byte [ebp - 4], 1
+        test    byte[ebp - 4], 1
         jnz     .unicode_short
 
         mov     eax, [edi]
@@ -473,7 +473,7 @@ fat_get_name:
 
         mov     ecx, 8
 
-    @@: cmp     byte [ebp + ecx - 1], ' '
+    @@: cmp     byte[ebp + ecx - 1], ' '
         loope   @b
 
         mov     eax, [edi + 8]
@@ -762,7 +762,7 @@ bdfe_to_fat_entry:
     @@: mov     eax, [edx + 8]
         call    bdfe_to_fat_time
         mov     [edi + 14], ax ; creation time
-        mov     eax, [edx  +12]
+        mov     eax, [edx + 12]
         call    bdfe_to_fat_date
         mov     [edi + 16], ax ; creation date
         mov     eax, [edx + 20]
@@ -1066,7 +1066,7 @@ fs_RamdiskReadFolder:
         mov     ecx, 32 / 4
         xor     eax, eax
         rep     stosd
-        mov     byte [edx], 1 ; version
+        mov     byte[edx], 1 ; version
         pop     ecx eax
         mov     esi, edi ; esi points to block of data of folder entry (BDFE)
 
@@ -1148,18 +1148,18 @@ iglobal
   ; 3 = allowed
   fat_legal_chars \
     db 32 dup(0)
-  ;    ! " # $ % & ' ( ) * + , - . /
-    db 1,3,0,3,3,3,3,3,3,3,0,1,1,3,3,0
-  ;    0 1 2 3 4 5 6 7 8 9 : ; < = > ?
-    db 3,3,3,3,3,3,3,3,3,3,0,1,0,1,0,0
-  ;    @ A B C D E F G H I J K L M N O
-    db 3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3
-  ;    P Q R S T U V W X Y Z [ \ ] ^ _
-    db 3,3,3,3,3,3,3,3,3,3,3,1,0,1,3,3
-  ;    ` a b c d e f g h i j k l m n o
-    db 3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3
-  ;    p q r s t u v w x y z { | } ~
-    db 3,3,3,3,3,3,3,3,3,3,3,3,0,3,3,0
+    ;  !  "  #  $  %  &  '  (  )  *  +  ,  -  .  /
+    db 1, 3, 0, 3, 3, 3, 3, 3, 3, 3, 0, 1, 1, 3, 3, 0
+    ;  0  1  2  3  4  5  6  7  8  9  :  ;  <  =  >  ?
+    db 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 0, 1, 0, 1, 0, 0
+    ;  @  A  B  C  D  E  F  G  H  I  J  K  L  M  N  O
+    db 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
+    ;  P  Q  R  S  T  U  V  W  X  Y  Z  [  \  ]  ^  _
+    db 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 1, 0, 1, 3, 3
+    ;  `  a  b  c  d  e  f  g  h  i  j  k  l  m  n  o
+    db 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
+    ;  p  q  r  s  t  u  v  w  x  y  z  {  |  }  ~
+    db 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 0, 3, 3, 0
 endg
 
 fat_name_is_legal:
@@ -1173,7 +1173,7 @@ fat_name_is_legal:
     @@: lodsb
         test    al, al
         jz      .done
-        cmp     al, 0x080
+        cmp     al, 0x80
         jae     .big
         test    [fat_legal_chars + eax], 1
         jnz     @b
@@ -1185,11 +1185,11 @@ fat_name_is_legal:
 
   .big:
         ; 0x80-0xAF, 0xE0-0xEF
-        cmp     al, 0x0b0
+        cmp     al, 0xb0
         jb      @b
-        cmp     al, 0x0e0
+        cmp     al, 0xe0
         jb      .err
-        cmp     al, 0x0f0
+        cmp     al, 0xf0
         jb      @b
         jmp     .err
 
@@ -1321,7 +1321,7 @@ fat_gen_short_name:
         call    char_toupper
         cmp     al, ' '
         jz      .space
-        cmp     al, 0x080
+        cmp     al, 0x80
         ja      .big
         test    [fat_legal_chars + eax], 2
         jnz     .symbol
@@ -1348,11 +1348,11 @@ fat_gen_short_name:
         jmp     .loop
 
   .big:
-        cmp     al, 0x0b0
+        cmp     al, 0xb0
         jb      .normal_symbol
-        cmp     al, 0x0e0
+        cmp     al, 0xe0
         jb      .inv_symbol
-        cmp     al, 0x0f0
+        cmp     al, 0xf0
         jb      .normal_symbol
         jmp     .inv_symbol
 
@@ -1529,7 +1529,7 @@ fs_RamdiskRewrite:
   .exists_file:
         ; found file; if we are creating directory, return "access denied",
         ;             if we are creating file, delete existing file and continue
-        cmp     byte [esp+20+28], 0
+        cmp     byte[esp + 20 + 28], 0
         jz      @f
         add     esp, 20
         popad
@@ -1595,7 +1595,7 @@ fs_RamdiskRewrite:
 
   .test_short_name_cont:
         lea     eax, [esp + 12 + 12 + 8]
-        call    dword [eax-8]
+        call    dword[eax - 8]
         jnc     .test_short_name_entry
         jmp     .found
 
@@ -1653,7 +1653,7 @@ fs_RamdiskRewrite:
   .scan_dir:
         cmp     byte[edi], 0
         jz      .free
-        cmp     byte[edi], 0x0e5
+        cmp     byte[edi], 0xe5
         jz      .free
         xor     ecx, ecx
 
@@ -1665,7 +1665,7 @@ fs_RamdiskRewrite:
         jnc     .scan_dir
         push    eax
         lea     eax, [esp + 12 + 8 + 12 + 8]
-        call    dword [eax+8] ; extend directory
+        call    dword[eax + 8] ; extend directory
         pop     eax
         jnc     .scan_dir
         add     esp, 8 + 8 + 12 + 20
@@ -1688,7 +1688,7 @@ fs_RamdiskRewrite:
         ; found!
         ; calculate name checksum
         push    esi ecx
-        mov     esi, [esp+8+8]
+        mov     esi, [esp + 8 + 8]
         mov     ecx, 11
         xor     eax, eax
 
@@ -2153,7 +2153,7 @@ fs_RamdiskSetFileEnd:
         ret
 
     @@: ; must not be directory
-        test    byte [edi + 11], 0x10
+        test    byte[edi + 11], 0x10
         jz      @f
         pop     edi
         jmp     .access_denied
@@ -2322,7 +2322,7 @@ fs_RamdiskDelete:
   .checkempty:
         cmp     byte[ebx], 0
         jz      .empty
-        cmp     byte[ebx], 0x0e5
+        cmp     byte[ebx], 0xe5
         jnz     .notempty
         add     ebx, 0x20
         test    ebx, 0x1ff
@@ -2348,7 +2348,7 @@ fs_RamdiskDelete:
   .dodel:
         movzx   eax, word[edi + 26]
         ; delete folder entry
-        mov     byte [edi], 0x0e5
+        mov     byte[edi], 0xe5
 
   .lfndel:
         ; delete LFN (if present)
@@ -2366,11 +2366,11 @@ fs_RamdiskDelete:
         add     edi, RAMDISK + 31 * 0x200 + 0x200
 
     @@: sub     edi, 0x20
-        cmp     byte[edi], 0x0e5
+        cmp     byte[edi], 0xe5
         jz      .lfndone
         cmp     byte[edi + 11], 0x0f
         jnz     .lfndone
-        mov     byte[edi], 0x0e5
+        mov     byte[edi], 0xe5
         jmp     .lfndel
 
   .lfndone:

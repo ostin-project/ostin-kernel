@@ -14,7 +14,7 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-PCIe_CONFIG_SPACE equ 0x0f0000000 ; to be moved to const.inc
+PCIe_CONFIG_SPACE equ 0xf0000000 ; to be moved to const.inc
 
 mmio_pcie_cfg_addr dd 0 ; intel pcie space may be defined here
 mmio_pcie_cfg_lim  dd 0 ; upper pcie space address
@@ -32,7 +32,7 @@ pci_ext_config:
         jz      @f
         or      ebx, 0x7fffffff ; required by PCI-SIG standards
         jnz     .pcie_failed
-        add     ebx, 0x0ffffc
+        add     ebx, 0x000ffffc
         cmp     ebx, [mmio_pcie_cfg_lim] ; is the space limit correct?
         ja      .pcie_failed
         jmp     .pcie_cfg_mapped
@@ -40,7 +40,7 @@ pci_ext_config:
     @@: mov     ebx, [cpu_vendor]
         cmp     ebx, dword[AMD_str]
         jne     .pcie_failed
-        mov     bx, 0x0c184 ; dev = 24, fn = 01, reg = 84h
+        mov     bx, 0xc184 ; dev = 24, fn = 01, reg = 84h
 
   .check_HT_mmio:
         mov     cx, bx
@@ -48,7 +48,7 @@ pci_ext_config:
         call    pci_read_reg
         mov     bx, cx
         sub     bl, 4
-        and     al, 0x080 ; check the NP bit
+        and     al, 0x80 ; check the NP bit
         jz      .no_pcie_cfg
         shl     eax, 8 ; bus:[27..20], dev:[19:15]
         or      eax, 0x00007ffc ; fun:[14..12], reg:[11:2]
@@ -98,7 +98,7 @@ pci_ext_config:
         mov     [mmio_pcie_cfg_addr], eax
         mov     [mmio_pcie_cfg_lim], eax
         add     bl, 12
-        cmp     bl, 0x0c0 ; MMIO regs lay below this offset
+        cmp     bl, 0xc0 ; MMIO regs lay below this offset
         jb      .check_HT_mmio
 
   .pcie_failed:

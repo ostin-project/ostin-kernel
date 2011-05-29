@@ -128,7 +128,6 @@ iglobal
     db 0x83 ; Linux native file system (ext2fs)
   partition_types_end:
 
-
   extended_types: ; list of extended partitions
     db 0x05 ; DOS: extended partition
     db 0x0f ; WIN95: extended partition, LBA-mapped
@@ -167,8 +166,8 @@ new_mbr:
         xchg    ebp, eax ; no. set it now
 
 extended_already_set:
-        add     eax,ebp ; mbr=mbr+0, ext_part=ext_start+relat_start
-        mov     ebx,buffer
+        add     eax, ebp ; mbr=mbr+0, ext_part=ext_start+relat_start
+        mov     ebx, buffer
         call    hd_read
         cmp     [hd_error], 0
         jne     problem_hd
@@ -176,13 +175,13 @@ extended_already_set:
         cmp     word[ebx + 0x1fe], 0xaa55 ; is it valid boot sector?
         jnz     end_partition_chain
         push    eax ; push only one time
-        cmp     dword[ebx + 0x1be + 0x0c],0 ; skip over empty partition
+        cmp     dword[ebx + 0x1be + 0x0c], 0 ; skip over empty partition
         jnz     test_primary_partition_0
-        cmp     dword[ebx + 0x1be + 0x0c + 16],0
+        cmp     dword[ebx + 0x1be + 0x0c + 16], 0
         jnz     test_primary_partition_1
-        cmp     dword[ebx + 0x1be + 0x0c + 16 + 16],0
+        cmp     dword[ebx + 0x1be + 0x0c + 16 + 16], 0
         jnz     test_primary_partition_2
-        cmp     dword[ebx + 0x1be + 0x0c + 16 + 16 + 16],0
+        cmp     dword[ebx + 0x1be + 0x0c + 16 + 16 + 16], 0
         jnz     test_primary_partition_3
         pop     eax
         jmp     end_partition_chain
@@ -378,7 +377,7 @@ hd_and_partition_ok:
 ;       inc     edx ; edx = length of partition зачем оно нам??
 
 ;       mov     [hd_setup], 1
-        mov     ebx,buffer
+        mov     ebx, buffer
         call    hd_read ; read boot sector of partition
         cmp     [hd_error], 0
         jz      boot_read_ok
@@ -480,7 +479,7 @@ boot_read_ok:
         mov     [fatStartScan], 2
 
         ; limits by Microsoft Hardware White Paper v1.03
-        cmp     eax, 4085 ; 0xff5
+        cmp     eax, 4085 ; 0x0ff5
         jb      problem_fat_dec_count ; fat12 not supported
         cmp     eax, 65525 ; 0xfff5
         jb      fat16_partition

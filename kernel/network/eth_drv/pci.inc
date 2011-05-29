@@ -29,7 +29,7 @@ PCI_BASE_ADDRESS_0        equ 0x10 ; 32 bit
 PCI_BASE_ADDRESS_5        equ 0x24 ; 32 bits
 PCI_BASE_ADDRESS_SPACE_IO equ 0x01
 PCI_VENDOR_ID             equ 0x00 ; 16 bit
-PCI_BASE_ADDRESS_IO_MASK  equ 0x0fffffffc
+PCI_BASE_ADDRESS_IO_MASK  equ 0xfffffffc
 
 config_cmd:
         ; Description
@@ -43,12 +43,12 @@ config_cmd:
         push    ecx
         mov     eax, ebx
         shl     eax, 16
-        or      eax, 0x080000000
+        or      eax, 0x80000000
         shl     ecx, 8
         or      eax, ecx
         pop     ecx
         or      eax, edx
-        and     eax, 0x0fffffffc
+        and     eax, 0xfffffffc
         ret
 
 pcibios_read_config_byte:
@@ -62,14 +62,14 @@ pcibios_read_config_byte:
 
         call    config_cmd
         push    dx
-        mov     dx, 0x0cf8
+        mov     dx, 0xcf8
         out     dx, eax
         pop     dx
 
         xor     eax, eax
         and     dx, 0x03
-        add     dx, 0x0cfc
-;       and     dx, 0x0ffc
+        add     dx, 0xcfc
+;       and     dx, 0xffc
         in      al, dx
         ret
 
@@ -84,14 +84,14 @@ pcibios_read_config_word:
 
         call    config_cmd
         push    dx
-        mov     dx, 0x0cf8
+        mov     dx, 0xcf8
         out     dx, eax
         pop     dx
 
         xor     eax, eax
         and     dx, 0x02
-        add     dx, 0x0cfc
-;       and     dx, 0x0ffc
+        add     dx, 0xcfc
+;       and     dx, 0xffc
         in      ax, dx
         ret
 
@@ -107,11 +107,11 @@ pcibios_read_config_dword:
         push    edx
         call    config_cmd
         push    dx
-        mov     dx, 0x0cf8
+        mov     dx, 0xcf8
         out     dx, eax
         pop     dx
         xor     eax, eax
-        mov     dx, 0x0cfc
+        mov     dx, 0xcfc
         in      eax, dx
         pop     edx
         ret
@@ -127,13 +127,13 @@ pcibios_write_config_byte:
         push    ax
         call    config_cmd
         push    dx
-        mov     dx, 0x0cf8
+        mov     dx, 0xcf8
         out     dx, eax
         pop     dx
         pop     ax
 
         and     dx, 0x03
-        add     dx, 0x0cfc
+        add     dx, 0xcfc
         out     dx, al
         ret
 
@@ -231,7 +231,7 @@ scan_bus:
         mov     edx, PCI_VENDOR_ID
         call    pcibios_read_config_dword
         mov     [vendor_device], eax
-        cmp     eax, 0x0ffffffff
+        cmp     eax, 0xffffffff
         je      .sb_empty
         cmp     eax, 0
         jne     .sb_check_vendor

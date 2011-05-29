@@ -242,7 +242,7 @@ uglobal
 endg
 
 iglobal
-  broadcast_add: db 0x0ff, 0x0ff, 0x0ff, 0x0ff, 0x0ff, 0x0ff
+  broadcast_add: db 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
   subnet_mask:   dd 0x00ffffff ; 255.255.255.0
 endg
 
@@ -286,7 +286,7 @@ local MACAddress dp ? ; allocate 6 bytes in the stack
         lea     edi, [MACAddress]
         movsd
         movsw
-        cmp     edx, 0x0ffffffff
+        cmp     edx, 0xffffffff
         je      .send ; If it is broadcast, just send
 
         lea     eax, [MACAddress] ; cause this is local variable

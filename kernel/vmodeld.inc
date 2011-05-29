@@ -26,13 +26,13 @@
         ; LOAD VIDEOMODE DRIVER
         ; If vmode.mdr file not found
         ; Driver ID = -1 (not present in system)
-        or      eax,-1
+        or      eax, -1
         mov     [VMODE_BASE], eax
-        mov     byte[VMODE_BASE + 0x100], 0x0c3 ; Instruction RETN - driver loop
+        mov     byte[VMODE_BASE + 0x100], 0xc3 ; Instruction RETN - driver loop
 
 ;       mov     esi, vmode
 ;       xor     ebx, ebx
-;       mov     ecx, 0x08000 ; size of memory area for driver
+;       mov     ecx, 0x8000 ; size of memory area for driver
 ;       mov     edx, VMODE_BASE ; Memory position of driver
 ;       xor     ebp, ebp
 ;       call    fs_RamdiskRead

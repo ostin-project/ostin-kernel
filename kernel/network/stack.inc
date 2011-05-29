@@ -131,7 +131,7 @@ stack_init:
         ;   in set_variables
 
         ; Init two address spaces with default values
-        _memset_dw      stack_data_start, 0, 0x20000/4
+        _memset_dw      stack_data_start, 0, 0x20000 / 4
         _memset_dw      resendQ, 0, NUMRESENDENTRIES * 2
 
         mov     [net_sockets], 0
@@ -195,13 +195,13 @@ proc checksum_jb stdcall uses ebx esi ecx, buf_ptr:DWORD, buf_size:DWORD
         mov     ecx, dword[buf_size]
         shr     ecx, 1 ; ecx=ecx/2
         jnc     @f ; if CF==0 then size is even number
-        mov     bh, byte[esi + ecx*2]
+        mov     bh, byte[esi + ecx * 2]
 
     @@: cld
 
   .loop:
         lodsw   ; eax=word[esi],esi=esi+2
-        xchg    ah,al ; cause must be a net byte-order
+        xchg    ah, al ; cause must be a net byte-order
         add     ebx, eax
         loop    .loop
 
@@ -317,10 +317,10 @@ app_stack_handler:
         ; in ebx,ecx
         ; out eax
 
-        cmp     ebx,15
+        cmp     ebx, 15
         ja      .fail ; if more than 15 then exit
 
-        jmp     dword [f52call+ebx*4]
+        jmp     dword[f52call + ebx * 4]
 
   .00:
         ; Read the configuration word
@@ -348,7 +348,7 @@ app_stack_handler:
         cmp     cl, 3
         je      ash_eth_enable
         ; Ethernet isn't enabled, so make sure that the card is disabled
-        mov     [ethernet_active], byte 0
+        mov     byte[ethernet_active], 0
         ret
 
   .03:
@@ -402,7 +402,7 @@ app_stack_handler:
   .15:
         ; in ecx we need 4 to read the last 2 bytes
         ; or we need 0 to read the first 4 bytes
-        cmp     ecx,4
+        cmp     ecx, 4
         ja      .param_error
 
         ; read MAC, returned (in mirrored byte order) in eax
@@ -417,7 +417,7 @@ app_stack_handler:
         ; 0 -> arp_probe
         ; 1 -> arp_announce
         ; 2 -> arp_responce (not supported yet)
-        test    ecx,ecx
+        test    ecx, ecx
         je      a_probe
 
         dec     ebx
@@ -435,14 +435,14 @@ a_probe:
         ; ecx: pointer to target MAC, MAC should set to 0 by application
         ; edx: target IP
 
-        push    dword [stack_ip]
+        push    dword[stack_ip]
 
         mov     edx, [stack_ip]
         and     dword[stack_ip], 0
         mov     esi, ecx ; pointer to target MAC address
         call    arp_request
 
-        pop     dword [stack_ip]
+        pop     dword[stack_ip]
         ret
 
 a_ann:
@@ -465,7 +465,7 @@ ash_eth_enable:
         ; if found
 
         call    eth_probe
-        test    eax,eax
+        test    eax, eax
         jz      .ash_eth_done ; Abort if no hardware found
 
         mov     byte[ethernet_active], 1
@@ -592,7 +592,7 @@ stack_internal_status:
         jnz     .notsis200
 
         ; 200 : return num entries in arp table
-        movzx   eax, byte [NumARP]
+        movzx   eax, byte[NumARP]
         ret
 
   .notsis200:
@@ -810,5 +810,5 @@ stack_insert_packet:
         ret
 
   .sip_err_exit:
-        mov     eax, 0x0ffffffff
+        mov     eax, 0xffffffff
         ret

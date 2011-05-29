@@ -20,7 +20,7 @@ build_interrupt_table:
         mov     edi, idts
         mov     esi, sys_int
         mov     ecx, 0x40
-        mov     eax, (010001110b shl 24) + os_code
+        mov     eax, (10001110b shl 24) + os_code
 
     @@: movsw   ; low word of code-entry
         stosd   ; interrupt gate type : os_code selector
@@ -55,11 +55,11 @@ end if
 
     dd irq_serv.irq_5, p_irq6, irq_serv.irq_7
     dd irq_serv.irq_8, irq_serv.irq_9, irq_serv.irq_10
-    dd irq_serv.irq_11, irq_serv.irq_12, irqD,p_irq14,p_irq15
+    dd irq_serv.irq_11, irq_serv.irq_12, irqD, p_irq14, p_irq15
     times 16 dd unknown_interrupt ; int_0x30..int_0x3F
 
-    ;int_0x40 gate trap (for directly copied)
-    dw i40 and 0x0ffff, os_code, 011101111b shl 8, i40 shr 16
+    ; int_0x40 gate trap (for directly copied)
+    dw i40 and 0x0ffff, os_code, 11101111b shl 8, i40 shr 16
 
   idtreg: ; data for LIDT instruction (!!! must be immediately below sys_int data)
     dw 2 * ($ - sys_int - 4) - 1
@@ -142,7 +142,7 @@ reg_edi    equ esp + 0x00
     @@: mov     esi, [current_slot]
         btr     [esi + APPDATA.except_mask], ebx
         jnc     @f
-        mov     eax,[esi + APPDATA.exc_handler]
+        mov     eax, [esi + APPDATA.exc_handler]
         test    eax, eax
         jnz     IRetToUserHook
 
@@ -276,7 +276,7 @@ p_irq14:
         mov     edi, 14
         cmp     [v86_irqhooks + edi * 8], 0
         jnz     v86_irq2
-;       mov     byte[BOOT_VAR + 0x48e], 0x0ff
+;       mov     byte[BOOT_VAR + 0x48e], 0xff
         call    [irq14_func]
         call    ready_for_next_irq_1
         restore_ring3_context
@@ -290,7 +290,7 @@ p_irq15:
         mov     edi, 15
         cmp     [v86_irqhooks + edi * 8], 0
         jnz     v86_irq2
-;       mov     byte[BOOT_VAR + 0x48e], 0x0ff
+;       mov     byte[BOOT_VAR + 0x48e], 0xff
         call    [irq15_func]
         call    ready_for_next_irq_1
         restore_ring3_context
@@ -310,16 +310,16 @@ ready_for_next_irq_1:
         mov     [check_idle_semaphore], eax
 ;       mov     al, 0x20
         add     eax, 0x20 - 0x5
-        out     0x0a0, al
+        out     0xa0, al
         out     0x20, al
         ret
 
 irqD:
         push    eax
         xor     eax, eax
-        out     0x0f0, al
+        out     0xf0, al
         mov     al, 0x20
-        out     0x0a0, al
+        out     0xa0, al
         out     0x20, al
         pop     eax
         iret
@@ -377,11 +377,11 @@ irqhandler:
 
   .irqbyte:
         in      al, dx
-        mov     [ebx + 0x10],al
+        mov     [ebx + 0x10], al
         inc     dword[edi]
 
   .nextport:
-        add     esi,4
+        add     esi, 4
         jmp     .irqnewread
 
   .noirqword:
@@ -622,7 +622,7 @@ terminate: ; terminate application
         mov     [esi + WDATA.cl_frames], eax
         mov     dword[esi + WDATA.reserved], eax ; clear all flags: wstate, redraw, wdrawn
         lea     edi, [esi - window_data + draw_data]
-        mov     ecx,32 / 4
+        mov     ecx, 32 / 4
         rep     stosd
         popa
 
@@ -842,7 +842,7 @@ iglobal
 endg
 
 build_scheduler:
-        mov     esi,boot_sched_1
+        mov     esi, boot_sched_1
         call    boot_log
 ;       call    build_process_gdt_tss_pointer
 

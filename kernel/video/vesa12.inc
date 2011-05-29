@@ -63,7 +63,7 @@ set_bank:
         mov     [BANK_RW], al
         push    dx
         mov     dx, 0x3d8
-        out     dx,al
+        out     dx, al
         pop     dx
 
   .retsb:
@@ -112,7 +112,7 @@ set_bank:
         inc     dx
         in      al, dx
         dec     dx
-        and     al, 0x0f0
+        and     al, 0xf0
         mov     ch, cl
         and     ch, 0x0f
         or      ch, al
@@ -127,7 +127,7 @@ set_bank:
         inc     dx
         in      al, dx
         dec     dx
-        and     al, 0x0f3
+        and     al, 0xf3
         shr     cl, 2
         and     cl, 0x0c
         or      cl, al
@@ -480,7 +480,7 @@ dbpi24bit12:
         sub     eax, VGABasePtr
         shr     eax, 16
         call    set_bank
-        and     edi, 0x0ffff
+        and     edi, 0xffff
         add     edi, VGABasePtr
         mov     eax, [esp + 8 + 3 * 4 + 16 + 4 + 4]
         stosw
@@ -505,7 +505,7 @@ dbpi24bit12:
 
   .dbnp24d12:
         mov     eax, [esp + 3 * 4 + 16 + 4]
-        test    eax, 0x080000000
+        test    eax, 0x80000000
         jz      .nodbgl2412
         cmp     al, 0
         jz      .nodbgl2412
@@ -559,7 +559,7 @@ dbpi32bit12:
         sub     eax, VGABasePtr
         shr     eax, 16
         call    set_bank
-        and     edi, 0x0ffff
+        and     edi, 0xffff
         add     edi, VGABasePtr
         mov     eax, [esp + 8 + 3 * 4 + 16 + 4 + 4]
         stosw
@@ -585,7 +585,7 @@ dbpi32bit12:
 
   .dbnp32d12:
         mov     eax, [esp + 12 + 16 + 4]
-        test    eax, 0x080000000
+        test    eax, 0x80000000
         jz      .nodbgl3212
         cmp     al, 0
         jz      .nodbgl3212
@@ -617,7 +617,7 @@ Vesa12_putpixel24:
         call    set_bank
         and     edi, 65535
         add     edi, VGABasePtr
-        mov     eax, [esp+28]
+        mov     eax, [esp + 28]
         stosw
         shr     eax, 16
         mov     [edi], al
@@ -714,8 +714,8 @@ vesa12_putimage:
         add     eax, ecx
 
   .pi2412:
-        add     eax,VGABasePtr
-        mov     edi,eax
+        add     eax, VGABasePtr
+        mov     edi, eax
 
         ; x size
 
@@ -783,7 +783,7 @@ pi24bit12:
         shr     eax, 16
         call    set_bank
         pop     eax
-        and     edi, 0x0ffff
+        and     edi, 0xffff
         add     edi, VGABasePtr
         mov     [edi], ax
         shr     eax, 16
@@ -812,8 +812,8 @@ pi24bit12:
         jnz     @f
 
   .correct:
-        mov     eax,[esp + 20]
-        mov     byte[eax], 0x080
+        mov     eax, [esp + 20]
+        mov     byte[eax], 0x80
 
     @@: dec     ebx
         jnz     .newpi12
@@ -855,7 +855,7 @@ pi32bit12:
         shr     eax, 16
         call    set_bank
         pop     eax
-        and     edi, 0x0ffff
+        and     edi, 0xffff
         mov     [edi + VGABasePtr], eax
         pop     edi
 
@@ -881,7 +881,7 @@ pi32bit12:
 
   .correct:
         mov     eax, [esp + 20]
-        mov     byte[eax], 0x080
+        mov     byte[eax], 0x80
 
     @@: dec     ebx
         jnz     .newpi3212
