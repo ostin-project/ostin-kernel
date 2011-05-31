@@ -176,7 +176,7 @@ mouse_check_events: ;//////////////////////////////////////////////////////////
 
 uglobal
   mouse.state:
-    .pos     POINT
+    .pos     point32_t
     .buttons db ?
 
   ; NOTE: since there's no unique and lifetime-constant button identifiers,
@@ -192,9 +192,9 @@ uglobal
   align 4
   mouse.active_sys_window:
     .pslot      dd ?
-    .old_box    BOX
-    .new_box    BOX
-    .delta      POINT
+    .old_box    box32_t
+    .new_box    box32_t
+    .delta      point32_t
     .last_ticks dd ?
     .action     db ?
 endg
@@ -229,12 +229,12 @@ mouse._.left_button_press_handler: ;///////////////////////////////////////////
         call    sys_window_maximize_handler
         jmp     .exit
 
-    @@: test    [edi + WDATA.fl_wstate], WSTATE_MAXIMIZED
+    @@: test    [edi + window_data_t.fl_wstate], WSTATE_MAXIMIZED
         jnz     .exit
         mov     [mouse.active_sys_window.pslot], esi
-        lea     eax, [edi + WDATA.box]
+        lea     eax, [edi + window_data_t.box]
         mov     ebx, mouse.active_sys_window.old_box
-        mov     ecx, sizeof.BOX
+        mov     ecx, sizeof.box32_t
         call    memmove
         mov     ebx, mouse.active_sys_window.new_box
         call    memmove
@@ -303,9 +303,9 @@ mouse._.left_button_release_handler: ;/////////////////////////////////////////
 
         mov     eax, esi
         shl     eax, 5
-        add     eax, window_data + WDATA.box
+        add     eax, window_data + window_data_t.box
         mov     ebx, mouse.active_sys_window.old_box
-        mov     ecx, sizeof.BOX
+        mov     ecx, sizeof.box32_t
         call    memmove
 
         mov     eax, mouse.active_sys_window.old_box
@@ -376,7 +376,7 @@ mouse._.move_handler: ;////////////////////////////////////////////////////////
 
         mov     eax, mouse.active_sys_window.new_box
         mov     ebx, mouse.active_sys_window.old_box
-        mov     ecx, sizeof.BOX
+        mov     ecx, sizeof.box32_t
         call    memmove
 
         mov     dl, [mouse.active_sys_window.action]
@@ -504,7 +504,7 @@ mouse._.move_handler: ;////////////////////////////////////////////////////////
         push    esi
         mov     esi, mouse.active_sys_window.old_box
         mov     edi, mouse.active_sys_window.new_box
-        mov     ecx, sizeof.BOX / 4
+        mov     ecx, sizeof.box32_t / 4
         repe
         cmpsd
         pop     esi
@@ -524,7 +524,7 @@ mouse._.find_sys_window_under_cursor: ;////////////////////////////////////////
 ;? mouse cursor within its bounds
 ;------------------------------------------------------------------------------
 ;< esi = process slot
-;< edi = pointer to WDATA struct
+;< edi = pointer to window_data_t struct
 ;------------------------------------------------------------------------------
         mov     esi, [Screen_Max_X]
         inc     esi
@@ -567,43 +567,43 @@ mouse._.find_sys_button_under_cursor: ;////////////////////////////////////////
         ; check if any process button contains cursor
         mov     eax, [BTN_ADDR]
         mov     ecx, [eax]
-        imul    esi, ecx, sizeof.SYS_BUTTON
+        imul    esi, ecx, sizeof.sys_button_t
         add     esi, eax
         inc     ecx
-        add     esi, sizeof.SYS_BUTTON
+        add     esi, sizeof.sys_button_t
 
   .next_button:
         dec     ecx
         jz      .not_found
 
-        add     esi, -sizeof.SYS_BUTTON
+        add     esi, -sizeof.sys_button_t
 
         ; does it belong to our process?
-        cmp     dx, [esi + SYS_BUTTON.pslot]
+        cmp     dx, [esi + sys_button_t.pslot]
         jne     .next_button
 
         ; does it contain cursor coordinates?
         mov     eax, [mouse.state.pos.x]
-        sub     eax, [edi + WDATA.box.left]
-        sub     ax, [esi + SYS_BUTTON.left]
+        sub     eax, [edi + window_data_t.box.left]
+        sub     ax, [esi + sys_button_t.left]
         jl      .next_button
-        sub     ax, [esi + SYS_BUTTON.width]
+        sub     ax, [esi + sys_button_t.width]
         jge     .next_button
         mov     eax, [mouse.state.pos.y]
-        sub     eax, [edi + WDATA.box.top]
-        sub     ax, [esi + SYS_BUTTON.top]
+        sub     eax, [edi + window_data_t.box.top]
+        sub     ax, [esi + sys_button_t.top]
         jl      .next_button
-        sub     ax, [esi + SYS_BUTTON.height]
+        sub     ax, [esi + sys_button_t.height]
         jge     .next_button
 
         ; okay, return it
         shl     edx, 24
-        mov     eax, dword[esi + SYS_BUTTON.id_hi - 2]
-        mov     ax, [esi + SYS_BUTTON.id_lo]
+        mov     eax, dword[esi + sys_button_t.id_hi - 2]
+        mov     ax, [esi + sys_button_t.id_lo]
         and     eax, 0x00ffffff
         or      eax, edx
-        mov     ebx, dword[esi + SYS_BUTTON.left - 2]
-        mov     bx, [esi + SYS_BUTTON.top]
+        mov     ebx, dword[esi + sys_button_t.left - 2]
+        mov     bx, [esi + sys_button_t.top]
         jmp     .exit
 
   .not_found:
@@ -623,13 +623,13 @@ mouse._.check_sys_window_actions: ;////////////////////////////////////////////
 ;< eax = action flags or 0
 ;------------------------------------------------------------------------------
         ; is window movable?
-        test    byte[edi + WDATA.cl_titlebar + 3], 0x01
+        test    byte[edi + window_data_t.cl_titlebar + 3], 0x01
         jnz     .no_action
 
         mov     eax, [mouse.state.pos.x]
         mov     ebx, [mouse.state.pos.y]
-        sub     eax, [edi + WDATA.box.left]
-        sub     ebx, [edi + WDATA.box.top]
+        sub     eax, [edi + window_data_t.box.left]
+        sub     ebx, [edi + window_data_t.box.top]
 
         ; is there a window titlebar under cursor?
         push    eax
@@ -639,20 +639,20 @@ mouse._.check_sys_window_actions: ;////////////////////////////////////////////
         jl      .move_action
 
         ; no there isn't, can it be resized then?
-        mov     dl, [edi + WDATA.fl_wstyle]
+        mov     dl, [edi + window_data_t.fl_wstyle]
         and     dl, 0x0f
         ; NOTE: dangerous optimization, revise if window types changed;
         ;       this currently implies only types 2 and 3 could be resized
         test    dl, 2
         jz      .no_action
 
-        mov     ecx, [edi + WDATA.box.width]
+        mov     ecx, [edi + window_data_t.box.width]
         add     ecx, -window.BORDER_SIZE
-        mov     edx, [edi + WDATA.box.height]
+        mov     edx, [edi + window_data_t.box.height]
         add     edx, -window.BORDER_SIZE
 
         ; is it rolled up?
-        test    [edi + WDATA.fl_wstate], WSTATE_ROLLEDUP
+        test    [edi + window_data_t.fl_wstate], WSTATE_ROLLEDUP
         jnz     .resize_w_or_e_action
 
         cmp     eax, window.BORDER_SIZE

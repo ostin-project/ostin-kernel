@@ -121,7 +121,7 @@ file_system_lfn:
         xor     ebp, ebp
 
     @@: mov     esi, [current_slot]
-        mov     esi, [esi + APPDATA.cur_dir]
+        mov     esi, [esi + app_data_t.cur_dir]
         jmp     .parse_normal
 
   .notcurdir:
@@ -1032,12 +1032,12 @@ process_replace_file_name:
 
 sys_current_directory:
 ;       mov     esi, [current_slot]
-;       mov     esi, [esi + APPDATA.cur_dir]
+;       mov     esi, [esi + app_data_t.cur_dir]
 ;       mov     edx, esi
 
-        ;get length string of appdata.cur_dir
+        ; get length string of appdata.cur_dir
         mov     eax, [current_slot]
-        mov     edi, [eax + APPDATA.cur_dir]
+        mov     edi, [eax + app_data_t.cur_dir]
 
         dec     ebx
         jz      .set
@@ -1087,13 +1087,13 @@ max_cur_dir equ 0x1000
 
   .error:
         add     esp, 8
-        or      dword[esp + 32], -1 ; error not found zerro at string ->[eax+APPDATA.cur_dir]
+        or      dword[esp + 32], -1 ; error not found zerro at string ->[eax+app_data_t.cur_dir]
         ret
 
   .set:
         ; sysfunction 30.1: [for app] eax=30,ebx=1,ecx->string
         ; for our code: ebx->string to set
-        ; use generic resolver with APPDATA.cur_dir as destination
+        ; use generic resolver with app_data_t.cur_dir as destination
         push    max_cur_dir ; 0x1000
         push    edi ; destination
         mov     ebx, ecx
@@ -1106,7 +1106,7 @@ get_full_file_name:
 
         push    ebp
         mov     esi, [current_slot]
-        mov     esi, [esi + APPDATA.cur_dir]
+        mov     esi, [esi + app_data_t.cur_dir]
         mov     edx, esi
 
     @@: inc     esi
@@ -1142,7 +1142,7 @@ get_full_file_name:
         jmp     .relative
 
   .set_ok:
-        cmp     edx, edi ; is destination equal to APPDATA.cur_dir?
+        cmp     edx, edi ; is destination equal to app_data_t.cur_dir?
         jz      .set_ok.cur_dir
         sub     esi, edx
         cmp     esi, [esp + 12]

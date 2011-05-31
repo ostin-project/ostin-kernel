@@ -44,7 +44,7 @@ bdds:
         int     0x13
         pop     ds
         jc      bddc2
-        inc     [es:BOOT_BIOS_DISKS_COUNT]
+        inc     [es:BOOT_BIOS_DISKS_CNT]
         cmp     word[es:si], 0x1e
         jb      bddl
         cmp     word[es:si + 0x1a], 0xffff

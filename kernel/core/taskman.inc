@@ -16,35 +16,34 @@
 
 GREEDY_KERNEL equ 0
 
-struc APP_HEADER_00
-{
-  .banner   dq ?
-  .version  dd ? ; +8
-  .start    dd ? ; +12
-  .i_end    dd ? ; +16
-  .mem_size dd ? ; +20
-  .i_param  dd ? ; +24
-}
+struct app_header_00_t
+  banner   dq ?
+  version  dd ? ; +8
+  start    dd ? ; +12
+  i_end    dd ? ; +16
+  mem_size dd ? ; +20
+  i_param  dd ? ; +24
+ends
 
-struc APP_HEADER_01
-{
-  .banner    dq ?
-  .version   dd ? ; +8
-  .start     dd ? ; +12
-  .i_end     dd ? ; +16
-  .mem_size  dd ? ; +20
-  .stack_top dd ? ; +24
-  .i_param   dd ? ; +28
-  .i_icon    dd ? ; +32
-}
+struct app_header_01_t
+  banner    dq ?
+  version   dd ? ; +8
+  start     dd ? ; +12
+  i_end     dd ? ; +16
+  mem_size  dd ? ; +20
+  stack_top dd ? ; +24
+  i_param   dd ? ; +28
+  i_icon    dd ? ; +32
+ends
 
-struc APP_PARAMS
-{ .app_cmdline   ;0x00
-  .app_path  ;0x04
-  .app_eip   ;0x08
-  .app_esp   ;0x0C
-  .app_mem   ;0x10
-}
+; unused
+;struc APP_PARAMS
+;{ .app_cmdline ; 0x00
+;  .app_path    ; 0x04
+;  .app_eip     ; 0x08
+;  .app_esp     ; 0x0C
+;  .app_mem     ; 0x10
+;}
 
 macro _clear_ op
 {  mov ecx, op/4
@@ -75,7 +74,7 @@ locals
   slot_base   dd ?
   file_base   dd ?
   file_size   dd ?
-  ;app header data
+  ; app header data
   hdr_cmdline dd ? ; 0x00
   hdr_path    dd ? ; 0x04
   hdr_eip     dd ? ; 0x08
@@ -203,9 +202,9 @@ endl
         jz      .failed
 
         mov     ebx, [slot_base]
-        mov     [ebx + APPDATA.dir_table], eax
+        mov     [ebx + app_data_t.dir_table], eax
         mov     eax, [hdr_mem]
-        mov     [ebx + APPDATA.mem_size], eax
+        mov     [ebx + app_data_t.mem_size], eax
 
         xor     edx, edx
         cmp     word[6], '02'
@@ -213,7 +212,7 @@ endl
 
         not     edx
 
-    @@: mov     [ebx + APPDATA.tls_base], edx
+    @@: mov     [ebx + app_data_t.tls_base], edx
 
 if GREEDY_KERNEL
 
@@ -267,14 +266,6 @@ endp
 
 align 4
 test_app_header:
-
-virtual at eax
-  APP_HEADER_00 APP_HEADER_00
-end virtual
-virtual at eax
-  APP_HEADER_01 APP_HEADER_01
-end virtual
-
         cmp     dword[eax], 'MENU'
         jne     .fail
         cmp     word[eax + 4], 'ET'
@@ -283,17 +274,17 @@ end virtual
         cmp     word[eax + 6], '00'
         jne     .check_01_header
 
-        mov     ecx, [APP_HEADER_00.start]
+        mov     ecx, [eax + app_header_00_t.start]
         mov     [ebx + 0x08], ecx ; app_eip
-        mov     edx, [APP_HEADER_00.mem_size]
+        mov     edx, [eax + app_header_00_t.mem_size]
         mov     [ebx + 0x10], edx ; app_mem
         shr     edx, 1
         sub     edx, 0x10
         mov     [ebx + 0x0c], edx ; app_esp
-        mov     ecx, [APP_HEADER_00.i_param]
+        mov     ecx, [eax + app_header_00_t.i_param]
         mov     [ebx], ecx ; app_cmdline
         mov     dword[ebx + 4], 0 ; app_path
-        mov     edx, [APP_HEADER_00.i_end]
+        mov     edx, [eax + app_header_00_t.i_end]
         mov     [ebx + 0x14], edx
         ret
 
@@ -303,23 +294,23 @@ end virtual
         cmp     word[eax + 6], '02'
         jne     .fail
 
-    @@: mov     ecx, [APP_HEADER_01.start]
+    @@: mov     ecx, [eax + app_header_01_t.start]
         mov     [ebx + 0x08], ecx ; app_eip
-        mov     edx, [APP_HEADER_01.mem_size]
+        mov     edx, [eax + app_header_01_t.mem_size]
 
         ; sanity check (functions 19,58 load app_i_end bytes and that must
         ; fit in allocated memory to prevent kernel faults)
-        cmp     edx, [APP_HEADER_01.i_end]
+        cmp     edx, [eax + app_header_01_t.i_end]
         jb      .fail
 
         mov     [ebx + 0x10], edx ; app_mem
-        mov     ecx, [APP_HEADER_01.stack_top]
+        mov     ecx, [eax + app_header_01_t.stack_top]
         mov     [ebx + 0x0c], ecx ; app_esp
-        mov     edx, [APP_HEADER_01.i_param]
+        mov     edx, [eax + app_header_01_t.i_param]
         mov     [ebx], edx ; app_cmdline
-        mov     ecx, [APP_HEADER_01.i_icon]
+        mov     ecx, [eax + app_header_01_t.i_icon]
         mov     [ebx + 4], ecx ; app_path
-        mov     edx, [APP_HEADER_01.i_end]
+        mov     edx, [eax + app_header_01_t.i_end]
         mov     [ebx + 0x14], edx
         ret
 
@@ -520,7 +511,7 @@ endp
 align 4
 set_cr3:
         mov     ebx, [current_slot]
-        mov     [ebx + APPDATA.dir_table], eax
+        mov     [ebx + app_data_t.dir_table], eax
         mov     cr3, eax
         ret
 
@@ -555,14 +546,14 @@ proc destroy_app_space stdcall, pg_dir:dword, dlls_list:dword
         mov     ebx, [pg_dir]
 
   .loop:
-        ;eax = current slot of process
+        ; eax = current slot of process
         mov     ecx, eax
         shl     ecx, 5
         cmp     byte[CURRENT_TASK + ecx + 0x0a], 9 ; if process running?
         jz      @f ; skip empty slots
         shl     ecx, 3
         add     ecx, SLOT_BASE
-        cmp     [ecx + APPDATA.dir_table], ebx ; compare page directory addresses
+        cmp     [ecx + app_data_t.dir_table], ebx ; compare page directory addresses
         jnz     @f
         mov     [ebp - 4], ecx
         inc     edx ; thread found
@@ -571,12 +562,12 @@ proc destroy_app_space stdcall, pg_dir:dword, dlls_list:dword
         cmp     eax, [TASK_COUNT] ; exit loop if we look through all processes
         jle     .loop
 
-        ;edx = number of threads
-        ;our process is zombi so it isn't counted
+        ; edx = number of threads
+        ; our process is zombi so it isn't counted
         pop     ecx
         cmp     edx, 1
         jg      .ret
-        ;if there isn't threads then clear memory.
+        ; if there isn't threads then clear memory.
         mov     esi, [dlls_list]
         call    destroy_all_hdlls
 
@@ -619,15 +610,15 @@ endp
 align 4
 get_pid:
         mov     eax, [TASK_BASE]
-        mov     eax, [eax + TASKDATA.pid]
+        mov     eax, [eax + task_data_t.pid]
         ret
 
 pid_to_slot:
-        ;Input:
+        ; Input:
         ;  eax - pid of process
-        ;Output:
+        ; Output:
         ;  eax - slot of process or 0 if process don't exists
-        ;Search process by PID.
+        ; Search process by PID.
 
         push    ebx
         push    ecx
@@ -636,8 +627,8 @@ pid_to_slot:
         mov     ecx, 2 * 32
 
   .loop:
-        ;ecx=offset of current process info entry
-        ;ebx=maximum permitted offset
+        ; ecx=offset of current process info entry
+        ; ebx=maximum permitted offset
         cmp     byte[CURRENT_TASK + ecx + 0x0a], 9
         jz      .endloop ; skip empty slots
         cmp     [CURRENT_TASK + ecx + 0x4], eax ; check PID
@@ -708,9 +699,9 @@ check_region:
 ;       and     ecx, not (4096 - 1)
 ;
 ; .loop:
-        ;eax - linear address of page directory
-        ;ebx - current page
-        ;ecx - current size
+        ; eax - linear address of page directory
+        ; ebx - current page
+        ; ecx - current size
 ;       mov     edx, ebx
 ;       shr     edx, 22
 ;       mov     edx, [eax + 4 * edx]
@@ -896,11 +887,11 @@ align 4
 proc new_sys_threads
 locals
   slot        dd ?
-  app_cmdline dd ? ;0x00
-  app_path    dd ? ;0x04
-  app_eip     dd ? ;0x08
-  app_esp     dd ? ;0x0C
-  app_mem     dd ? ;0x10
+  app_cmdline dd ? ; 0x00
+  app_path    dd ? ; 0x04
+  app_eip     dd ? ; 0x08
+  app_esp     dd ? ; 0x0C
+  app_mem     dd ? ; 0x10
 endl
 
         cmp     ebx, 1
@@ -950,22 +941,22 @@ endl
         mov     ecx, 11
         rep     movsb ; copy process name
 
-        mov     eax, [ebx + APPDATA.heap_base]
-        mov     [edx + APPDATA.heap_base], eax
+        mov     eax, [ebx + app_data_t.heap_base]
+        mov     [edx + app_data_t.heap_base], eax
 
-        mov     ecx, [ebx + APPDATA.heap_top]
-        mov     [edx + APPDATA.heap_top], ecx
+        mov     ecx, [ebx + app_data_t.heap_top]
+        mov     [edx + app_data_t.heap_top], ecx
 
-        mov     eax, [ebx + APPDATA.mem_size]
-        mov     [edx + APPDATA.mem_size], eax
+        mov     eax, [ebx + app_data_t.mem_size]
+        mov     [edx + app_data_t.mem_size], eax
 
-        mov     ecx, [ebx + APPDATA.dir_table]
-        mov     [edx + APPDATA.dir_table], ecx ; copy page directory
+        mov     ecx, [ebx + app_data_t.dir_table]
+        mov     [edx + app_data_t.dir_table], ecx ; copy page directory
 
-        mov     eax, [ebx + APPDATA.dlls_list_ptr]
-        mov     [edx + APPDATA.dlls_list_ptr], eax
+        mov     eax, [ebx + app_data_t.dlls_list_ptr]
+        mov     [edx + app_data_t.dlls_list_ptr], eax
 
-        mov     eax, [ebx + APPDATA.tls_base]
+        mov     eax, [ebx + app_data_t.tls_base]
         test    eax, eax
         jz      @f
 
@@ -975,7 +966,7 @@ endl
         test    eax, eax
         jz      .failed1 ; eax=0
 
-    @@: mov     [edx + APPDATA.tls_base], eax
+    @@: mov     [edx + app_data_t.tls_base], eax
 
         lea     eax, [app_cmdline]
         stdcall set_app_params, [slot], eax, 0, 0, 0
@@ -1021,7 +1012,7 @@ tls_app_entry:
         stdcall user_alloc, 4096
 
         mov     edx, [current_slot]
-        mov     [edx + APPDATA.tls_base], eax
+        mov     [edx + app_data_t.tls_base], eax
         mov     [tls_data_l + 2], ax
         shr     eax, 16
         mov     [tls_data_l + 4], al
@@ -1051,15 +1042,15 @@ endl
         mov     ebx, eax
 
         shl     eax, 8
-        mov     [eax + SLOT_BASE + APPDATA.fpu_state], edi
-        mov     [eax + SLOT_BASE + APPDATA.exc_handler], 0
-        mov     [eax + SLOT_BASE + APPDATA.except_mask], 0
+        mov     [eax + SLOT_BASE + app_data_t.fpu_state], edi
+        mov     [eax + SLOT_BASE + app_data_t.exc_handler], 0
+        mov     [eax + SLOT_BASE + app_data_t.except_mask], 0
 
-        ;set default io permission map
-        mov     ecx, [SLOT_BASE + 256 + APPDATA.io_map]
-        mov     [eax + SLOT_BASE + APPDATA.io_map], ecx
-        mov     ecx, [SLOT_BASE + 256 + APPDATA.io_map + 4]
-        mov     [eax + SLOT_BASE + APPDATA.io_map + 4], ecx
+        ; set default io permission map
+        mov     ecx, [SLOT_BASE + 256 + app_data_t.io_map]
+        mov     [eax + SLOT_BASE + app_data_t.io_map], ecx
+        mov     ecx, [SLOT_BASE + 256 + app_data_t.io_map + 4]
+        mov     [eax + SLOT_BASE + app_data_t.io_map + 4], ecx
 
         mov     esi, fpu_data
         mov     ecx, 512 / 4
@@ -1072,28 +1063,28 @@ endl
   .noinc:
         shl     ebx, 8
         lea     edx, [ebx + SLOT_BASE + APP_EV_OFFSET]
-        mov     [SLOT_BASE + APPDATA.fd_ev + ebx], edx
-        mov     [SLOT_BASE + APPDATA.bk_ev + ebx], edx
+        mov     [SLOT_BASE + app_data_t.fd_ev + ebx], edx
+        mov     [SLOT_BASE + app_data_t.bk_ev + ebx], edx
 
         add     edx, APP_OBJ_OFFSET - APP_EV_OFFSET
-        mov     [SLOT_BASE + APPDATA.fd_obj + ebx], edx
-        mov     [SLOT_BASE + APPDATA.bk_obj + ebx], edx
+        mov     [SLOT_BASE + app_data_t.fd_obj + ebx], edx
+        mov     [SLOT_BASE + app_data_t.bk_obj + ebx], edx
 
         mov     ecx, [def_cursor]
-        mov     [SLOT_BASE + APPDATA.cursor + ebx], ecx
+        mov     [SLOT_BASE + app_data_t.cursor + ebx], ecx
         mov     eax, [pl0_stack]
-        mov     [SLOT_BASE + APPDATA.pl0_stack + ebx], eax
+        mov     [SLOT_BASE + app_data_t.pl0_stack + ebx], eax
         add     eax, RING0_STACK_SIZE
-        mov     [SLOT_BASE + APPDATA.saved_esp0 + ebx], eax
+        mov     [SLOT_BASE + app_data_t.saved_esp0 + ebx], eax
 
         push    ebx
         stdcall kernel_alloc, 0x1000
         pop     ebx
         mov     esi, [current_slot]
-        mov     esi, [esi + APPDATA.cur_dir]
+        mov     esi, [esi + app_data_t.cur_dir]
         mov     ecx, 0x1000 / 4
         mov     edi, eax
-        mov     [ebx + SLOT_BASE + APPDATA.cur_dir], eax
+        mov     [ebx + SLOT_BASE + app_data_t.cur_dir], eax
         rep     movsd
 
         shr     ebx, 3
@@ -1110,7 +1101,7 @@ endl
         add     eax, 256
         jc      @f
 
-        cmp     eax, [SLOT_BASE + APPDATA.mem_size + ebx * 8]
+        cmp     eax, [SLOT_BASE + app_data_t.mem_size + ebx * 8]
         ja      @f
 
         mov     byte[edx], 0 ; force empty string if no cmdline given
@@ -1126,7 +1117,7 @@ endl
         mov     eax, edx
         add     eax, 1024
         jc      @f
-        cmp     eax, [SLOT_BASE + APPDATA.mem_size + ebx * 8]
+        cmp     eax, [SLOT_BASE + app_data_t.mem_size + ebx * 8]
         ja      @f
         stdcall strncpy, edx, [app_path], 1024
 
@@ -1136,17 +1127,17 @@ endl
         lea     ecx, [draw_data + ebx] ; ecx - pointer to draw data
 
         mov     edx, irq0.return
-        cmp     [ebx * 8 + SLOT_BASE + APPDATA.tls_base], -1
+        cmp     [ebx * 8 + SLOT_BASE + app_data_t.tls_base], -1
         jne     @f
         mov     edx, tls_app_entry
 
     @@: ; set window state to 'normal' (non-minimized/maximized/rolled-up) state
-        mov     [ebx + window_data + WDATA.fl_wstate], WSTATE_NORMAL
-        mov     [ebx + window_data + WDATA.fl_redraw], 1
+        mov     [ebx + window_data + window_data_t.fl_wstate], WSTATE_NORMAL
+        mov     [ebx + window_data + window_data_t.fl_redraw], 1
         add     ebx, CURRENT_TASK ; ebx - pointer to information about process
-        mov     [ebx + TASKDATA.wnd_number], al ; set window number on screen = process slot
+        mov     [ebx + task_data_t.wnd_number], al ; set window number on screen = process slot
 
-        mov     dword[ebx + TASKDATA.event_mask], 1 + 2 + 4 ; set default event flags (see 40 function)
+        mov     [ebx + task_data_t.event_mask], 1 + 2 + 4 ; set default event flags (see 40 function)
 
         inc     dword[process_number]
         mov     eax, [process_number]
@@ -1188,7 +1179,7 @@ endl
         lea     ecx, [ebx + REG_RET]
         mov     ebx, [slot]
         shl     ebx, 5
-        mov     [ebx * 8 + SLOT_BASE + APPDATA.saved_esp], ecx
+        mov     [ebx * 8 + SLOT_BASE + app_data_t.saved_esp], ecx
 
         xor     ecx, ecx ; process state - running
         ; set if debuggee
@@ -1196,10 +1187,10 @@ endl
         jz      .no_debug
         inc     ecx ; process state - suspended
         mov     eax, [CURRENT_TASK]
-        mov     [SLOT_BASE + ebx * 8 + APPDATA.debugger_slot], eax
+        mov     [SLOT_BASE + ebx * 8 + app_data_t.debugger_slot], eax
 
   .no_debug:
-        mov     [CURRENT_TASK + ebx + TASKDATA.state], cl
+        mov     [CURRENT_TASK + ebx + task_data_t.state], cl
 ;       mov     esi, new_process_running
 ;       call    sys_msg_board_str ; output information about succefull startup
         ret
@@ -1208,7 +1199,7 @@ endp
 align 4
 get_stack_base:
         mov     eax, [current_slot]
-        mov     eax, [eax + APPDATA.pl0_stack]
+        mov     eax, [eax + app_data_t.pl0_stack]
         ret
 
 include "debug.inc"

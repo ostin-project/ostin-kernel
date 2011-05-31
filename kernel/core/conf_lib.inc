@@ -15,7 +15,7 @@
 ;;======================================================================================================================
 
 ;-------------------------------------------------------------------------
-;Loading configuration from ini file
+; Loading configuration from ini file
 ;-------------------------------------------------------------------------
 
 iglobal
@@ -80,7 +80,7 @@ iglobal
   udev_midibase_def    db '0x320', 0
 endg
 
-;set up netvork configuration
+; set up netvork configuration
 proc set_network_conf
 locals
   par db 30 dup(?)
@@ -214,7 +214,7 @@ proc strtoint_dec stdcall, strs
         ret
 endp
 
-;convert string to DWord for hex value
+; convert string to DWord for hex value
 proc strtoint_hex stdcall, strs
         pushad
         xor     edx, edx

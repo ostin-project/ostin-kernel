@@ -22,43 +22,46 @@ iglobal
   _skin_file_default db '/sys/DEFAULT.SKN', 0
 endg
 
-struct SKIN_DATA
-  colors.inner dd ?
-  colors.outer dd ?
-  colors.frame dd ?
-  left.data    dd ?
-  left.left    dd ?
-  left.width   dd ?
-  oper.data    dd ?
-  oper.left    dd ?
-  oper.width   dd ?
-  base.data    dd ?
-  base.left    dd ?
-  base.width   dd ?
+struct skin_data_colors_t
+  inner dd ?
+  outer dd ?
+  frame dd ?
 ends
 
-struct SKIN_BUTTON
-  left   dd ?
-  top    dd ?
-  width  dd ?
-  height dd ?
+struct skin_data_bitmap_t
+  data  dd ?
+  left  dd ?
+  width dd ?
+ends
+
+struct skin_data_t
+  colors skin_data_colors_t
+  left   skin_data_bitmap_t
+  oper   skin_data_bitmap_t
+  base   skin_data_bitmap_t
+ends
+
+struct skin_button_t box32_t
+ends
+
+struct skin_margins_t
+  right  dw ?
+  left   dw ?
+  bottom dw ?
+  top    dw ?
 ends
 
 uglobal
   align 4
   skin_udata:
-    _skinh    dd ?
-    _skinmargins: ;   rw 4
-      .right  dw ?
-      .left   dw ?
-      .bottom dw ?
-      .top    dw ?
+    _skinh          dd ?
+    _skinmargins    skin_margins_t
 
-  skin_btn_close    SKIN_BUTTON
-  skin_btn_minimize SKIN_BUTTON
+  skin_btn_close    skin_button_t
+  skin_btn_minimize skin_button_t
 
-  skin_active       SKIN_DATA
-  skin_inactive     SKIN_DATA
+  skin_active       skin_data_t
+  skin_inactive     skin_data_t
 
   align 4
   skin_udata.end:

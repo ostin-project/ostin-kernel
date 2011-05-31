@@ -30,12 +30,12 @@ uglobal
 endg
 
 EV_SPACE   = 512
-FreeEvents = event_start - EVENT.fd ; "виртуальный" event, используются только поля:
-                                    ;  FreeEvents.fd=event_start и FreeEvents.bk=event_end
+FreeEvents = event_start - event_t.fd ; "виртуальный" event, используются только поля:
+                                      ;  FreeEvents.fd=event_start и FreeEvents.bk=event_end
 
 align 4
 init_events:                                       ;; used from kernel.asm
-        stdcall kernel_alloc, EV_SPACE * sizeof.EVENT
+        stdcall kernel_alloc, EV_SPACE * sizeof.event_t
         or      eax, eax
         jz      .fail
         ; eax - current event, ebx - previos event below
@@ -43,14 +43,14 @@ init_events:                                       ;; used from kernel.asm
         mov     ebx, FreeEvents ; previos - начало списка
         push    ebx ; оно же и конец потом будет
 
-    @@: mov     [ebx + EVENT.fd], eax
-        mov     [eax + EVENT.bk], ebx
+    @@: mov     [ebx + event_t.fd], eax
+        mov     [eax + event_t.bk], ebx
         mov     ebx, eax ; previos <- current
-        add     eax, sizeof.EVENT ; new current
+        add     eax, sizeof.event_t ; new current
         loop    @b
         pop     eax ; вот оно концом и стало
-        mov     [ebx + EVENT.fd], eax
-        mov     [eax + EVENT.bk], ebx
+        mov     [ebx + event_t.fd], eax
+        mov     [eax + event_t.bk], ebx
 
   .fail:
         ret
@@ -63,8 +63,8 @@ MANUAL_DESTROY equ 0x80000000 ; бит 31
 align 4
 create_event: ;; EXPORT use
         ; info:
-        ;    Переносим EVENT из списка FreeEvents в список ObjList текущего слота
-        ;    EVENT.state устанавливаем из ecx, EVENT.code косвенно из esi (если esi<>0)
+        ;    Переносим event_t из списка FreeEvents в список ObjList текущего слота
+        ;    event_t.state устанавливаем из ecx, event_t.code косвенно из esi (если esi<>0)
         ; param:
         ;    esi - event data
         ;    ecx - flags
@@ -76,7 +76,7 @@ create_event: ;; EXPORT use
         mov     ebx, [current_slot]
         add     ebx, APP_OBJ_OFFSET
         mov     edx, [TASK_BASE]
-        mov     edx, [edx + TASKDATA.pid]
+        mov     edx, [edx + task_data_t.pid]
         pushfd
         cli
 
@@ -87,33 +87,33 @@ set_event: ;; INTERNAL use !!! don't use for Call
         ;    Возвращаем сам event (в eax), и его uid (в edx)
         ; param:
         ;    ebx - start-chain "virtual" event for entry new event Right of him
-        ;    ecx - flags      (copied to EVENT.state)
-        ;    edx - pid        (copied to EVENT.pid)
-        ;    esi - event data (copied to EVENT.code indirect, =0 => skip)
+        ;    ecx - flags      (copied to event_t.state)
+        ;    edx - pid        (copied to event_t.pid)
+        ;    esi - event data (copied to event_t.code indirect, =0 => skip)
         ; retval:
         ;    eax - event (=0 => fail)
         ;    edx - uid
         ; scratched: ebx,ecx,esi,edi
 
         mov     eax, FreeEvents
-        cmp     eax, [eax + EVENT.fd]
+        cmp     eax, [eax + event_t.fd]
         jne     @f ; not empty ???
         pushad
         call    init_events
         popad
         jz      RemoveEventTo.break ; POPF+RET
 
-    @@: mov     eax, [eax + EVENT.fd]
-        mov     [eax + EVENT.magic], 'EVNT'
-        mov     [eax + EVENT.destroy], destroy_event.internal
-        mov     [eax + EVENT.state], ecx
-        mov     [eax + EVENT.pid], edx
+    @@: mov     eax, [eax + event_t.fd]
+        mov     [eax + event_t.magic], 'EVNT'
+        mov     [eax + event_t.destroy], destroy_event.internal
+        mov     [eax + event_t.state], ecx
+        mov     [eax + event_t.pid], edx
         inc     [event_uid]
-        Mov     [eax + EVENT.id], edx, [event_uid]
+        Mov     [eax + event_t.id], edx, [event_uid]
         or      esi, esi
         jz      RemoveEventTo
-        lea     edi, [eax + EVENT.code]
-        mov     ecx, sizeof.EVENT_CODE / 4
+        lea     edi, [eax + event_t.code]
+        mov     ecx, sizeof.event_code_t / 4
         cld
         rep     movsd
 
@@ -124,14 +124,14 @@ RemoveEventTo: ;; INTERNAL use !!! don't use for Call
         ; scratched: ebx,ecx
 
         mov     ecx, eax ; ecx=eax=Self, ebx=NewLeft
-        xchg    ecx, [ebx + EVENT.fd] ; NewLeft.fd=Self, ecx=NewRight
+        xchg    ecx, [ebx + event_t.fd] ; NewLeft.fd=Self, ecx=NewRight
         cmp     eax, ecx ; стоп, себе думаю...
         je      .break ; - а не дурак ли я?
-        mov     [ecx + EVENT.bk], eax ; NewRight.bk=Self
-        xchg    ebx, [eax + EVENT.bk] ; Self.bk=NewLeft, ebx=OldLeft
-        xchg    ecx, [eax + EVENT.fd] ; Self.fd=NewRight, ecx=OldRight
-        mov     [ebx + EVENT.fd], ecx ; OldLeft.fd=OldRight
-        mov     [ecx + EVENT.bk], ebx ; OldRight.bk=OldLeft
+        mov     [ecx + event_t.bk], eax ; NewRight.bk=Self
+        xchg    ebx, [eax + event_t.bk] ; Self.bk=NewLeft, ebx=OldLeft
+        xchg    ecx, [eax + event_t.fd] ; Self.fd=NewRight, ecx=OldRight
+        mov     [ebx + event_t.fd], ecx ; OldLeft.fd=OldRight
+        mov     [ecx + event_t.bk], ebx ; OldRight.bk=OldLeft
 
   .break:
         popfd
@@ -142,7 +142,7 @@ NotDummyTest: ;; INTERNAL use (not returned for fail !!!)
         pop     edi
         call    DummyTest ; not returned for fail !!!
         mov     ebx, eax
-        mov     eax, [ebx + EVENT.pid]
+        mov     eax, [ebx + event_t.pid]
         push    edi
 
   .small:
@@ -158,7 +158,7 @@ NotDummyTest: ;; INTERNAL use (not returned for fail !!!)
 align 4
 raise_event: ;; EXPORT use
         ; info:
-        ;    Устанавливаем данные EVENT.code
+        ;    Устанавливаем данные event_t.code
         ;    Если там флаг EVENT_SIGNALED уже активен - больше ничего
         ;    Иначе: этот флаг взводится, за исключением случая наличия флага EVENT_WATCHED в edx
         ;    В этом случае EVENT_SIGNALED взводится лишь при наличие EVENT_WATCHED в самом событии
@@ -172,19 +172,19 @@ raise_event: ;; EXPORT use
         call    NotDummyTest ; not returned for fail !!!
         or      esi, esi
         jz      @f
-        lea     edi, [ebx + EVENT.code]
-        mov     ecx, sizeof.EVENT_CODE / 4
+        lea     edi, [ebx + event_t.code]
+        mov     ecx, sizeof.event_code_t / 4
         cld
         rep     movsd
 
-    @@: test    byte[ebx + EVENT.state + 3], EVENT_SIGNALED shr 24
+    @@: test    byte[ebx + event_t.state + 3], EVENT_SIGNALED shr 24
         jnz     RemoveEventTo.break ; POPF+RET
         bt      edx, 28 ; EVENT_WATCHED
         jnc     @f
-        test    byte[ebx + EVENT.state + 3], EVENT_WATCHED  shr 24
+        test    byte[ebx + event_t.state + 3], EVENT_WATCHED  shr 24
         jz      RemoveEventTo.break ; POPF+RET
 
-    @@: or      byte[ebx + EVENT.state + 3], EVENT_SIGNALED shr 24
+    @@: or      byte[ebx + event_t.state + 3], EVENT_SIGNALED shr 24
         add     eax, SLOT_BASE + APP_EV_OFFSET
         xchg    eax, ebx
         jmp     RemoveEventTo
@@ -200,14 +200,14 @@ clear_event: ;; EXPORT use
 
         call    NotDummyTest ; not returned for fail !!!
         add     eax, SLOT_BASE + APP_OBJ_OFFSET
-        and     byte[ebx + EVENT.state + 3], not ((EVENT_SIGNALED + EVENT_WATCHED) shr 24)
+        and     byte[ebx + event_t.state + 3], not ((EVENT_SIGNALED + EVENT_WATCHED) shr 24)
         xchg    eax, ebx
         jmp     RemoveEventTo
 
 align 4
 send_event: ;; EXPORT use
         ; info:
-        ;    Создает новый EVENT (вытаскивает из списка FreeEvents) в списке EventList
+        ;    Создает новый event_t (вытаскивает из списка FreeEvents) в списке EventList
         ;    целевого слота (eax=pid), с данными из esi косвенно, и state=EVENT_SIGNALED
         ; param:
         ;    eax - slots pid, to sending new event
@@ -234,9 +234,9 @@ DummyTest: ;; INTERNAL use (not returned for fail !!!)
         ;    eax - event
         ;    ebx - uid (for Dummy testing)
 
-        cmp     [eax + EVENT.magic], 'EVNT'
+        cmp     [eax + event_t.magic], 'EVNT'
         jne     @f
-        cmp     [eax + EVENT.id], ebx
+        cmp     [eax + event_t.id], ebx
         je      .ret
 
     @@: pop     eax
@@ -252,7 +252,7 @@ Wait_events:
 Wait_events_ex:
         ; info:
         ;    Ожидание "абстрактного" события через перевод слота в 5-ю позицию.
-        ;    Абстрактность заключена в том, что факт события определяется функцией APPDATA.wait_test,
+        ;    Абстрактность заключена в том, что факт события определяется функцией app_data_t.wait_test,
         ;    которая задается клиентом и может быть фактически любой.
         ;    Это позволяет shed-у надежно определить факт события, и не совершать "холостых" переключений,
         ;    предназначенных для разборок типа "свой/чужой" внутри задачи.
@@ -265,7 +265,7 @@ Wait_events_ex:
         ; scratched: esi
 
         mov     esi, [current_slot]
-        mov     [esi + APPDATA.wait_param], ecx
+        mov     [esi + app_data_t.wait_param], ecx
         pushad
         mov     ebx, esi ; пока это вопрос, чего куды сувать..........
         pushfd  ; это следствие общей концепции: пусть ф-я тестирования имеет
@@ -275,14 +275,14 @@ Wait_events_ex:
         mov     [esp + 28], eax
         popad
         or      eax, eax
-        jnz     @f   ;RET
-        mov     [esi + APPDATA.wait_test], edx
-        mov     [esi + APPDATA.wait_timeout], ebx
-        Mov     [esi + APPDATA.wait_begin], eax, [timer_ticks]
+        jnz     @f ; RET
+        mov     [esi + app_data_t.wait_test], edx
+        mov     [esi + app_data_t.wait_timeout], ebx
+        Mov     [esi + app_data_t.wait_begin], eax, [timer_ticks]
         mov     eax, [TASK_BASE]
-        mov     [eax + TASKDATA.state], 5
+        mov     [eax + task_data_t.state], 5
         call    change_task
-        mov     eax, [esi + APPDATA.wait_param]
+        mov     eax, [esi + app_data_t.wait_param]
 
     @@: ret
 
@@ -316,24 +316,24 @@ get_event_ex: ;; f68:14
         ;    и, при активном MANUAL_DESTROY - перемещается в список ObjList текущего слота,
         ;    а при не активном - уничтожается штатно (destroy_event.internal)
         ; param:
-        ;    edi - адрес в коде приложения для копирования данных из EVENT.code
+        ;    edi - адрес в коде приложения для копирования данных из event_t.code
         ; retval:
-        ;    eax - собственно EVENT (будем называть это его хэндлом)
+        ;    eax - собственно event_t (будем называть это его хэндлом)
         ; scratched: ebx,ecx,edx,esi,edi
 
         mov     edx, get_event_queue ; wait_test
         call    Wait_events ; timeout ignored
-        lea     esi, [eax + EVENT.code]
-        mov     ecx, sizeof.EVENT_CODE / 4
+        lea     esi, [eax + event_t.code]
+        mov     ecx, sizeof.event_code_t / 4
         cld
         rep     movsd
-        mov     [edi - sizeof.EVENT_CODE + 2], cl ; clear priority field
+        mov     [edi - sizeof.event_code_t + 2], cl ; clear priority field
 
 wait_finish:
-        test    byte[eax + EVENT.state + 3], MANUAL_RESET shr 24
+        test    byte[eax + event_t.state + 3], MANUAL_RESET shr 24
         jnz     get_event_queue.ret ; RET
-        and     byte[eax + EVENT.state + 3], not ((EVENT_SIGNALED + EVENT_WATCHED) shr 24)
-        test    byte[eax + EVENT.state + 3], MANUAL_DESTROY shr 24
+        and     byte[eax + event_t.state + 3], not ((EVENT_SIGNALED + EVENT_WATCHED) shr 24)
+        test    byte[eax + event_t.state + 3], MANUAL_DESTROY shr 24
         jz      destroy_event.internal
         mov     ebx, [current_slot]
         add     ebx, APP_OBJ_OFFSET
@@ -344,12 +344,12 @@ wait_finish:
 align 4
 destroy_event: ;; EXPORT use
         ; info:
-        ;    Переносим EVENT в список FreeEvents, чистим поля magic,destroy,pid,id
+        ;    Переносим event_t в список FreeEvents, чистим поля magic,destroy,pid,id
         ; param:
         ;    eax - event
         ;    ebx - uid (for Dummy testing)
         ; retval:
-        ;    eax - адрес объекта EVENT (=0 => fail)
+        ;    eax - адрес объекта event_t (=0 => fail)
         ; scratched: ebx,ecx
 
         call    DummyTest ; not returned for fail !!!
@@ -358,10 +358,10 @@ destroy_event: ;; EXPORT use
         xor     ecx, ecx ; clear common header
         pushfd
         cli
-        mov     [eax + EVENT.magic], ecx
-        mov     [eax + EVENT.destroy], ecx
-        mov     [eax + EVENT.pid], ecx
-        mov     [eax + EVENT.id], ecx
+        mov     [eax + event_t.magic], ecx
+        mov     [eax + event_t.destroy], ecx
+        mov     [eax + event_t.pid], ecx
+        mov     [eax + event_t.id], ecx
         mov     ebx, FreeEvents
         jmp     RemoveEventTo
 
@@ -374,12 +374,12 @@ get_event_queue:
         ;   -may be assumed, that interrupt are disabled
         ;   -it is not restriction for scratched registers
         ; param:
-        ;    ebx - адрес APPDATA слота тестирования
+        ;    ebx - адрес app_data_t слота тестирования
         ; retval:
-        ;    eax - адрес объекта EVENT (=0 => fail)
+        ;    eax - адрес объекта event_t (=0 => fail)
 
         add     ebx, APP_EV_OFFSET
-        mov     eax, [ebx + APPOBJ.bk] ; выбираем с конца, по принципу FIFO
+        mov     eax, [ebx + app_object_t.bk] ; выбираем с конца, по принципу FIFO
         cmp     eax, ebx ; empty ???
         je      get_event_alone.ret0
 
@@ -395,14 +395,14 @@ get_event_alone:
         ;   -may be assumed, that interrupt are disabled
         ;   -it is not restriction for scratched registers
         ; param:
-        ;    ebx - адрес APPDATA слота тестирования
+        ;    ebx - адрес app_data_t слота тестирования
         ; retval:
-        ;    eax - адрес объекта EVENT (=0 => fail)
+        ;    eax - адрес объекта event_t (=0 => fail)
 
-        mov     eax, [ebx + APPDATA.wait_param]
-        test    byte[eax + EVENT.state + 3], EVENT_SIGNALED shr 24
+        mov     eax, [ebx + app_data_t.wait_param]
+        test    byte[eax + event_t.state + 3], EVENT_SIGNALED shr 24
         jnz     .ret
-        or      byte[eax + EVENT.state + 3], EVENT_WATCHED shr 24
+        or      byte[eax + event_t.state + 3], EVENT_WATCHED shr 24
 
   .ret0:
         xor     eax, eax ; NO event!!!
@@ -474,14 +474,14 @@ get_event_for_app: ;; used from f10,f11,f23
         ;   -may be assumed, that interrupt are disabled
         ;   -it is not restriction for scratched registers
         ; param:
-        ;    ebx - адрес APPDATA слота тестирования
+        ;    ebx - адрес app_data_t слота тестирования
         ; retval:
         ;    eax - номер события (=0 => no events)
 
         movzx   edi, bh ; bh  is assumed as [CURRENT_TASK]
         shl     edi, 5
         add     edi, CURRENT_TASK ; edi is assumed as [TASK_BASE]
-        mov     ecx, [edi + TASKDATA.event_mask]
+        mov     ecx, [edi + task_data_t.event_mask]
 
   .loop:
         ; пока не исчерпаем все биты маски
@@ -501,7 +501,7 @@ get_event_for_app: ;; used from f10,f11,f23
 
   .WndRedraw:
         ; eax=0, retval WndRedraw=1
-        cmp     [edi - twdw + WDATA.fl_redraw], al ;al==0
+        cmp     [edi - twdw + window_data_t.fl_redraw], al ; al==0
         jne     .result
         jmp     .loop
 
@@ -512,7 +512,7 @@ get_event_for_app: ;; used from f10,f11,f23
   .IRQ:
         ; TODO: сделать так же, как и для FlagAutoReset (BgrRedraw,Mouse,IPC,Stack,Debug)
         mov     edx, [irq_owner + eax * 4 - 64] ; eax==16+irq
-        cmp     edx, [edi + TASKDATA.pid]
+        cmp     edx, [edi + task_data_t.pid]
         jne     .loop
         mov     edx, eax
         shl     edx, 12
@@ -532,7 +532,7 @@ get_event_for_app: ;; used from f10,f11,f23
         pop     eax
         jnz     .loop
 
-    @@: btr     [ebx + APPDATA.event_mask], eax
+    @@: btr     [ebx + app_data_t.event_mask], eax
         jnc     .loop
 
   .result:
@@ -553,7 +553,7 @@ get_event_for_app: ;; used from f10,f11,f23
         jne     .loop ; not Top ???
         mov     edx, [BTN_BUFF]
         shr     edx, 8
-        cmp     edx, 0xffff ;-ID for Minimize-Button of Form
+        cmp     edx, 0xffff ; -ID for Minimize-Button of Form
         jne     .result
         mov     [window_minimize], 1
         dec     byte[BTN_COUNT]

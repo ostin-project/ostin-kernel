@@ -39,31 +39,51 @@
 ;    display 'not used dt: ',`.,13,10
 ;  end if }
 
-struct POINT
+struct point16_t
+  x dw ?
+  y dw ?
+ends
+
+struct point32_t
   x dd ?
   y dd ?
 ends
 
-struct RECT
+struct rect16_t
+  left   dw ?
+  top    dw ?
+  right  dw ?
+  bottom dw ?
+ends
+
+struct rect32_t
   left   dd ?
   top    dd ?
   right  dd ?
   bottom dd ?
 ends
 
-struct BOX
+struct box16_t
+  left   dw ?
+  top    dw ?
+  width  dw ?
+  height dw ?
+ends
+
+struct box32_t
   left   dd ?
   top    dd ?
   width  dd ?
   height dd ?
 ends
 
-struct DISPMODE
-  width  dw ?
-  height dw ?
-  bpp    dw ?
-  freq   dw ?
-ends
+; unused
+;struct display_mode_t
+;  width  dw ?
+;  height dw ?
+;  bpp    dw ?
+;  freq   dw ?
+;ends
 
 ; constants definition
 WSTATE_NORMAL    = 00000000b
@@ -77,7 +97,7 @@ WSTATE_WNDDRAWN  = 00000010b
 WSTYLE_HASCAPTION     = 00010000b
 WSTYLE_CLIENTRELATIVE = 00100000b
 
-struct TASKDATA
+struct task_data_t
   event_mask  dd ?
   pid         dd ?
               dw ?
@@ -100,8 +120,8 @@ TSTATE_TERMINATING    = 4
 TSTATE_WAITING        = 5
 TSTATE_FREE           = 9
 
-struct WDATA
-  box           BOX
+struct window_data_t
+  box           box32_t
   union
     cl_workarea dd ?
     struct
@@ -117,7 +137,7 @@ struct WDATA
   fl_redraw     db ?
 ends
 
-struct APPDATA_DEBUG_REGS
+struct app_data_debug_regs_t
   dr0 dd ?
   dr1 dd ?
   dr2 dd ?
@@ -125,7 +145,7 @@ struct APPDATA_DEBUG_REGS
   dr7 dd ?
 ends
 
-struct APPDATA
+struct app_data_t
   app_name        rb 11
                   rb 5
   fpu_state       dd ?
@@ -156,7 +176,7 @@ struct APPDATA
   wnd_shape_scale dd ?
                   dd ?
   mem_size        dd ?
-  saved_box       BOX
+  saved_box       box32_t
   ipc_start       dd ?
   ipc_size        dd ?
   event_mask      dd ?
@@ -166,12 +186,12 @@ struct APPDATA
                   rb 3
   dir_table       dd ?
   dbg_event_mem   dd ?
-  dbg_regs        APPDATA_DEBUG_REGS
+  dbg_regs        app_data_debug_regs_t
   wnd_caption     dd ?
-  wnd_clientbox   BOX
+  wnd_clientbox   box32_t
 ends
 
-struct MUTEX
+struct mutex_t
   count dd ?
   next  dd ?
   prev  dd ?

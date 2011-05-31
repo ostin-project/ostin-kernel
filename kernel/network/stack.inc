@@ -37,7 +37,7 @@ endg
 
 ; socket buffers
 SOCKETBUFFSIZE      equ 4096 ; state + config + buffer.
-SOCKETHEADERSIZE    equ SOCKET.rxData ; thus 4096 - SOCKETHEADERSIZE bytes data
+SOCKETHEADERSIZE    equ socket_t.rx_data ; thus 4096 - SOCKETHEADERSIZE bytes data
 
 ;NUM_SOCKETS        equ 16 ; Number of open sockets supported. Was 20
 
@@ -89,7 +89,7 @@ last_1hsTick        equ queueList + (2 * NUMQUEUEENTRIES)
 ;                   equ resendBuffer + ( IPBUFFSIZE * NUMRESENDENTRIES )
 
 ;resendQ            equ 0x770000
-;resendBuffer       equ resendQ + ( 4 * NUMRESENDENTRIES ) ; for TCP        ; XTODO: validate size
+;resendBuffer       equ resendQ + ( 4 * NUMRESENDENTRIES ) ; for TCP ; XTODO: validate size
 resendBuffer        equ resendQ + ( 8 * NUMRESENDENTRIES ) ; for TCP
 
 uglobal
@@ -356,7 +356,7 @@ app_stack_handler:
         mov     [stack_ip], ecx
         ret
 
-        ;old functions was deleted
+        ; old functions was deleted
 
 ; .06:
         ; Insert an IP packet into the stacks received packet queue
@@ -735,7 +735,7 @@ stack_get_packet:
         push    eax ; save address of IP data
         ; Get the address of the callers data
         mov     edi, [TASK_BASE]
-        add     edi, TASKDATA.mem_start
+        add     edi, task_data_t.mem_start
         add     edx, [edi]
         mov     edi, edx
         pop     eax
@@ -791,7 +791,7 @@ stack_insert_packet:
 
         ; Get the address of the callers data
         mov     edi, [TASK_BASE]
-        add     edi, TASKDATA.mem_start
+        add     edi, task_data_t.mem_start
         add     eax, [edi]
         mov     esi, eax
 

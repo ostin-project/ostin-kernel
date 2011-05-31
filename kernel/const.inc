@@ -152,7 +152,7 @@ SSE_FZ        = 0x8000
 
 SSE_INIT      = SSE_IM + SSE_DM + SSE_ZM + SSE_OM + SSE_UM + SSE_PM
 
-struct TSS
+struct tss_t
   back     rw 2
   esp0     dd ?
   ss0      rw 2
@@ -332,7 +332,7 @@ sys_pgmap           = OS_BASE + 0x033c000
 ;UPPER_KERNEL_PAGES = OS_BASE + 0x0400000 ; unused
 
 virtual at            OS_BASE + 0x05fff80
-  tss TSS
+  tss tss_t
 end virtual
 
 HEAP_BASE           = OS_BASE + 0x0800000
@@ -388,39 +388,41 @@ DONT_FREE_BLOCK     = 0x10
 ;;----------------------------------------------------------------------------------------------------------------------
 
 virtual at 0x9000
-  BOOT_BPP              db ?   ; 0x09000 - bits per pixel
-  BOOT_SCANLINE         dw ?   ; 0x09001 - scanline length
-                        rb 5   ;
-  BOOT_VESA_MODE        dw ?   ; 0x09008 - vesa video mode
-  BOOT_X_RES            dw ?   ; 0x0900a - X res
-  BOOT_Y_RES            dw ?   ; 0x0900c - Y res
-                        rb 2   ;
-; BOOT_MOUSE_PORT       db ?   ; 0x09010 - mouse port (unused)
-                        rb 4   ;
-  BOOT_BANK_SW          dd ?   ; 0x09014 - Vesa 1.2 pm bank switch
-  BOOT_LFB              dd ?   ; 0x09018 - Vesa 2.0 LFB address
-  BOOT_MTRR             db ?   ; 0x0901c - 0 or 1: enable MTRR graphics acceleration
-; BOOT_LOG              db ?   ; 0x0901d - 0 or 1: enable system log display (unused)
-                        rb 1   ;
-  BOOT_DIRECT_LFB       db ?   ; 0x0901e - 0 or 1: enable direct lfb write, paging disabled
-  BOOT_DMA              db ?   ; 0x0901f - 0 or 1: enable DMA
-  BOOT_PCI_DATA         rb 8   ; 0x09020 - pci data
+  BOOT_BPP              db ?  ; 0x09000 - bits per pixel
+  BOOT_SCANLINE         dw ?  ; 0x09001 - scanline length
+                        rb 5  ;
+  BOOT_VESA_MODE        dw ?  ; 0x09008 - vesa video mode
+  BOOT_X_RES            dw ?  ; 0x0900a - X res
+  BOOT_Y_RES            dw ?  ; 0x0900c - Y res
+                        rb 2  ;
+; BOOT_MOUSE_PORT       db ?  ; 0x09010 - mouse port (unused)
+                        rb 4  ;
+  BOOT_BANK_SW          dd ?  ; 0x09014 - Vesa 1.2 pm bank switch
+  BOOT_LFB              dd ?  ; 0x09018 - Vesa 2.0 LFB address
+  BOOT_MTRR             db ?  ; 0x0901c - 0 or 1: enable MTRR graphics acceleration
+; BOOT_LOG              db ?  ; 0x0901d - 0 or 1: enable system log display (unused)
+                        rb 1  ;
+  BOOT_DIRECT_LFB       db ?  ; 0x0901e - 0 or 1: enable direct lfb write, paging disabled
+  BOOT_DMA              db ?  ; 0x0901f - 0 or 1: enable DMA
+  BOOT_PCI_DATA         rb 8  ; 0x09020 - pci data
                         rb 8
-  BOOT_VRR              db ?   ; 0x09030 - VRR start enabled 1, 2-no
-  BOOT_IDE_BASE_ADDR    dw ?   ; 0x09031 - IDEContrRegsBaseAddr
-                        rb 1   ;         -
-; BOOT_MEM_AMOUNT       dd ?   ; 0x09034 - memory amount (unused)
+  BOOT_VRR              db ?  ; 0x09030 - VRR start enabled 1, 2-no
+  BOOT_IDE_BASE_ADDR    dw ?  ; 0x09031 - IDEContrRegsBaseAddr
+                        rb 1  ;         -
+; BOOT_MEM_AMOUNT       dd ?  ; 0x09034 - memory amount (unused)
                         rb 12
-  BOOT_APM_ENTRY_OFS    dd ?   ; 0x09040 - APM entry point offset
-  BOOT_APM_VERSION      dw ?   ; 0x09044 - APM version
-  BOOT_APM_FLAGS        dw ?   ; 0x09046 - APM flags
+  BOOT_APM_ENTRY_OFS    dd ?  ; 0x09040 - APM entry point offset
+  BOOT_APM_VERSION      dw ?  ; 0x09044 - APM version
+  BOOT_APM_FLAGS        dw ?  ; 0x09046 - APM flags
                         rb 8
-  BOOT_APM_CODE32_SEG   dw ?   ; 0x09050 - APM RM segment base address of PM 32-bit code segment
-  BOOT_APM_CODE16_SEG   dw ?   ; 0x09052 - APM RM segment base address of PM 16-bit code segment
-  BOOT_APM_DATA16_SEG   dw ?   ; 0x09054 - APM RM segment base address of PM 16-bit data segment
+  BOOT_APM_CODE32_SEG   dw ?  ; 0x09050 - APM RM segment base address of PM 32-bit code segment
+  BOOT_APM_CODE16_SEG   dw ?  ; 0x09052 - APM RM segment base address of PM 16-bit code segment
+  BOOT_APM_DATA16_SEG   dw ?  ; 0x09054 - APM RM segment base address of PM 16-bit data segment
                         rb 41
-  BOOT_BIOS_DISKS_COUNT db ?   ; 0x0907f - BIOS disks count
-  BOOT_BIOS_DISKS       rd 255 ; 0x09080 - BIOS disks data
+  BOOT_BIOS_DISKS_CNT   db ?  ; 0x0907f - BIOS disks count
+  BOOT_BIOS_DISKS       rd 32 ; 0x09080 - BIOS disks data
+  BOOT_PHOENIX_SMAP_CNT dd ?  ; 0x09100
+  BOOT_PHOENIX_SMAP     rb 32 * sizeof.phoenix_smap_addr_range_t ; 0x09104
 end virtual
 
 ;;----------------------------------------------------------------------------------------------------------------------
@@ -441,7 +443,7 @@ EVENT_EXTENDED      = 0x00000200
 
 EV_INTR             = 1
 
-struct APPOBJ  ; common object header
+struct app_object_t ; common object header
   magic   dd ?
   destroy dd ? ; internal destructor
   fd      dd ? ; next object in list
@@ -452,7 +454,7 @@ ends
 APP_OBJ_OFFSET  = 48
 APP_EV_OFFSET   = 40
 
-struct CURSOR APPOBJ ; magic = 'CURS'
+struct cursor_t app_object_t ; magic = 'CURS'
   base      dd ?     ; allocated memory
   hot_x     dd ?     ; hotspot coords
   hot_y     dd ?
@@ -462,17 +464,17 @@ struct CURSOR APPOBJ ; magic = 'CURS'
   dev_obj   dd ?     ; device-specific data
 ends
 
-struct EVENT_CODE
+struct event_code_t
   data rd 6
 ends
 
-struct EVENT APPOBJ ; magic = 'EVNT'
+struct event_t app_object_t ; magic = 'EVNT'
   id    dd ?        ; event uid
   state dd ?        ; internal flags
-  code  EVENT_CODE
+  code  event_code_t
 ends
 
-struct SMEM
+struct smem_t
   bk       dd ?
   fd       dd ?
   base     dd ?
@@ -482,12 +484,12 @@ struct SMEM
   name     rb 32
 ends
 
-struct SMAP APPOBJ ; magic = 'SMAP'
+struct smap_t app_object_t ; magic = 'SMAP'
   base    dd ?     ; mapped base
-  parent  dd ?     ; SMEM
+  parent  dd ?     ; smem_t
 ends
 
-struct DLLDESCR
+struct dll_descriptor_t
   bk          dd ?
   fd          dd ?
   data        dd ?
@@ -503,7 +505,7 @@ struct DLLDESCR
   name        rb 0
 ends
 
-struct HDLL
+struct dll_handle_t
   fd       dd ? ; next object in list
   bk       dd ? ; prev object in list
   pid      dd ? ; owner id
@@ -511,7 +513,7 @@ struct HDLL
   base     dd ? ; mapped base
   size     dd ? ; mapped size
   refcount dd ? ; reference counter for this process and this lib
-  parent   dd ? ; DLLDESCR
+  parent   dd ? ; dll_descriptor_t
 ends
 
 struct display_t
@@ -542,48 +544,50 @@ struct display_t
   disable_mouse  dd ?
 ends
 
-struct HEAP_DATA
-  mutex     dd ?
-  refcount  dd ?
-  heap_base dd ?
-  heap_top  dd ?
-  app_mem   dd ?
-ends
+; unused
+;struct heap_data_t
+;  mutex     dd ?
+;  refcount  dd ?
+;  heap_base dd ?
+;  heap_top  dd ?
+;  app_mem   dd ?
+;ends
 
-struct BOOT_DATA
-  bpp           dd ?
-  scanline      dd ?
-  vesa_mode     dd ?
-  x_res         dd ?
-  y_res         dd ?
-  mouse_port    dd ?
-  bank_switch   dd ?
-  lfb           dd ?
-  vesa_mem      dd ?
-  log           dd ?
-  direct_lfb    dd ?
-  pci_data      dd ?
-;               dd ?
-  vrr           dd ?
-  ide_base      dd ?
-  mem_amount    dd ?
-  pages_count   dd ?
-  pagemap_size  dd ?
-  kernel_max    dd ?
-  kernel_pages  dd ?
-  kernel_tables dd ?
+; unused
+;struct boot_data_t
+;  bpp           dd ?
+;  scanline      dd ?
+;  vesa_mode     dd ?
+;  x_res         dd ?
+;  y_res         dd ?
+;  mouse_port    dd ?
+;  bank_switch   dd ?
+;  lfb           dd ?
+;  vesa_mem      dd ?
+;  log           dd ?
+;  direct_lfb    dd ?
+;  pci_data      dd ?
+;;               dd ?
+;  vrr           dd ?
+;  ide_base      dd ?
+;  mem_amount    dd ?
+;  pages_count   dd ?
+;  pagemap_size  dd ?
+;  kernel_max    dd ?
+;  kernel_pages  dd ?
+;  kernel_tables dd ?
+;
+;  cpu_vendor    dd ?
+;                dd ?
+;                dd ?
+;  cpu_sign      dd ?
+;  cpu_info      dd ?
+;  cpu_caps      dd ?
+;                dd ?
+;                dd ?
+;ends
 
-  cpu_vendor    dd ?
-                dd ?
-                dd ?
-  cpu_sign      dd ?
-  cpu_info      dd ?
-  cpu_caps      dd ?
-                dd ?
-                dd ?
-ends
-
-struct MEM_STATE
+struct memory_state_t
   mutex     dd ?
   smallmap  dd ?
   treemap   dd ?
@@ -593,7 +597,7 @@ struct MEM_STATE
   treebins  rd 32
 ends
 
-struct PG_DATA
+struct pages_data_t
   mem_amount    dd ?
   vesa_mem      dd ?
   pages_count   dd ?
@@ -606,7 +610,7 @@ struct PG_DATA
   pg_mutex      dd ?
 ends
 
-;struct LIB
+;struct library_t
 ;  lib_name  rb 16
 ;  lib_base  dd ?
 ;  lib_start dd ?
@@ -614,12 +618,12 @@ ends
 ;  import    dd ?
 ;ends
 
-struct SRV
+struct service_t
   srv_name    rb 16 ; ASCIIZ string
   magic       dd ?  ; ' SRV'
-  size        dd ?  ; size of structure SRV
-  fd          dd ?  ; next SRV descriptor
-  bk          dd ?  ; prev SRV descriptor
+  size        dd ?  ; size of structure Service
+  fd          dd ?  ; next Service descriptor
+  bk          dd ?  ; prev Service descriptor
   base        dd ?  ; service base address
   entry       dd ?  ; service START function
   srv_proc    dd ?  ; user mode service handler
@@ -631,45 +635,45 @@ SRV_FD_OFFSET = 0x18
 DRV_ENTRY = 1
 DRV_EXIT  = -1
 
-struct COFF_HEADER
-  machine   dw ?
-  nSections dw ?
-  DataTime  dd ?
-  pSymTable dd ?
-  nSymbols  dd ?
-  optHeader dw ?
-  flags     dw ?
+struct coff_header_t
+  machine      dw ?
+  sections_cnt dw ?
+  data_time    dd ?
+  syms_ptr     dd ?
+  syms_cnt     dd ?
+  opt_header   dw ?
+  flags        dw ?
 ends
 
-struct COFF_SECTION
-  Name            rb 8
-  VirtualSize     dd ?
-  VirtualAddress  dd ?
-  SizeOfRawData   dd ?
-  PtrRawData      dd ?
-  PtrReloc        dd ?
-  PtrLinenumbers  dd ?
-  NumReloc        dw ?
-  NumLinenum      dw ?
-  Characteristics dd ?
+struct coff_section_t
+  name             rb 8
+  virtual_size     dd ?
+  virtual_addr     dd ?
+  raw_data_size    dd ?
+  raw_data_ptr     dd ?
+  relocs_ptr       dd ?
+  line_numbers_ptr dd ?
+  relocs_cnt       dw ?
+  line_numbers_cnt dw ?
+  characteristics  dd ?
 ends
 
-struct COFF_RELOC
-  VirtualAddress dd ?
-  SymIndex       dd ?
-  Type           dw ?
+struct coff_reloc_t
+  virtual_addr dd ?
+  sym_index    dd ?
+  type         dw ?
 ends
 
-struct COFF_SYM
-  Name          rb 8
-  Value         dd ?
-  SectionNumber dw ?
-  Type          dw ?
-  StorageClass  db ?
-  NumAuxSymbols db ?
+struct coff_sym_t
+  name            rb 8
+  value           dd ?
+  section_number  dw ?
+  type            dw ?
+  storage_class   db ?
+  aux_symbols_cnt db ?
 ends
 
-struct IOCTL
+struct ioctl_t
   handle   dd ?
   io_code  dd ?
   input    dd ?
@@ -678,16 +682,16 @@ struct IOCTL
   out_size dd ?
 ends
 
-struct DRIVE_CACHE
-  pointer           dd ?
-  size              dd ? ; not use
-  data_pointer      dd ?
-  system_data_size  dd ? ; not use
-  appl_data_size    dd ? ; not use
-  system_data       dd ?
-  appl_data         dd ?
-  system_sad_size   dd ?
-  appl_sad_size     dd ?
-  search_start      dd ?
-  appl_search_start dd ?
+struct drive_cache_t
+  ptr              dd ?
+  size             dd ? ; not use
+  data_ptr         dd ?
+  sys_data_size    dd ? ; not use
+  app_data_size    dd ? ; not use
+  sys_data         dd ?
+  app_data         dd ?
+  sys_sad_size     dd ?
+  app_sad_size     dd ?
+  sys_search_start dd ?
+  app_search_start dd ?
 ends

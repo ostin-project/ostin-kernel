@@ -153,7 +153,7 @@ set_bank:
 
 else if INTEL_VIDEO
 
-;Set bank function for Intel 810/815 chipsets
+; Set bank function for Intel 810/815 chipsets
 set_bank:
         pushfd
         cli
@@ -240,8 +240,8 @@ vesa12_drawbackground:
         mov     ebx, 3
         mul     ebx
         mov     [imax], eax
-        mov     eax, [draw_data + 32 + RECT.left]
-        mov     ebx, [draw_data + 32 + RECT.top]
+        mov     eax, [draw_data + 32 + rect32_t.left]
+        mov     ebx, [draw_data + 32 + rect32_t.top]
         xor     edi, edi ; no force
 
   .v12dp3:
@@ -341,14 +341,14 @@ vesa12_drawbackground:
         popa
         add     esi, 3
         inc     eax
-        cmp     eax, [draw_data + 32 + RECT.right]
+        cmp     eax, [draw_data + 32 + rect32_t.right]
         jg      .v12nodp31
         jmp     .v12dp3
 
   .v12nodp31:
-        mov     eax, [draw_data + 32 + RECT.left]
+        mov     eax, [draw_data + 32 + rect32_t.left]
         inc     ebx
-        cmp     ebx, [draw_data + 32 + RECT.bottom]
+        cmp     ebx, [draw_data + 32 + rect32_t.bottom]
         jg      .v12dp4
         jmp     .v12dp3
 
@@ -372,8 +372,8 @@ vesa12_drawbar:
         push    ecx
         push    edx
         mov     ecx, [TASK_BASE]
-        add     eax, [ecx - twdw + WDATA.box.left]
-        add     ebx, [ecx - twdw + WDATA.box.top]
+        add     eax, [ecx - twdw + window_data_t.box.left]
+        add     ebx, [ecx - twdw + window_data_t.box.top]
         push    eax
         mov     eax, ebx ; y
         mov     ebx, [BytesPerScanLine]
@@ -408,16 +408,16 @@ vesa12_drawbar:
         push    eax
         push    ecx
         mov     eax, [TASK_BASE]
-        mov     ecx, [eax + draw_data - CURRENT_TASK + RECT.left]
+        mov     ecx, [eax + draw_data - CURRENT_TASK + rect32_t.left]
         cmp     ecx, 0
         jnz     .dbcblimitlset12
-        mov     ecx, [eax + draw_data - CURRENT_TASK + RECT.top]
+        mov     ecx, [eax + draw_data - CURRENT_TASK + rect32_t.top]
         cmp     ecx, 0
         jnz     .dbcblimitlset12
-        mov     ecx, [eax + draw_data - CURRENT_TASK + RECT.right]
+        mov     ecx, [eax + draw_data - CURRENT_TASK + rect32_t.right]
         cmp     ecx, [Screen_Max_X]
         jnz     .dbcblimitlset12
-        mov     ecx, [eax + draw_data - CURRENT_TASK + RECT.bottom]
+        mov     ecx, [eax + draw_data - CURRENT_TASK + rect32_t.bottom]
         cmp     ecx, [Screen_Max_Y]
         jnz     .dbcblimitlset12
         pop     ecx
@@ -700,8 +700,8 @@ vesa12_putimage:
         movzx   eax, word[esp + 2]
         movzx   ebx, word[esp + 0]
         mov     ecx, [TASK_BASE]
-        add     eax, [ecx - twdw + WDATA.box.left]
-        add     ebx, [ecx - twdw + WDATA.box.top]
+        add     eax, [ecx - twdw + window_data_t.box.left]
+        add     ebx, [ecx - twdw + window_data_t.box.top]
         push    eax
         mov     eax, ebx ; y
         mul     dword[BytesPerScanLine]
@@ -728,14 +728,14 @@ vesa12_putimage:
 
         push    ecx
         mov     eax, [TASK_BASE]
-        cmp     dword[eax + draw_data - CURRENT_TASK + RECT.left], 0
+        cmp     dword[eax + draw_data - CURRENT_TASK + rect32_t.left], 0
         jnz     .dbcblimitlset212
-        cmp     dword[eax + draw_data - CURRENT_TASK + RECT.top], 0
+        cmp     dword[eax + draw_data - CURRENT_TASK + rect32_t.top], 0
         jnz     .dbcblimitlset212
-        mov     ecx, [eax + draw_data - CURRENT_TASK + RECT.right]
+        mov     ecx, [eax + draw_data - CURRENT_TASK + rect32_t.right]
         cmp     ecx, [Screen_Max_X]
         jnz     .dbcblimitlset212
-        mov     ecx, [eax + draw_data - CURRENT_TASK + RECT.bottom]
+        mov     ecx, [eax + draw_data - CURRENT_TASK + rect32_t.bottom]
         cmp     ecx, [Screen_Max_Y]
         jnz     .dbcblimitlset212
         pop     ecx

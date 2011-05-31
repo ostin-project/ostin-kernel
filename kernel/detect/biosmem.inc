@@ -15,7 +15,17 @@
 ;;======================================================================================================================
 
 ; Query physical memory map from BIOS.
-; diamond, 2009
+
+struct phoenix_smap_addr_range_t
+  offset dq ?
+  length dq ?
+  type   dd ?
+ends
+
+PHOENIX_SMAP_TYPE_AVAILABLE    = 0x01
+PHOENIX_SMAP_TYPE_RESERVED     = 0x02
+PHOENIX_SMAP_TYPE_ACPI_RECLAIM = 0x03
+PHOENIX_SMAP_TYPE_ACPI_NVS     = 0x04
 
         push    ds
         ; first call to fn E820
@@ -23,9 +33,9 @@
         xor     ebx, ebx
         mov     es, bx
         mov     ds, bx
-        mov     di, 0x9104
+        mov     di, BOOT_PHOENIX_SMAP
         mov     [di - 4], ebx ; no blocks yet
-        mov     ecx, 20
+        mov     ecx, sizeof.phoenix_smap_addr_range_t
         mov     edx, 0x534d4150
         int     0x15
         jc      no_E820
@@ -33,19 +43,19 @@
         jnz     no_E820
 
 e820_mem_loop:
-        cmp     byte[di + 16], 1 ; ignore non-free areas
+        cmp     byte[di + phoenix_smap_addr_range_t.type], PHOENIX_SMAP_TYPE_AVAILABLE ; ignore non-free areas
         jnz     e820_mem_next
-        inc     byte[0x9100]
-        add     di, 20
+        inc     byte[BOOT_PHOENIX_SMAP_CNT]
+        add     di, sizeof.phoenix_smap_addr_range_t
 
 e820_mem_next:
         ; consequent calls to fn E820
         test    ebx, ebx
         jz      e820_test_done
-        cmp     byte[0x9100], 32
+        cmp     byte[BOOT_PHOENIX_SMAP_CNT], 32
         jae     e820_test_done
         mov     eax, 0xe820
-        int     15h
+        int     0x15
         jc      e820_test_done
         jmp     e820_mem_loop
 

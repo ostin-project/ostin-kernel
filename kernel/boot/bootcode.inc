@@ -25,7 +25,7 @@ putchar:
         ; in: al=character
         mov     ah, 0x0e
         mov     bh, 0
-        int     10h
+        int     0x10
         ret
 
 print:
@@ -383,7 +383,7 @@ wait_loop: ; variant 2
 apm_end:
         _setcursor d80x25_top_num, 0
 
-        ;CHECK current of code
+        ; CHECK current of code
         cmp     [cfgmanager.loader_block], -1
         jz      noloaderblock
         les     bx, [cfgmanager.loader_block]
@@ -397,7 +397,7 @@ noloaderblock:
         ; DISPLAY VESA INFORMATION
         call    print_vesa_info
         call    calc_vmodes_table
-        call    check_first_parm ;check and enable cursor_pos
+        call    check_first_parm ; check and enable cursor_pos
 
 cfgmanager:
         ; settings:

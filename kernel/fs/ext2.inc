@@ -60,7 +60,7 @@ uglobal
   EXT2_name_len        dd ?
 endg
 
-struct EXT2_INODE_STRUC
+struct ext2_inode_t
   i_mode        dw ?
   i_uid         dw ?
   i_size        dd ?
@@ -81,7 +81,7 @@ struct EXT2_INODE_STRUC
   i_osd2        dd ? ; 1..12
 ends
 
-struct EXT2_DIR_STRUC
+struct ext2_dir_t
   inode     dd ?
   rec_len   dw ?
   name_len  db ?
@@ -89,7 +89,7 @@ struct EXT2_DIR_STRUC
   name      db ? ; 0..255
 ends
 
-struct EXT2_BLOCK_GROUP_DESC
+struct ext2_block_group_descriptor_t
   block_bitmap      dd ?
   inode_bitmap      dd ?
   inode_table       dd ?
@@ -98,7 +98,7 @@ struct EXT2_BLOCK_GROUP_DESC
   used_dirs_count   dw ?
 ends
 
-struct EXT2_SB_STRUC
+struct ext2_sb_t
   inodes_count          dd ? ; +0
   blocks_count          dd ? ; +4
   r_block_count         dd ? ; +8
@@ -153,7 +153,7 @@ ext2_test_superblock:
         jne     .no
 
         mov     eax, [PARTITION_START]
-        add     eax, 2                  ;superblock start at 1024b
+        add     eax, 2 ; superblock start at 1024b
         call    hd_read
 
         cmp     dword[ebx + 24], 3 ; s_block_size 0,1,2,3
@@ -189,11 +189,11 @@ ext2_setup:
         mov     ebx, eax
         mov     [ext2_data.sb], eax
 
-        mov     eax, [ebx + EXT2_SB_STRUC.blocks_count]
-        sub     eax, [ebx + EXT2_SB_STRUC.first_data_block]
+        mov     eax, [ebx + ext2_sb_t.blocks_count]
+        sub     eax, [ebx + ext2_sb_t.first_data_block]
         dec     eax
         xor     edx, edx
-        div     [ebx + EXT2_SB_STRUC.blocks_per_group]
+        div     [ebx + ext2_sb_t.blocks_per_group]
         inc     eax
         mov     [ext2_data.groups_count], eax
 
@@ -246,8 +246,8 @@ ext2_setup:
         jmp     return_from_part_set
 
 ext2_get_block:
-        ;in: eax = i_block
-        ;    ebx = pointer to return memory
+        ; in: eax = i_block
+        ;     ebx = pointer to return memory
 
         push    eax ebx ecx
         mov     ecx, [ext2_data.log_block_size]
@@ -283,7 +283,7 @@ ext2_get_inode_block:
 ; .get_triple_indirect_block:
         push    eax edx ebx
 
-        mov     eax, [ebx + EXT2_INODE_STRUC.i_block + 14 * 4]
+        mov     eax, [ebx + ext2_inode_t.i_block + 14 * 4]
         mov     ebx, [ext2_data.ext2_temp_block]
         call    ext2_get_block
 
@@ -301,7 +301,7 @@ ext2_get_inode_block:
   .get_double_indirect_block:
         push    eax edx ebx
 
-        mov     eax, [ebp + EXT2_INODE_STRUC.i_block + 13 * 4]
+        mov     eax, [ebp + ext2_inode_t.i_block + 13 * 4]
         mov     ebx, [ext2_data.ext2_temp_block]
         call    ext2_get_block
 
@@ -319,7 +319,7 @@ ext2_get_inode_block:
 
   .get_indirect_block:
         push    eax ebx
-        mov     eax, [ebp + EXT2_INODE_STRUC.i_block + 12 * 4]
+        mov     eax, [ebp + ext2_inode_t.i_block + 12 * 4]
         mov     ebx, [ext2_data.ext2_temp_block]
         call    ext2_get_block
 
@@ -328,7 +328,7 @@ ext2_get_inode_block:
         ret
 
   .get_direct_block:
-        mov     ecx, [ebp + EXT2_INODE_STRUC.i_block + ecx * 4]
+        mov     ecx, [ebp + ext2_inode_t.i_block + ecx * 4]
         ret
 
 ext2_get_inode:
@@ -352,7 +352,7 @@ ext2_get_inode:
 
         div     [ext2_data.block_size]
         mov     ecx, [ext2_data.sb]
-        add     eax, [ecx + EXT2_SB_STRUC.first_data_block]
+        add     eax, [ecx + ext2_sb_t.first_data_block]
         inc     eax
         mov     ebx, [ext2_data.ext2_temp_block]
         call    ext2_get_block
@@ -364,7 +364,7 @@ ext2_get_inode:
         shl     eax, cl
         add     eax, [PARTITION_START] ; а старт раздела - в терминах hdd (512)
 
-        ;eax - указывает на таблицу inode-ов на hdd
+        ; eax - указывает на таблицу inode-ов на hdd
         mov     esi, eax ; сохраним его пока в esi
 
         ; прибавим локальный адрес inode-а
@@ -397,13 +397,13 @@ ext2_test_block_by_name:
         add     edx, [ext2_data.block_size]; запомним конец блока
 
   .start_rec:
-        cmp     [ebx + EXT2_DIR_STRUC.inode], 0
+        cmp     [ebx + ext2_dir_t.inode], 0
         jz      .next_rec
 
         push    esi
-        movzx   ecx, [ebx + EXT2_DIR_STRUC.name_len]
+        movzx   ecx, [ebx + ext2_dir_t.name_len]
         mov     edi, EXT2_filename
-        lea     esi, [ebx + EXT2_DIR_STRUC.name]
+        lea     esi, [ebx + ext2_dir_t.name]
 
         call    utf8toansi_str
         mov     ecx, edi
@@ -429,7 +429,7 @@ ext2_test_block_by_name:
         pop     esi
 
   .next_rec:
-        movzx   eax, [ebx + EXT2_DIR_STRUC.rec_len]
+        movzx   eax, [ebx + ext2_dir_t.rec_len]
         add     ebx, eax ; к след. записи
         cmp     ebx, edx ; проверим конец ли
         jb      .start_rec
@@ -483,7 +483,7 @@ ext2_HdReadFolder:
 
   .doit2:
         pop     ebx
-        test    [ebp + EXT2_INODE_STRUC.i_mode], EXT2_S_IFDIR
+        test    [ebp + ext2_inode_t.i_mode], EXT2_S_IFDIR
         jz      .not_found
 
     @@: xor     eax, eax
@@ -497,7 +497,7 @@ ext2_HdReadFolder:
         and     [EXT2_read_in_folder], 0
         and     [EXT2_files_in_folder], 0
 
-        mov     eax, [ebp + EXT2_INODE_STRUC.i_blocks]
+        mov     eax, [ebp + ext2_inode_t.i_blocks]
         mov     [EXT2_counter_blocks], eax
 
         add     edx, 32 ; (header pointer in stack) edx = current mem for return
@@ -522,12 +522,12 @@ ext2_HdReadFolder:
         jecxz   .find_wanted_end
 
   .find_wanted_cycle:
-        cmp     [eax + EXT2_DIR_STRUC.inode], 0 ; if (inode = 0) => not used
+        cmp     [eax + ext2_dir_t.inode], 0 ; if (inode = 0) => not used
         jz      @f
         inc     [EXT2_files_in_folder]
         dec     ecx
 
-    @@: movzx   ebx, [eax + EXT2_DIR_STRUC.rec_len]
+    @@: movzx   ebx, [eax + ext2_dir_t.rec_len]
 
         cmp     ebx, 12 ; минимальная длина записи
         jb      .end_error
@@ -566,7 +566,7 @@ ext2_HdReadFolder:
 
   .wanted_start: ; ищем first_wanted + count
         jecxz   .wanted_end
-        cmp     [eax + EXT2_DIR_STRUC.inode], 0 ; if (inode = 0) => not used
+        cmp     [eax + ext2_dir_t.inode], 0 ; if (inode = 0) => not used
         jz      .empty_rec
         inc     [EXT2_files_in_folder]
         inc     [EXT2_read_in_folder]
@@ -579,37 +579,37 @@ ext2_HdReadFolder:
         pop     ecx eax
 
         push    eax esi edx ; получим inode
-        mov     eax, [eax + EXT2_DIR_STRUC.inode]
+        mov     eax, [eax + ext2_dir_t.inode]
         mov     ebx, [ext2_data.ext2_temp_inode]
         call    ext2_get_inode
 
         lea     edi, [edx + 8]
 
-        mov     eax, [ebx + EXT2_INODE_STRUC.i_ctime] ; переведем время в ntfs формат
+        mov     eax, [ebx + ext2_inode_t.i_ctime] ; переведем время в ntfs формат
         xor     edx, edx
         add     eax, 3054539008 ; (369 * 365 + 89) * 24 * 3600
         adc     edx, 2
         call    ntfs_datetime_to_bdfe.sec
 
-        mov     eax, [ebx + EXT2_INODE_STRUC.i_atime]
+        mov     eax, [ebx + ext2_inode_t.i_atime]
         xor     edx, edx
         add     eax, 3054539008
         adc     edx, 2
         call    ntfs_datetime_to_bdfe.sec
 
-        mov     eax, [ebx + EXT2_INODE_STRUC.i_mtime]
+        mov     eax, [ebx + ext2_inode_t.i_mtime]
         xor     edx, edx
         add     eax, 3054539008
         adc     edx, 2
         call    ntfs_datetime_to_bdfe.sec
 
         pop     edx ; пока достаем только буфер
-        test    [ebx + EXT2_INODE_STRUC.i_mode], EXT2_S_IFDIR ; для папки размер
+        test    [ebx + ext2_inode_t.i_mode], EXT2_S_IFDIR ; для папки размер
         jnz     @f ; не возвращаем
 
-        mov     eax, [ebx + EXT2_INODE_STRUC.i_size] ; low size
+        mov     eax, [ebx + ext2_inode_t.i_size] ; low size
         stosd
-        mov     eax, [ebx + EXT2_INODE_STRUC.i_dir_acl] ; high size
+        mov     eax, [ebx + ext2_inode_t.i_dir_acl] ; high size
         stosd
         xor     dword[edx], FS_FT_DIR
 
@@ -620,9 +620,9 @@ ext2_HdReadFolder:
 
         ; теперь скопируем имя, сконвертировав из UTF-8 в CP866
         push    eax ecx esi
-        movzx   ecx, [eax + EXT2_DIR_STRUC.name_len]
+        movzx   ecx, [eax + ext2_dir_t.name_len]
         lea     edi, [edx + 40]
-        lea     esi, [eax + EXT2_DIR_STRUC.name]
+        lea     esi, [eax + ext2_dir_t.name]
         call    utf8toansi_str
         pop     esi ecx eax
         and     byte[edi], 0
@@ -635,7 +635,7 @@ ext2_HdReadFolder:
         dec     ecx ; если запись пустая ecx не надо уменьшать
 
   .empty_rec:
-        movzx   ebx, [eax + EXT2_DIR_STRUC.rec_len]
+        movzx   ebx, [eax + ext2_dir_t.rec_len]
         cmp     ebx, 12 ; минимальная длина записи
         jb      .end_error
         test    ebx, 0x3 ; длина записи должна делиться на 4
@@ -753,7 +753,7 @@ ext2_HdRead:
         ret
 
   .doit:
-        test    [ebp + EXT2_INODE_STRUC.i_mode], EXT2_S_IFREG
+        test    [ebp + ext2_inode_t.i_mode], EXT2_S_IFREG
         jz      .this_is_nofile
 
         ;-----------------------------------------------------------------------------final step
@@ -764,11 +764,11 @@ ext2_HdRead:
         mov     ebx, [esi + 4]
         mov     eax, [esi] ; ebx : eax - стартовый номер байта
 
-        cmp     [ebp + EXT2_INODE_STRUC.i_dir_acl], ebx
+        cmp     [ebp + ext2_inode_t.i_dir_acl], ebx
         ja      .size_great
         jb      .size_less
 
-        cmp     [ebp + EXT2_INODE_STRUC.i_size], eax
+        cmp     [ebp + ext2_inode_t.i_size], eax
         ja      .size_great
 
   .size_less:
@@ -780,20 +780,20 @@ ext2_HdRead:
         add     eax, ecx ; add to first_wanted кол-во байт для чтения
         adc     ebx, 0
 
-        cmp     [ebp + EXT2_INODE_STRUC.i_dir_acl], ebx
+        cmp     [ebp + ext2_inode_t.i_dir_acl], ebx
         ja      .size_great_great
         jb      .size_great_less
-        cmp     [ebp + EXT2_INODE_STRUC.i_size], eax
+        cmp     [ebp + ext2_inode_t.i_size], eax
         jae     .size_great_great ; а если равно, то не важно куда
 
   .size_great_less:
         or      [EXT2_files_in_folder], 1 ; читаем по границе размера
-        mov     ecx, [ebp + EXT2_INODE_STRUC.i_size]
+        mov     ecx, [ebp + ext2_inode_t.i_size]
         sub     ecx, [esi] ; (размер - старт)
         jmp     @f
 
   .size_great_great:
-        and     [EXT2_files_in_folder], 0 ;читаем столько сколько запросили
+        and     [EXT2_files_in_folder], 0 ; читаем столько сколько запросили
 
     @@: push    ecx ; save for return
         test    esi, esi
@@ -830,11 +830,11 @@ ext2_HdRead:
 
   .zero_start:
         mov     eax, ecx
-        ;теперь в eax кол-во оставшихся байт для чтения
+        ; теперь в eax кол-во оставшихся байт для чтения
 
     @@: mov     ebx, edi ; чтение блока прям в ->ebx
         xor     edx, edx
-        div     [ext2_data.block_size]; кол-во байт в последнем блоке (остаток) в edx
+        div     [ext2_data.block_size] ; кол-во байт в последнем блоке (остаток) в edx
         mov     edi, eax ; кол-во целых блоков в edi
 
     @@: test    edi, edi
@@ -890,7 +890,7 @@ ext2_find_lfn:
 
   .next_folder:
         or      [EXT2_counter_blocks], -1 ; счетчик блоков папки    cur block of inode
-        mov     eax, [ebp + EXT2_INODE_STRUC.i_blocks] ; убывающий счетчик блоков
+        mov     eax, [ebp + ext2_inode_t.i_blocks] ; убывающий счетчик блоков
         add     eax, [ext2_data.count_block_in_block]
         mov     [EXT2_end_block], eax
 
@@ -914,9 +914,9 @@ ext2_find_lfn:
         cmp     byte[esi], 0
         jz      .get_inode_ret
 
-        cmp     [ebx + EXT2_DIR_STRUC.file_type], EXT2_FT_DIR
+        cmp     [ebx + ext2_dir_t.file_type], EXT2_FT_DIR
         jne     .not_found ; нашли, но это не папка
-        mov     eax, [ebx + EXT2_DIR_STRUC.inode]
+        mov     eax, [ebx + ext2_dir_t.inode]
         mov     ebx, [ext2_data.ext2_save_inode] ; все же папка.
         call    ext2_get_inode
         mov     ebp, ebx
@@ -928,7 +928,7 @@ ext2_find_lfn:
 
   .get_inode_ret:
         mov     [EXT2_end_block], ebx ; сохраняем указатеть на dir_rec
-        mov     eax, [ebx + EXT2_DIR_STRUC.inode]
+        mov     eax, [ebx + ext2_dir_t.inode]
         mov     ebx, [ext2_data.ext2_save_inode]
         call    ext2_get_inode
         mov     ebp, ebx
@@ -953,7 +953,7 @@ ext2_HdGetFileInfo:
 
   .doit2:
         mov     ebx, [EXT2_end_block]
-        add     ebx, EXT2_DIR_STRUC.name
+        add     ebx, ext2_dir_t.name
 
     @@: xor     eax, eax
         mov     edi, edx
@@ -964,10 +964,10 @@ ext2_HdGetFileInfo:
         jnz     @f
         or      dword[edx], FS_FT_HIDDEN
 
-    @@: test    [ebp + EXT2_INODE_STRUC.i_mode], EXT2_S_IFDIR
+    @@: test    [ebp + ext2_inode_t.i_mode], EXT2_S_IFDIR
         jnz     @f
-        mov     eax, [ebp + EXT2_INODE_STRUC.i_size] ; low size
-        mov     ebx, [ebp + EXT2_INODE_STRUC.i_dir_acl] ; high size
+        mov     eax, [ebp + ext2_inode_t.i_size] ; low size
+        mov     ebx, [ebp + ext2_inode_t.i_dir_acl] ; high size
         mov     dword[edx + 32], eax
         mov     dword[edx + 36], ebx
         xor     dword[edx], FS_FT_DIR
@@ -975,19 +975,19 @@ ext2_HdGetFileInfo:
     @@: xor     dword[edx], FS_FT_DIR
 
         lea     edi, [edx + 8]
-        mov     eax, [ebx + EXT2_INODE_STRUC.i_ctime]
+        mov     eax, [ebx + ext2_inode_t.i_ctime]
         xor     edx, edx
         add     eax, 3054539008
         adc     edx, 2
         call    ntfs_datetime_to_bdfe.sec
 
-        mov     eax, [ebx + EXT2_INODE_STRUC.i_atime]
+        mov     eax, [ebx + ext2_inode_t.i_atime]
         xor     edx, edx
         add     eax, 3054539008
         adc     edx, 2
         call    ntfs_datetime_to_bdfe.sec
 
-        mov     eax, [ebx + EXT2_INODE_STRUC.i_mtime]
+        mov     eax, [ebx + ext2_inode_t.i_mtime]
         xor     edx, edx
         add     eax, 3054539008
         adc     edx, 2
@@ -1070,7 +1070,7 @@ ext2_HdCreateFolder:
         mov     [EXT2_name_len], esi
 
   .doit2:
-        ;ebp -> parent_inode    ebx->name_new_folder   [EXT2_name_len]=length of name
+        ; ebp -> parent_inode    ebx->name_new_folder   [EXT2_name_len]=length of name
 
         ; стратегия выбора группы для нового inode: (так делает линукс)
         ; 1) Ищем группу в которой меньше всего папок и в есть свободное место
@@ -1083,10 +1083,10 @@ ext2_HdCreateFolder:
         push    ebp
 
         mov     ecx, [ext2_data.sb]
-        cmp     [ecx + EXT2_SB_STRUC.free_inodes_count], 0 ; есть ли место для inode
+        cmp     [ecx + ext2_sb_t.free_inodes_count], 0 ; есть ли место для inode
         jz      .no_space
-        mov     eax, [ecx + EXT2_SB_STRUC.free_block_count]
-        sub     eax, [ecx + EXT2_SB_STRUC.r_block_count]
+        mov     eax, [ecx + ext2_sb_t.free_block_count]
+        sub     eax, [ecx + ext2_sb_t.r_block_count]
         cmp     eax, 2 ; и как минимум на 2 блока
         jb      .no_space
 
@@ -1097,13 +1097,13 @@ ext2_HdCreateFolder:
 
   .find_group_dir:
         jecxz   .end_find_group_dir
-        movzx   eax, [esi + EXT2_BLOCK_GROUP_DESC.free_inodes_count]
+        movzx   eax, [esi + ext2_block_group_descriptor_t.free_inodes_count]
         cmp     eax, edx
         jbe     @f
-        cmp     [esi + EXT2_BLOCK_GROUP_DESC.free_blocks_count], 0
+        cmp     [esi + ext2_block_group_descriptor_t.free_blocks_count], 0
         jz      @f
         mov     edi, esi
-        movzx   edx, [esi + EXT2_BLOCK_GROUP_DESC.free_inodes_count]
+        movzx   edx, [esi + ext2_block_group_descriptor_t.free_inodes_count]
 
     @@: dec     ecx
         add     esi, 32 ; размер структуры
@@ -1114,7 +1114,7 @@ ext2_HdCreateFolder:
         jz      .no_space
 
         ; нашли группу, получим битовую карту inode-ов (найдем locale number)
-        mov     eax, [edi + EXT2_BLOCK_GROUP_DESC.inode_bitmap]
+        mov     eax, [edi + ext2_block_group_descriptor_t.inode_bitmap]
         mov     ebx, [ext2_data.ext2_save_block]
         call    ext2_get_block
 
@@ -1151,7 +1151,7 @@ ext2_HdCreateFolder:
         or      eax, ecx ; x | (x + 1)
         mov     [esi - 4], eax
         mov     ebx, [ext2_data.ext2_save_block]
-        mov     eax, [edi + EXT2_BLOCK_GROUP_DESC.inode_bitmap]
+        mov     eax, [edi + ext2_block_group_descriptor_t.inode_bitmap]
         call    ext2_set_block
         ; считаем таблицу inode
         sub     edi, [ext2_data.global_desc_table]
@@ -1208,8 +1208,8 @@ ext2_balloc:
         ; иначе возвращает eax=0
 
         mov     ecx, [ext2_data.sb]
-        mov     eax, [ecx + EXT2_SB_STRUC.free_block_count]
-        sub     eax, [ecx + EXT2_SB_STRUC.r_block_count]
+        mov     eax, [ecx + ext2_sb_t.free_block_count]
+        sub     eax, [ecx + ext2_sb_t.r_block_count]
         jbe     .no_space
 
         mov     ecx, [ext2_data.groups_count]
@@ -1219,7 +1219,7 @@ ext2_balloc:
 
   .find_group:
         jecxz   .end_find_group
-        movzx   eax, [edi + EXT2_BLOCK_GROUP_DESC.free_blocks_count]
+        movzx   eax, [edi + ext2_block_group_descriptor_t.free_blocks_count]
         cmp     eax, edx
         jbe     @f
         mov     esi, edi
@@ -1234,7 +1234,7 @@ ext2_balloc:
         jz      .no_space
 
         ; нашли группу, получим битовую карту block-ов
-        mov     eax, [esi + EXT2_BLOCK_GROUP_DESC.block_bitmap]
+        mov     eax, [esi + ext2_block_group_descriptor_t.block_bitmap]
         mov     ebx, [ext2_data.ext2_save_block]
         call    ext2_get_block
 
@@ -1271,7 +1271,7 @@ ext2_balloc:
         mov     [edi - 4], eax
 
         mov     ebx, [ext2_data.ext2_save_block]
-        mov     eax, [esi + EXT2_BLOCK_GROUP_DESC.inode_bitmap]
+        mov     eax, [esi + ext2_block_group_descriptor_t.inode_bitmap]
 ;       call    ext2_set_block ; и пишем на hdd новую битовую маску
 
         ;============== тут получаем номер блока
@@ -1281,17 +1281,17 @@ ext2_balloc:
         mul     esi
         add     ebp, eax ; (номер_группы) * (blocks_per_group) + локальный номер в группе
         mov     eax, [ext2_data.sb]
-        add     ebp, [eax + EXT2_SB_STRUC.first_data_block]
+        add     ebp, [eax + ext2_sb_t.first_data_block]
 
         ; теперь поправим глобальную дескрипторную таблицу и суперблок
         mov     ebx, [ext2_data.sb]
-        dec     [ebx + EXT2_SB_STRUC.free_block_count]
+        dec     [ebx + ext2_sb_t.free_block_count]
         mov     eax, 2
         add     eax, [PARTITION_START]
         call    hd_write
-        mov     eax, [ebx + EXT2_SB_STRUC.first_data_block]
+        mov     eax, [ebx + ext2_sb_t.first_data_block]
         inc     eax
-        dec     [esi + EXT2_BLOCK_GROUP_DESC.free_blocks_count] ; edi все еще указывает на группу в которой мы выделил блок
+        dec     [esi + ext2_block_group_descriptor_t.free_blocks_count] ; edi все еще указывает на группу в которой мы выделил блок
         call    ext2_set_block
 
         mov     eax, ebx

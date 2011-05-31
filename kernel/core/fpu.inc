@@ -79,12 +79,12 @@ fpu_save:
         mov     [fpu_owner], esi
 
         shl     ecx, 8
-        mov     eax, [ecx + SLOT_BASE + APPDATA.fpu_state]
+        mov     eax, [ecx + SLOT_BASE + app_data_t.fpu_state]
 
         call    save_context
 
         shl     esi, 8
-        mov     esi, [esi + SLOT_BASE + APPDATA.fpu_state]
+        mov     esi, [esi + SLOT_BASE + app_data_t.fpu_state]
         mov     ecx, 512 / 4
         cld
         rep     movsd
@@ -144,7 +144,7 @@ fpu_restore:
 
   .copy:
         shl     eax, 8
-        mov     edi, [eax + SLOT_BASE + APPDATA.fpu_state]
+        mov     edi, [eax + SLOT_BASE + app_data_t.fpu_state]
         mov     ecx, 512 / 4
         cld
         rep     movsd
@@ -166,7 +166,7 @@ except_7: ; #NM exception handler
         je      .exit
 
         shl     ebx, 8
-        mov     eax, [ebx + SLOT_BASE + APPDATA.fpu_state]
+        mov     eax, [ebx + SLOT_BASE + app_data_t.fpu_state]
         bt      [cpu_caps], CAPS_SSE
         jnc     .no_SSE
 
@@ -174,7 +174,7 @@ except_7: ; #NM exception handler
         mov     ebx, [CURRENT_TASK]
         mov     [fpu_owner], ebx
         shl     ebx, 8
-        mov     eax, [ebx + SLOT_BASE + APPDATA.fpu_state]
+        mov     eax, [ebx + SLOT_BASE + app_data_t.fpu_state]
         fxrstor [eax]
 
   .exit:
@@ -186,7 +186,7 @@ except_7: ; #NM exception handler
         mov     ebx, [CURRENT_TASK]
         mov     [fpu_owner], ebx
         shl     ebx, 8
-        mov     eax, [ebx + SLOT_BASE + APPDATA.fpu_state]
+        mov     eax, [ebx + SLOT_BASE + app_data_t.fpu_state]
         frstor  [eax]
         restore_ring3_context
         iret

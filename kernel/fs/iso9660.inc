@@ -36,7 +36,7 @@ reserve_ok2:
         push    eax
         mov     eax, [CURRENT_TASK]
         shl     eax, 5
-        mov     eax, [eax + CURRENT_TASK + TASKDATA.pid]
+        mov     eax, [eax + CURRENT_TASK + task_data_t.pid]
         mov     [cd_status], eax
         pop     eax
         sti
@@ -426,35 +426,35 @@ cd_get_parameters_of_file_1:
         inc     eax
         mov     [edi], eax
         ; получаем время для файла
-        ;час
+        ; час
         movzx   eax, byte[ebp - 12]
         shl     eax, 8
-        ;минута
+        ; минута
         mov     al, [ebp - 11]
         shl     eax, 8
-        ;секунда
+        ; секунда
         mov     al, [ebp - 10]
-        ;время создания файла
+        ; время создания файла
         mov     [edi + 8], eax
-        ;время последнего доступа
+        ; время последнего доступа
         mov     [edi + 16], eax
-        ;время последней записи
+        ; время последней записи
         mov     [edi + 24], eax
         ; получаем дату для файла
-        ;год
+        ; год
         movzx   eax, byte[ebp - 15]
         add     eax, 1900
         shl     eax, 8
-        ;месяц
+        ; месяц
         mov     al, [ebp - 14]
         shl     eax, 8
-        ;день
+        ; день
         mov     al, [ebp - 13]
-        ;дата создания файла
+        ; дата создания файла
         mov     [edi + 12], eax
-        ;время последнего доступа
+        ; время последнего доступа
         mov     [edi + 20], eax
-        ;время последней записи
+        ; время последней записи
         mov     [edi + 28], eax
         ; получаем тип данных имени
         xor     eax, eax

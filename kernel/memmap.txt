@@ -103,7 +103,7 @@
 ;   F605  ->   FAFF   free (1k2)
 ;   FB00  ->   FB0F   mouse memory 00 chunk count, that includes:
 ;   FB08 word	    -- mouse H-scroll
-;   FB0A word	    -- mouse x 
+;   FB0A word	    -- mouse x
 ;   FB0C word         -- mouse y
 ;   FB0E word	    -- mouse V-scroll
 ;   FB10  ->   FB17   mouse color mem
@@ -118,15 +118,15 @@
 ;   FC00  ->   FCFE   com1/ps2 buffer
 ;   FCFF              com1/ps2 buffer count starting from FC00
 ;   FD00  ->   FDFF   free (256)
-;   FE00  dword       screen x size		
-;   FE04  dword       screen y size		
-;   FE08  dword       screen y multiplier	
-;   FE0C  dword       screen mode	
+;   FE00  dword       screen x size
+;   FE04  dword       screen y size
+;   FE08  dword       screen y multiplier
+;   FE0C  dword       screen mode
 ;   FE10  ->   FE7F   free (112)
 ;   FE80  dword       address of LFB in physical
 ;   FE84  dword       address of applications memory start in physical	?
 ;   FE88  dword       address of button list
-;   FE8C  dword       memory to use 
+;   FE8C  dword       memory to use
 ;   FE90  ->   FEFF   free (112)
 ;   FF00  byte        1 = system shutdown request
 ;   FF01  byte        task activation request?
@@ -167,7 +167,7 @@
 ;         4c dword  debug state: 1= load debug registers
 ;         50 dword  current directory ptr
 ;         54 dword  wait timeout
-;         58 dword  thread TSS._esp0 (= pl0 stack base + size except for V86)
+;         58 dword  thread tss_t._esp0 (= pl0 stack base + size except for V86)
 ;         5C-7F     unused
 ;
 ;         80 dword  address of random shaped window area
@@ -241,14 +241,14 @@
 ;         08   dword  draw limit - x end
 ;         0C   dword  draw limit - y end
 ; 0x80339000 -> 3BFFF3   free (12k)
-; 0x8033BFF4 -> 33BFFF   background info 
+; 0x8033BFF4 -> 33BFFF   background info
 ; 0x8033C000    	 page map     (length b = memsize shr 15)
 ; 0x8033C000 + b         start of static pagetables
 
 ; 0x803FFFFF <- no direct address translation beyond this point
-; ============================================================= 
+; =============================================================
 
-; 0x805FF000 -> 5FFF80   TSS  
+; 0x805FF000 -> 5FFF80   tss_t
 ; 0x80600000 -> 601FFF   i/o maps
 
 ; 0x80800000 ->       kernel heap

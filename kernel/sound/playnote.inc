@@ -143,7 +143,7 @@ playNote:
         ret
 
 ReadNoteByte:
-        ;result:
+        ; result:
         ;  al - note
 
         push    eax

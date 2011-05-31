@@ -15,8 +15,8 @@
 ;;======================================================================================================================
 
 sys_settime:
-        ;setting date,time,clock and alarm-clock
-        ;add sys_settime at servetable as for ex. 22 fcn:
+        ; setting date,time,clock and alarm-clock
+        ; add sys_settime at servetable as for ex. 22 fcn:
         ; 22 - SETTING DATE TIME, CLOCK AND ALARM-CLOCK
         ; ebx =0 - set time ecx - 00SSMMHH
         ; ebx =1 - set date ecx=00DDMMYY

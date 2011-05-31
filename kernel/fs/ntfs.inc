@@ -726,7 +726,7 @@ ntfs_read_attr:
         mov     [ntfs_bCanContinue], 0
         cmp     byte[ecx + 8], 0
         jnz     .nonresident
-        mov     eax, [ecx + 10h] ; length
+        mov     eax, [ecx + 0x10] ; length
         mov     esi, eax
         mov     edx, [ntfs_cur_offs]
         shr     eax, 9
@@ -1139,7 +1139,7 @@ ntfs_find_lfn:
         pop     esi
 
   .subnode:
-        test    byte[esi + 0Ch], 1
+        test    byte[esi + 0x0c], 1
         jz      .notfound
         movzx   eax, word[esi + 8]
         mov     eax, [esi + eax - 8]

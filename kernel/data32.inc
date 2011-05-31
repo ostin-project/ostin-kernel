@@ -245,7 +245,7 @@ graph_data_l:
   db 0x00
 
 tss0_l:
-  dw sizeof.TSS - 1
+  dw sizeof.tss_t - 1
   dw tss and 0xffff
   db (tss shr 16) and 0xff
   db 10001001b
@@ -308,7 +308,7 @@ heap_free         rd 1
 heap_blocks       rd 1
 free_blocks       rd 1
 
-mst MEM_STATE
+mst               memory_state_t
 
 page_start        rd 1
 page_end          rd 1
@@ -382,7 +382,7 @@ cpu_sign          rd 1
 cpu_info          rd 1
 cpu_caps          rd 4
 
-pg_data           PG_DATA
+pg_data           pages_data_t
 heap_test         rd 1
 
 buttontype        rd 1
@@ -398,10 +398,10 @@ img_background    rd 1
 mem_BACKGROUND    rd 1
 static_background_data rd 1
 
-cache_ide0        DRIVE_CACHE
-cache_ide1        DRIVE_CACHE
-cache_ide2        DRIVE_CACHE
-cache_ide3        DRIVE_CACHE
+cache_ide0        drive_cache_t
+cache_ide1        drive_cache_t
+cache_ide2        drive_cache_t
+cache_ide3        drive_cache_t
 
 debug_step_pointer rd 1
 hdd_appl_data      rb 1 ; 0 = system cache, 1 - application cache
@@ -413,7 +413,7 @@ timer_ticks_enable rb 1 ; for cd driver
 
 NumBiosDisks       rd 1
 BiosDisksData      rb 0x200
-BiosDiskCaches     rb 0x80 * sizeof.DRIVE_CACHE
+BiosDiskCaches     rb 0x80 * sizeof.drive_cache_t
 BiosDiskPartitions rd 0x80
 
 IncludeUGlobals

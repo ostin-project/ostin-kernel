@@ -127,13 +127,13 @@ malloc:
         shl     ecx, 4
         pop     edi
         pop     ebp
-        add     ecx, mst.smallbins         ;ecx= B
+        add     ecx, mst.smallbins ; ecx= B
 
-        mov     edx, [ecx + 8]               ; F = B->fd;
-        mov     [ecx + 8], eax               ; B->fd = r;
-        mov     [edx + 12], eax              ; F->bk = r;
-        mov     [eax + 8], edx               ; r->fd = F;
-        mov     [eax + 12], ecx              ; r->bk = B;
+        mov     edx, [ecx + 8] ; F = B->fd;
+        mov     [ecx + 8], eax ; B->fd = r;
+        mov     [edx + 12], eax ; F->bk = r;
+        mov     [eax + 8], edx ; r->fd = F;
+        mov     [eax + 12], ecx ; r->bk = B;
         mov     eax, ebx
         pop     esi
         mov     [mst.mutex], 0

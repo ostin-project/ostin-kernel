@@ -22,7 +22,7 @@
 ;   Description
 ;       entry point for system PCI calls
 ;***************************************************************************
-;mmio_pci_addr  equ  0x400               ; set actual PCI address here to activate user-MMIO
+;mmio_pci_addr  equ  0x400 ; set actual PCI address here to activate user-MMIO
 
 iglobal
   align 4
@@ -145,7 +145,7 @@ pci_read_reg:
 
         call    pci_make_config_cmd
         mov     ebx, eax
-                ; get current state
+        ; get current state
         mov     dx, 0x0cf8
         in      eax, dx
         push    eax
@@ -191,7 +191,7 @@ pci_read_reg:
         ret
 
   .pci_read_reg_2:
-        ;mech#2 only supports 16 devices per bus
+        ; mech#2 only supports 16 devices per bus
         test    bh, 128
         jnz     .pci_read_reg_err
 
@@ -201,7 +201,7 @@ pci_read_reg:
 
         push    eax
 
-        ;store current state of config space
+        ; store current state of config space
         mov     dx, 0x0cf8
         in      al, dx
         mov     ah, al
@@ -324,7 +324,7 @@ pci_write_reg:
         ret
 
   .pci_write_reg_2:
-        ;mech#2 only supports 16 devices per bus
+        ; mech#2 only supports 16 devices per bus
         test    bh, 128
         jnz     .pci_write_reg_err
 

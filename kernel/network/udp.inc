@@ -30,12 +30,12 @@
 ; +-+-+-..........                                               -+
 ;
 
-struct UDP_PACKET
-  SourcePort      dw ? ; +00
-  DestinationPort dw ? ; +02
-  Length          dw ? ; +04 - Length of (UDP Header + Data)
-  Checksum        dw ? ; +06
-  Data            db ? ; +08
+struct udp_packet_t
+  src_port dw ? ; +00
+  dst_port dw ? ; +02
+  length   dw ? ; +04 - Length of (UDP Header + Data)
+  checksum dw ? ; +06
+  data     db ? ; +08
 ends
 
 proc udp_rx stdcall
@@ -54,44 +54,44 @@ proc udp_rx stdcall
         ; IP Packet UDP Destination Port = local Port
         ; IP Packet SA = Remote IP
 
-        mov     ax, [edx + 20 + UDP_PACKET.DestinationPort] ; get the local port from the IP packet's UDP header
+        mov     ax, [edx + 20 + udp_packet_t.dst_port] ; get the local port from the IP packet's UDP header
         mov     ebx, net_sockets
 
   .next_socket:
-        mov     ebx, [ebx + SOCKET.NextPtr]
+        mov     ebx, [ebx + socket_t.next_ptr]
         or      ebx, ebx
         jz      .exit ; No match, so exit
-        cmp     [ebx + SOCKET.LocalPort], ax ; ax will hold the 'wrong' value, but the comparision is correct
+        cmp     [ebx + socket_t.local_port], ax ; ax will hold the 'wrong' value, but the comparision is correct
         jne     .next_socket ; Return back if no match
 
         ; For dhcp, we must allow any remote server to respond.
         ; I will accept the first incoming response to be the one
         ; I bind to, if the socket is opened with a destination IP address of
         ; 255.255.255.255
-        cmp     [ebx + SOCKET.RemoteIP], 0xffffffff
+        cmp     [ebx + socket_t.remote_ip], 0xffffffff
         je      @f
 
-        mov     eax, [edx + IP_PACKET.SourceAddress] ; get the Source address from the IP packet
-        cmp     [ebx + SOCKET.RemoteIP], eax
+        mov     eax, [edx + ip_packet_t.src_ip] ; get the Source address from the IP packet
+        cmp     [ebx + socket_t.remote_ip], eax
         jne     .exit ; Quit if the source IP is not valid
 
     @@: ; OK - we have a valid UDP packet for this socket.
         ; First, update the sockets remote port number with the incoming msg
         ; - it will have changed
         ; from the original ( 69 normally ) to allow further connects
-        mov     ax, [edx + 20 + UDP_PACKET.SourcePort] ; get the UDP source port (was 69, now new)
-        mov     [ebx + SOCKET.RemotePort], ax
+        mov     ax, [edx + 20 + udp_packet_t.src_port] ; get the UDP source port (was 69, now new)
+        mov     [ebx + socket_t.remote_port], ax
 
         ; Now, copy data to socket. We have socket address as [eax + sockets].
         ; We have IP packet in edx
 
         ; get # of bytes in ecx
-        movzx   ecx, [edx + IP_PACKET.TotalLength] ; total length of IP packet. Subtract
+        movzx   ecx, [edx + ip_packet_t.total_length] ; total length of IP packet. Subtract
         xchg    cl, ch ; 20 + 8 gives data length
         sub     ecx, 28
 
-        mov     eax, [ebx + SOCKET.rxDataCount] ; get # of bytes already in buffer
-        add     [ebx + SOCKET.rxDataCount], ecx ; increment the count of bytes in buffer
+        mov     eax, [ebx + socket_t.rx_data_cnt] ; get # of bytes already in buffer
+        add     [ebx + socket_t.rx_data_cnt], ecx ; increment the count of bytes in buffer
 
         ; ecx has count, edx points to data
 
@@ -103,9 +103,9 @@ proc udp_rx stdcall
         rep     movsb ; copy the data across
 
         ; flag an event to the application
-        mov     eax, [ebx + SOCKET.PID] ; get socket owner PID
+        mov     eax, [ebx + socket_t.pid] ; get socket owner PID
         mov     ecx, 1
-        mov     esi, TASK_DATA + TASKDATA.pid
+        mov     esi, TASK_DATA + task_data_t.pid
 
   .next_pid:
         cmp     [esi], eax
@@ -119,7 +119,7 @@ proc udp_rx stdcall
 
   .found_pid:
         shl     ecx, 8
-        or      [ecx + SLOT_BASE + APPDATA.event_mask], EVENT_NETWORK ; stack event
+        or      [ecx + SLOT_BASE + app_data_t.event_mask], EVENT_NETWORK ; stack event
 
         mov     [check_idle_semaphore], 200
 

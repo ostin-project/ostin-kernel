@@ -84,7 +84,7 @@ reserve_hd1:
         push    eax
         mov     eax, [CURRENT_TASK]
         shl     eax, 5
-        mov     eax, [eax + CURRENT_TASK + TASKDATA.pid]
+        mov     eax, [eax + CURRENT_TASK + task_data_t.pid]
         mov     [hd1_status], eax
         pop     eax
         sti
@@ -1675,7 +1675,7 @@ fs_HdRewrite:
         call    fat_find_lfn
         jc      .notfound
         ; found
-        test    byte[edi + 11], 10h
+        test    byte[edi + 11], 0x10
         jz      .exists_file
         ; found directory; if we are creating directory, return OK,
         ;                  if we are creating file, say "access denied"

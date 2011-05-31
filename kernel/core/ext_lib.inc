@@ -78,15 +78,15 @@ endl
         jz      .fail
 
         mov     [coff], eax
-        movzx   ecx, [eax + COFF_HEADER.nSections]
+        movzx   ecx, [eax + coff_header_t.sections_cnt]
         xor     ebx, ebx
 
         lea     edx, [eax + 20]
 
-    @@: add     ebx, [edx + COFF_SECTION.SizeOfRawData]
+    @@: add     ebx, [edx + coff_section_t.raw_data_size]
         add     ebx, 15
         and     ebx, not 15
-        add     edx, sizeof.COFF_SECTION
+        add     edx, sizeof.coff_section_t
         dec     ecx
         jnz     @b
         mov     [img_size], ebx
@@ -98,52 +98,52 @@ endl
         mov     [img_base], eax
 
         mov     edx, [coff]
-        movzx   ebx, [edx + COFF_HEADER.nSections]
+        movzx   ebx, [edx + coff_header_t.sections_cnt]
         mov     edi, [img_base]
         lea     eax, [edx + 20]
 
-    @@: mov     [eax + COFF_SECTION.VirtualAddress], edi
-        mov     esi, [eax + COFF_SECTION.PtrRawData]
+    @@: mov     [eax + coff_section_t.virtual_addr], edi
+        mov     esi, [eax + coff_section_t.raw_data_ptr]
         test    esi, esi
         jnz     .copy
-        add     edi, [eax + COFF_SECTION.SizeOfRawData]
+        add     edi, [eax + coff_section_t.raw_data_size]
         jmp     .next
 
   .copy:
         add     esi, edx
-        mov     ecx, [eax + COFF_SECTION.SizeOfRawData]
+        mov     ecx, [eax + coff_section_t.raw_data_size]
         cld
         rep     movsb
 
   .next:
         add     edi, 15
         and     edi, not 15
-        add     eax, sizeof.COFF_SECTION
+        add     eax, sizeof.coff_section_t
         dec     ebx
         jnz     @b
 
-        mov     ebx, [edx + COFF_HEADER.pSymTable]
+        mov     ebx, [edx + coff_header_t.syms_ptr]
         add     ebx, edx
         mov     [sym], ebx
-        mov     ecx, [edx + COFF_HEADER.nSymbols]
+        mov     ecx, [edx + coff_header_t.syms_cnt]
         add     ecx, ecx
-        lea     ecx, [ecx + ecx * 8] ; ecx *= 18 = nSymbols * sizeof.COFF_SYM
+        lea     ecx, [ecx + ecx * 8] ; ecx *= 18 = nSymbols * sizeof.coff_symbol_t
         add     ecx, [sym]
         mov     [strings], ecx
 
         lea     eax, [edx + 20]
 
-        stdcall fix_coff_symbols, eax, [sym], [edx + COFF_HEADER.nSymbols], [strings], 0
+        stdcall fix_coff_symbols, eax, [sym], [edx + coff_header_t.syms_cnt], [strings], 0
         test    eax, eax
         jnz     @f
 
     @@: mov     edx, [coff]
-        movzx   ebx, [edx + COFF_HEADER.nSections]
+        movzx   ebx, [edx + coff_header_t.sections_cnt]
         mov     edi, 0
         lea     eax, [edx + 20]
 
-    @@: add     [eax + COFF_SECTION.VirtualAddress], edi ; patch user space offset
-        add     eax, sizeof.COFF_SECTION
+    @@: add     [eax + coff_section_t.virtual_addr], edi ; patch user space offset
+        add     eax, sizeof.coff_section_t
         dec     ebx
         jnz     @b
 
@@ -151,7 +151,7 @@ endl
         stdcall fix_coff_relocs, [coff], edx, [sym]
 
         mov     ebx, [coff]
-        stdcall get_coff_sym, [sym], [ebx + COFF_HEADER.nSymbols], szEXPORTS
+        stdcall get_coff_sym, [sym], [ebx + coff_header.syms_cnt], szEXPORTS
         mov     [exports], eax
 
         stdcall kernel_free, [coff]

@@ -105,7 +105,7 @@ save_draw_mouse:
         add     eax, [_WinMapAddress]
         movzx   edx, byte[ebx + eax]
         shl     edx, 8
-        mov     esi, [edx + SLOT_BASE + APPDATA.cursor]
+        mov     esi, [edx + SLOT_BASE + app_data_t.cursor]
 
         cmp     esi, [current_cursor]
         je      .draw
@@ -121,7 +121,7 @@ save_draw_mouse:
 
   .fail:
         mov     ecx, [def_cursor]
-        mov     [edx + SLOT_BASE + APPDATA.cursor], ecx
+        mov     [edx + SLOT_BASE + app_data_t.cursor], ecx
         stdcall [_display.move_cursor], ecx ; stdcall: [esp]=ebx,eax
         popad
         ret

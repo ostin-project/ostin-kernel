@@ -303,8 +303,8 @@ blit_32:
         sub  esp, 72
 
         mov  eax, [TASK_BASE]
-        mov  ebx, [eax-twdw + WDATA.box.width]
-        mov  edx, [eax-twdw + WDATA.box.height]
+        mov  ebx, [eax-twdw + window_data_t.box.width]
+        mov  edx, [eax-twdw + window_data_t.box.height]
 
         xor  eax, eax
 
@@ -354,8 +354,8 @@ blit_32:
 
         mov  ebx, [esp+BLITTER.dst_x]
         mov  ebp, [esp+BLITTER.dst_y]
-        add  ebx, [eax-twdw + WDATA.box.left]
-        add  ebp, [eax-twdw + WDATA.box.top]
+        add  ebx, [eax-twdw + window_data_t.box.left]
+        add  ebp, [eax-twdw + window_data_t.box.top]
         mov  edi, ebp
 
         imul edi, [_display.pitch]

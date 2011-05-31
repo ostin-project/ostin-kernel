@@ -61,19 +61,19 @@ TCP_TIMEOUT      equ 20 ; resend if not replied to in x hs
 ;    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ;    |                             data
 
-struct TCP_PACKET
-  SourcePort      dw ? ; +00
-  DestinationPort dw ? ; +02
-  SequenceNumber  dd ? ; +04
-  AckNumber       dd ? ; +08
-  DataOffset      db ? ; +12 - DataOffset[0-3 bits] and Reserved[4-7]
-  Flags           db ? ; +13 - Reserved[0-1 bits]|URG|ACK|PSH|RST|SYN|FIN
-  Window          dw ? ; +14
-  Checksum        dw ? ; +16
-  UrgentPointer   dw ? ; +18
-  Options         rb 3 ; +20
-  Padding         db ? ; +23
-  Data            db ? ; +24
+struct tcp_packet_t
+  src_port        dw ? ; +00
+  dst_port        dw ? ; +02
+  sequence_number dd ? ; +04
+  ack_number      dd ? ; +08
+  data_offset     db ? ; +12 - DataOffset[0-3 bits] and Reserved[4-7]
+  flags           db ? ; +13 - Reserved[0-1 bits]|URG|ACK|PSH|RST|SYN|FIN
+  window          dw ? ; +14
+  checksum        dw ? ; +16
+  urgent_pointer  dw ? ; +18
+  options         rb 3 ; +20
+  padding         db ? ; +23
+  data            db ? ; +24
 ends
 
 proc tcp_tcb_handler stdcall uses ebx
@@ -85,39 +85,39 @@ proc tcp_tcb_handler stdcall uses ebx
 
         mov     ebx, net_sockets
 
-        cmp     [ebx + SOCKET.NextPtr], 0
+        cmp     [ebx + socket_t.next_ptr], 0
         je      .exit
 ;       DEBUGF  1, "K : sockets:\n"
 
   .next_socket:
-        mov     ebx, [ebx + SOCKET.NextPtr]
+        mov     ebx, [ebx + socket_t.next_ptr]
         or      ebx, ebx
         jz      .exit
 
-;       DEBUGF  1, "K :   %x-%x: %x-%x-%x-%u\n", [ebx + SOCKET.PID]:2, [ebx + SOCKET.Number]:2, [ebx + SOCKET.LocalPort]:4, [ebx + SOCKET.RemoteIP], [ebx + SOCKET.RemotePort]:4, [ebx + SOCKET.TCBState]
+;       DEBUGF  1, "K :   %x-%x: %x-%x-%x-%u\n", [ebx + socket_t.pid]:2, [ebx + socket_t.number]:2, [ebx + socket_t.local_port]:4, [ebx + socket_t.remote_ip], [ebx + socket_t.remote_port]:4, [ebx + socket_t.tcb_state]
 
-        cmp     [ebx + SOCKET.TCBTimer], 0
+        cmp     [ebx + socket_t.tcb_timer], 0
         jne     .decrement_tcb
-        cmp     [ebx + SOCKET.wndsizeTimer], 0
+        cmp     [ebx + socket_t.window_size_timer], 0
         jne     .decrement_wnd
         jmp     .next_socket
 
   .decrement_tcb:
         ; decrement it, delete socket if TCB timer = 0 & socket in timewait state
-        dec     [ebx + SOCKET.TCBTimer]
+        dec     [ebx + socket_t.tcb_timer]
         jnz     .next_socket
 
-        cmp     [ebx + SOCKET.TCBState], TCB_TIMED_WAIT
+        cmp     [ebx + socket_t.tcb_state], TCB_TIMED_WAIT
         jne     .next_socket
 
-        push    [ebx + SOCKET.PrevPtr]
+        push    [ebx + socket_t.prev_ptr]
         stdcall net_socket_free, ebx
         pop     ebx
         jmp     .next_socket
 
   .decrement_wnd:
         ; TODO - prove it works!
-        dec     [ebx + SOCKET.wndsizeTimer]
+        dec     [ebx + socket_t.window_size_timer]
         jmp     .next_socket
 
   .exit:
@@ -206,7 +206,7 @@ proc tcp_tx_handler stdcall
         ; queue packet
         mov     eax, NET1OUT_QUEUE
         mov     edx, [stack_ip]
-        cmp     edx, [edi + IP_PACKET.DestinationAddress]
+        cmp     edx, [edi + ip_packet_t.dst_ip]
         jne     .not_local
         mov     eax, IPIN_QUEUE
 
@@ -254,26 +254,26 @@ proc tcp_rx stdcall uses ebx
         mov     ebx, net_sockets
 
   .next_socket.1:
-        mov     ebx, [ebx + SOCKET.NextPtr]
+        mov     ebx, [ebx + socket_t.next_ptr]
         or      ebx, ebx
         jz      .next_socket.1.exit
 
-;       DEBUGF  1, "K : tcp_rx - 1.dport: %x - %x\n", [edx + 20 + TCP_PACKET.DestinationPort]:4, [ebx + SOCKET.LocalPort]:4
+;       DEBUGF  1, "K : tcp_rx - 1.dport: %x - %x\n", [edx + 20 + tcp_packet_t.DestinationPort]:4, [ebx + socket_t.local_port]:4
 
-        mov     ax, [edx + 20 + TCP_PACKET.DestinationPort] ; get the dest. port from the TCP hdr
-        cmp     [ebx + SOCKET.LocalPort], ax ; get the dest. port from the TCP hdr
+        mov     ax, [edx + 20 + tcp_packet_t.dst_port] ; get the dest. port from the TCP hdr
+        cmp     [ebx + socket_t.local_port], ax ; get the dest. port from the TCP hdr
         jne     .next_socket.1 ; different - try next socket
 
-;       DEBUGF  1, "K : tcp_rx - 1.addr: %x - %x\n", [edx + IP_PACKET.SourceAddress], [ebx + SOCKET.RemoteIP]
+;       DEBUGF  1, "K : tcp_rx - 1.addr: %x - %x\n", [edx + ip_packet_t.SourceAddress], [ebx + socket_t.remote_ip]
 
-        mov     eax, [edx + IP_PACKET.SourceAddress] ; get the source IP Addr from the IP hdr
-        cmp     [ebx + SOCKET.RemoteIP], eax ; compare with socket's remote IP
+        mov     eax, [edx + ip_packet_t.src_ip] ; get the source IP Addr from the IP hdr
+        cmp     [ebx + socket_t.remote_ip], eax ; compare with socket's remote IP
         jne     .next_socket.1 ; different - try next socket
 
-;       DEBUGF  1, "K : tcp_rx - 1.sport: %x - %x\n", [edx + 20 + TCP_PACKET.SourcePort]:4, [ebx + SOCKET.RemotePort]:4
+;       DEBUGF  1, "K : tcp_rx - 1.sport: %x - %x\n", [edx + 20 + tcp_packet_t.SourcePort]:4, [ebx + socket_t.remote_port]:4
 
-        mov     ax, [edx + 20 + TCP_PACKET.SourcePort] ; get the source port from the TCP hdr
-        cmp     [ebx + SOCKET.RemotePort], ax ; compare with socket's remote port
+        mov     ax, [edx + 20 + tcp_packet_t.src_port] ; get the source port from the TCP hdr
+        cmp     [ebx + socket_t.remote_port], ax ; compare with socket's remote port
         jne     .next_socket.1 ; different - try next socket
 
         ; We have a complete match - use this socket
@@ -289,25 +289,25 @@ proc tcp_rx stdcall uses ebx
         mov     ebx, net_sockets
 
   .next_socket.2:
-        mov     ebx, [ebx + SOCKET.NextPtr]
+        mov     ebx, [ebx + socket_t.next_ptr]
         or      ebx, ebx
         jz      .next_socket.2.exit
 
-;       DEBUGF  1, "K : tcp_rx - 2.dport: %x - %x\n", [edx + 20 + TCP_PACKET.DestinationPort]:4, [ebx + SOCKET.LocalPort]:4
+;       DEBUGF  1, "K : tcp_rx - 2.dport: %x - %x\n", [edx + 20 + tcp_packet_t.dst_port]:4, [ebx + socket_t.local_port]:4
 
-        mov     ax, [edx + 20 + TCP_PACKET.DestinationPort] ; get the dest. port from the TCP hdr
-        cmp     [ebx + SOCKET.LocalPort], ax ; compare with socket's local port
+        mov     ax, [edx + 20 + tcp_packet_t.dst_port] ; get the dest. port from the TCP hdr
+        cmp     [ebx + socket_t.local_port], ax ; compare with socket's local port
         jne     .next_socket.2 ; different - try next socket
 
-;       DEBUGF  1, "K : tcp_rx - 2.addr: %x - %x\n", [edx + IP_PACKET.SourceAddress], [ebx + SOCKET.RemoteIP]
+;       DEBUGF  1, "K : tcp_rx - 2.addr: %x - %x\n", [edx + ip_packet_t.src_ip], [ebx + socket_t.remote_ip]
 
-        mov     eax, [edx + IP_PACKET.SourceAddress] ; get the source IP Addr from the IP hdr
-        cmp     [ebx + SOCKET.RemoteIP], eax ; compare with socket's remote IP
+        mov     eax, [edx + ip_packet_t.src_ip] ; get the source IP Addr from the IP hdr
+        cmp     [ebx + socket_t.remote_ip], eax ; compare with socket's remote IP
         jne     .next_socket.2 ; different - try next socket
 
-;       DEBUGF  1, "K : tcp_rx - 2.sport: 0000 - %x\n", [ebx + SOCKET.RemotePort]:4
+;       DEBUGF  1, "K : tcp_rx - 2.sport: 0000 - %x\n", [ebx + socket_t.remote_port]:4
 
-        cmp     [ebx + SOCKET.RemotePort], 0 ; only match a remote socket of 0
+        cmp     [ebx + socket_t.remote_port], 0 ; only match a remote socket of 0
         jne     .next_socket.2 ; different - try next socket
 
         ; We have a complete match - use this socket
@@ -323,24 +323,24 @@ proc tcp_rx stdcall uses ebx
         mov     ebx, net_sockets
 
   .next_socket.3:
-        mov     ebx, [ebx + SOCKET.NextPtr]
+        mov     ebx, [ebx + socket_t.next_ptr]
         or      ebx, ebx
         jz      .next_socket.3.exit
 
-;       DEBUGF  1, "K : tcp_rx - 3.dport: %x - %x\n", [edx + 20 + TCP_PACKET.DestinationPort]:4, [ebx + SOCKET.LocalPort]:4
+;       DEBUGF  1, "K : tcp_rx - 3.dport: %x - %x\n", [edx + 20 + tcp_packet_t.dst_port]:4, [ebx + socket_t.local_port]:4
 
-        mov     ax, [edx + 20 + TCP_PACKET.DestinationPort] ; get destination port from the TCP hdr
-        cmp     [ebx + SOCKET.LocalPort], ax ; compare with socket's local port
+        mov     ax, [edx + 20 + tcp_packet_t.dst_port] ; get destination port from the TCP hdr
+        cmp     [ebx + socket_t.local_port], ax ; compare with socket's local port
         jne     .next_socket.3 ; different - try next socket
 
-;       DEBUGF  1, "K : tcp_rx - 3.addr: 00000000 - %x\n", [ebx + SOCKET.RemoteIP]
+;       DEBUGF  1, "K : tcp_rx - 3.addr: 00000000 - %x\n", [ebx + socket_t.remote_ip]
 
-        cmp     [ebx + SOCKET.RemoteIP], 0; only match a socket remote IP of 0
+        cmp     [ebx + socket_t.remote_ip], 0; only match a socket remote IP of 0
         jne     .next_socket.3; different - try next socket
 
-;       DEBUGF  1, "K : tcp_rx - 3.sport: 0000 - %x\n", [ebx + SOCKET.RemotePort]:4
+;       DEBUGF  1, "K : tcp_rx - 3.sport: 0000 - %x\n", [ebx + socket_t.remote_port]:4
 
-        cmp     [ebx + SOCKET.RemotePort], 0; only match a remote socket of 0
+        cmp     [ebx + socket_t.remote_port], 0; only match a remote socket of 0
         jne     .next_socket.3; different - try next socket
 
         ; We have a complete match - use this socket
@@ -350,7 +350,7 @@ proc tcp_rx stdcall uses ebx
         ; If we got here, we need to reject the packet
 
         DEBUGF  1, "K : tcp_rx - dumped\n"
-        DEBUGF  1, "K :   --------: %x-%x-%x (flags: %x)\n", [edx + 20 + TCP_PACKET.DestinationPort]:4, [edx + IP_PACKET.SourceAddress], [edx + 20 + TCP_PACKET.SourcePort]:4, [edx + 20 + TCP_PACKET.Flags]:2
+        DEBUGF  1, "K :   --------: %x-%x-%x (flags: %x)\n", [edx + 20 + tcp_packet_t.dst_port]:4, [edx + ip_packet_t.src_ip], [edx + 20 + tcp_packet_t.src_port]:4, [edx + 20 + tcp_packet_t.flags]:2
 
         inc     [dumped_rx_count]
         jmp     .exit
@@ -388,62 +388,62 @@ proc build_tcp_packet stdcall, sockAddr:DWORD
 
         mov     edx, eax
 
-        mov     [edx + 20 + TCP_PACKET.Flags], bl ; TCP flags
+        mov     [edx + 20 + tcp_packet_t.flags], bl ; TCP flags
 
         mov     ebx, [sockAddr]
 
         ; So, ebx holds the socket ptr, edx holds the IPbuffer ptr
 
         ; Fill in the IP header ( some data is in the socket descriptor)
-        mov     eax, [ebx + SOCKET.LocalIP]
-        mov     [edx + IP_PACKET.SourceAddress], eax
-        mov     eax, [ebx + SOCKET.RemoteIP]
-        mov     [edx + IP_PACKET.DestinationAddress], eax
+        mov     eax, [ebx + socket_t.local_ip]
+        mov     [edx + ip_packet_t.src_ip], eax
+        mov     eax, [ebx + socket_t.remote_ip]
+        mov     [edx + ip_packet_t.dst_ip], eax
 
-        mov     [edx + IP_PACKET.VersionAndIHL], 0x45
-        mov     [edx + IP_PACKET.TypeOfService], 0
+        mov     [edx + ip_packet_t.version_and_ihl], 0x45
+        mov     [edx + ip_packet_t.type_of_service], 0
 
         pop     eax ; Get the TCP data length
         push    eax
 
         add     eax, 20 + 20 ; add IP header and TCP header lengths
         rol     ax, 8
-        mov     [edx + IP_PACKET.TotalLength], ax
-        mov     [edx + IP_PACKET.Identification], 0
-        mov     [edx + IP_PACKET.FlagsAndFragmentOffset], 0x0040
-        mov     [edx + IP_PACKET.TimeToLive], 0x20
-        mov     [edx + IP_PACKET.Protocol], PROTOCOL_TCP
+        mov     [edx + ip_packet_t.total_length], ax
+        mov     [edx + ip_packet_t.identification], 0
+        mov     [edx + ip_packet_t.flags_and_fragment_offset], 0x0040
+        mov     [edx + ip_packet_t.ttl_secs], 0x20
+        mov     [edx + ip_packet_t.protocol], PROTOCOL_TCP
 
         ; Checksum left unfilled
-        mov     [edx + IP_PACKET.HeaderChecksum], 0
+        mov     [edx + ip_packet_t.header_checksum], 0
 
         ; Fill in the TCP header (some data is in the socket descriptor)
-        mov     ax, [ebx + SOCKET.LocalPort]
-        mov     [edx + 20 + TCP_PACKET.SourcePort], ax ; Local Port
+        mov     ax, [ebx + socket_t.local_port]
+        mov     [edx + 20 + tcp_packet_t.src_port], ax ; Local Port
 
-        mov     ax, [ebx + SOCKET.RemotePort]
-        mov     [edx + 20 + TCP_PACKET.DestinationPort], ax ; desitination Port
+        mov     ax, [ebx + socket_t.remote_port]
+        mov     [edx + 20 + tcp_packet_t.dst_port], ax ; desitination Port
 
         ; Checksum left unfilled
-        mov     [edx + 20 + TCP_PACKET.Checksum], 0
+        mov     [edx + 20 + tcp_packet_t.checksum], 0
 
         ; sequence number
-        mov     eax, [ebx + SOCKET.SND_NXT]
-        mov     [edx + 20 + TCP_PACKET.SequenceNumber], eax
+        mov     eax, [ebx + socket_t.send_next_seq]
+        mov     [edx + 20 + tcp_packet_t.sequence_number], eax
 
         ; ack number
-        mov     eax, [ebx + SOCKET.RCV_NXT]
-        mov     [edx + 20 + TCP_PACKET.AckNumber], eax
+        mov     eax, [ebx + socket_t.recv_next_seq]
+        mov     [edx + 20 + tcp_packet_t.ack_number], eax
 
         ; window ( 0x2000 is default ).I could accept 4KB, fa0, ( skt buffer size)
         ; 768 bytes seems better
-        mov     [edx + 20 + TCP_PACKET.Window], 0x0003
+        mov     [edx + 20 + tcp_packet_t.window], 0x0003
 
         ; Urgent pointer (0)
-        mov     [edx + 20 + TCP_PACKET.UrgentPointer], 0
+        mov     [edx + 20 + tcp_packet_t.urgent_pointer], 0
 
         ; data offset ( 0x50 )
-        mov     [edx + 20 + TCP_PACKET.DataOffset], 0x50
+        mov     [edx + 20 + tcp_packet_t.data_offset], 0x50
 
         pop     ecx ; count of bytes to send
         mov     ebx, ecx ; need the length later
@@ -459,9 +459,9 @@ proc build_tcp_packet stdcall, sockAddr:DWORD
     @@: ; we have edx as IPbuffer ptr.
         ; Fill in the TCP checksum
         ; First, fill in pseudoheader
-        mov     eax, [edx + IP_PACKET.SourceAddress]
+        mov     eax, [edx + ip_packet_t.src_ip]
         mov     [pseudoHeader], eax
-        mov     eax, [edx + IP_PACKET.DestinationAddress]
+        mov     eax, [edx + ip_packet_t.dst_ip]
         mov     [pseudoHeader + 4], eax
         mov     word[pseudoHeader + 8], (PROTOCOL_TCP shl 8) + 0
         add     ebx, 20
@@ -482,13 +482,13 @@ proc build_tcp_packet stdcall, sockAddr:DWORD
         ; store it in the TCP checksum (in the correct order!)
         mov     ax, [checkResult]
         rol     ax, 8
-        mov     [edx + 20 + TCP_PACKET.Checksum], ax
+        mov     [edx + 20 + tcp_packet_t.checksum], ax
 
         ; Fill in the IP header checksum
         GET_IHL eax, edx ; get IP-Header length
         stdcall checksum_jb, edx, eax ; buf_ptr, buf_size
         rol     ax, 8
-        mov     [edx + IP_PACKET.HeaderChecksum], ax
+        mov     [edx + ip_packet_t.header_checksum], ax
 
         ret
 endp
@@ -544,13 +544,13 @@ proc tcpStateMachine stdcall, sockAddr:DWORD
         ; The IP buffer will be released by the caller
 
         ; as a packet has been received, update the TCB timer
-        mov     [ebx + SOCKET.TCBTimer], TWOMSL
+        mov     [ebx + socket_t.tcb_timer], TWOMSL
 
         ; If the received packet has an ACK bit set,
         ; remove any packets in the resend queue that this
         ; received packet acknowledges
         pushad
-        test    [edx + 20 + TCP_PACKET.Flags], TH_ACK
+        test    [edx + 20 + tcp_packet_t.flags], TH_ACK
         jz      .call_handler ; No ACK, so no data yet
 
         ; get skt number in eax
@@ -584,7 +584,7 @@ proc tcpStateMachine stdcall, sockAddr:DWORD
         ; we have dest buffer location in edi. incoming packet in edx.
         ; Get this packets sequence number
         ; preserve al, ecx, esi, edx
-        mov     ecx, [edi + 20 + TCP_PACKET.SequenceNumber]
+        mov     ecx, [edi + 20 + tcp_packet_t.sequence_number]
         bswap   ecx
         movzx   ebx, word[edi + 2]
         xchg    bl, bh
@@ -592,7 +592,7 @@ proc tcpStateMachine stdcall, sockAddr:DWORD
         add     ecx, ebx ; ecx is now seq# of last byte +1, intel format
 
         ; get recievd ack #, in intel format
-        mov     ebx, [edx + 20 + TCP_PACKET.AckNumber]
+        mov     ebx, [edx + 20 + tcp_packet_t.ack_number]
         bswap   ebx
 
         cmp     ebx, ecx ; Finally. ecx = rx'ed ack. ebx = last byte in que
@@ -615,7 +615,7 @@ proc tcpStateMachine stdcall, sockAddr:DWORD
 
         ; Call handler for given TCB state
 
-        mov     eax, [ebx + SOCKET.TCBState]
+        mov     eax, [ebx + socket_t.tcb_state]
         cmp     eax, TCB_LISTEN
         jb      .exit
         cmp     eax, TCB_CLOSED
@@ -634,9 +634,9 @@ proc signal_network_event
         ; Socket/TCB address in ebx
 
         push    ecx esi eax
-        mov     eax, [ebx + SOCKET.PID]
+        mov     eax, [ebx + socket_t.pid]
         mov     ecx, 1
-        mov     esi, TASK_DATA + TASKDATA.pid
+        mov     esi, TASK_DATA + task_data_t.pid
 
   .next_pid:
         cmp     [esi], eax
@@ -648,7 +648,7 @@ proc signal_network_event
 
   .found_pid:
         shl     ecx, 8
-        or      [ecx + SLOT_BASE + APPDATA.event_mask], EVENT_NETWORK ; stack event
+        or      [ecx + SLOT_BASE + app_data_t.event_mask], EVENT_NETWORK ; stack event
         pop     eax esi ecx
         ret
 endp
@@ -659,23 +659,23 @@ proc stateTCB_LISTEN stdcall, sockAddr:DWORD
         ; If not, ignore it
 
         ; Look at control flags
-        test    [edx + 20 + TCP_PACKET.Flags], TH_SYN
+        test    [edx + 20 + tcp_packet_t.flags], TH_SYN
         jz      .exit
 
         ; We have a SYN. update the socket with this IP packets details,
         ; And send a response
 
-        mov     eax, [edx + IP_PACKET.SourceAddress]
-        mov     [ebx + SOCKET.RemoteIP], eax
-        mov     ax, [edx + 20 + TCP_PACKET.SourcePort]
-        mov     [ebx + SOCKET.RemotePort], ax
-        mov     eax, [edx + 20 + TCP_PACKET.SequenceNumber]
-        mov     [ebx + SOCKET.IRS], eax
-        mov     [ebx + SOCKET.RCV_NXT], eax
-        lea     esi, [ebx + SOCKET.RCV_NXT]
+        mov     eax, [edx + ip_packet_t.src_ip]
+        mov     [ebx + socket_t.remote_ip], eax
+        mov     ax, [edx + 20 + tcp_packet_t.src_port]
+        mov     [ebx + socket_t.remote_port], ax
+        mov     eax, [edx + 20 + tcp_packet_t.sequence_number]
+        mov     [ebx + socket_t.init_recv_seq], eax
+        mov     [ebx + socket_t.recv_next_seq], eax
+        lea     esi, [ebx + socket_t.recv_next_seq]
         call    inc_inet_esi ; RCV.NXT
-        mov     eax, [ebx + SOCKET.ISS]
-        mov     [ebx + SOCKET.SND_NXT], eax
+        mov     eax, [ebx + socket_t.init_send_seq]
+        mov     [ebx + socket_t.send_next_seq], eax
 
         ; Now construct the response, and queue for sending by IP
         mov     eax, EMPTY_QUEUE
@@ -693,7 +693,7 @@ proc stateTCB_LISTEN stdcall, sockAddr:DWORD
         mov     eax, NET1OUT_QUEUE
         mov     edx, [stack_ip]
         mov     ecx, [sockAddr]
-        cmp     edx, [ecx + SOCKET.RemoteIP]
+        cmp     edx, [ecx + socket_t.remote_ip]
         jne     .not_local
         mov     eax, IPIN_QUEUE
 
@@ -704,11 +704,11 @@ proc stateTCB_LISTEN stdcall, sockAddr:DWORD
 
         pop     ebx
         mov     esi, [sockAddr]
-        mov     [esi + SOCKET.TCBState], TCB_SYN_RECEIVED
+        mov     [esi + socket_t.tcb_state], TCB_SYN_RECEIVED
         call    signal_network_event
 
         ; increment SND.NXT in socket
-        add     esi, SOCKET.SND_NXT
+        add     esi, socket_t.send_next_seq
         call    inc_inet_esi
 
   .exit:
@@ -719,7 +719,7 @@ proc stateTCB_SYN_SENT stdcall, sockAddr:DWORD
         ; We are awaiting an ACK to our SYN, with a SYM
         ; Look at control flags - expecting an ACK
 
-        mov     al, [edx + 20 + TCP_PACKET.Flags]
+        mov     al, [edx + 20 + tcp_packet_t.flags]
         and     al, TH_SYN + TH_ACK
         cmp     al, TH_SYN + TH_ACK
         je      .syn_ack
@@ -727,22 +727,22 @@ proc stateTCB_SYN_SENT stdcall, sockAddr:DWORD
         test    al, TH_SYN
         jz      .exit
 
-        mov     [ebx + SOCKET.TCBState], TCB_SYN_RECEIVED
+        mov     [ebx + socket_t.tcb_state], TCB_SYN_RECEIVED
         push    TH_SYN + TH_ACK
         jmp     .send
 
   .syn_ack:
-        mov     [ebx + SOCKET.TCBState], TCB_ESTABLISHED
+        mov     [ebx + socket_t.tcb_state], TCB_ESTABLISHED
         push    TH_ACK
 
   .send:
         call    signal_network_event
         ; Store the recv.nxt field
-        mov     eax, [edx + 20 + TCP_PACKET.SequenceNumber]
+        mov     eax, [edx + 20 + tcp_packet_t.sequence_number]
 
         ; Update our recv.nxt field
-        mov     [ebx + SOCKET.RCV_NXT], eax
-        lea     esi, [ebx + SOCKET.RCV_NXT]
+        mov     [ebx + socket_t.recv_next_seq], eax
+        lea     esi, [ebx + socket_t.recv_next_seq]
         call    inc_inet_esi
 
         ; Send an ACK
@@ -762,7 +762,7 @@ proc stateTCB_SYN_SENT stdcall, sockAddr:DWORD
         mov     eax, NET1OUT_QUEUE
         mov     edx, [stack_ip]
         mov     ecx, [sockAddr]
-        cmp     edx, [ecx + SOCKET.RemoteIP]
+        cmp     edx, [ecx + socket_t.remote_ip]
         jne     .not_local
         mov     eax, IPIN_QUEUE
 
@@ -780,21 +780,21 @@ proc stateTCB_SYN_RECEIVED stdcall, sockAddr:DWORD
         ; For now, if the packet is an ACK, process it,
         ; If not, ignore it
 
-        test    [edx + 20 + TCP_PACKET.Flags], TH_RST
+        test    [edx + 20 + tcp_packet_t.flags], TH_RST
         jz      .check_ack
 
-        push    [ebx + SOCKET.OrigRemotePort] [ebx + SOCKET.OrigRemoteIP]
-        pop     [ebx + SOCKET.RemoteIP] [ebx + SOCKET.RemotePort]
+        push    [ebx + socket_t.orig_remote_port] [ebx + socket_t.orig_remote_ip]
+        pop     [ebx + socket_t.remote_ip] [ebx + socket_t.remote_port]
 
-        mov     [ebx + SOCKET.TCBState], TCB_LISTEN
+        mov     [ebx + socket_t.tcb_state], TCB_LISTEN
         jmp     .signal
 
   .check_ack:
         ; Look at control flags - expecting an ACK
-        test    [edx + 20 + TCP_PACKET.Flags], TH_ACK
+        test    [edx + 20 + tcp_packet_t.flags], TH_ACK
         jz      .exit
 
-        mov     [ebx + SOCKET.TCBState], TCB_ESTABLISHED
+        mov     [ebx + socket_t.tcb_state], TCB_ESTABLISHED
   .signal:
         call    signal_network_event
 
@@ -811,12 +811,12 @@ proc stateTCB_ESTABLISHED stdcall, sockAddr:DWORD
         ; recv.nxt is in dword[edx+24], in inet format
         ; recv seq is in [sktAddr]+56, in inet format
         ; just do a comparision
-        mov     eax, [ebx + SOCKET.RCV_NXT]
-        cmp     eax, [edx + 20 + TCP_PACKET.SequenceNumber]
+        mov     eax, [ebx + socket_t.recv_next_seq]
+        cmp     eax, [edx + 20 + tcp_packet_t.sequence_number]
         jne     .exit
 
         ; Did we receive a FIN or RST?
-        test    [edx + 20 + TCP_PACKET.Flags], TH_FIN + TH_RST
+        test    [edx + 20 + tcp_packet_t.flags], TH_FIN + TH_RST
         jz      .check_ack
 
         ; It was a fin or reset.
@@ -849,60 +849,60 @@ proc stateTCB_ESTABLISHED stdcall, sockAddr:DWORD
 
     @@: ; Send an ACK to that fin, and enter closewait state
 
-        mov     [ebx + SOCKET.TCBState], TCB_CLOSE_WAIT
-        test    [edx + 20 + TCP_PACKET.Flags], TH_RST
+        mov     [ebx + socket_t.tcb_state], TCB_CLOSE_WAIT
+        test    [edx + 20 + tcp_packet_t.flags], TH_RST
         je      @f
-        mov     [ebx + SOCKET.TCBState], TCB_CLOSED
+        mov     [ebx + socket_t.tcb_state], TCB_CLOSED
 
     @@: call    signal_network_event
-        lea     esi, [ebx + SOCKET.RCV_NXT]
+        lea     esi, [ebx + socket_t.recv_next_seq]
         mov     eax, [esi] ; save original
         call    inc_inet_esi
 ;       jmp     .ack ; NO, there may be data
 
   .check_ack:
         ; Check that we received an ACK
-        test    [edx + 20 + TCP_PACKET.Flags], TH_ACK
+        test    [edx + 20 + tcp_packet_t.flags], TH_ACK
         jz      .exit
 
         ; TODO - done, I think!
         ; First, look at the incoming window. If this is less than or equal to 1024,
         ; Set the socket window timer to 1. This will stop an additional packets being queued.
         ; ** I may need to tweak this value, since I do not know how many packets are already queued
-        mov     cx, [edx + 20 + TCP_PACKET.Window]
+        mov     cx, [edx + 20 + tcp_packet_t.window]
         xchg    cl, ch
         cmp     cx, 1024
         ja      @f
 
-        mov     [ebx + SOCKET.wndsizeTimer], 1
+        mov     [ebx + socket_t.window_size_timer], 1
 
     @@: ; OK, here is the deal
 
         ; Read the data bytes, store in socket buffer
-        movzx   ecx, [edx + IP_PACKET.TotalLength]
+        movzx   ecx, [edx + ip_packet_t.total_length]
         xchg    cl, ch
         sub     ecx, 40 ; Discard 40 bytes of header
         ja      .data ; Read data, if any
 
         ; If we had received a fin, we need to ACK it.
-        cmp     [ebx + SOCKET.TCBState], TCB_CLOSE_WAIT
+        cmp     [ebx + socket_t.tcb_state], TCB_CLOSE_WAIT
         je      .ack
         jmp     .exit
 
   .data:
         push    ebx
-        add     ebx, SOCKET.lock
+        add     ebx, socket_t.lock
         call    wait_mutex
         pop     ebx
 
         push    ecx
         push    ebx
-        mov     eax, [ebx + SOCKET.rxDataCount]
+        mov     eax, [ebx + socket_t.rx_data_cnt]
         add     eax, ecx
         cmp     eax, SOCKETBUFFSIZE - SOCKETHEADERSIZE
         ja      .overflow
 
-        mov     [ebx + SOCKET.rxDataCount], eax ; increment the count of bytes in buffer
+        mov     [ebx + socket_t.rx_data_cnt], eax ; increment the count of bytes in buffer
 
         ; point to the location to store the data
         lea     edi, [ebx + eax + SOCKETHEADERSIZE]
@@ -913,7 +913,7 @@ proc stateTCB_ESTABLISHED stdcall, sockAddr:DWORD
 
         cld
         rep     movsb ; copy the data across
-        mov     [ebx + SOCKET.lock], 0 ; release mutex
+        mov     [ebx + socket_t.lock], 0 ; release mutex
 
         ; flag an event to the application
         pop     ebx
@@ -922,7 +922,7 @@ proc stateTCB_ESTABLISHED stdcall, sockAddr:DWORD
         pop     ecx
 
         ; Update our recv.nxt field
-        lea     esi, [ebx + SOCKET.RCV_NXT]
+        lea     esi, [ebx + socket_t.recv_next_seq]
         call    add_inet_esi
 
   .ack:
@@ -944,7 +944,7 @@ proc stateTCB_ESTABLISHED stdcall, sockAddr:DWORD
 
         mov     edx, [stack_ip]
         mov     ecx, [sockAddr]
-        cmp     edx, [ecx + SOCKET.RemoteIP]
+        cmp     edx, [ecx + socket_t.remote_ip]
         jne     .not_local
         mov     eax, IPIN_QUEUE
 
@@ -960,28 +960,28 @@ proc stateTCB_ESTABLISHED stdcall, sockAddr:DWORD
         ; no place in buffer
         ; so simply restore stack and exit
         pop     eax ecx
-        mov     [ebx + SOCKET.lock], 0
+        mov     [ebx + socket_t.lock], 0
         ret
 endp
 
 proc stateTCB_FIN_WAIT_1 stdcall, sockAddr:DWORD
         ; We can either receive an ACK of a fin, or a fin
-        mov     al, [edx + 20 + TCP_PACKET.Flags]
+        mov     al, [edx + 20 + tcp_packet_t.flags]
         and     al, TH_FIN + TH_ACK
 
         cmp     al, TH_ACK
         jne     @f
 
         ; It was an ACK
-        mov     [ebx + SOCKET.TCBState], TCB_FIN_WAIT_2
+        mov     [ebx + socket_t.tcb_state], TCB_FIN_WAIT_2
         jmp     .exit
 
-    @@: mov     [ebx + SOCKET.TCBState], TCB_CLOSING
+    @@: mov     [ebx + socket_t.tcb_state], TCB_CLOSING
         cmp     al, TH_FIN
         je      @f
-        mov     [ebx + SOCKET.TCBState], TCB_TIMED_WAIT
+        mov     [ebx + socket_t.tcb_state], TCB_TIMED_WAIT
 
-    @@: lea     esi, [ebx + SOCKET.RCV_NXT]
+    @@: lea     esi, [ebx + socket_t.recv_next_seq]
         call    inc_inet_esi
 
         ; Send an ACK
@@ -1000,7 +1000,7 @@ proc stateTCB_FIN_WAIT_1 stdcall, sockAddr:DWORD
         mov     eax, NET1OUT_QUEUE
         mov     edx, [stack_ip]
         mov     ecx, [sockAddr]
-        cmp     edx, [ecx + SOCKET.RemoteIP]
+        cmp     edx, [ecx + socket_t.remote_ip]
         jne     .not_local
         mov     eax, IPIN_QUEUE
 
@@ -1015,13 +1015,13 @@ endp
 
 
 proc stateTCB_FIN_WAIT_2 stdcall, sockAddr:DWORD
-        test    [edx + 20 + TCP_PACKET.Flags], TH_FIN
+        test    [edx + 20 + tcp_packet_t.flags], TH_FIN
         jz      .exit
 
         ; Change state, as we have a fin
-        mov     [ebx + SOCKET.TCBState], TCB_TIMED_WAIT
+        mov     [ebx + socket_t.tcb_state], TCB_TIMED_WAIT
 
-        lea     esi, [ebx + SOCKET.RCV_NXT]
+        lea     esi, [ebx + socket_t.recv_next_seq]
         call    inc_inet_esi
 
         ; Send an ACK
@@ -1040,7 +1040,7 @@ proc stateTCB_FIN_WAIT_2 stdcall, sockAddr:DWORD
         mov     eax, NET1OUT_QUEUE
         mov     edx, [stack_ip]
         mov     ecx, [sockAddr]
-        cmp     edx, [ecx + SOCKET.RemoteIP]
+        cmp     edx, [ecx + socket_t.remote_ip]
         jne     .not_local
         mov     eax, IPIN_QUEUE
 
@@ -1061,10 +1061,10 @@ endp
 
 proc stateTCB_CLOSING stdcall, sockAddr:DWORD
         ; We can either receive an ACK of a fin, or a fin
-        test    [edx + 20 + TCP_PACKET.Flags], TH_ACK
+        test    [edx + 20 + tcp_packet_t.flags], TH_ACK
         jz      .exit
 
-        mov     [ebx + SOCKET.TCBState], TCB_TIMED_WAIT
+        mov     [ebx + socket_t.tcb_state], TCB_TIMED_WAIT
 
   .exit:
         ret
@@ -1072,7 +1072,7 @@ endp
 
 proc stateTCB_LAST_ACK stdcall, sockAddr:DWORD
         ; Look at control flags - expecting an ACK
-        test    [edx + 20 + TCP_PACKET.Flags], TH_ACK
+        test    [edx + 20 + tcp_packet_t.flags], TH_ACK
         jz      .exit
 
         ; delete the socket

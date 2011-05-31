@@ -103,9 +103,9 @@ iglobal
     dd szReservePortArea , r_f_port_area
     dd szBoot_Log        , boot_log
 
-    dd szMutexInit       , mutex_init            ;gcc fastcall
-    dd szMutexLock       , mutex_lock            ;gcc fastcall
-    dd szMutexUnlock     , mutex_unlock          ;gcc fastcall
+    dd szMutexInit       , mutex_init            ; gcc fastcall
+    dd szMutexLock       , mutex_lock            ; gcc fastcall
+    dd szMutexUnlock     , mutex_unlock          ; gcc fastcall
 
     dd szPciApi          , pci_api_drv
     dd szPciRead32       , pci_read32
@@ -115,43 +115,43 @@ iglobal
     dd szPciWrite16      , pci_write16
     dd szPciWrite32      , pci_write32
 
-    dd szAllocPage       , alloc_page            ;stdcall
-    dd szAllocPages      , alloc_pages           ;stdcall
+    dd szAllocPage       , alloc_page            ; stdcall
+    dd szAllocPages      , alloc_pages           ; stdcall
     dd szFreePage        , free_page
-    dd szMapPage         , map_page              ;stdcall
+    dd szMapPage         , map_page              ; stdcall
     dd szMapSpace        , map_space
-    dd szMapIoMem        , map_io_mem            ;stdcall
+    dd szMapIoMem        , map_io_mem            ; stdcall
     dd szGetPgAddr       , get_pg_addr
-    dd szCommitPages     , commit_pages          ;not implemented
+    dd szCommitPages     , commit_pages          ; not implemented
     dd szReleasePages    , release_pages
 
-    dd szAllocKernelSpace, alloc_kernel_space    ;stdcall
-    dd szFreeKernelSpace , free_kernel_space     ;stdcall
-    dd szKernelAlloc     , kernel_alloc          ;stdcall
-    dd szKernelFree      , kernel_free           ;stdcall
-    dd szUserAlloc       , user_alloc            ;stdcall
-    dd szUserFree        , user_free             ;stdcall
+    dd szAllocKernelSpace, alloc_kernel_space    ; stdcall
+    dd szFreeKernelSpace , free_kernel_space     ; stdcall
+    dd szKernelAlloc     , kernel_alloc          ; stdcall
+    dd szKernelFree      , kernel_free           ; stdcall
+    dd szUserAlloc       , user_alloc            ; stdcall
+    dd szUserFree        , user_free             ; stdcall
     dd szKmalloc         , malloc
     dd szKfree           , free
-    dd szCreateRingBuffer, create_ring_buffer    ;stdcall
+    dd szCreateRingBuffer, create_ring_buffer    ; stdcall
 
     dd szGetPid          , get_pid
     dd szCreateObject    , create_kernel_object
     dd szDestroyObject   , destroy_kernel_object
-    dd szCreateEvent     , create_event          ;see EVENT.inc for specification
-    dd szRaiseEvent      , raise_event           ;see EVENT.inc for specification
-    dd szWaitEvent       , wait_event            ;see EVENT.inc for specification
-    dd szDestroyEvent    , destroy_event         ;see EVENT.inc for specification
-    dd szClearEvent      , clear_event           ;see EVENT.inc for specification
+    dd szCreateEvent     , create_event          ; see event_t.inc for specification
+    dd szRaiseEvent      , raise_event           ; see event_t.inc for specification
+    dd szWaitEvent       , wait_event            ; see event_t.inc for specification
+    dd szDestroyEvent    , destroy_event         ; see event_t.inc for specification
+    dd szClearEvent      , clear_event           ; see event_t.inc for specification
 
-    dd szLoadCursor      , load_cursor           ;stdcall
+    dd szLoadCursor      , load_cursor           ; stdcall
 
     dd szSysMsgBoardStr  , sys_msg_board_str
     dd szSysMsgBoardChar , sys_msg_board
     dd szGetCurrentTask  , get_curr_task
-    dd szLoadFile        , load_file             ;retval eax, ebx
-    dd szSendEvent       , send_event            ;see EVENT.inc for specification
-    dd szSetMouseData    , set_mouse_data        ;stdcall
+    dd szLoadFile        , load_file             ; retval eax, ebx
+    dd szSendEvent       , send_event            ; see event_t.inc for specification
+    dd szSetMouseData    , set_mouse_data        ; stdcall
     dd szSleep           , delay_ms
     dd szGetTimerTicks   , get_timer_ticks
 

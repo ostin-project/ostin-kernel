@@ -435,10 +435,10 @@ proc new_mem_resize stdcall, new_size:dword
         mov     [new_size], edi
 
         mov     edx, [current_slot]
-        cmp     [edx + APPDATA.heap_base], 0
+        cmp     [edx + app_data_t.heap_base], 0
         jne     .exit
 
-        mov     esi, [edx + APPDATA.mem_size]
+        mov     esi, [edx + app_data_t.mem_size]
         add     esi, 4095
         and     esi, not 4095
 
@@ -553,10 +553,10 @@ update_mem_size:
         ;     ebx = new memory size
         ; destroys eax,ecx,edx
 
-        mov     [APPDATA.mem_size + edx], ebx
+        mov     [app_data_t.mem_size + edx], ebx
         ; search threads and update
         ; application memory size infomation
-        mov     ecx, [APPDATA.dir_table + edx]
+        mov     ecx, [app_data_t.dir_table + edx]
         mov     eax, 2
 
   .search_threads:
@@ -567,12 +567,12 @@ update_mem_size:
         jg      .search_threads_end
         mov     edx, eax
         shl     edx, 5
-        cmp     word[CURRENT_TASK + edx + TASKDATA.state], 9 ; if slot empty?
+        cmp     word[CURRENT_TASK + edx + task_data_t.state], 9 ; if slot empty?
         jz      .search_threads_next
         shl     edx, 3
-        cmp     [SLOT_BASE + edx + APPDATA.dir_table], ecx ; if it is our thread?
+        cmp     [SLOT_BASE + edx + app_data_t.dir_table], ecx ; if it is our thread?
         jnz     .search_threads_next
-        mov     [SLOT_BASE + edx + APPDATA.mem_size], ebx ; update memory size
+        mov     [SLOT_BASE + edx + app_data_t.mem_size], ebx ; update memory size
 
   .search_threads_next:
         inc     eax
@@ -616,7 +616,7 @@ proc page_fault_handler
         cmp     ebx, kernel_tabs
         jb      .alloc ; .app_tabs ; таблицы страниц приложения, просто создадим одну
 
-if 0 ;пока это просто лишнее
+if 0 ; пока это просто лишнее
 
         cmp     ebx, LFB_BASE
         jb      .core_tabs ; таблицы страниц ядра
@@ -682,21 +682,21 @@ end if
         and     ebx, not 0x0fff
         mov     eax, [CURRENT_TASK]
         shl     eax, 8
-        mov     eax, [SLOT_BASE + eax + APPDATA.dlls_list_ptr]
+        mov     eax, [SLOT_BASE + eax + app_data_t.dlls_list_ptr]
         test    eax, eax
         jz      .fail
-        mov     esi, [eax + HDLL.fd]
+        mov     esi, [eax + dll_handle_t.fd]
 
   .scan_hdll:
         cmp     esi, eax
         jz      .fail
         mov     edx, ebx
-        sub     edx, [esi + HDLL.base]
-        cmp     edx, [esi + HDLL.size]
+        sub     edx, [esi + dll_handle_t.base]
+        cmp     edx, [esi + dll_handle_t.size]
         jb      .fault_in_hdll
 
   .scan_hdll.next:
-        mov     esi, [esi + HDLL.fd]
+        mov     esi, [esi + dll_handle_t.fd]
         jmp     .scan_hdll
 
   .fault_in_hdll:
@@ -707,9 +707,9 @@ end if
         stdcall map_page, ebx, eax, PG_UW
         mov     edi, ebx
         mov     ecx, 1024
-        sub     ebx, [esi + HDLL.base]
-        mov     esi, [esi + HDLL.parent]
-        mov     esi, [esi + DLLDESCR.data]
+        sub     ebx, [esi + dll_handle_t.base]
+        mov     esi, [esi + dll_handle_t.parent]
+        mov     esi, [esi + dll_descriptor_t.data]
         add     esi, ebx
         rep     movsd
         jmp     .exit
@@ -721,7 +721,7 @@ end if
         test    eax, 12 ; U/S (+below)
         jnz     .fail ; приложение обратилось к памяти ядра
 ;       test    eax, 8
-;       jnz     .fail   ;установлен зарезервированный бит в таблицах страниц. добавлено в P4/Xeon
+;       jnz     .fail   ; установлен зарезервированный бит в таблицах страниц. добавлено в P4/Xeon
 
         ; попытка записи в защищённую страницу ядра
         cmp     ebx, tss.io_map_0
@@ -747,7 +747,7 @@ end if
         shr     ebx, 12
         mov     edx, [current_slot]
         or      eax, PG_SW
-        mov     [edx + APPDATA.io_map + ebx * 4], eax
+        mov     [edx + app_data_t.io_map + ebx * 4], eax
 
         add     esi, [default_io_map]
         mov     ecx, 4096 / 4
@@ -765,7 +765,7 @@ proc map_mem stdcall, lin_addr:dword, slot:dword, ofs:dword, buf_size:dword, req
 
         mov     eax, [slot]
         shl     eax, 8
-        mov     eax, [SLOT_BASE + eax + APPDATA.dir_table]
+        mov     eax, [SLOT_BASE + eax + app_data_t.dir_table]
         and     eax, 0xfffff000
 
         stdcall map_page, [ipc_pdir], eax, PG_UW
@@ -830,7 +830,7 @@ proc map_memEx stdcall, lin_addr:dword, slot:dword, ofs:dword, buf_size:dword, r
 
         mov     eax, [slot]
         shl     eax, 8
-        mov     eax, [SLOT_BASE + eax + APPDATA.dir_table]
+        mov     eax, [SLOT_BASE + eax + app_data_t.dir_table]
         and     eax, 0xfffff000
 
         stdcall map_page, [proc_mem_pdir], eax, PG_UW
@@ -918,20 +918,20 @@ proc safe_map_page stdcall, slot:dword, req_access:dword, ofs:dword
         push    ebx ecx
         mov     eax, [slot]
         shl     eax, 8
-        mov     eax, [SLOT_BASE + eax + APPDATA.dlls_list_ptr]
+        mov     eax, [SLOT_BASE + eax + app_data_t.dlls_list_ptr]
         test    eax, eax
         jz      .no_hdll
-        mov     ecx, [eax + HDLL.fd]
+        mov     ecx, [eax + dll_handle_t.fd]
 
   .scan_hdll:
         cmp     ecx, eax
         jz      .no_hdll
         mov     ebx, [ofs]
         and     ebx, not 0x0fff
-        sub     ebx, [ecx + HDLL.base]
-        cmp     ebx, [ecx + HDLL.size]
+        sub     ebx, [ecx + dll_handle_t.base]
+        cmp     ebx, [ecx + dll_handle_t.size]
         jb      .hdll_found
-        mov     ecx, [ecx + HDLL.fd]
+        mov     ecx, [ecx + dll_handle_t.fd]
         jmp     .scan_hdll
 
   .no_hdll:
@@ -942,8 +942,8 @@ proc safe_map_page stdcall, slot:dword, req_access:dword, ofs:dword
 
   .hdll_found:
         ; allocate page, save it in page table, map it, copy contents from base
-        mov     eax, [ecx + HDLL.parent]
-        add     ebx, [eax + DLLDESCR.data]
+        mov     eax, [ecx + dll_handle_t.parent]
+        add     ebx, [eax + dll_descriptor_t.data]
         call    alloc_page
         test    eax, eax
         jz      .no_hdll
@@ -962,7 +962,7 @@ proc safe_map_page stdcall, slot:dword, req_access:dword, ofs:dword
 endp
 
 sys_IPC:
-        ;input:
+        ; input:
         ;  ebx=1 - set ipc buffer area
         ;    ecx=address of buffer
         ;    edx=size of buffer
@@ -977,8 +977,8 @@ sys_IPC:
         mov     eax, [current_slot]
         pushf
         cli
-        mov     [eax + APPDATA.ipc_start], ecx ; set fields in extended information area
-        mov     [eax + APPDATA.ipc_size], edx
+        mov     [eax + app_data_t.ipc_start], ecx ; set fields in extended information area
+        mov     [eax + app_data_t.ipc_size], edx
 
         add     edx, ecx
         add     edx, 4095
@@ -1013,8 +1013,8 @@ sys_IPC:
 ;       mov     eax, [current_slot]
 ;       pushf
 ;       cli
-;       mov     [eax + APPDATA.ipc_start], ebx ; set fields in extended information area
-;       mov     [eax + APPDATA.ipc_size], ecx
+;       mov     [eax + app_data_t.ipc_start], ebx ; set fields in extended information area
+;       mov     [eax + app_data_t.ipc_size], ecx
 ;
 ;       add     ecx, ebx
 ;       add     ecx, 4095
@@ -1291,7 +1291,7 @@ endg
         test    eax, eax
         jz      @f
 
-        mov     [eax + SRV.entry], esi
+        mov     [eax + service_t.entry], esi
 
     @@: mov     [esp + 32], eax
         ret
@@ -1315,8 +1315,8 @@ endg
 
   .24:
         mov     eax, [current_slot]
-        xchg    ecx, [eax + APPDATA.exc_handler]
-        xchg    edx, [eax + APPDATA.except_mask]
+        xchg    ecx, [eax + app_data_t.exc_handler]
+        xchg    edx, [eax + app_data_t.except_mask]
         mov     [esp + 32], ecx ; reg_eax+8
         mov     [esp + 20], edx ; reg_ebx+8
         ret
@@ -1325,10 +1325,10 @@ endg
         cmp     ecx, 32
         jae     .fail
         mov     eax, [current_slot]
-        btr     [eax + APPDATA.except_mask], ecx
+        btr     [eax + app_data_t.except_mask], ecx
         setc    byte[esp + 32]
         jecxz   @f
-        bts     [eax + APPDATA.except_mask], ecx
+        bts     [eax + app_data_t.except_mask], ecx
 
     @@: ret
 
@@ -1348,7 +1348,7 @@ proc load_pe_driver stdcall, file:dword
         test    eax, eax
         jz      .fail
 
-        mov     [eax + SRV.entry], esi
+        mov     [eax + Service.entry], esi
         ret
 
   .fail:

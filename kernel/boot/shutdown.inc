@@ -26,7 +26,7 @@ pr_mode_exit:
         pop     ds
 
         lidt    [old_ints_h]
-        ;remap IRQs
+        ; remap IRQs
         mov     al, 0x11
         out     0x20, al
         call    rdelay
@@ -79,7 +79,7 @@ nbw2:
         in      al, 0x60
         cmp     al, bl
         je      nbw2
-        cmp     al, 240 ;ax, 240
+        cmp     al, 240 ; ax, 240
         jne     nbw31
         mov     al, bl
         dec     ax

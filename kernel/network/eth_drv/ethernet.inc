@@ -22,15 +22,15 @@ ETHER_IP   equ 0x0008 ; Reversed from 0800 for intel
 ETHER_ARP  equ 0x0608 ; Reversed from 0806 for intel
 ETHER_RARP equ 0x3580
 
-struc ETH_FRAME
-{  .DstMAC       dp ? ; destination MAC-address [6 bytes]
-   .SrcMAC       dp ? ; source MAC-address [6 bytes]
-   .Type         dw ? ; type of the upper-layer protocol [2 bytes]
-   .Data         db ? ; data [46-1500 bytes]
-}
+struct eth_frame_t
+  dst_mac dp ? ; destination MAC-address [6 bytes]
+  src_mac dp ? ; source MAC-address [6 bytes]
+  type    dw ? ; type of the upper-layer protocol [2 bytes]
+  data    db ? ; data [46-1500 bytes]
+ends
 
 virtual at Ether_buffer
-  ETH_FRAME ETH_FRAME
+  ETH_FRAME eth_frame_t
 end virtual
 
 ; Some useful information on data structures
@@ -358,7 +358,7 @@ ether_IP_handler:
         mov     edi, eax
 
         ; get a pointer to the start of the DATA
-        mov     esi, ETH_FRAME.Data
+        mov     esi, ETH_FRAME.data
 
         ; Now store it all away
         mov     ecx, IPBUFFSIZE / 4 ; Copy all of the available data across - worse case
@@ -429,7 +429,7 @@ eth_rx:
 
         ; Check the protocol. Call appropriate handler
 
-        mov     ax, [ETH_FRAME.Type] ; The address of the protocol word
+        mov     ax, [ETH_FRAME.type] ; The address of the protocol word
 
         cmp     ax, ETHER_IP
         je      .is_ip ; It's IP

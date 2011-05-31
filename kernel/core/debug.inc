@@ -40,7 +40,7 @@ debug_set_event_data:
         ; destroys eax
 
         mov     eax, [current_slot]
-        mov     [eax + APPDATA.dbg_event_mem], ecx
+        mov     [eax + app_data_t.dbg_event_mem], ecx
         ret
 
 get_debuggee_slot:
@@ -57,7 +57,7 @@ get_debuggee_slot:
         shl     eax, 5
         push    ebx
         mov     ebx, [CURRENT_TASK]
-        cmp     [SLOT_BASE + eax * 8 + APPDATA.debugger_slot], ebx
+        cmp     [SLOT_BASE + eax * 8 + app_data_t.debugger_slot], ebx
         pop     ebx
         jnz     .ret_bad
 ;       clc     ; automatically
@@ -73,7 +73,7 @@ debug_detach:
 
         call    get_debuggee_slot
         jc      .ret
-        and     dword[eax * 8 + SLOT_BASE + APPDATA.debugger_slot], 0
+        and     dword[eax * 8 + SLOT_BASE + app_data_t.debugger_slot], 0
         call    do_resume
 
   .ret:
@@ -101,7 +101,7 @@ debug_suspend:
         call    pid_to_slot
         shl     eax, 5
         jz      .ret
-        mov     cl, [CURRENT_TASK + eax + TASKDATA.state] ; process state
+        mov     cl, [CURRENT_TASK + eax + task_data_t.state] ; process state
         test    cl, cl
         jz      .1
         cmp     cl, 5
@@ -109,7 +109,7 @@ debug_suspend:
         mov     cl, 2
 
   .2:
-        mov     [CURRENT_TASK + eax + TASKDATA.state], cl
+        mov     [CURRENT_TASK + eax + task_data_t.state], cl
 
   .ret:
         sti
@@ -120,7 +120,7 @@ debug_suspend:
         jmp     .2
 
 do_resume:
-        mov     cl, [CURRENT_TASK + eax + TASKDATA.state]
+        mov     cl, [CURRENT_TASK + eax + task_data_t.state]
         cmp     cl, 1
         jz      .1
         cmp     cl, 2
@@ -128,7 +128,7 @@ do_resume:
         mov     cl, 5
 
   .2:
-        mov     [CURRENT_TASK + eax + TASKDATA.state], cl
+        mov     [CURRENT_TASK + eax + task_data_t.state], cl
 
   .ret:
         ret
@@ -170,7 +170,7 @@ debug_getcontext:
         call    get_debuggee_slot
         jc      .ret
         mov     edi, esi
-        mov eax, [eax * 8 + SLOT_BASE + APPDATA.pl0_stack]
+        mov eax, [eax * 8 + SLOT_BASE + app_data_t.pl0_stack]
         lea esi, [eax + RING0_STACK_SIZE]
 
   .ring0:
@@ -223,7 +223,7 @@ debug_setcontext:
         call    get_debuggee_slot
         jc      .stiret
 ;       mov     esi, edx
-        mov eax, [eax * 8 + SLOT_BASE + APPDATA.pl0_stack]
+        mov eax, [eax * 8 + SLOT_BASE + app_data_t.pl0_stack]
         lea edi, [eax + RING0_STACK_SIZE]
 
   .ring0:
@@ -261,7 +261,7 @@ debug_set_drx:
         call    get_debuggee_slot
         jc      .errret
         mov     ebp, eax
-        lea     eax, [eax * 8 + SLOT_BASE + APPDATA.dbg_regs]
+        lea     eax, [eax * 8 + SLOT_BASE + app_data_t.dbg_regs]
         ; [eax]=dr0, [eax+4]=dr1, [eax+8]=dr2, [eax+C]=dr3
         ; [eax+10]=dr7
         cmp     esi, OS_BASE
@@ -269,7 +269,7 @@ debug_set_drx:
         cmp     dl, 3
         ja      .errret
         mov     ecx, dr7
-        ;fix me
+        ; fix me
         xchg    ecx, edx
         shr     edx, cl
         shr     edx, cl
@@ -287,8 +287,8 @@ debug_set_drx:
         test    byte[eax + 0x10], 0x55
         jnz     .okret
 ;       imul    eax, ebp, tss_step/32
-;       and     byte[eax + tss_data + TSS._trap], not 1
-        and     [ebp * 8 + SLOT_BASE + APPDATA.dbg_state], not 1
+;       and     byte[eax + tss_data + tss_t._trap], not 1
+        and     [ebp * 8 + SLOT_BASE + app_data_t.dbg_state], not 1
 
   .okret:
         and     dword[esp + 32], 0
@@ -338,8 +338,8 @@ debug_set_drx:
         and     [eax + 0x10 + 2], bx
         or      [eax + 0x10 + 2], dx ; set R/W and LEN fields
 ;       imul    eax, ebp, tss_step / 32
-;       or      byte[eax + tss_data + TSS._trap], 1
-        or      [ebp * 8 + SLOT_BASE + APPDATA.dbg_state], 1
+;       or      byte[eax + tss_data + tss_t._trap], 1
+        or      [ebp * 8 + SLOT_BASE + app_data_t.dbg_state], 1
         jmp     .okret
 
 debug_read_process_memory:
@@ -409,7 +409,7 @@ debugger_notify:
   .1:
         mov     eax, ebp
         shl     eax, 8
-        mov     esi, [SLOT_BASE + eax + APPDATA.dbg_event_mem]
+        mov     esi, [SLOT_BASE + eax + app_data_t.dbg_event_mem]
         test    esi, esi
         jz      .ret
         ; read buffer header
@@ -467,7 +467,7 @@ debugger_notify:
         ; new debug event
         mov     eax, ebp
         shl     eax, 8
-        or      byte[SLOT_BASE + eax + APPDATA.event_mask + 1], 1 ; set flag 0x100
+        or      byte[SLOT_BASE + eax + app_data_t.event_mask + 1], 1 ; set flag 0x100
 
   .ret:
         ret

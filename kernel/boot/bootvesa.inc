@@ -14,75 +14,75 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-struct VBE_VGAInfo
-  VESASignature     dd ?   ; char
-  VESAVersion       dw ?   ; short
-  OemStringPtr      dd ?   ; char *
-  Capabilities      dd ?   ; ulong
-  VideoModePtr      dd ?   ; ulong
-  TotalMemory       dw ?   ; short
+struct vbe_vga_info_t
+  vesa_signature       dd ?   ; char
+  vesa_version         dw ?   ; short
+  oem_string_ptr       dd ?   ; char *
+  capabilities         dd ?   ; ulong
+  video_mode_ptr       dd ?   ; ulong
+  total_memory         dw ?   ; short
   ; VBE 2.0+
-  OemSoftwareRev    db ?   ; short
-  OemVendorNamePtr  dw ?   ; char *
-  OemProductNamePtr dw ?   ; char *
-  OemProductRevPtr  dw ?   ; char *
-                    rb 222 ; char
-  OemData           rb 256 ; char
+  oem_software_rev     db ?   ; short
+  oem_vendor_name_ptr  dw ?   ; char *
+  oem_product_name_ptr dw ?   ; char *
+  oem_product_rev_ptr  dw ?   ; char *
+                       rb 222 ; char
+  oem_data             rb 256 ; char
 ends
 
-struct VBE_ModeInfo
-  ModeAttributes         dw ?   ; short
-  WinAAttributes         db ?   ; char
-  WinBAttributes         db ?   ; char
-  WinGranularity         dw ?   ; short
-  WinSize                dw ?   ; short
-  WinASegment            dw ?   ; ushort
-  WinBSegment            dw ?   ; ushort
-  WinFuncPtr             dd ?   ; void *
-  BytesPerScanLine       dw ?   ; short
-  XRes                   dw ?   ; short
-  YRes                   dw ?   ; short
-  XCharSize              db ?   ; char
-  YCharSize              db ?   ; char
-  NumberOfPlanes         db ?   ; char
-  BitsPerPixel           db ?   ; char
-  NumberOfBanks          db ?   ; char
-  MemoryModel            db ?   ; char
-  BankSize               db ?   ; char
-  NumberOfImagePages     db ?   ; char
-                         db ?   ; char
-  RedMaskSize            db ?   ; char
-  RedFieldPosition       db ?   ; char
-  GreenMaskSize          db ?   ; char
-  GreenFieldPosition     db ?   ; char
-  BlueMaskSize           db ?   ; char
-  BlueFieldPosition      db ?   ; char
-  RsvedMaskSize          db ?   ; char
-  RsvedFieldPosition     db ?   ; char
-  DirectColorModeInfo    db ?   ; char
+struct vbe_mode_info_t
+  mode_attributes            dw ?   ; short
+  win_a_attributes           db ?   ; char
+  win_b_attributes           db ?   ; char
+  win_granularity            dw ?   ; short
+  win_size                   dw ?   ; short
+  win_a_segment              dw ?   ; ushort
+  win_b_segment              dw ?   ; ushort
+  win_func_ptr               dd ?   ; void *
+  bytes_per_scanline         dw ?   ; short
+  x_res                      dw ?   ; short
+  y_res                      dw ?   ; short
+  x_char_size                db ?   ; char
+  y_char_size                db ?   ; char
+  number_of_planes           db ?   ; char
+  bits_per_pixel             db ?   ; char
+  number_of_banks            db ?   ; char
+  memory_model               db ?   ; char
+  bank_size                  db ?   ; char
+  number_of_image_pages      db ?   ; char
+                             db ?   ; char
+  red_mask_size              db ?   ; char
+  red_field_position         db ?   ; char
+  green_mask_size            db ?   ; char
+  green_field_position       db ?   ; char
+  blue_mask_size             db ?   ; char
+  blue_field_position        db ?   ; char
+  rsved_mask_size            db ?   ; char
+  rsved_field_position       db ?   ; char
+  direct_color_mode_info     db ?   ; char
   ; VBE 2.0+
-  PhysBasePtr            dd ?   ; ulong
-  OffScreenMemOffset     dd ?   ; ulong
-  OffScreenMemSize       dw ?   ; short
+  phys_base_ptr              dd ?   ; ulong
+  offscreen_mem_offset       dd ?   ; ulong
+  offscreen_mem_size         dw ?   ; short
   ; VBE 3.0+
-  LinbytesPerScanLine    dw ?   ; short
-  BankNumberOfImagePages db ?   ; char
-  LinNumberOfImagePages  db ?   ; char
-  LinRedMaskSize         db ?   ; char
-  LinRedFieldPosition    db ?   ; char
-  LingreenMaskSize       db ?   ; char
-  LinGreenFieldPosition  db ?   ; char
-  LinBlueMaskSize        db ?   ; char
-  LinBlueFieldPosition   db ?   ; char
-  LinRsvdMaskSize        db ?   ; char
-  LinRsvdFieldPosition   db ?   ; char
-  MaxPixelClock          dd ?   ; ulong
-                         rb 190 ; char
+  lin_bytes_per_scanline     dw ?   ; short
+  bank_number_of_image_pages db ?   ; char
+  lin_number_of_image_pages  db ?   ; char
+  lin_red_mask_size          db ?   ; char
+  lin_red_field_position     db ?   ; char
+  lin_green_mask_size        db ?   ; char
+  lin_green_field_position   db ?   ; char
+  lin_blue_mask_size         db ?   ; char
+  lin_blue_field_position    db ?   ; char
+  lin_rsvd_mask_size         db ?   ; char
+  lin_rsvd_field_position    db ?   ; char
+  max_pixel_clock            dd ?   ; ulong
+                             rb 190 ; char
 ends
 
 virtual at 0xa000
-  vi VBE_VGAInfo
-  mi VBE_ModeInfo
+  vi vbe_vga_info_t
+  mi vbe_mode_info_t
 
   modes_table:
 end virtual
@@ -126,7 +126,7 @@ int2strnz:
         ret
 
 ;-------------------------------------------------------
-;Write message about incorrect v_mode and write message about jmp on swith v_mode
+; Write message about incorrect v_mode and write message about jmp on swith v_mode
 v_mode_error:
         _setcursor 19, 2
         mov     si, fatalsel
@@ -143,22 +143,22 @@ v_mode_error:
 print_vesa_info:
         _setcursor 5, 2
 
-        mov     [es:vi.VESASignature], 'VBE2'
+        mov     [es:vi.vesa_signature], 'VBE2'
         mov     ax, 0x4f00
         mov     di, vi ;0xa000
         int     0x10
         or      ah, ah
         jz      @f
-        mov     [es:vi.VESASignature], 'VESA'
+        mov     [es:vi.vesa_signature], 'VESA'
         mov     ax, 0x4f00
         mov     di, vi
         int     0x10
         or      ah, ah
         jnz     .exit
 
-    @@: cmp     [es:vi.VESASignature], 'VESA'
+    @@: cmp     [es:vi.vesa_signature], 'VESA'
         jne     .exit
-        cmp     [es:vi.VESAVersion], 0x0100
+        cmp     [es:vi.vesa_version], 0x0100
         jb      .exit
         jmp     .vesaok2
 
@@ -168,7 +168,7 @@ print_vesa_info:
         ret
 
   .vesaok2:
-        mov     ax, [es:vi.VESAVersion]
+        mov     ax, [es:vi.vesa_version]
         add     ax, '00'
 
         mov     [s_vesa.ver], ah
@@ -177,11 +177,11 @@ print_vesa_info:
         call    printplain
 
         _setcursor 4, 2
-        mov     si, word[es:vi.OemStringPtr]
+        mov     si, word[es:vi.oem_string_ptr]
         mov     di, si
 
         push    ds
-        mov     ds, word[es:vi.OemStringPtr + 2]
+        mov     ds, word[es:vi.oem_string_ptr + 2]
         call    printplain
         pop     ds
 
@@ -194,7 +194,7 @@ calc_vmodes_table:
 ;       push    0
 ;       pop     es
 
-        lfs     si, [es:vi.VideoModePtr]
+        lfs     si, [es:vi.video_mode_ptr]
 
         mov     bx, modes_table
         ; save no vesa mode of work 320x200, EGA/CGA 256 цветов and 640x480, VGA 16 цветов
@@ -219,36 +219,36 @@ calc_vmodes_table:
         or      ah, ah
         jnz     .modes_ok.2 ; vesa_info.exit
 
-        test    [es:mi.ModeAttributes], 00000001b ; videomode support?
+        test    [es:mi.mode_attributes], 00000001b ; videomode support?
         jz      @f
-        test    [es:mi.ModeAttributes], 00010000b ; picture?
+        test    [es:mi.mode_attributes], 00010000b ; picture?
         jz      @f
-        test    [es:mi.ModeAttributes], 10000000b ; LFB?
+        test    [es:mi.mode_attributes], 10000000b ; LFB?
         jz      @f
 
-        cmp     [es:mi.BitsPerPixel], 24 ; It show only videomodes to have support 24 and 32 bpp
+        cmp     [es:mi.bits_per_pixel], 24 ; It show only videomodes to have support 24 and 32 bpp
         jb      @f
 
-;       cmp     [es:mi.BitsPerPixel], 16
+;       cmp     [es:mi.bits_per_pixel], 16
 ;       jne     .l0
-;       cmp     [es:mi.GreenMaskSize], 5
+;       cmp     [es:mi.green_mask_size], 5
 ;       jne     .l0
-;       mov     [es:mi.BitsPerPixel], 15
+;       mov     [es:mi.bits_per_pixel], 15
 
 
   .l0:
-        cmp     [es:mi.XRes], 640
+        cmp     [es:mi.x_res], 640
         jb      @f
-        cmp     [es:mi.YRes], 480
+        cmp     [es:mi.y_res], 480
         jb      @f
-;       cmp     [es:mi.BitsPerPixel],8
+;       cmp     [es:mi.bits_per_pixel],8
 ;       jb      @f
 
-        mov     ax, [es:mi.XRes]
+        mov     ax, [es:mi.x_res]
         mov     [es:bx + 0], ax ; +0[2] : resolution X
-        mov     ax, [es:mi.YRes]
+        mov     ax, [es:mi.y_res]
         mov     [es:bx + 2], ax ; +2[2] : resolution Y
-        mov     ax, [es:mi.ModeAttributes]
+        mov     ax, [es:mi.mode_attributes]
         mov     [es:bx + 4], ax ; +4[2] : attributes
 
         cmp     [s_vesa.ver], '2'
@@ -258,7 +258,7 @@ calc_vmodes_table:
 
   .lp1:
         mov     [es:bx + 6], cx ; +6 : mode number
-        movzx   ax, [es:mi.BitsPerPixel]
+        movzx   ax, [es:mi.bits_per_pixel]
         mov     word[es:bx + 8], ax ; +8 : bits per pixel
         add     bx, size_of_step ; size of record
 
@@ -269,7 +269,7 @@ calc_vmodes_table:
         mov     word[es:bx], -1 ; end video table
         mov     word[end_cursor], bx ; save end cursor position
 
-        ;Sort array
+        ; Sort array
 ;       mov     si, modes_table
 ;
 ; .new_mode:
@@ -675,10 +675,10 @@ draw_vmodes_table:
         jmp     ._sh
 
 ;-----------------------------------------------------------------------------
-;Clear arrea of current video page (0xb800)
+; Clear arrea of current video page (0xb800)
 clear_vmodes_table:
         pusha
-       ; draw frames
+        ; draw frames
         push    es
         push    0xb800
         pop     es
@@ -730,18 +730,18 @@ set_vmode:
         mov     di, mi ; 0xa000
         int     0x10
         ; LFB
-        mov     eax, [es:mi.PhysBasePtr] ; di + 0x28]
+        mov     eax, [es:mi.phys_base_ptr] ; di + 0x28]
         mov     [es:BOOT_LFB], eax
         ; ---- vbe voodoo
         BytesPerLine equ 0x10
         mov     ax, [es:di + BytesPerLine]
         mov     [es:BOOT_SCANLINE], ax
         ; BPP
-        cmp     [es:mi.BitsPerPixel], 16
+        cmp     [es:mi.bits_per_pixel], 16
         jne     .l0
-        cmp     [es:mi.GreenMaskSize], 5
+        cmp     [es:mi.green_mask_size], 5
         jne     .l0
-        mov     [es:mi.BitsPerPixel], 15
+        mov     [es:mi.bits_per_pixel], 15
 
   .l0:
         mov     al, byte[es:di + 0x19]

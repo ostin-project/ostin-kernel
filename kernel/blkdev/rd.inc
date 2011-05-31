@@ -103,7 +103,7 @@ ramdisk_free_space:
         jnz     .rdfs1
 
   .rdfs2:
-        shl     ebx, 9 ;free clusters*512
+        shl     ebx, 9 ; free clusters*512
         mov     edi, ebx
 
         pop     ecx ebx eax
@@ -167,7 +167,7 @@ fileread:
         inc     ebx
 
   .frfl5:
-        test    ecx, ecx ;if ecx=0 - set to 1
+        test    ecx, ecx ; if ecx=0 - set to 1
         jnz     .frfl6
         inc     ecx
 
@@ -187,7 +187,7 @@ fileread:
         ret
 
   .fr_do:
-        ;reading rootdir
+        ; reading rootdir
         mov     edi, edx
         dec     ebx
         push    edx

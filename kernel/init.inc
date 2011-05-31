@@ -21,7 +21,7 @@ MEM_UC equ 0 ; uncached memory
 align 4
 proc mem_test
         ; if we have BIOS with fn E820, skip the test
-        cmp     dword[BOOT_VAR - OS_BASE + 0x9100], 0
+        cmp     [BOOT_VAR - OS_BASE + BOOT_PHOENIX_SMAP_CNT], 0
         jnz     .ret
 
         mov     eax, cr0
@@ -34,19 +34,19 @@ proc mem_test
         mov     ebx, 'TEST'
 
     @@: add     edi, 0x100000
-        xchg    ebx, dword[edi]
+        xchg    ebx, [edi]
         cmp     dword[edi], 'TEST'
-        xchg    ebx, dword[edi]
+        xchg    ebx, [edi]
         je      @b
 
         and     eax, not (CR0_CD + CR0_NW) ; enable caching
         mov     cr0, eax
-        inc     dword[BOOT_VAR - OS_BASE + 0x9100]
+        inc     [BOOT_VAR - OS_BASE + BOOT_PHOENIX_SMAP_CNT]
         xor     eax, eax
-        mov     [BOOT_VAR - OS_BASE + 0x9104], eax
-        mov     [BOOT_VAR - OS_BASE + 0x9108], eax
-        mov     [BOOT_VAR - OS_BASE + 0x910c], edi
-        mov     [BOOT_VAR - OS_BASE + 0x9110], eax
+        mov     dword[BOOT_VAR - OS_BASE + BOOT_PHOENIX_SMAP + phoenix_smap_addr_range_t.offset], eax
+        mov     dword[BOOT_VAR - OS_BASE + BOOT_PHOENIX_SMAP + phoenix_smap_addr_range_t.offset + 4], eax
+        mov     dword[BOOT_VAR - OS_BASE + BOOT_PHOENIX_SMAP + phoenix_smap_addr_range_t.length], edi
+        mov     dword[BOOT_VAR - OS_BASE + BOOT_PHOENIX_SMAP + phoenix_smap_addr_range_t.length + 4], eax
 
   .ret:
         ret
@@ -55,7 +55,7 @@ endp
 align 4
 proc init_mem
         ; calculate maximum allocatable address and number of allocatable pages
-        mov     edi, BOOT_VAR - OS_BASE + 0x9104
+        mov     edi, BOOT_VAR - OS_BASE + BOOT_PHOENIX_SMAP
         mov     ecx, [edi - 4]
         xor     esi, esi ; esi will hold total amount of memory
         xor     edx, edx ; edx will hold maximum allocatable address
@@ -67,21 +67,21 @@ proc init_mem
         jz      @f
         neg     eax
         and     eax, 0x0fff
-        add     [edi], eax
-        adc     dword[edi + 4], 0
-        sub     [edi + 8], eax
-        sbb     dword[edi + 12], 0
+        add     dword[edi + phoenix_smap_addr_range_t.offset], eax
+        adc     dword[edi + phoenix_smap_addr_range_t.offset + 4], 0
+        sub     dword[edi + phoenix_smap_addr_range_t.length], eax
+        sbb     dword[edi + phoenix_smap_addr_range_t.length + 4], 0
         jc      .unusable
 
-    @@: and     dword[edi + 8], not 0x0fff
+    @@: and     dword[edi + phoenix_smap_addr_range_t.length], not 0x0fff
         jz      .unusable
         ; ignore memory after 4 Gb
-        cmp     dword[edi + 4], 0
+        cmp     dword[edi + phoenix_smap_addr_range_t.offset + 4], 0
         jnz     .unusable
-        mov     eax, [edi]
-        cmp     dword[edi + 12], 0
+        mov     eax, dword[edi + phoenix_smap_addr_range_t.offset]
+        cmp     dword[edi + phoenix_smap_addr_range_t.length + 4], 0
         jnz     .overflow
-        add     eax, [edi + 8]
+        add     eax, dword[edi + phoenix_smap_addr_range_t.length]
         jnc     @f
 
   .overflow:
@@ -92,15 +92,15 @@ proc init_mem
         mov     edx, eax
 
     @@: sub     eax, [edi]
-        mov     [edi + 8], eax
+        mov     dword[edi + phoenix_smap_addr_range_t.length], eax
         add     esi, eax
         jmp     .usable
 
   .unusable:
-        and     dword[edi + 8], 0
+        and     dword[edi + phoenix_smap_addr_range_t.length], 0
 
   .usable:
-        add     edi, 20
+        add     edi, sizeof.phoenix_smap_addr_range_t
         loop    .calcmax
 
   .calculated:
@@ -207,14 +207,14 @@ proc init_page_map
         rep     stosd
 
         ; scan through memory map and mark free areas as available
-        mov     ebx, BOOT_VAR - OS_BASE + 0x9104
+        mov     ebx, BOOT_VAR - OS_BASE + BOOT_PHOENIX_SMAP
         mov     edx, [ebx - 4]
 
   .scanmap:
-        mov     ecx, [ebx + 8]
+        mov     ecx, dword[ebx + phoenix_smap_addr_range_t.length]
         shr     ecx, 12 ; ecx = number of pages
         jz      .next
-        mov     edi, [ebx]
+        mov     edi, dword[ebx + phoenix_smap_addr_range_t.offset]
         shr     edi, 12 ; edi = first page
         mov     eax, edi
         shr     edi, 5
@@ -255,7 +255,7 @@ proc init_page_map
         loop    @b
 
   .next:
-        add     ebx, 20
+        add     ebx, sizeof.phoenix_smap_addr_range_t
         dec     edx
         jnz     .scanmap
 

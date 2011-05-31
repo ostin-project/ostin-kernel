@@ -887,8 +887,8 @@ bd_write_cache_chain:
         jmp     hd_write_error
 
 uglobal
-  int13_regs_in  rb sizeof.v86_regs
-  int13_regs_out rb sizeof.v86_regs
+  int13_regs_in  rb sizeof.v86_regs_t
+  int13_regs_out rb sizeof.v86_regs_t
 endg
 
 int13_call:
@@ -903,14 +903,14 @@ int13_call:
         push    ebx ecx esi edi
         mov     ebx, int13_regs_in
         mov     edi, ebx
-        mov     ecx, sizeof.v86_regs / 4
+        mov     ecx, sizeof.v86_regs_t / 4
         xor     eax, eax
         rep     stosd
-        mov     byte[ebx + v86_regs.eax + 1], dl
+        mov     byte[ebx + v86_regs_t.eax + 1], dl
         mov     eax, [hdpos]
         lea     eax, [BiosDisksData + (eax - 0x80) * 4]
         mov     dl, [eax]
-        mov     byte[ebx + v86_regs.edx], dl
+        mov     byte[ebx + v86_regs_t.edx], dl
         movzx   edx, byte[eax + 1]
 ;       mov     dl, 5
         test    edx, edx
@@ -923,11 +923,11 @@ int13_call:
         stdcall enable_irq, edx
         popad
 
-    @@: mov     word[ebx + v86_regs.esi], 0x510
-        mov     word[ebx + v86_regs.ss], 0x9000
-        mov     word[ebx + v86_regs.esp], 0xa000
-        mov     word[ebx + v86_regs.eip], 0x500
-        mov     [ebx + v86_regs.eflags], 0x20200
+    @@: mov     word[ebx + v86_regs_t.esi], 0x510
+        mov     word[ebx + v86_regs_t.ss], 0x9000
+        mov     word[ebx + v86_regs_t.esp], 0xa000
+        mov     word[ebx + v86_regs_t.eip], 0x500
+        mov     [ebx + v86_regs_t.eflags], 0x20200
         mov     esi, [sys_v86_machine]
         mov     ecx, 0x502
         push    fs
@@ -936,7 +936,7 @@ int13_call:
         and     [bios_hdpos], 0
         pop     edi esi ecx ebx
         movzx   edx, byte[OS_BASE + 0x512]
-        test    byte[int13_regs_out + v86_regs.eflags], 1
+        test    byte[int13_regs_out + v86_regs_t.eflags], 1
         jnz     @f
         mov     edx, ecx
 

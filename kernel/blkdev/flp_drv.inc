@@ -22,7 +22,7 @@
 
 ;give_back_application_data: ; переслать приложению
 ;       mov     edi, [TASK_BASE]
-;       mov     edi, [edi + TASKDATA.mem_start]
+;       mov     edi, [edi + task_data_t.mem_start]
 ;       add     edi, ecx
 give_back_application_data_1:
         mov     esi, FDD_BUFF ; FDD_DataBuffer ; 0x40000
@@ -32,9 +32,9 @@ give_back_application_data_1:
         rep     movsd
         ret
 
-;take_data_from_application:   ; взять из приложени
+;take_data_from_application: ; взять из приложени
 ;       mov     esi, [TASK_BASE]
-;       mov     esi, [esi + TASKDATA.mem_start]
+;       mov     esi, [esi + task_data_t.mem_start]
 ;       add     esi, ecx
 take_data_from_application_1:
         mov     edi, FDD_BUFF ; FDD_DataBuffer ; 0x40000
@@ -219,11 +219,11 @@ WaitFDCInterrupt:
   .TestRS_2:
         ; Ожидать установки флага прерывания НГМД
         cmp     [FDD_IntFlag], 0
-        jnz     .End_7           ;прерывание произошло
+        jnz     .End_7 ; прерывание произошло
         call    change_task
         mov     eax, [timer_ticks]
         sub     eax, [TickCounter]
-        cmp     eax, 50 ; 25 ;5 ; ожидать 5 тиков
+        cmp     eax, 50 ; 25 ; 5 ; ожидать 5 тиков
 ;       jl      .TestRS_2
         jb      .TestRS_2
         ; Ошибка тайм-аута
@@ -257,7 +257,7 @@ FDDMotorON:
 
   .FDDMotorON_B:
 ;       call    FDDMotorOFF_A
-        mov     al, 2dh    ; Floppy B
+        mov     al, 0x2d ; Floppy B
 
   .FDDMotorON_1:
         out     dx, al
@@ -580,7 +580,7 @@ WriteSector:
         jne     .Exit_3
         ; Считываем статус завершения операции
         call    GetStatusInfo
-        test    [FDC_ST0], 11000000b  ;11011000b
+        test    [FDC_ST0], 11000000b ; 11011000b
         jnz     .Err_2
         mov     [FDC_Status], FDC_Normal
         jmp     .Exit_3

@@ -41,7 +41,7 @@ start_wait=$
 ok=$
   push eax
   mov  eax,dword [TASK_BASE+second_base_address]
-  mov  eax,[eax+TASKDATA.pid]
+  mov  eax,[eax+task_data_t.pid]
   mov  [name],eax
   pop  eax
   sti
@@ -79,7 +79,7 @@ macro WaitSimpleCriticalSection name
   local start_wait,first_wait,inc_counter,end_wait
   push  eax
   mov   eax,[TASK_BASE+second_base_address]
-  mov   eax,[eax+TASKDATA.pid]
+  mov   eax,[eax+task_data_t.pid]
 start_wait=$
   cli
   cmp   [name],dword 0
@@ -113,7 +113,7 @@ macro TryWaitSimpleCriticalSection name ;result in eax and in flags
 {
   local ok,try_end
   mov   eax,[CURRENT_TASK+second_base_address]
-  mov   eax,[eax+TASKDATA.pid]
+  mov   eax,[eax+task_data_t.pid]
   cmp   [name],eax
   jz    ok
   cmp   [name],0

@@ -204,7 +204,7 @@ i_end:
 
 align 4
 zerostart:
-mst	MEM_STATE
+mst	memory_state_t
 
 align 16
 bufsize = 0x40000	; change if malloc.inc changes

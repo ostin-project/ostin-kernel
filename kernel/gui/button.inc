@@ -21,7 +21,7 @@
 
 button.MAX_BUTTONS = 4095
 
-struct SYS_BUTTON
+struct sys_button_t
   pslot  dw ?
   id_lo  dw ?
   left   dw ?
@@ -73,10 +73,10 @@ syscall_button: ;///// system function 8 //////////////////////////////////////
         push    eax
         mov     eax, [current_slot]
         rol     ebx, 16
-        add     bx, word[eax + APPDATA.wnd_clientbox.left]
+        add     bx, word[eax + app_data_t.wnd_clientbox.left]
         rol     ebx, 16
         rol     ecx, 16
-        add     cx, word[eax + APPDATA.wnd_clientbox.top]
+        add     cx, word[eax + app_data_t.wnd_clientbox.top]
         rol     ecx, 16
         pop     eax
 
@@ -86,7 +86,7 @@ syscall_button: ;///// system function 8 //////////////////////////////////////
         mov     [edi], ax
         shl     eax, 4
         add     edi, eax
-        ; NOTE: this code doesn't rely on SYS_BUTTON struct, please revise it
+        ; NOTE: this code doesn't rely on sys_button_t struct, please revise it
         ;       if you change something
         mov     ax, [CURRENT_TASK]
         stosw
@@ -116,8 +116,8 @@ syscall_button: ;///// system function 8 //////////////////////////////////////
         shr     ebx, 16
         shr     ecx, 16
         mov     eax, [TASK_BASE]
-        add     ebx, [eax - twdw + WDATA.box.left]
-        add     ecx, [eax - twdw + WDATA.box.top]
+        add     ebx, [eax - twdw + window_data_t.box.left]
+        add     ecx, [eax - twdw + window_data_t.box.top]
         mov     eax, ebx
         shl     eax, 16
         mov     ax, bx
@@ -155,8 +155,8 @@ syscall_button: ;///// system function 8 //////////////////////////////////////
         shr     ebx, 16
         shr     ecx, 16
         mov     eax, [TASK_BASE]
-        add     ebx, [eax - twdw + WDATA.box.left]
-        add     ecx, [eax - twdw + WDATA.box.top]
+        add     ebx, [eax - twdw + window_data_t.box.left]
+        add     ecx, [eax - twdw + window_data_t.box.top]
 
         ; top border
         mov     eax, ebx
@@ -217,27 +217,27 @@ syscall_button.remove_button:
         mov     edi, [BTN_ADDR]
         mov     ebx, [edi]
         inc     ebx
-        imul    esi, ebx, sizeof.SYS_BUTTON
+        imul    esi, ebx, sizeof.sys_button_t
         add     esi, edi
         xor     ecx, ecx
-        add     ecx, -sizeof.SYS_BUTTON
-        add     esi, sizeof.SYS_BUTTON
+        add     ecx, -sizeof.sys_button_t
+        add     esi, sizeof.sys_button_t
 
   .next_button:
         dec     ebx
         jz      .exit
 
-        add     ecx, sizeof.SYS_BUTTON
-        add     esi, -sizeof.SYS_BUTTON
+        add     ecx, sizeof.sys_button_t
+        add     esi, -sizeof.sys_button_t
 
         ; does it belong to our process?
         mov     ax, [CURRENT_TASK]
-        cmp     ax, [esi + SYS_BUTTON.pslot]
+        cmp     ax, [esi + sys_button_t.pslot]
         jne     .next_button
 
         ; does the identifier match?
-        mov     eax, dword[esi + SYS_BUTTON.id_hi - 2]
-        mov     ax, [esi + SYS_BUTTON.id_lo]
+        mov     eax, dword[esi + sys_button_t.id_hi - 2]
+        mov     ax, [esi + sys_button_t.id_lo]
         and     eax, 0x00ffffff
         cmp     edx, eax
         jne     .next_button
@@ -245,10 +245,10 @@ syscall_button.remove_button:
         ; okay, undefine it
         push    ebx
         mov     ebx, esi
-        lea     eax, [esi + sizeof.SYS_BUTTON]
+        lea     eax, [esi + sizeof.sys_button_t]
         call    memmove
         dec     dword[edi]
-        add     ecx, -sizeof.SYS_BUTTON
+        add     ecx, -sizeof.sys_button_t
         pop     ebx
         jmp     .next_button
 
@@ -269,7 +269,7 @@ sys_button_activate_handler: ;/////////////////////////////////////////////////
         or      eax, eax
         jz      .exit
 
-        mov     ebx, dword[eax + SYS_BUTTON.id_hi - 2]
+        mov     ebx, dword[eax + sys_button_t.id_hi - 2]
         call    button._.negative_button
 
   .exit:
@@ -289,7 +289,7 @@ sys_button_deactivate_handler: ;///////////////////////////////////////////////
         or      eax, eax
         jz      .exit
 
-        mov     ebx, dword[eax + SYS_BUTTON.id_hi - 2]
+        mov     ebx, dword[eax + sys_button_t.id_hi - 2]
         call    button._.negative_button
 
   .exit:
@@ -325,7 +325,7 @@ button._.find_button: ;////////////////////////////////////////////////////////
 ;> eax = pack[8(process slot), 24(button id)] or 0
 ;> ebx = pack[16(button x coord), 16(button y coord)]
 ;------------------------------------------------------------------------------
-;< eax = pointer to SYS_BUTTON struct or 0
+;< eax = pointer to sys_button_t struct or 0
 ;------------------------------------------------------------------------------
         push    ecx edx esi edi
 
@@ -335,31 +335,31 @@ button._.find_button: ;////////////////////////////////////////////////////////
 
         mov     edi, [BTN_ADDR]
         mov     ecx, [edi]
-        imul    esi, ecx, sizeof.SYS_BUTTON
+        imul    esi, ecx, sizeof.sys_button_t
         add     esi, edi
         inc     ecx
-        add     esi, sizeof.SYS_BUTTON
+        add     esi, sizeof.sys_button_t
 
   .next_button:
         dec     ecx
         jz      .not_found
 
-        add     esi, -sizeof.SYS_BUTTON
+        add     esi, -sizeof.sys_button_t
 
         ; does it belong to our process?
-        cmp     dx, [esi + SYS_BUTTON.pslot]
+        cmp     dx, [esi + sys_button_t.pslot]
         jne     .next_button
 
         ; does id match?
-        mov     edi, dword[esi + SYS_BUTTON.id_hi - 2]
-        mov     di, [esi + SYS_BUTTON.id_lo]
+        mov     edi, dword[esi + sys_button_t.id_hi - 2]
+        mov     di, [esi + sys_button_t.id_lo]
         and     edi, 0x00ffffff
         cmp     eax, edi
         jne     .next_button
 
         ; does coordinates match?
-        mov     edi, dword[esi + SYS_BUTTON.left - 2]
-        mov     di, [esi + SYS_BUTTON.top]
+        mov     edi, dword[esi + sys_button_t.left - 2]
+        mov     di, [esi + sys_button_t.top]
         cmp     ebx, edi
         jne     .next_button
 
@@ -484,14 +484,14 @@ button._.negative_button: ;////////////////////////////////////////////////////
 
         xchg    esi, eax
 
-        movzx   ecx, [esi + SYS_BUTTON.pslot]
+        movzx   ecx, [esi + sys_button_t.pslot]
         shl     ecx, 5
         add     ecx, window_data
 
-        mov     eax, dword[esi + SYS_BUTTON.left]
-        mov     ebx, dword[esi + SYS_BUTTON.top]
-        add     eax, [ecx + WDATA.box.left]
-        add     ebx, [ecx + WDATA.box.top]
+        mov     eax, dword[esi + sys_button_t.left]
+        mov     ebx, dword[esi + sys_button_t.top]
+        add     eax, [ecx + window_data_t.box.left]
+        add     ebx, [ecx + window_data_t.box.top]
         push    eax ebx
         pop     edx ecx
         rol     eax, 16

@@ -137,15 +137,15 @@ iglobal
 endg
 
 ; Partition chain used:
-; MBR <---------------------
-; |                         |
-; |-> PARTITION1          |
-; |-> EXTENDED PARTITION -        ;not need be second partition
-; |-> PARTITION3
-; |-> PARTITION4
+; MBR <-------------------+
+; |                       |
+; +-> PARTITION1          |
+; +-> EXTENDED PARTITION -+ ; not need be second partition
+; +-> PARTITION3
+; +-> PARTITION4
 
 set_PARTITION_variables:
-set_FAT32_variables: ;deprecated
+set_FAT32_variables: ; deprecated
         and     [problem_partition], 0
         call    reserve_hd1
         call    reserve_hd_channel
@@ -364,7 +364,7 @@ return_from_part_set:
         ret
 
 hd_and_partition_ok:
-        ;eax = PARTITION_START edx=PARTITION_LENGTH cl=fs_type
+        ; eax = PARTITION_START edx=PARTITION_LENGTH cl=fs_type
         mov     [fs_type], cl
 ;       mov     eax,edx
         mov     [PARTITION_START], eax
@@ -411,7 +411,7 @@ boot_read_ok:
         call    ext2_test_superblock ; test ext2fs
         jnc     ext2_setup
 
-        mov     eax, [PARTITION_START] ;ext2 test changes [buffer]
+        mov     eax, [PARTITION_START] ; ext2 test changes [buffer]
         call    hd_read
         cmp     [hd_error], 0
         jnz     problem_fat_dec_count

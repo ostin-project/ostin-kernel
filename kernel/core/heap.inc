@@ -14,7 +14,7 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-struct MEM_BLOCK
+struct memory_block_t
   next_block dd ?
   prev_block dd ?
   list_fd    dd ?
@@ -40,25 +40,25 @@ macro calc_index op
 
 macro remove_from_list op
 {
-        mov     edx, [op + MEM_BLOCK.list_fd]
-        mov     ecx, [op + MEM_BLOCK.list_bk]
+        mov     edx, [op + memory_block_t.list_fd]
+        mov     ecx, [op + memory_block_t.list_bk]
         test    edx, edx
         jz      @f
-        mov     [edx + MEM_BLOCK.list_bk], ecx
+        mov     [edx + memory_block_t.list_bk], ecx
 
     @@: test    ecx, ecx
         jz      @f
-        mov     [ecx + MEM_BLOCK.list_fd], edx
+        mov     [ecx + memory_block_t.list_fd], edx
 
-    @@: mov     [op + MEM_BLOCK.list_fd], 0
-        mov     [op + MEM_BLOCK.list_bk], 0
+    @@: mov     [op + memory_block_t.list_fd], 0
+        mov     [op + memory_block_t.list_bk], 0
 }
 
 macro remove_from_free op
 {
         remove_from_list op
 
-        mov     eax, [op + MEM_BLOCK.size]
+        mov     eax, [op + memory_block_t.size]
         calc_index eax
         cmp     [mem_block_list + eax * 4], op
         jne     @f
@@ -73,12 +73,12 @@ macro remove_from_free op
 
 macro remove_from_used op
 {
-        mov     edx, [op + MEM_BLOCK.list_fd]
-        mov     ecx, [op + MEM_BLOCK.list_bk]
-        mov     [edx + MEM_BLOCK.list_bk], ecx
-        mov     [ecx + MEM_BLOCK.list_fd], edx
-        mov     [op + MEM_BLOCK.list_fd], 0
-        mov     [op + MEM_BLOCK.list_bk], 0
+        mov     edx, [op + memory_block_t.list_fd]
+        mov     ecx, [op + memory_block_t.list_bk]
+        mov     [edx + memory_block_t.list_bk], ecx
+        mov     [ecx + memory_block_t.list_fd], edx
+        mov     [op + memory_block_t.list_fd], 0
+        mov     [op + memory_block_t.list_bk], 0
 }
 
 align 4
@@ -115,29 +115,29 @@ proc init_kernel_heap
         jnz     .l1
 
         mov     edi, HEAP_BASE
-        mov     ebx, HEAP_BASE + sizeof.MEM_BLOCK
+        mov     ebx, HEAP_BASE + sizeof.memory_block_t
         xor     eax, eax
-        mov     [edi + MEM_BLOCK.next_block], ebx
-        mov     [edi + MEM_BLOCK.prev_block], eax
-        mov     [edi + MEM_BLOCK.list_fd], eax
-        mov     [edi + MEM_BLOCK.list_bk], eax
-        mov     [edi + MEM_BLOCK.base], HEAP_BASE
-        mov     [edi + MEM_BLOCK.size], 4096 * sizeof.MEM_BLOCK
-        mov     [edi + MEM_BLOCK.flags], USED_BLOCK
+        mov     [edi + memory_block_t.next_block], ebx
+        mov     [edi + memory_block_t.prev_block], eax
+        mov     [edi + memory_block_t.list_fd], eax
+        mov     [edi + memory_block_t.list_bk], eax
+        mov     [edi + memory_block_t.base], HEAP_BASE
+        mov     [edi + memory_block_t.size], 4096 * sizeof.memory_block_t
+        mov     [edi + memory_block_t.flags], USED_BLOCK
 
-        mov     [ebx + MEM_BLOCK.next_block], eax
-        mov     [ebx + MEM_BLOCK.prev_block], eax
-        mov     [ebx + MEM_BLOCK.list_fd], eax
-        mov     [ebx + MEM_BLOCK.list_bk], eax
-        mov     [ebx + MEM_BLOCK.base], HEAP_BASE + 4096 * sizeof.MEM_BLOCK
+        mov     [ebx + memory_block_t.next_block], eax
+        mov     [ebx + memory_block_t.prev_block], eax
+        mov     [ebx + memory_block_t.list_fd], eax
+        mov     [ebx + memory_block_t.list_bk], eax
+        mov     [ebx + memory_block_t.base], HEAP_BASE + 4096 * sizeof.memory_block_t
 
         mov     ecx, [pg_data.kernel_pages]
         shl     ecx, 12
-        sub     ecx, HEAP_BASE - OS_BASE + 4096 * sizeof.MEM_BLOCK
+        sub     ecx, HEAP_BASE - OS_BASE + 4096 * sizeof.memory_block_t
         mov     [heap_size], ecx
         mov     [heap_free], ecx
-        mov     [ebx + MEM_BLOCK.size], ecx
-        mov     [ebx + MEM_BLOCK.flags], FREE_BLOCK
+        mov     [ebx + memory_block_t.size], ecx
+        mov     [ebx + memory_block_t.flags], FREE_BLOCK
 
         mov     [mem_block_mask], eax
         mov     [mem_block_mask + 4], 0x80000000
@@ -188,7 +188,7 @@ get_small_block:
         mov     edi, [mem_block_list + ebx * 4]
 
   .check_size:
-        cmp     eax, [edi + MEM_BLOCK.size]
+        cmp     eax, [edi + memory_block_t.size]
         ja      .next
         ret
 
@@ -201,7 +201,7 @@ get_small_block:
         jmp     .find
 
   .next:
-        mov     edi, [edi + MEM_BLOCK.list_fd]
+        mov     edi, [edi + memory_block_t.list_fd]
         test    edi, edi
         jnz     .check_size
 
@@ -289,12 +289,12 @@ endl
         test    edi, edi
         jz      .error
 
-        cmp     [edi + MEM_BLOCK.flags], FREE_BLOCK
+        cmp     [edi + memory_block_t.flags], FREE_BLOCK
         jne     .error
 
         mov     [block_ind], ebx ; index of allocated block
 
-        mov     eax, [edi + MEM_BLOCK.size]
+        mov     eax, [edi + memory_block_t.size]
         cmp     eax, [size]
         je      .m_eq_size
 
@@ -304,24 +304,24 @@ endl
 
         mov     esi, eax ; esi - splitted block
 
-        mov     [esi + MEM_BLOCK.next_block], edi
-        mov     eax, [edi + MEM_BLOCK.prev_block]
-        mov     [esi + MEM_BLOCK.prev_block], eax
-        mov     [edi + MEM_BLOCK.prev_block], esi
-        mov     [esi + MEM_BLOCK.list_fd], 0
-        mov     [esi + MEM_BLOCK.list_bk], 0
+        mov     [esi + memory_block_t.next_block], edi
+        mov     eax, [edi + memory_block_t.prev_block]
+        mov     [esi + memory_block_t.prev_block], eax
+        mov     [edi + memory_block_t.prev_block], esi
+        mov     [esi + memory_block_t.list_fd], 0
+        mov     [esi + memory_block_t.list_bk], 0
         and     eax, eax
         jz      @f
-        mov     [eax + MEM_BLOCK.next_block], esi
+        mov     [eax + memory_block_t.next_block], esi
 
-    @@: mov     ebx, [edi + MEM_BLOCK.base]
-        mov     [esi + MEM_BLOCK.base], ebx
+    @@: mov     ebx, [edi + memory_block_t.base]
+        mov     [esi + memory_block_t.base], ebx
         mov     edx, [size]
-        mov     [esi + MEM_BLOCK.size], edx
-        add     [edi + MEM_BLOCK.base], edx
-        sub     [edi + MEM_BLOCK.size], edx
+        mov     [esi + memory_block_t.size], edx
+        add     [edi + memory_block_t.base], edx
+        sub     [edi + memory_block_t.size], edx
 
-        mov     eax, [edi + MEM_BLOCK.size]
+        mov     eax, [edi + memory_block_t.size]
         shr     eax, 12
         sub     eax, 1
         cmp     eax, 63
@@ -341,24 +341,24 @@ endl
         btr     [mem_block_mask], ecx
 
     @@: mov     edx, [mem_block_list + eax * 4]
-        mov     [edi + MEM_BLOCK.list_fd], edx
+        mov     [edi + memory_block_t.list_fd], edx
         test    edx, edx
         jz      @f
-        mov     [edx + MEM_BLOCK.list_bk], edi
+        mov     [edx + memory_block_t.list_bk], edi
 
     @@: mov     [mem_block_list + eax * 4], edi
         bts     [mem_block_mask], eax
 
   .m_eq_ind:
         mov     ecx, mem_used.fd - MEM_LIST_OFFSET
-        mov     edx, [ecx + MEM_BLOCK.list_fd]
-        mov     [esi + MEM_BLOCK.list_fd], edx
-        mov     [esi + MEM_BLOCK.list_bk], ecx
-        mov     [ecx + MEM_BLOCK.list_fd], esi
-        mov     [edx + MEM_BLOCK.list_bk], esi
+        mov     edx, [ecx + memory_block_t.list_fd]
+        mov     [esi + memory_block_t.list_fd], edx
+        mov     [esi + memory_block_t.list_bk], ecx
+        mov     [ecx + memory_block_t.list_fd], esi
+        mov     [edx + memory_block_t.list_bk], esi
 
-        mov     [esi + MEM_BLOCK.flags], USED_BLOCK
-        mov     eax, [esi + MEM_BLOCK.base]
+        mov     [esi + memory_block_t.flags], USED_BLOCK
+        mov     eax, [esi + memory_block_t.base]
         mov     ebx, [size]
         sub     [heap_free], ebx
         and     [heap_mutex], 0
@@ -375,14 +375,14 @@ endl
         btr     [mem_block_mask], ebx
 
     @@: mov     ecx, mem_used.fd - MEM_LIST_OFFSET
-        mov     edx, [ecx + MEM_BLOCK.list_fd]
-        mov     [edi + MEM_BLOCK.list_fd], edx
-        mov     [edi + MEM_BLOCK.list_bk], ecx
-        mov     [ecx + MEM_BLOCK.list_fd], edi
-        mov     [edx + MEM_BLOCK.list_bk], edi
+        mov     edx, [ecx + memory_block_t.list_fd]
+        mov     [edi + memory_block_t.list_fd], edx
+        mov     [edi + memory_block_t.list_bk], ecx
+        mov     [ecx + memory_block_t.list_fd], edi
+        mov     [edx + memory_block_t.list_bk], edi
 
-        mov     [edi + MEM_BLOCK.flags], USED_BLOCK
-        mov     eax, [edi + MEM_BLOCK.base]
+        mov     [edi + memory_block_t.flags], USED_BLOCK
+        mov     eax, [edi + memory_block_t.base]
         mov     ebx, [size]
         sub     [heap_free], ebx
         and     [heap_mutex], 0
@@ -414,63 +414,63 @@ proc free_kernel_space stdcall uses ebx ecx edx esi edi, base:dword
     @@: cmp     esi, mem_used.fd - MEM_LIST_OFFSET
         je      .fail
 
-        cmp     [esi + MEM_BLOCK.base], eax
+        cmp     [esi + memory_block_t.base], eax
         je      .found
-        mov     esi, [esi + MEM_BLOCK.list_fd]
+        mov     esi, [esi + memory_block_t.list_fd]
         jmp     @b
 
   .found:
-        cmp     [esi + MEM_BLOCK.flags], USED_BLOCK
+        cmp     [esi + memory_block_t.flags], USED_BLOCK
         jne     .fail
 
-        mov     eax, [esi + MEM_BLOCK.size]
+        mov     eax, [esi + memory_block_t.size]
         add     [heap_free], eax
 
-        mov     edi, [esi + MEM_BLOCK.next_block]
+        mov     edi, [esi + memory_block_t.next_block]
         test    edi, edi
         jz      .prev
 
-        cmp     [edi + MEM_BLOCK.flags], FREE_BLOCK
+        cmp     [edi + memory_block_t.flags], FREE_BLOCK
         jne     .prev
 
         remove_from_free edi
 
-        mov     edx, [edi + MEM_BLOCK.next_block]
-        mov     [esi + MEM_BLOCK.next_block], edx
+        mov     edx, [edi + memory_block_t.next_block]
+        mov     [esi + memory_block_t.next_block], edx
         test    edx, edx
         jz      @f
 
-        mov     [edx + MEM_BLOCK.prev_block], esi
+        mov     [edx + memory_block_t.prev_block], esi
 
-    @@: mov     ecx, [edi + MEM_BLOCK.size]
-        add     [esi + MEM_BLOCK.size], ecx
+    @@: mov     ecx, [edi + memory_block_t.size]
+        add     [esi + memory_block_t.size], ecx
 
         mov     eax, edi
         call    free_mem_block
 
   .prev:
-        mov     edi, [esi + MEM_BLOCK.prev_block]
+        mov     edi, [esi + memory_block_t.prev_block]
         test    edi, edi
         jz      .insert
 
-        cmp     [edi + MEM_BLOCK.flags], FREE_BLOCK
+        cmp     [edi + memory_block_t.flags], FREE_BLOCK
         jne     .insert
 
         remove_from_used esi
 
-        mov     edx, [esi + MEM_BLOCK.next_block]
-        mov     [edi + MEM_BLOCK.next_block], edx
+        mov     edx, [esi + memory_block_t.next_block]
+        mov     [edi + memory_block_t.next_block], edx
         test    edx, edx
         jz      @f
-        mov     [edx + MEM_BLOCK.prev_block], edi
+        mov     [edx + memory_block_t.prev_block], edi
 
     @@: mov     eax, esi
         call    free_mem_block
 
-        mov     ecx, [edi + MEM_BLOCK.size]
-        mov     eax, [esi + MEM_BLOCK.size]
+        mov     ecx, [edi + memory_block_t.size]
+        mov     eax, [esi + memory_block_t.size]
         add     eax, ecx
-        mov     [edi + MEM_BLOCK.size], eax
+        mov     [edi + memory_block_t.size], eax
 
         calc_index eax
         calc_index ecx
@@ -491,10 +491,10 @@ proc free_kernel_space stdcall uses ebx ecx edx esi edi, base:dword
 
     @@: mov     esi, [mem_block_list + eax * 4]
         mov     [mem_block_list + eax * 4], edi
-        mov     [edi + MEM_BLOCK.list_fd], esi
+        mov     [edi + memory_block_t.list_fd], esi
         test    esi, esi
         jz      @f
-        mov     [esi + MEM_BLOCK.list_bk], edi
+        mov     [esi + memory_block_t.list_bk], edi
 
     @@: bts     [mem_block_mask], eax
 
@@ -510,18 +510,18 @@ proc free_kernel_space stdcall uses ebx ecx edx esi edi, base:dword
   .insert:
         remove_from_used esi
 
-        mov     eax, [esi + MEM_BLOCK.size]
+        mov     eax, [esi + memory_block_t.size]
         calc_index eax
 
         mov     edi, [mem_block_list + eax * 4]
         mov     [mem_block_list + eax * 4], esi
-        mov     [esi + MEM_BLOCK.list_fd], edi
+        mov     [esi + memory_block_t.list_fd], edi
         test    edi, edi
         jz      @f
-        mov     [edi + MEM_BLOCK.list_bk], esi
+        mov     [edi + memory_block_t.list_bk], esi
 
     @@: bts     [mem_block_mask], eax
-        mov     [esi + MEM_BLOCK.flags], FREE_BLOCK
+        mov     [esi + memory_block_t.flags], FREE_BLOCK
         xor     eax, eax
         mov     [heap_mutex], eax
         dec     eax
@@ -629,20 +629,20 @@ proc kernel_free stdcall, base:dword
     @@: cmp     esi, mem_used.fd - MEM_LIST_OFFSET
         je      .fail
 
-        cmp     [esi + MEM_BLOCK.base], eax
-        cmp     [esi + MEM_BLOCK.base], eax
+        cmp     [esi + memory_block_t.base], eax
+        cmp     [esi + memory_block_t.base], eax
         je      .found
-        mov     esi, [esi + MEM_BLOCK.list_fd]
+        mov     esi, [esi + memory_block_t.list_fd]
         jmp     @b
 
   .found:
-        cmp     [esi + MEM_BLOCK.flags], USED_BLOCK
+        cmp     [esi + memory_block_t.flags], USED_BLOCK
         jne     .fail
 
         and     [heap_mutex], 0
 
         push    ecx
-        mov     ecx, [esi + MEM_BLOCK.size]
+        mov     ecx, [esi + memory_block_t.size]
         shr     ecx, 12
         call    release_pages ; eax, ecx
         pop     ecx
@@ -664,20 +664,20 @@ HEAP_TOP  equ 0x5fc00000
 align 4
 proc init_heap
         mov     ebx, [current_slot]
-        mov     eax, [ebx + APPDATA.heap_top]
+        mov     eax, [ebx + app_data_t.heap_top]
         test    eax, eax
         jz      @f
-        sub     eax, [ebx + APPDATA.heap_base]
+        sub     eax, [ebx + app_data_t.heap_base]
         sub     eax, 4096
         ret
 
-    @@: mov     esi, [ebx + APPDATA.mem_size]
+    @@: mov     esi, [ebx + app_data_t.mem_size]
         add     esi, 4095
         and     esi, not 4095
-        mov     [ebx + APPDATA.mem_size], esi
+        mov     [ebx + app_data_t.mem_size], esi
         mov     eax, HEAP_TOP
-        mov     [ebx + APPDATA.heap_base], esi
-        mov     [ebx + APPDATA.heap_top], eax
+        mov     [ebx + app_data_t.heap_base], esi
+        mov     [ebx + app_data_t.heap_top], eax
 
         sub     eax, esi
         shr     esi, 10
@@ -699,8 +699,8 @@ proc user_alloc stdcall, alloc_size:dword
         and     ecx, not 4095
 
         mov     ebx, [current_slot]
-        mov     esi, [ebx + APPDATA.heap_base] ; heap_base
-        mov     edi, [ebx + APPDATA.heap_top] ; heap_top
+        mov     esi, [ebx + app_data_t.heap_base] ; heap_base
+        mov     edi, [ebx + app_data_t.heap_top] ; heap_top
 
   .l_0:
         cmp     esi, edi
@@ -739,7 +739,7 @@ proc user_alloc stdcall, alloc_size:dword
         mov     ebx, [alloc_size]
         add     ebx, 0x0fff
         and     ebx, not 0x0fff
-        add     ebx, [edx + APPDATA.mem_size]
+        add     ebx, [edx + app_data_t.mem_size]
         call    update_mem_size
 
         lea     eax, [esi + 4096]
@@ -779,8 +779,8 @@ proc user_alloc_at stdcall, address:dword, alloc_size:dword
         mov     [address], edx
         sub     edx, 0x1000
         jb      .error
-        mov     esi, [ebx + APPDATA.heap_base]
-        mov     edi, [ebx + APPDATA.heap_top]
+        mov     esi, [ebx + app_data_t.heap_base]
+        mov     edi, [ebx + app_data_t.heap_top]
         cmp     edx, esi
         jb      .error
 
@@ -857,7 +857,7 @@ proc user_alloc_at stdcall, address:dword, alloc_size:dword
         mov     ebx, [alloc_size]
         add     ebx, 0x0fff
         and     ebx, not 0x0fff
-        add     ebx, [edx + APPDATA.mem_size]
+        add     ebx, [edx + app_data_t.mem_size]
         call    update_mem_size
 
         mov     eax, [address]
@@ -915,9 +915,9 @@ proc user_free stdcall, base:dword
         push    edi
 
         mov     edx, [current_slot]
-        mov     esi, [edx + APPDATA.heap_base]
-        mov     edi, [edx + APPDATA.heap_top]
-        sub     ebx, [edx + APPDATA.mem_size]
+        mov     esi, [edx + app_data_t.heap_base]
+        mov     edi, [edx + app_data_t.heap_top]
+        sub     ebx, [edx + app_data_t.mem_size]
         neg     ebx
         call    update_mem_size
         call    user_normalize
@@ -1048,14 +1048,14 @@ user_realloc:
         mov     eax, [page_tabs + ecx * 4]
         and     eax, not 0x0fff
         mov     edx, [current_slot]
-        mov     ebx, [APPDATA.mem_size + edx]
+        mov     ebx, [app_data_t.mem_size + edx]
         sub     ebx, eax
         add     ebx, 0x1000
         or      al, FREE_BLOCK
         mov     [page_tabs + ecx * 4], eax
         push    esi edi
-        mov     esi, [APPDATA.heap_base + edx]
-        mov     edi, [APPDATA.heap_top + edx]
+        mov     esi, [app_data_t.heap_base + edx]
+        mov     edi, [app_data_t.heap_top + edx]
         call    update_mem_size
         call    user_normalize
         pop     edi esi
@@ -1071,7 +1071,7 @@ user_realloc:
         push    ebx ecx edx
         mov     edx, [current_slot]
         shl     ebx, 12
-        sub     ebx, [APPDATA.mem_size + edx]
+        sub     ebx, [app_data_t.mem_size + edx]
         neg     ebx
         call    update_mem_size
         pop     edx ecx ebx
@@ -1084,7 +1084,7 @@ user_realloc:
         jz      .ret
         push    esi
         mov     esi, [current_slot]
-        mov     esi, [APPDATA.heap_top + esi]
+        mov     esi, [app_data_t.heap_top + esi]
         shr     esi, 12
 
     @@: cmp     edx, esi
@@ -1111,7 +1111,7 @@ user_realloc:
   .realloc_add:
         ; get some additional memory
         mov     eax, [current_slot]
-        mov     eax, [APPDATA.heap_top + eax]
+        mov     eax, [app_data_t.heap_top + eax]
         shr     eax, 12
         cmp     edx, eax
         jae     .cant_inplace
@@ -1145,7 +1145,7 @@ user_realloc:
         pop     edi
         mov     edx, [current_slot]
         shl     ebx, 12
-        add     ebx, [APPDATA.mem_size + edx]
+        add     ebx, [app_data_t.mem_size + edx]
         call    update_mem_size
         pop     eax edx ecx
         ret
@@ -1153,8 +1153,8 @@ user_realloc:
   .cant_inplace:
         push    esi edi
         mov     eax, [current_slot]
-        mov     esi, [APPDATA.heap_base + eax]
-        mov     edi, [APPDATA.heap_top + eax]
+        mov     esi, [app_data_t.heap_base + eax]
+        mov     edi, [app_data_t.heap_top + eax]
         shr     esi, 12
         shr     edi, 12
         sub     ebx, ecx
@@ -1224,7 +1224,7 @@ user_realloc:
         push    ebx
         mov     edx, [current_slot]
         shl     ebx, 12
-        add     ebx, [APPDATA.mem_size + edx]
+        add     ebx, [app_data_t.mem_size + edx]
         call    update_mem_size
         pop     ebx
 
@@ -1289,20 +1289,20 @@ destroy_smap:
         push    edi
 
         mov     edi, eax
-        mov     esi, [eax + SMAP.parent]
+        mov     esi, [eax + smap_t.parent]
         test    esi, esi
         jz      .done
 
-        lock    dec [esi + SMEM.refcount]
+        lock    dec [esi + smem_t.refcount]
         jnz     .done
 
-        mov     ecx, [esi + SMEM.bk]
-        mov     edx, [esi + SMEM.fd]
+        mov     ecx, [esi + smem_t.bk]
+        mov     edx, [esi + smem_t.fd]
 
-        mov     [ecx + SMEM.fd], edx
-        mov     [edx + SMEM.bk], ecx
+        mov     [ecx + smem_t.fd], edx
+        mov     [edx + smem_t.bk], ecx
 
-        stdcall kernel_free, [esi + SMEM.base]
+        stdcall kernel_free, [esi + smem_t.base]
         mov     eax, esi
         call    free
 
@@ -1366,12 +1366,12 @@ align 4
     @@: cmp     esi, shmem_list
         je      .not_found
 
-        lea     edx, [esi + SMEM.name] ; link, base, size
+        lea     edx, [esi + smem_t.name] ; link, base, size
         stdcall strncmp, edx, ebx, 32
         test    eax, eax
         je      .found
 
-        mov     esi, [esi + SMEM.fd]
+        mov     esi, [esi + smem_t.fd]
         jmp     @b
 
   .not_found:
@@ -1397,7 +1397,7 @@ align 4
         and     ecx, -4096
         mov     [size], ecx
 
-        mov     eax, sizeof.SMEM
+        mov     eax, sizeof.smem_t
         call    malloc
         test    eax, eax
         mov     esi, eax
@@ -1414,20 +1414,20 @@ align 4
         mov     edx, [access]
         and     edx, SHM_ACCESS_MASK
 
-        mov     [esi + SMEM.base], eax
-        mov     [esi + SMEM.size], ecx
-        mov     [esi + SMEM.access], edx
-        mov     [esi + SMEM.refcount], 0
-        mov     [esi + SMEM.name + 28], 0
+        mov     [esi + smem_t.base], eax
+        mov     [esi + smem_t.size], ecx
+        mov     [esi + smem_t.access], edx
+        mov     [esi + smem_t.refcount], 0
+        mov     [esi + smem_t.name + 28], 0
 
-        lea     eax, [esi + SMEM.name]
+        lea     eax, [esi + smem_t.name]
         stdcall strncpy, eax, [name], 31
 
         mov     eax, [shmem_list.fd]
-        mov     [esi + SMEM.bk], shmem_list
-        mov     [esi + SMEM.fd], eax
+        mov     [esi + smem_t.bk], shmem_list
+        mov     [esi + smem_t.fd], eax
 
-        mov     [eax + SMEM.bk], esi
+        mov     [eax + smem_t.bk], esi
         mov     [shmem_list.fd], esi
 
         mov     [action], SHM_OPEN
@@ -1450,7 +1450,7 @@ align 4
   .create_map:
         mov     eax, [access]
         and     eax, SHM_ACCESS_MASK
-        cmp     eax, [esi + SMEM.access]
+        cmp     eax, [esi + smem_t.access]
         mov     [access], eax
         mov     edx, E_ACCESS
         ja      .fail
@@ -1458,7 +1458,7 @@ align 4
         mov     ebx, [CURRENT_TASK]
         shl     ebx, 5
         mov     ebx, [CURRENT_TASK + ebx + 4]
-        mov     eax, sizeof.SMAP
+        mov     eax, sizeof.smap_t
 
         call    create_kernel_object
         test    eax, eax
@@ -1466,28 +1466,28 @@ align 4
         mov     edx, E_NOMEM
         jz      .fail
 
-        inc     [esi + SMEM.refcount]
+        inc     [esi + smem_t.refcount]
 
-        mov     [edi + SMAP.magic], 'SMAP'
-        mov     [edi + SMAP.destroy], destroy_smap
-        mov     [edi + SMAP.parent], esi
-        mov     [edi + SMAP.base], 0
+        mov     [edi + smap_t.magic], 'SMAP'
+        mov     [edi + smap_t.destroy], destroy_smap
+        mov     [edi + smap_t.parent], esi
+        mov     [edi + smap_t.base], 0
 
-        stdcall user_alloc, [esi + SMEM.size]
+        stdcall user_alloc, [esi + smem_t.size]
         test    eax, eax
         mov     [mapped], eax
         mov     edx, E_NOMEM
         jz      .cleanup2
 
-        mov     [edi + SMAP.base], eax
+        mov     [edi + smap_t.base], eax
 
-        mov     ecx, [esi + SMEM.size]
+        mov     ecx, [esi + smem_t.size]
         mov     [size], ecx
 
         shr     ecx, 12
         shr     eax, 10
 
-        mov     esi, [esi + SMEM.base]
+        mov     esi, [esi + smem_t.base]
         shr     esi, 10
         lea     edi, [page_tabs + eax]
         add     esi, page_tabs
@@ -1548,7 +1548,7 @@ proc shmem_close stdcall, name:dword
         add     esi, APP_OBJ_OFFSET
 
   .next:
-        mov     eax, [esi + APPOBJ.fd]
+        mov     eax, [esi + app_object_t.fd]
         test    eax, eax
         jz      @f
 
@@ -1556,22 +1556,22 @@ proc shmem_close stdcall, name:dword
         mov     esi, eax
         je      @f
 
-        cmp     [eax + SMAP.magic], 'SMAP'
+        cmp     [eax + smap_t.magic], 'SMAP'
         jne     .next
 
-        mov     edi, [eax + SMAP.parent]
+        mov     edi, [eax + smap_t.parent]
         test    edi, edi
         jz      .next
 
-        lea     edi, [edi + SMEM.name]
+        lea     edi, [edi + smem_t.name]
         stdcall strncmp, [name], edi, 32
         test    eax, eax
         jne     .next
 
-        stdcall user_free, [esi + SMAP.base]
+        stdcall user_free, [esi + smap_t.base]
 
         mov     eax, esi
-        call    [esi + APPOBJ.destroy]
+        call    [esi + app_object_t.destroy]
 
     @@: popfd
         pop     edi

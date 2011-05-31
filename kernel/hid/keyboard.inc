@@ -111,7 +111,7 @@ set_keyboard_data:
         movzx   eax, word[TASK_COUNT] ; top window process
         movzx   eax, word[WIN_POS + eax * 2]
         shl     eax, 8
-        mov     al, [SLOT_BASE + eax + APPDATA.keyboard_mode]
+        mov     al, [SLOT_BASE + eax + app_data_t.keyboard_mode]
         mov     [keyboard_mode], al
 
         mov     eax, ecx
@@ -134,7 +134,7 @@ irq1:
         movzx   eax, word[TASK_COUNT] ; top window process
         movzx   eax, word[WIN_POS + eax * 2]
         shl     eax, 8
-        mov     al, [SLOT_BASE + eax + APPDATA.keyboard_mode]
+        mov     al, [SLOT_BASE + eax + app_data_t.keyboard_mode]
         mov     [keyboard_mode], al
 
         in      al, 0x60
@@ -374,18 +374,18 @@ set_lights:
 ;..........................Part2 Start
 iglobal
   numlock_map:
-    db 0x37 ;Num 7
-    db 0x38 ;Num 8
-    db 0x39 ;Num 9
-    db 0x2d ;Num -
-    db 0x34 ;Num 4
-    db 0x35 ;Num 5
-    db 0x36 ;Num 6
-    db 0x2b ;Num +
-    db 0x31 ;Num 1
-    db 0x32 ;Num 2
-    db 0x33 ;Num 3
-    db 0x30 ;Num 0
-    db 0x2e ;Num .
+    db 0x37 ; Num 7
+    db 0x38 ; Num 8
+    db 0x39 ; Num 9
+    db 0x2d ; Num -
+    db 0x34 ; Num 4
+    db 0x35 ; Num 5
+    db 0x36 ; Num 6
+    db 0x2b ; Num +
+    db 0x31 ; Num 1
+    db 0x32 ; Num 2
+    db 0x33 ; Num 3
+    db 0x30 ; Num 0
+    db 0x2e ; Num .
 endg
 ;..........................Part2 End

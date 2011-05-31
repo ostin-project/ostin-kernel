@@ -18,7 +18,7 @@
 ; If you're planning to write your own video driver I suggest
 ; you replace the VESA12.INC file and see those instructions.
 
-;Screen_Max_X             equ     0xfe00
+;Screen_Max_X            equ     0xfe00
 ;Screen_Max_Y            equ     0xfe04
 ;BytesPerScanLine        equ     0xfe08
 ;LFBAddress              equ     0xfe80
@@ -110,15 +110,15 @@ vesa20_putimage:
         mov     [putimg.image_cy], edx
         ; calculate absolute (i.e. screen) coordinates
         mov     eax, [TASK_BASE]
-        mov     ebx, [eax - twdw + WDATA.box.left]
+        mov     ebx, [eax - twdw + window_data_t.box.left]
         add     ebx, [putimg.image_cx]
         mov     [putimg.abs_cx], ebx
-        mov     ebx, [eax - twdw + WDATA.box.top]
+        mov     ebx, [eax - twdw + window_data_t.box.top]
         add     ebx, [putimg.image_cy]
         mov     [putimg.abs_cy], ebx
         ; real_sx = MIN(wnd_sx-image_cx, image_sx);
-        mov     ebx, [eax - twdw + WDATA.box.width] ; ebx = wnd_sx
-        ; note that WDATA.box.width is one pixel less than real window x-size
+        mov     ebx, [eax - twdw + window_data_t.box.width] ; ebx = wnd_sx
+        ; note that window_data_t.box.width is one pixel less than real window x-size
         inc     ebx
         sub     ebx, [putimg.image_cx]
         ja      @f
@@ -133,7 +133,7 @@ vesa20_putimage:
   .end_x:
         mov     [putimg.real_sx], ebx
         ; init real_sy
-        mov     ebx, [eax - twdw + WDATA.box.height] ; ebx = wnd_sy
+        mov     ebx, [eax - twdw + window_data_t.box.height] ; ebx = wnd_sy
         inc     ebx
         sub     ebx, [putimg.image_cy]
         ja      @f
@@ -189,6 +189,7 @@ vesa20_putimage:
         mov     ebx, [CURRENT_TASK]
         cmp     byte[ScreenBPP], 32
         je      put_image_end_32
+
 ;put_image_end_24:
         mov     edi, [putimg.real_sy]
 
@@ -465,7 +466,7 @@ dl_dy equ esp + 0
         shl     eax, 16 ; using 16bit fix-point maths
         idiv    esi ; eax = ((y2-y1)*65536)/(x2-x1)
         mov     edx, esi ; edx = counter (number of pixels to draw)
-        mov     esi, 1 * 65536 ;<< 16   ; esi = dx = 1.0
+        mov     esi, 1 * 65536 ; << 16 ; esi = dx = 1.0
         mov     ebp, eax ; ebp = dy
 
   .y_rules:
@@ -577,13 +578,13 @@ vesa20_drawbar:
         mov     [drbar.bar_cx], eax
         mov     [drbar.bar_cy], ebx
         mov     edi, [TASK_BASE]
-        add     eax, [edi - twdw + WDATA.box.left] ; win_cx
-        add     ebx, [edi - twdw + WDATA.box.top] ; win_cy
+        add     eax, [edi - twdw + window_data_t.box.left] ; win_cx
+        add     ebx, [edi - twdw + window_data_t.box.top] ; win_cy
         mov     [drbar.abs_cx], eax
         mov     [drbar.abs_cy], ebx
         ; real_sx = MIN(wnd_sx-bar_cx, bar_sx);
-        mov     ebx, [edi - twdw + WDATA.box.width] ; ebx = wnd_sx
-        ; note that WDATA.box.width is one pixel less than real window x-size
+        mov     ebx, [edi - twdw + window_data_t.box.width] ; ebx = wnd_sx
+        ; note that window_data_t.box.width is one pixel less than real window x-size
         inc     ebx
         sub     ebx, [drbar.bar_cx]
         ja      @f
@@ -602,7 +603,7 @@ vesa20_drawbar:
   .end_x:
         mov     [drbar.real_sx], ebx
         ; real_sy = MIN(wnd_sy-bar_cy, bar_sy);
-        mov     ebx, [edi - twdw + WDATA.box.height] ; ebx = wnd_sy
+        mov     ebx, [edi - twdw + window_data_t.box.height] ; ebx = wnd_sy
         inc     ebx
         sub     ebx, [drbar.bar_cy]
         ja      @f
@@ -742,10 +743,10 @@ vesa20_drawbackground_tiled:
         call    [_display.disable_mouse]
         pushad
         ; External loop for all y from start to end
-        mov     ebx, [draw_data + 32 + RECT.top] ; y start
+        mov     ebx, [draw_data + 32 + rect32_t.top] ; y start
 
   .dp2:
-        mov     ebp, [draw_data + 32 + RECT.left] ; x start
+        mov     ebp, [draw_data + 32 + rect32_t.left] ; x start
         ; 1) Calculate pointers in WinMapAddress (does pixel belong to OS thread?) [ebp]
         ;                       and LFB data (output for our function) [edi]
         mov     eax, [BytesPerScanLine]
@@ -808,7 +809,7 @@ vesa20_drawbackground_tiled:
         ; I do not use 'inc eax' because this is slightly slower then 'add eax,1'
         add     ebp, edx
         add     eax, edx
-        cmp     eax, [draw_data + 32 + RECT.right]
+        cmp     eax, [draw_data + 32 + rect32_t.right]
         ja      .dp4
         sub     ecx, edx
         jnz     .dp3
@@ -822,7 +823,7 @@ vesa20_drawbackground_tiled:
   .dp4:
         ; next scan line
         inc     ebx
-        cmp     ebx, [draw_data + 32 + RECT.bottom]
+        cmp     ebx, [draw_data + 32 + rect32_t.bottom]
         jbe     .dp2
         popad
         mov     [EGA_counter], 1
@@ -852,8 +853,8 @@ vesa20_drawbackground_stretch:
         div     dword[Screen_Max_Y]
         push    eax ; low
         ; External loop for all y from start to end
-        mov     ebx, [draw_data + 32 + RECT.top] ; y start
-        mov     ebp, [draw_data + 32 + RECT.left] ; x start
+        mov     ebx, [draw_data + 32 + rect32_t.top] ; y start
+        mov     ebp, [draw_data + 32 + rect32_t.left] ; x start
         ; 1) Calculate pointers in WinMapAddress (does pixel belong to OS thread?) [ebp]
         ;                       and LFB data (output for our function) [edi]
         mov     eax, [BytesPerScanLine]
@@ -961,7 +962,7 @@ vesa20_drawbackground_stretch:
         add     eax, 1
         mov     [esp + 20], eax
         add     esi, 4
-        cmp     eax, [draw_data + 32 + RECT.right]
+        cmp     eax, [draw_data + 32 + rect32_t.right]
         jbe     .sdp3a
 
   .sdp4:
@@ -969,10 +970,10 @@ vesa20_drawbackground_stretch:
         mov     ebx, [esp + 24]
         add     ebx, 1
         mov     [esp + 24], ebx
-        cmp     ebx, [draw_data + 32 + RECT.bottom]
+        cmp     ebx, [draw_data + 32 + rect32_t.bottom]
         ja      .sdpdone
         ; advance edi, ebp to next scan line
-        sub     eax, [draw_data + 32 + RECT.left]
+        sub     eax, [draw_data + 32 + rect32_t.left]
         sub     ebp, eax
         add     ebp, [Screen_Max_X]
         add     ebp, 1
@@ -995,7 +996,7 @@ vesa20_drawbackground_stretch:
         lea     eax, [eax * 3]
         imul    eax, [BgrDataWidth]
         sub     [esp], eax
-        mov     eax, [draw_data + 32 + RECT.left]
+        mov     eax, [draw_data + 32 + rect32_t.left]
         mov     [esp + 20], eax
         test    ebx, ebx
         jz      .sdp3
@@ -1036,7 +1037,7 @@ smooth_line:
         mov     eax, [esp + 20 + 8]
         add     eax, 1
         mov     [esp + 20 + 8], eax
-        cmp     eax, [draw_data + 32 + RECT.right]
+        cmp     eax, [draw_data + 32 + rect32_t.right]
         ja      @f
         add     ecx, [esp + 36 + 8]
         mov     eax, edx
@@ -1046,7 +1047,7 @@ smooth_line:
         sub     esi, eax
         jmp     smooth_line
 
-    @@: mov     eax, [draw_data + 32 + RECT.left]
+    @@: mov     eax, [draw_data + 32 + rect32_t.left]
         mov     [esp + 20 + 8], eax
         ret
 

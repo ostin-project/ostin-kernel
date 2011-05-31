@@ -96,8 +96,8 @@ align 4
 update_counters:
         mov     edi, [TASK_BASE]
         rdtsc
-        sub     eax, [edi + TASKDATA.counter_add] ; time stamp counter add
-        add     [edi + TASKDATA.counter_sum], eax ; counter sum
+        sub     eax, [edi + task_data_t.counter_add] ; time stamp counter add
+        add     [edi + task_data_t.counter_sum], eax ; counter sum
         ret
 
 align 4
@@ -110,25 +110,25 @@ updatecputimes:
 
   .newupdate:
         xor     eax, eax
-        xchg    eax, [edi + TASKDATA.counter_sum]
-        mov     [edi + TASKDATA.cpu_usage], eax
+        xchg    eax, [edi + task_data_t.counter_sum]
+        mov     [edi + task_data_t.cpu_usage], eax
         add     edi, 0x20
         loop    .newupdate
         ret
 
 align 4
 find_next_task:
-        ;info:
+        ; info:
         ;   Find next task to execute
-        ;retval:
-        ;   ebx = address of the APPDATA for the selected task (slot-base)
+        ; retval:
+        ;   ebx = address of the app_data_t for the selected task (slot-base)
         ;   esi = previous slot-base ([current_slot] at the begin)
-        ;   edi = address of the TASKDATA for the selected task
+        ;   edi = address of the task_data_t for the selected task
         ;   ZF  = 1  if the task is the same
-        ;warning:
+        ; warning:
         ;   [CURRENT_TASK] = bh , [TASK_BASE] = edi -- as result
         ;   [current_slot] is not set to new value (ebx)!!!
-        ;scratched: eax,ecx
+        ; scratched: eax,ecx
 
         call    update_counters ; edi := [TASK_BASE]
         Mov     esi, ebx, [current_slot]
@@ -139,69 +139,69 @@ find_next_task:
         xor     bh, bh
         mov     edi, CURRENT_TASK
 
-    @@: inc     bh ; ebx += APPDATA.size
-        add     edi, 0x20 ; edi += TASKDATA.size
-        mov     al, [edi + TASKDATA.state]
+    @@: inc     bh ; ebx += app_data_t.size
+        add     edi, sizeof.task_data_t ; edi += sizeof.task_data_t
+        mov     al, [edi + task_data_t.state]
         test    al, al
         jz      .found ; state == 0
         cmp     al, 5
         jne     .loop ; state == 1,2,3,4,9
         ; state == 5
-        pushad  ; more freedom for [APPDATA.wait_test]
-        call    [ebx + APPDATA.wait_test]
+        pushad  ; more freedom for [app_data_t.wait_test]
+        call    [ebx + app_data_t.wait_test]
         mov     [esp + 28], eax
         popad
         or      eax, eax
         jnz     @f
         ; testing for timeout
         mov     ecx, [timer_ticks]
-        sub     ecx, [ebx + APPDATA.wait_begin]
-        cmp     ecx, [ebx + APPDATA.wait_timeout]
+        sub     ecx, [ebx + app_data_t.wait_begin]
+        cmp     ecx, [ebx + app_data_t.wait_timeout]
         jb      .loop
 
-    @@: mov     [ebx + APPDATA.wait_param], eax ; retval for wait
-        mov     [edi + TASKDATA.state], 0
+    @@: mov     [ebx + app_data_t.wait_param], eax ; retval for wait
+        mov     [edi + task_data_t.state], 0
 
   .found:
         mov     [CURRENT_TASK], bh
         mov     [TASK_BASE], edi
 ;       call    _rdtsc
         rdtsc
-        mov     [edi + TASKDATA.counter_add], eax ; for next using update_counters
+        mov     [edi + task_data_t.counter_add], eax ; for next using update_counters
         cmp     ebx, esi ; esi - previous slot-base
         ret
 
-;TODO: Надо бы убрать использование do_change_task из V86...
-; и после этого перенести обработку TASKDATA.counter_add/sum в do_change_task
+; TODO: Надо бы убрать использование do_change_task из V86...
+; и после этого перенести обработку task_data_t.counter_add/sum в do_change_task
 align 4
 do_change_task:
-        ;param:
-        ;   ebx = address of the APPDATA for incoming task (new)
-        ;warning:
+        ; param:
+        ;   ebx = address of the app_data_t for incoming task (new)
+        ; warning:
         ;   [CURRENT_TASK] and [TASK_BASE] must be changed before (e.g. in find_next_task)
         ;   [current_slot] is the outcoming (old), and set here to a new value (ebx)
-        ;scratched: eax,ecx,esi
+        ; scratched: eax,ecx,esi
 
         mov     esi, ebx
         xchg    esi, [current_slot]
         ; set new stack after saving old
-        mov     [esi + APPDATA.saved_esp], esp
-        mov     esp, [ebx + APPDATA.saved_esp]
+        mov     [esi + app_data_t.saved_esp], esp
+        mov     esp, [ebx + app_data_t.saved_esp]
         ; set new thread io-map
-        Mov     dword[page_tabs + ((tss.io_map_0 and -4096) shr 10)], eax, [ebx + APPDATA.io_map]
-        Mov     dword[page_tabs + ((tss.io_map_1 and -4096) shr 10)], eax, [ebx + APPDATA.io_map + 4]
+        Mov     dword[page_tabs + ((tss.io_map_0 and -4096) shr 10)], eax, [ebx + app_data_t.io_map]
+        Mov     dword[page_tabs + ((tss.io_map_1 and -4096) shr 10)], eax, [ebx + app_data_t.io_map + 4]
         ; set new thread memory-map
-        mov     ecx, APPDATA.dir_table
+        mov     ecx, app_data_t.dir_table
         mov     eax, [ebx + ecx] ; offset>0x7F
         cmp     eax, [esi + ecx] ; offset>0x7F
         je      @f
         mov     cr3, eax
 
     @@: ; set tss.esp0
-        Mov     [tss.esp0], eax, [ebx + APPDATA.saved_esp0]
+        Mov     [tss.esp0], eax, [ebx + app_data_t.saved_esp0]
 
-        mov     edx, [ebx + APPDATA.tls_base]
-        cmp     edx, [esi + APPDATA.tls_base]
+        mov     edx, [ebx + app_data_t.tls_base]
+        cmp     edx, [esi + app_data_t.tls_base]
         je      @f
 
         mov     [tls_data_l + 2], dx
@@ -225,11 +225,11 @@ do_change_task:
     @@: ; set context_counter (only for user pleasure ???)
         inc     [context_counter]
         ; set debug-registers, if it's necessary
-        test    byte[ebx + APPDATA.dbg_state], 1
+        test    byte[ebx + app_data_t.dbg_state], 1
         jz      @f
         xor     eax, eax
         mov     dr6, eax
-        lea     esi, [ebx + ecx + APPDATA.dbg_regs - APPDATA.dir_table] ; offset>0x7F
+        lea     esi, [ebx + ecx + app_data_t.dbg_regs - app_data_t.dir_table] ; offset>0x7F
         cld
 
 macro lodsReg [reg]
@@ -244,66 +244,66 @@ purge lodsReg
 
     @@: ret
 
-struct MUTEX_WAITER
+struct mutex_waiter_t
   next dd ?
   prev dd ?
   task dd ?
 ends
 
-;void  __fastcall mutex_init(struct mutex *lock)
+; void  __fastcall mutex_init(struct mutex *lock)
 align 4
 mutex_init:
-        lea     eax, [ecx + MUTEX.next]
-        mov     [ecx + MUTEX.count], 1
-        mov     [ecx + MUTEX.next], eax
-        mov     [ecx + MUTEX.prev], eax
+        lea     eax, [ecx + mutex_t.next]
+        mov     [ecx + mutex_t.count], 1
+        mov     [ecx + mutex_t.next], eax
+        mov     [ecx + mutex_t.prev], eax
         ret
 
 
-;void  __fastcall mutex_lock(struct mutex *lock)
+; void  __fastcall mutex_lock(struct mutex *lock)
 align 4
 mutex_lock:
-        dec     [ecx + MUTEX.count]
+        dec     [ecx + mutex_t.count]
         jns     .done
 
         pushfd
         cli
 
         push    esi
-        sub     esp, sizeof.MUTEX_WAITER
+        sub     esp, sizeof.mutex_waiter_t
 
-        mov     eax, [ecx + MUTEX.prev]
-        lea     esi, [ecx + MUTEX.next]
+        mov     eax, [ecx + mutex_t.prev]
+        lea     esi, [ecx + mutex_t.next]
 
-        mov     [ecx + MUTEX.prev], esp
-        mov     [esp + MUTEX_WAITER.next], esi
-        mov     [esp + MUTEX_WAITER.prev], eax
+        mov     [ecx + mutex_t.prev], esp
+        mov     [esp + mutex_waiter_t.next], esi
+        mov     [esp + mutex_waiter_t.prev], eax
         mov     [eax], esp
 
         mov     edx, [TASK_BASE]
-        mov     [esp + MUTEX_WAITER.task], edx
+        mov     [esp + mutex_waiter_t.task], edx
 
   .forever:
         mov     eax, -1
-        xchg    eax, [ecx + MUTEX.count]
+        xchg    eax, [ecx + mutex_t.count]
         dec     eax
         jz      @f
 
-        mov     [edx + TASKDATA.state], 1
+        mov     [edx + task_data_t.state], 1
         call    change_task
         jmp     .forever
 
-    @@: mov     edx, [esp + MUTEX_WAITER.next]
-        mov     eax, [esp + MUTEX_WAITER.prev]
+    @@: mov     edx, [esp + mutex_waiter_t.next]
+        mov     eax, [esp + mutex_waiter_t.prev]
 
-        mov     [eax + MUTEX_WAITER.next], edx
-        cmp     [ecx + MUTEX.next], esi
-        mov     [edx + MUTEX_WAITER.prev], eax
+        mov     [eax + mutex_waiter_t.next], edx
+        cmp     [ecx + mutex_t.next], esi
+        mov     [edx + mutex_waiter_t.prev], eax
         jne     @f
 
-        mov     [ecx + MUTEX.count], 0
+        mov     [ecx + mutex_t.count], 0
 
-    @@: add     esp, sizeof.MUTEX_WAITER
+    @@: add     esp, sizeof.mutex_waiter_t
 
         pop     esi
         popfd
@@ -311,31 +311,32 @@ mutex_lock:
   .done:
         ret
 
-;void  __fastcall mutex_unlock(struct mutex *lock)
+; void  __fastcall mutex_unlock(struct mutex *lock)
 align 4
 mutex_unlock:
         pushfd
         cli
 
-        lea     eax, [ecx + MUTEX.next]
-        cmp     eax, [ecx + MUTEX.next]
-        mov     [ecx + MUTEX.count], 1
+        lea     eax, [ecx + mutex_t.next]
+        cmp     eax, [ecx + mutex_t.next]
+        mov     [ecx + mutex_t.count], 1
         je      @f
 
-        mov     eax, [eax + MUTEX_WAITER.task]
-        mov     [eax + TASKDATA.state], 0
+        mov     eax, [eax + mutex_waiter_t.task]
+        mov     [eax + task_data_t.state], 0
 
     @@: popfd
         ret
 
 if 0
 
-struct TIMER
-  next     dd ?
-  exp_time dd ?
-  func     dd ?
-  arg      dd ?
-ends
+; unused
+;struct timer_t
+;  next     dd ?
+;  exp_time dd ?
+;  func     dd ?
+;  arg      dd ?
+;ends
 
 MAX_PROIRITY      = 0 ; highest, used for kernel tasks
 MAX_USER_PRIORITY = 0 ; highest priority for user processes

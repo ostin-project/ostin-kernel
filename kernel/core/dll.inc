@@ -207,12 +207,12 @@ align 4
 proc get_notify stdcall, p_ev:dword
   .wait:
         mov     ebx, [current_slot]
-        test    [ebx + APPDATA.event_mask], EVENT_NOTIFY
+        test    [ebx + app_data_t.event_mask], EVENT_NOTIFY
         jz      @f
-        and     [ebx + APPDATA.event_mask], not EVENT_NOTIFY
+        and     [ebx + app_data_t.event_mask], not EVENT_NOTIFY
         mov     edi, [p_ev]
         mov     dword[edi], EV_INTR
-        mov     eax, [ebx + APPDATA.event]
+        mov     eax, [ebx + app_data_t.event]
         mov     [edi + 4], eax
         ret
 
@@ -313,21 +313,21 @@ proc srv_handler stdcall, ioctl:dword
         test    esi, esi
         jz      .err
 
-        mov     edi, [esi + IOCTL.handle]
-        cmp     [edi + SRV.magic], ' SRV'
+        mov     edi, [esi + ioctl_t.handle]
+        cmp     [edi + service_t.magic], ' SRV'
         jne     .fail
 
-        cmp     [edi + SRV.size], sizeof.SRV
+        cmp     [edi + service_t.size], sizeof.service_t
         jne     .fail
 
-        stdcall [edi + SRV.srv_proc], esi
+        stdcall [edi + service_t.srv_proc], esi
         ret
 
   .fail:
         xor     eax, eax
         not     eax
-        mov     [esi + IOCTL.output], eax
-        mov     [esi + IOCTL.out_size], 4
+        mov     [esi + ioctl_t.output], eax
+        mov     [esi + ioctl_t.out_size], 4
         ret
 
   .err:
@@ -346,14 +346,14 @@ srv_handlerEx:
         cmp     ecx, OS_BASE
         jae     .fail
 
-        mov     eax, [ecx + IOCTL.handle]
-        cmp     [eax + SRV.magic], ' SRV'
+        mov     eax, [ecx + ioctl_t.handle]
+        cmp     [eax + service_t.magic], ' SRV'
         jne     .fail
 
-        cmp     [eax + SRV.size], sizeof.SRV
+        cmp     [eax + service_t.size], sizeof.service_t
         jne     .fail
 
-        stdcall [eax + SRV.srv_proc], ecx
+        stdcall [eax + service_t.srv_proc], ecx
         ret
 
   .fail:
@@ -376,7 +376,7 @@ proc get_service stdcall, sz_name:dword
         test    eax, eax
         je      .ok
 
-        mov     edx, [edx + SRV.fd]
+        mov     edx, [edx + service_t.fd]
         jmp     @b
 
   .not_load:
@@ -400,7 +400,7 @@ proc reg_service stdcall, name:dword, handler:dword
         cmp     [handler], eax
         je      .fail
 
-        mov     eax, sizeof.SRV
+        mov     eax, sizeof.service_t
         call    malloc
         test    eax, eax
         jz      .fail
@@ -416,18 +416,18 @@ proc reg_service stdcall, name:dword, handler:dword
         pop     edi
         pop     esi
 
-        mov     [eax + SRV.magic], ' SRV'
-        mov     [eax + SRV.size], sizeof.SRV
+        mov     [eax + service_t.magic], ' SRV'
+        mov     [eax + service_t.size], sizeof.service_t
 
         mov     ebx, srv.fd - SRV_FD_OFFSET
-        mov     edx, [ebx + SRV.fd]
-        mov     [eax + SRV.fd], edx
-        mov     [eax + SRV.bk], ebx
-        mov     [ebx + SRV.fd], eax
-        mov     [edx + SRV.bk], eax
+        mov     edx, [ebx + service_t.fd]
+        mov     [eax + service_t.fd], edx
+        mov     [eax + service_t.bk], ebx
+        mov     [ebx + service_t.fd], eax
+        mov     [edx + service_t.bk], eax
 
         mov     ecx, [handler]
-        mov     [eax + SRV.srv_proc], ecx
+        mov     [eax + service_t.srv_proc], ecx
         pop     ebx
         ret
 
@@ -692,10 +692,10 @@ endl
         mov     [retval], 1
 
   .fix:
-        movzx   ebx, [edi + COFF_SYM.SectionNumber]
+        movzx   ebx, [edi + coff_sym_t.section_number]
         test    ebx, ebx
         jnz     .internal
-        mov     eax, dword[edi + COFF_SYM.Name]
+        mov     eax, dword[edi + coff_sym_t.name]
         test    eax, eax
         jnz     @f
 
@@ -720,7 +720,7 @@ endl
         mov     [retval], 0
 
     @@: mov     edi, [symbols]
-        mov     [edi + COFF_SYM.Value], eax
+        mov     [edi + coff_sym_t.value], eax
         jmp     .next
 
   .internal:
@@ -734,11 +734,11 @@ endl
         lea     ebx, [ebx + ebx * 4]
         add     ebx, [sec]
 
-        mov     eax, [ebx + COFF_SECTION.VirtualAddress]
-        add     [edi + COFF_SYM.Value], eax
+        mov     eax, [ebx + coff_section_t.virtual_addr]
+        add     [edi + coff_sym_t.value], eax
 
   .next:
-        add     edi, sizeof.COFF_SYM
+        add     edi, sizeof.coff_sym_t
         mov     [symbols], edi
         dec     [sym_count]
         jnz     .fix
@@ -753,42 +753,42 @@ locals
 endl
 
         mov     eax, [coff]
-        movzx   ebx, [eax + COFF_HEADER.nSections]
+        movzx   ebx, [eax + coff_header_t.sections_cnt]
         mov     [n_sec], ebx
         lea     esi, [eax + 20]
 
   .fix_sec:
-        mov     edi, [esi + COFF_SECTION.PtrReloc]
+        mov     edi, [esi + coff_section_t.relocs_ptr]
         add     edi, [coff]
 
-        movzx   ecx, [esi + COFF_SECTION.NumReloc]
+        movzx   ecx, [esi + coff_section_t.relocs_cnt]
         test    ecx, ecx
         jz      .next
 
   .reloc_loop:
-        mov     ebx, [edi + COFF_RELOC.SymIndex]
+        mov     ebx, [edi + coff_reloc_t.sym_index]
         add     ebx, ebx
         lea     ebx, [ebx + ebx * 8]
         add     ebx, [sym]
 
-        mov     edx, [ebx + COFF_SYM.Value]
+        mov     edx, [ebx + coff_sym_t.value]
 
-        cmp     [edi + COFF_RELOC.Type], 6
+        cmp     [edi + coff_reloc_t.type], 6
         je      .dir_32
 
-        cmp     [edi + COFF_RELOC.Type], 20
+        cmp     [edi + coff_reloc_t.type], 20
         jne     .next_reloc
 
   .rel_32:
-        mov     eax, [edi + COFF_RELOC.VirtualAddress]
-        add     eax, [esi + COFF_SECTION.VirtualAddress]
+        mov     eax, [edi + coff_reloc_t.virtual_addr]
+        add     eax, [esi + coff_section_t.virtual_addr]
         sub     edx, eax
         sub     edx, 4
         jmp     .fix
 
   .dir_32:
-        mov     eax, [edi + COFF_RELOC.VirtualAddress]
-        add     eax, [esi + COFF_SECTION.VirtualAddress]
+        mov     eax, [edi + coff_reloc_t.virtual_addr]
+        add     eax, [esi + coff_section_t.virtual_addr]
 
   .fix:
         add     eax, [delta]
@@ -800,7 +800,7 @@ endl
         jnz     .reloc_loop
 
   .next:
-        add     esi, sizeof.COFF_SECTION
+        add     esi, sizeof.coff_section_t
         dec     [n_sec]
         jnz     .fix_sec
 
@@ -814,26 +814,26 @@ locals
 endl
 
         mov     eax, [coff]
-        movzx   ebx, [eax + COFF_HEADER.nSections]
+        movzx   ebx, [eax + coff_header_t.sections_cnt]
         mov     [n_sec], ebx
         lea     esi, [eax + 20]
         mov     edx, [delta]
 
   .fix_sec:
-        mov     edi, [esi + COFF_SECTION.PtrReloc]
+        mov     edi, [esi + coff_section_t.relocs_ptr]
         add     edi, [coff]
 
-        movzx   ecx, [esi + COFF_SECTION.NumReloc]
+        movzx   ecx, [esi + coff_section_t.relocs_cnt]
         test    ecx, ecx
         jz      .next
 
   .reloc_loop:
-        cmp     [edi + COFF_RELOC.Type], 6
+        cmp     [edi + coff_reloc_t.type], 6
         jne     .next_reloc
 
   .dir_32:
-        mov     eax, [edi + COFF_RELOC.VirtualAddress]
-        add     eax, [esi + COFF_SECTION.VirtualAddress]
+        mov     eax, [edi + coff_reloc_t.virtual_addr]
+        add     eax, [esi + coff_section_t.virtual_addr]
         add     [eax + edx], edx
 
   .next_reloc:
@@ -842,7 +842,7 @@ endl
         jnz     .reloc_loop
 
   .next:
-        add     esi, sizeof.COFF_SECTION
+        add     esi, sizeof.coff_section_t
         dec     [n_sec]
         jnz     .fix_sec
 
@@ -892,15 +892,15 @@ endl
 
         mov     [coff], eax
 
-        movzx   ecx, [eax + COFF_HEADER.nSections]
+        movzx   ecx, [eax + coff_header_t.sections_cnt]
         xor     ebx, ebx
 
         lea     edx, [eax + 20]
 
-    @@: add     ebx, [edx + COFF_SECTION.SizeOfRawData]
+    @@: add     ebx, [edx + coff_section_t.raw_data_size]
         add     ebx, 15
         and     ebx, not 15
-        add     edx, sizeof.COFF_SECTION
+        add     edx, sizeof.coff_section_t
         dec     ecx
         jnz     @b
         mov     [img_size], ebx
@@ -920,36 +920,36 @@ endl
         rep     stosd
 
         mov     edx, [coff]
-        movzx   ebx, [edx + COFF_HEADER.nSections]
+        movzx   ebx, [edx + coff_header_t.sections_cnt]
         mov     edi, [img_base]
         lea     eax, [edx + 20]
 
-    @@: mov     [eax + COFF_SECTION.VirtualAddress], edi
-        mov     esi, [eax + COFF_SECTION.PtrRawData]
+    @@: mov     [eax + coff_section_t.virtual_addr], edi
+        mov     esi, [eax + coff_section_t.raw_data_ptr]
         test    esi, esi
         jnz     .copy
-        add     edi, [eax + COFF_SECTION.SizeOfRawData]
+        add     edi, [eax + coff_section_t.raw_data_size]
         jmp     .next
 
   .copy:
         add     esi, edx
-        mov     ecx, [eax + COFF_SECTION.SizeOfRawData]
+        mov     ecx, [eax + coff_section_t.raw_data_size]
         cld
         rep     movsb
 
   .next:
         add     edi, 15
         and     edi, not 15
-        add     eax, sizeof.COFF_SECTION
+        add     eax, sizeof.coff_section_t
         dec     ebx
         jnz     @b
 
-        mov     ebx, [edx + COFF_HEADER.pSymTable]
+        mov     ebx, [edx + coff_header_t.syms_ptr]
         add     ebx, edx
         mov     [sym], ebx
-        mov     ecx, [edx + COFF_HEADER.nSymbols]
+        mov     ecx, [edx + coff_header_t.syms_cnt]
         add     ecx, ecx
-        lea     ecx, [ecx + ecx * 8] ; ecx *= 18 = nSymbols * sizeof.COFF_SYM
+        lea     ecx, [ecx + ecx * 8] ; ecx *= 18 = nSymbols * sizeof.coff_symbol_t
         add     ecx, [sym]
         mov     [strings], ecx
 
@@ -958,14 +958,14 @@ endl
         mov     dword[ebx + 4], 0
         lea     eax, [edx + 20]
 
-        stdcall fix_coff_symbols, eax, [sym], [edx + COFF_HEADER.nSymbols], [strings], ebx
+        stdcall fix_coff_symbols, eax, [sym], [edx + coff_header_t.syms_cnt], [strings], ebx
         test    eax, eax
         jz      .link_fail
 
         mov     ebx, [coff]
         stdcall fix_coff_relocs, ebx, [sym], 0
 
-        stdcall get_coff_sym, [sym], [ebx + COFF_HEADER.nSymbols], szVersion
+        stdcall get_coff_sym, [sym], [ebx + coff_header_t.syms_cnt], szVersion
         test    eax, eax
         jz      .link_fail
 
@@ -978,7 +978,7 @@ endl
         ja      .ver_fail
 
         mov     ebx, [coff]
-        stdcall get_coff_sym, [sym], [ebx + COFF_HEADER.nSymbols], szSTART
+        stdcall get_coff_sym, [sym], [ebx + coff_header_t.syms_cnt], szSTART
         mov     [start], eax
 
         stdcall kernel_free, [coff]
@@ -1003,9 +1003,9 @@ endl
 
   .ok:
         mov     ebx, [img_base]
-        mov     [eax + SRV.base], ebx
+        mov     [eax + service_t.base], ebx
         mov     ecx, [start]
-        mov     [eax + SRV.entry], ecx
+        mov     [eax + service_t.entry], ecx
         ret
 
   .ver_fail:
@@ -1041,7 +1041,7 @@ endl
 endp
 
 coff_get_align:
-        ; in: edx -> COFF_SECTION struct
+        ; in: edx -> coff_Section struct
         ; out: eax = alignment as mask for bits to drop
         ; Rules:
         ; - if alignment is not given, use default = 4K;
@@ -1049,7 +1049,7 @@ coff_get_align:
         ; - if alignment is more than 4K, revert to 4K.
 
         push    ecx
-        mov     cl, byte[edx + COFF_SECTION.Characteristics + 2]
+        mov     cl, byte[edx + coff_section_t.characteristics + 2]
         mov     eax, 1
         shr     cl, 4
         dec     cl
@@ -1089,31 +1089,31 @@ endl
         mov     esi, [CURRENT_TASK]
         shl     esi, 8
         lea     edi, [fullname]
-        mov     ebx, [esi + SLOT_BASE + APPDATA.dlls_list_ptr]
+        mov     ebx, [esi + SLOT_BASE + app_data_t.dlls_list_ptr]
         test    ebx, ebx
         jz      .not_in_process
-        mov     esi, [ebx + HDLL.fd]
+        mov     esi, [ebx + dll_handle_t.fd]
 
   .scan_in_process:
         cmp     esi, ebx
         jz      .not_in_process
-        mov     eax, [esi + HDLL.parent]
-        add     eax, DLLDESCR.name
+        mov     eax, [esi + dll_handle_t.parent]
+        add     eax, dll_descriptor_t.name
         stdcall strncmp, eax, edi, -1
         test    eax, eax
         jnz     .next_in_process
         ; simple variant: load DLL which is already loaded in this process
         ; just increment reference counters and return address of exports table
-        inc     [esi + HDLL.refcount]
-        mov     ecx, [esi + HDLL.parent]
-        inc     [ecx + DLLDESCR.refcount]
-        mov     eax, [ecx + DLLDESCR.exports]
-        sub     eax, [ecx + DLLDESCR.defaultbase]
-        add     eax, [esi + HDLL.base]
+        inc     [esi + dll_handle_t.refcount]
+        mov     ecx, [esi + dll_handle_t.parent]
+        inc     [ecx + dll_descriptor_t.refcount]
+        mov     eax, [ecx + dll_descriptor_t.exports]
+        sub     eax, [ecx + dll_descriptor_t.defaultbase]
+        add     eax, [esi + dll_handle_t.base]
         ret
 
   .next_in_process:
-        mov     esi, [esi + HDLL.fd]
+        mov     esi, [esi + dll_handle_t.fd]
         jmp     .scan_in_process
 
   .not_in_process:
@@ -1127,7 +1127,7 @@ endl
   .scan_for_dlls:
         cmp     esi, dll_list
         jz      .load_new
-        lea     eax, [esi + DLLDESCR.name]
+        lea     eax, [esi + dll_descriptor_t.name]
         stdcall strncmp, eax, edi, -1
         test    eax, eax
         jnz     .continue_scan
@@ -1135,13 +1135,13 @@ endl
   .test_prev_dll:
         mov     eax, dword[fileinfo + 24] ; last modified time
         mov     edx, dword[fileinfo + 28] ; last modified date
-        cmp     dword[esi + DLLDESCR.timestamp], eax
+        cmp     dword[esi + dll_descriptor_t.timestamp], eax
         jnz     .continue_scan
-        cmp     dword[esi + DLLDESCR.timestamp + 4], edx
+        cmp     dword[esi + dll_descriptor_t.timestamp + 4], edx
         jz      .dll_already_loaded
 
   .continue_scan:
-        mov     esi, [esi + DLLDESCR.fd]
+        mov     esi, [esi + dll_descriptor_t.fd]
         jmp     .scan_for_dlls
 
         ; new DLL
@@ -1153,37 +1153,37 @@ endl
         mov     [coff], eax
         mov     dword[fileinfo + 32], ebx
 
-        ; allocate DLLDESCR struct; size is sizeof.DLLDESCR plus size of DLL name
+        ; allocate dll_descriptor_t struct; size is sizeof.dll_descriptor_t plus size of DLL name
         mov     esi, edi
         mov     ecx, -1
         xor     eax, eax
         repnz   scasb
         not     ecx
-        lea     eax, [ecx + sizeof.DLLDESCR]
+        lea     eax, [ecx + sizeof.dll_descriptor_t]
         push    ecx
         call    malloc
         pop     ecx
         test    eax, eax
         jz      .fail_and_free_coff
         ; save timestamp
-        lea     edi, [eax + DLLDESCR.name]
+        lea     edi, [eax + dll_descriptor_t.name]
         rep     movsb
         mov     esi, eax
         mov     eax, dword[fileinfo + 24]
-        mov     dword[esi + DLLDESCR.timestamp], eax
+        mov     dword[esi + dll_descriptor_t.timestamp], eax
         mov     eax, dword[fileinfo + 28]
-        mov     dword[esi + DLLDESCR.timestamp + 4], eax
-        ; initialize DLLDESCR struct
-        and     [esi + DLLDESCR.refcount], 0 ; no HDLLs yet; later it will be incremented
-        mov     [esi + DLLDESCR.fd], dll_list
+        mov     dword[esi + dll_descriptor_t.timestamp + 4], eax
+        ; initialize dll_descriptor_t struct
+        and     [esi + dll_descriptor_t.refcount], 0 ; no dll_handle_t-s yet; later it will be incremented
+        mov     [esi + dll_descriptor_t.fd], dll_list
         mov     eax, [dll_list.bk]
         mov     [dll_list.bk], esi
-        mov     [esi + DLLDESCR.bk], eax
-        mov     [eax + DLLDESCR.fd], esi
+        mov     [esi + dll_descriptor_t.bk], eax
+        mov     [eax + dll_descriptor_t.fd], esi
 
         ; calculate size of loaded DLL
         mov     edx, [coff]
-        movzx   ecx, [edx + COFF_HEADER.nSections]
+        movzx   ecx, [edx + coff_header_t.sections_cnt]
         xor     ebx, ebx
 
         add     edx, 20
@@ -1192,12 +1192,12 @@ endl
         add     ebx, eax
         not     eax
         and     ebx, eax
-        add     ebx, [edx + COFF_SECTION.SizeOfRawData]
-        add     edx, sizeof.COFF_SECTION
+        add     ebx, [edx + coff_section_t.raw_data_size]
+        add     edx, sizeof.coff_section_t
         dec     ecx
         jnz     @b
         ; it must be nonzero and not too big
-        mov     [esi + DLLDESCR.size], ebx
+        mov     [esi + dll_descriptor_t.size], ebx
         test    ebx, ebx
         jz      .fail_and_free_dll
         cmp     ebx, MAX_DEFAULT_DLL_ADDR - MIN_DEFAULT_DLL_ADDR
@@ -1206,7 +1206,7 @@ endl
         stdcall kernel_alloc, ebx
         test    eax, eax
         jz      .fail_and_free_dll
-        mov     [esi + DLLDESCR.data], eax
+        mov     [esi + dll_descriptor_t.data], eax
         ; calculate preferred base address
         add     ebx, 0x1fff
         and     ebx, not 0x0fff
@@ -1217,13 +1217,13 @@ endl
         mov     ecx, MIN_DEFAULT_DLL_ADDR
         lea     edx, [ecx + ebx]
 
-    @@: mov     [esi + DLLDESCR.defaultbase], ecx
+    @@: mov     [esi + dll_descriptor_t.defaultbase], ecx
         mov     [dll_cur_addr], edx
 
         ; copy sections and set correct values for VirtualAddress'es in headers
         push    esi
         mov     edx, [coff]
-        movzx   ebx, [edx + COFF_HEADER.nSections]
+        movzx   ebx, [edx + coff_header_t.sections_cnt]
         mov     edi, eax
         add     edx, 20
         cld
@@ -1234,11 +1234,11 @@ endl
         not     eax
         and     ecx, eax
         and     edi, eax
-        mov     [edx + COFF_SECTION.VirtualAddress], ecx
-        add     ecx, [edx + COFF_SECTION.SizeOfRawData]
-        mov     esi, [edx + COFF_SECTION.PtrRawData]
+        mov     [edx + coff_section_t.virtual_addr], ecx
+        add     ecx, [edx + coff_section_t.raw_data_size]
+        mov     esi, [edx + coff_section_t.raw_data_ptr]
         push    ecx
-        mov     ecx, [edx + COFF_SECTION.SizeOfRawData]
+        mov     ecx, [edx + coff_section_t.raw_data_size]
         test    esi, esi
         jnz     .copy
         xor     eax, eax
@@ -1251,7 +1251,7 @@ endl
 
   .next:
         pop     ecx
-        add     edx, sizeof.COFF_SECTION
+        add     edx, sizeof.coff_section_t
         dec     ebx
         jnz     @b
         pop     esi
@@ -1260,104 +1260,104 @@ endl
         ; later we will use COFF header, headers for sections and symbol table
         ; and also relocations table for all sections
         mov     edx, [coff]
-        mov     ebx, [edx + COFF_HEADER.pSymTable]
+        mov     ebx, [edx + coff_header_t.syms_ptr]
         mov     edi, dword[fileinfo + 32]
         sub     edi, ebx
         jc      .fail_and_free_data
-        mov     [esi + DLLDESCR.symbols_lim], edi
+        mov     [esi + dll_descriptor_t.symbols_lim], edi
         add     ebx, edx
-        movzx   ecx, [edx + COFF_HEADER.nSections]
+        movzx   ecx, [edx + coff_header_t.sections_cnt]
         lea     ecx, [ecx * 5]
         lea     edi, [edi + ecx * 8 + 20]
         add     edx, 20
 
-    @@: movzx   eax, [edx + COFF_SECTION.NumReloc]
+    @@: movzx   eax, [edx + coff_section_t.relocs_cnt]
         lea     eax, [eax * 5]
         lea     edi, [edi + eax * 2]
-        add     edx, sizeof.COFF_SECTION
+        add     edx, sizeof.coff_section_t
         sub     ecx, 5
         jnz     @b
         stdcall kernel_alloc, edi
         test    eax, eax
         jz      .fail_and_free_data
         mov     edx, [coff]
-        movzx   ecx, [edx + COFF_HEADER.nSections]
+        movzx   ecx, [edx + coff_header_t.sections_cnt]
         lea     ecx, [ecx * 5]
         lea     ecx, [ecx * 2 + 5]
-        mov     [esi + DLLDESCR.coff_hdr], eax
+        mov     [esi + dll_descriptor_t.coff_hdr], eax
         push    esi
         mov     esi, edx
         mov     edi, eax
         rep     movsd
         pop     esi
-        mov     [esi + DLLDESCR.symbols_ptr], edi
+        mov     [esi + dll_descriptor_t.symbols_ptr], edi
         push    esi
-        mov     ecx, [edx + COFF_HEADER.nSymbols]
-        mov     [esi + DLLDESCR.symbols_num], ecx
-        mov     ecx, [esi + DLLDESCR.symbols_lim]
+        mov     ecx, [edx + coff_header_t.syms_cnt]
+        mov     [esi + dll_descriptor_t.symbols_num], ecx
+        mov     ecx, [esi + dll_descriptor_t.symbols_lim]
         mov     esi, ebx
         rep     movsb
         pop     esi
-        mov     ebx, [esi + DLLDESCR.coff_hdr]
+        mov     ebx, [esi + dll_descriptor_t.coff_hdr]
         push    esi
-        movzx   eax, [edx + COFF_HEADER.nSections]
+        movzx   eax, [edx + coff_header_t.sections_cnt]
         lea     edx, [ebx + 20]
 
-    @@: movzx   ecx, [edx + COFF_SECTION.NumReloc]
+    @@: movzx   ecx, [edx + coff_section_t.relocs_cnt]
         lea     ecx, [ecx * 5]
-        mov     esi, [edx + COFF_SECTION.PtrReloc]
-        mov     [edx + COFF_SECTION.PtrReloc], edi
-        sub     [edx + COFF_SECTION.PtrReloc], ebx
+        mov     esi, [edx + coff_section_t.relocs_ptr]
+        mov     [edx + coff_section_t.relocs_ptr], edi
+        sub     [edx + coff_section_t.relocs_ptr], ebx
         add     esi, [coff]
         shr     ecx, 1
         rep     movsd
         adc     ecx, ecx
         rep     movsw
-        add     edx, sizeof.COFF_SECTION
+        add     edx, sizeof.coff_section_t
         dec     eax
         jnz     @b
         pop     esi
 
         ; fixup symbols
         mov     edx, ebx
-        mov     eax, [ebx + COFF_HEADER.nSymbols]
+        mov     eax, [ebx + coff_header_t.syms_cnt]
         add     edx, 20
-        mov     ecx, [esi + DLLDESCR.symbols_num]
+        mov     ecx, [esi + dll_descriptor_t.symbols_num]
         lea     ecx, [ecx * 9]
         add     ecx, ecx
-        add     ecx, [esi + DLLDESCR.symbols_ptr]
+        add     ecx, [esi + dll_descriptor_t.symbols_ptr]
 
-        stdcall fix_coff_symbols, edx, [esi + DLLDESCR.symbols_ptr], eax, ecx, 0
+        stdcall fix_coff_symbols, edx, [esi + dll_descriptor_t.symbols_ptr], eax, ecx, 0
 ;       test    eax, eax
 ;       jnz     @f
 ;
 ;   @@:
 
-        stdcall get_coff_sym, [esi + DLLDESCR.symbols_ptr], [ebx + COFF_HEADER.nSymbols], szEXPORTS
+        stdcall get_coff_sym, [esi + dll_descriptor_t.symbols_ptr], [ebx + coff_header_t.syms_cnt], szEXPORTS
         test    eax, eax
         jnz     @f
 
-        stdcall get_coff_sym, [esi + DLLDESCR.symbols_ptr], [ebx + COFF_HEADER.nSymbols], sz_EXPORTS
+        stdcall get_coff_sym, [esi + dll_descriptor_t.symbols_ptr], [ebx + coff_header_t.syms_cnt], sz_EXPORTS
 
-    @@: mov     [esi + DLLDESCR.exports], eax
+    @@: mov     [esi + dll_descriptor_t.exports], eax
 
         ; fix relocs in the hidden copy in kernel memory to default address
         ; it is first fix; usually this will be enough, but second fix
         ; can be necessary if real load address will not equal assumption
-        mov     eax, [esi + DLLDESCR.data]
-        sub     eax, [esi + DLLDESCR.defaultbase]
-        stdcall fix_coff_relocs, ebx, [esi + DLLDESCR.symbols_ptr], eax
+        mov     eax, [esi + dll_descriptor_t.data]
+        sub     eax, [esi + dll_descriptor_t.defaultbase]
+        stdcall fix_coff_relocs, ebx, [esi + dll_descriptor_t.symbols_ptr], eax
 
         stdcall kernel_free, [coff]
 
   .dll_already_loaded:
-        inc     [esi + DLLDESCR.refcount]
+        inc     [esi + dll_descriptor_t.refcount]
         push    esi
         call    init_heap
         pop     esi
 
-        mov     edi, [esi + DLLDESCR.size]
-        stdcall user_alloc_at, [esi + DLLDESCR.defaultbase], edi
+        mov     edi, [esi + dll_descriptor_t.size]
+        stdcall user_alloc_at, [esi + dll_descriptor_t.defaultbase], edi
         test    eax, eax
         jnz     @f
         stdcall user_alloc, edi
@@ -1365,37 +1365,37 @@ endl
         jz      .fail_and_dereference
 
     @@: mov     [img_base], eax
-        mov     eax, sizeof.HDLL
+        mov     eax, sizeof.dll_handle_t
         call    malloc
         test    eax, eax
         jz      .fail_and_free_user
         mov     ebx, [CURRENT_TASK]
         shl     ebx, 5
-        mov     edx, [CURRENT_TASK + ebx + TASKDATA.pid]
-        mov     [eax + HDLL.pid], edx
+        mov     edx, [CURRENT_TASK + ebx + task_data_t.pid]
+        mov     [eax + dll_handle_t.pid], edx
         push    eax
         call    init_dlls_in_thread
         pop     ebx
         test    eax, eax
         jz      .fail_and_free_user
-        mov     edx, [eax + HDLL.fd]
-        mov     [ebx + HDLL.fd], edx
-        mov     [ebx + HDLL.bk], eax
-        mov     [eax + HDLL.fd], ebx
-        mov     [edx + HDLL.bk], ebx
+        mov     edx, [eax + dll_handle_t.fd]
+        mov     [ebx + dll_handle_t.fd], edx
+        mov     [ebx + dll_handle_t.bk], eax
+        mov     [eax + dll_handle_t.fd], ebx
+        mov     [edx + dll_handle_t.bk], ebx
         mov     eax, ebx
         mov     ebx, [img_base]
-        mov     [eax + HDLL.base], ebx
-        mov     [eax + HDLL.size], edi
-        mov     [eax + HDLL.refcount], 1
-        mov     [eax + HDLL.parent], esi
+        mov     [eax + dll_handle_t.base], ebx
+        mov     [eax + dll_handle_t.size], edi
+        mov     [eax + dll_handle_t.refcount], 1
+        mov     [eax + dll_handle_t.parent], esi
         mov     edx, ebx
         shr     edx, 12
         or      dword[page_tabs + (edx - 1) * 4], DONT_FREE_BLOCK
         ; copy entries of page table from kernel-side image to usermode
         ; use copy-on-write for user-mode image, so map as readonly
         xor     edi, edi
-        mov     ecx, [esi + DLLDESCR.data]
+        mov     ecx, [esi + dll_descriptor_t.data]
         shr     ecx, 12
 
   .map_pages_loop:
@@ -1411,21 +1411,21 @@ endl
         inc     ecx
         inc     edx
         add     edi, 0x1000
-        cmp     edi, [esi + DLLDESCR.size]
+        cmp     edi, [esi + dll_descriptor_t.size]
         jb      .map_pages_loop
 
         ; if real user-mode base is not equal to preferred base, relocate image
-        sub     ebx, [esi + DLLDESCR.defaultbase]
+        sub     ebx, [esi + dll_descriptor_t.defaultbase]
         jz      @f
-        stdcall rebase_coff, [esi + DLLDESCR.coff_hdr], [esi + DLLDESCR.symbols_ptr], ebx
+        stdcall rebase_coff, [esi + dll_descriptor_t.coff_hdr], [esi + dll_descriptor_t.symbols_ptr], ebx
 
-    @@: mov     eax, [esi + DLLDESCR.exports]
-        sub     eax, [esi + DLLDESCR.defaultbase]
+    @@: mov     eax, [esi + dll_descriptor_t.exports]
+        sub     eax, [esi + dll_descriptor_t.defaultbase]
         add     eax, [img_base]
         ret
 
   .fail_and_free_data:
-        stdcall kernel_free, [esi + DLLDESCR.data]
+        stdcall kernel_free, [esi + dll_descriptor_t.data]
 
   .fail_and_free_dll:
         mov     eax, esi
@@ -1449,17 +1449,17 @@ endl
 endp
 
 init_dlls_in_thread:
-        ; initialize [APPDATA.dlls_list_ptr] for given thread
-        ; DLL is per-process object, so APPDATA.dlls_list_ptr must be
+        ; initialize [app_data_t.dlls_list_ptr] for given thread
+        ; DLL is per-process object, so app_data_t.dlls_list_ptr must be
         ; kept in sync for all threads of one process.
-        ; out: eax = APPDATA.dlls_list_ptr if all is OK,
+        ; out: eax = app_data_t.dlls_list_ptr if all is OK,
         ; NULL if memory allocation failed
 
         mov     ebx, [current_slot]
-        mov     eax, [ebx + APPDATA.dlls_list_ptr]
+        mov     eax, [ebx + app_data_t.dlls_list_ptr]
         test    eax, eax
         jnz     .ret
-        push    [ebx + APPDATA.dir_table]
+        push    [ebx + app_data_t.dir_table]
         mov     eax, 8
         call    malloc
         pop     edx
@@ -1471,9 +1471,9 @@ init_dlls_in_thread:
         mov     ebx, SLOT_BASE + 256
 
   .set:
-        cmp     [ebx + APPDATA.dir_table], edx
+        cmp     [ebx + app_data_t.dir_table], edx
         jnz     @f
-        mov     [ebx + APPDATA.dlls_list_ptr], eax
+        mov     [ebx + app_data_t.dlls_list_ptr], eax
 
     @@: add     ebx, 256
         dec     ecx
@@ -1483,16 +1483,16 @@ init_dlls_in_thread:
         ret
 
 dereference_dll:
-        ; in: eax = number of references to delete, esi -> DLLDESCR struc
+        ; in: eax = number of references to delete, esi -> dll_descriptor_t struc
 
-        sub     [esi + DLLDESCR.refcount], eax
+        sub     [esi + dll_descriptor_t.refcount], eax
         jnz     .ret
-        mov     eax, [esi + DLLDESCR.fd]
-        mov     edx, [esi + DLLDESCR.bk]
-        mov     [eax + DLLDESCR.bk], edx
-        mov     [edx + DLLDESCR.fd], eax
-        stdcall kernel_free, [esi + DLLDESCR.coff_hdr]
-        stdcall kernel_free, [esi + DLLDESCR.data]
+        mov     eax, [esi + dll_descriptor_t.fd]
+        mov     edx, [esi + dll_descriptor_t.bk]
+        mov     [eax + dll_descriptor_t.bk], edx
+        mov     [edx + dll_descriptor_t.fd], eax
+        stdcall kernel_free, [esi + dll_descriptor_t.coff_hdr]
+        stdcall kernel_free, [esi + dll_descriptor_t.data]
         mov     eax, esi
         call    free
 
@@ -1502,16 +1502,16 @@ dereference_dll:
 destroy_hdll:
         push    ebx ecx esi edi
         push    eax
-        mov     ebx, [eax + HDLL.base]
-        mov     esi, [eax + HDLL.parent]
-        mov     edx, [esi + DLLDESCR.size]
-        ; The following actions require the context of application where HDLL is mapped.
+        mov     ebx, [eax + dll_handle_t.base]
+        mov     esi, [eax + dll_handle_t.parent]
+        mov     edx, [esi + dll_descriptor_t.size]
+        ; The following actions require the context of application where dll_handle_t is mapped.
         ; However, destroy_hdll can be called in the context of OS thread when
         ; cleaning up objects created by the application which is destroyed.
         ; So remember current cr3 and set it to page table of target.
-        mov     eax, [ecx + APPDATA.dir_table]
+        mov     eax, [ecx + app_data_t.dir_table]
         ; Because we cheat with cr3, disable interrupts: task switch would restore
-        ; page table from APPDATA of current thread.
+        ; page table from app_data_t of current thread.
         ; Also set [current_slot] because it is used by user_free.
         pushf
         cli
@@ -1524,7 +1524,7 @@ destroy_hdll:
         mov     eax, ebx
         shr     ebx, 12
         push    ebx
-        mov     esi, [esi + DLLDESCR.data]
+        mov     esi, [esi + dll_descriptor_t.data]
         shr     esi, 12
 
   .unmap_loop:
@@ -1556,26 +1556,26 @@ destroy_hdll:
         ; Ok, cheating is done.
         pop     eax
         push    eax
-        mov     esi, [eax + HDLL.parent]
-        mov     eax, [eax + HDLL.refcount]
+        mov     esi, [eax + dll_handle_t.parent]
+        mov     eax, [eax + dll_handle_t.refcount]
         call    dereference_dll
         pop     eax
-        mov     edx, [eax + HDLL.bk]
-        mov     ebx, [eax + HDLL.fd]
-        mov     [ebx + HDLL.bk], edx
-        mov     [edx + HDLL.fd], ebx
+        mov     edx, [eax + dll_handle_t.bk]
+        mov     ebx, [eax + dll_handle_t.fd]
+        mov     [ebx + dll_handle_t.bk], edx
+        mov     [edx + dll_handle_t.fd], ebx
         call    free
         pop     edi esi ecx ebx
         ret
 
 destroy_all_hdlls:
-        ; ecx -> APPDATA for slot, esi = dlls_list_ptr
+        ; ecx -> app_data_t for slot, esi = dlls_list_ptr
 
         test    esi, esi
         jz      .ret
 
   .loop:
-        mov     eax, [esi + HDLL.fd]
+        mov     eax, [esi + dll_handle_t.fd]
         cmp     eax, esi
         jz      free
         call    destroy_hdll
@@ -1592,13 +1592,13 @@ stop_all_services:
   .next:
         cmp     edx, srv.fd - SRV_FD_OFFSET
         je      .done
-        cmp     [edx + SRV.magic], ' SRV'
+        cmp     [edx + service_t.magic], ' SRV'
         jne     .next
-        cmp     [edx + SRV.size], sizeof.SRV
+        cmp     [edx + service_t.size], sizeof.service_t
         jne     .next
 
-        mov     ebx, [edx + SRV.entry]
-        mov     edx, [edx + SRV.fd]
+        mov     ebx, [edx + service_t.entry]
+        mov     edx, [edx + service_t.fd]
         test    ebx, ebx
         jz      .next
 
@@ -1632,13 +1632,13 @@ create_kernel_object:
 
         pushfd
         cli
-        mov     edx, [ecx + APPOBJ.fd]
-        mov     [eax + APPOBJ.fd], edx
-        mov     [eax + APPOBJ.bk], ecx
-        mov     [eax + APPOBJ.pid], ebx
+        mov     edx, [ecx + app_object_t.fd]
+        mov     [eax + app_object_t.fd], edx
+        mov     [eax + app_object_t.bk], ecx
+        mov     [eax + app_object_t.pid], ebx
 
-        mov     [ecx + APPOBJ.fd], eax
-        mov     [edx + APPOBJ.bk], eax
+        mov     [ecx + app_object_t.fd], eax
+        mov     [edx + app_object_t.bk], eax
         popfd
 
   .fail:
@@ -1651,10 +1651,10 @@ destroy_kernel_object:
 
         pushfd
         cli
-        mov     ebx, [eax + APPOBJ.fd]
-        mov     ecx, [eax + APPOBJ.bk]
-        mov     [ebx + APPOBJ.bk], ecx
-        mov     [ecx + APPOBJ.fd], ebx
+        mov     ebx, [eax + app_object_t.fd]
+        mov     ecx, [eax + app_object_t.bk]
+        mov     [ebx + app_object_t.bk], ecx
+        mov     [ecx + app_object_t.fd], ebx
         popfd
 
         xor     edx, edx ; clear common header

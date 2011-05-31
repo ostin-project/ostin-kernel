@@ -18,13 +18,13 @@
 ;; * RFC 792 "Internet Control Message Protocol"
 ;;======================================================================================================================
 
-struct ICMP_PACKET
-  Type           db ? ; +00
-  Code           db ? ; +01
-  Checksum       dw ? ; +02
-  Identifier     dw ? ; +04
-  SequenceNumber dw ? ; +06
-  Data           db ? ; +08
+struct icmp_packet_t
+  type            db ? ; +00
+  code            db ? ; +01
+  checksum        dw ? ; +02
+  identifier      dw ? ; +04
+  sequence_number dw ? ; +06
+  data            db ? ; +08
 ends
 
 ; Example:
@@ -116,17 +116,17 @@ proc icmp_rx stdcall uses ebx esi edi, buffer_number:DWORD, IPPacketBase:DWORD, 
         ;   This is a kernel function, called by ip_rx
         ; IN:
         ;   buffer_number  - # of IP-buffer. This buffer must be reused or marked as empty afterwards
-        ;   IPPacketBase   - IP_PACKET base address
-        ;   IPHeaderLength - Header length of IP_PACKET
+        ;   IPPacketBase   - ip_packet_t base address
+        ;   IPHeaderLength - Header length of ip_packet_t
         ; OUT:
         ;   EAX=not defined
         ; All used registers will be saved
 
-        mov     esi, [IPPacketBase] ; esi=IP_PACKET base address
+        mov     esi, [IPPacketBase] ; esi=ip_packet_t base address
         mov     edi, esi
-        add     edi, [IPHeaderLength] ; edi=ICMP_PACKET base address
+        add     edi, [IPHeaderLength] ; edi=icmp_packet_t base address
 
-        cmp     byte[edi + ICMP_PACKET.Type], ICMP_ECHO ; Is this an echo request? discard if not
+        cmp     byte[edi + icmp_packet_t.type], ICMP_ECHO ; Is this an echo request? discard if not
         jz      .icmp_echo
 
         mov     eax, [buffer_number]
@@ -135,31 +135,31 @@ proc icmp_rx stdcall uses ebx esi edi, buffer_number:DWORD, IPPacketBase:DWORD, 
 
   .icmp_echo:
         ; swap the source and destination addresses
-        mov     ecx, [esi + IP_PACKET.DestinationAddress]
-        mov     ebx, [esi + IP_PACKET.SourceAddress]
-        mov     [esi + IP_PACKET.DestinationAddress], ebx
-        mov     [esi + IP_PACKET.SourceAddress], ecx
+        mov     ecx, [esi + ip_packet_t.dst_ip]
+        mov     ebx, [esi + ip_packet_t.src_ip]
+        mov     [esi + ip_packet_t.dst_ip], ebx
+        mov     [esi + ip_packet_t.src_ip], ecx
 
         ; recalculate the IP header checksum
         mov     eax, [IPHeaderLength]
         stdcall checksum_jb, esi, eax ; buf_ptr, buf_size
 
-        mov     byte[esi + IP_PACKET.HeaderChecksum], ah
-        mov     byte[esi + IP_PACKET.HeaderChecksum + 1], al ; ?? correct byte order?
+        mov     byte[esi + ip_packet_t.header_checksum], ah
+        mov     byte[esi + ip_packet_t.header_checksum + 1], al ; ?? correct byte order?
 
-        mov     byte[edi + ICMP_PACKET.Type], ICMP_ECHOREPLY ; change the request to a response
-        mov     word[edi + ICMP_PACKET.Checksum], 0 ; clear ICMP checksum prior to re-calc
+        mov     byte[edi + icmp_packet_t.type], ICMP_ECHOREPLY ; change the request to a response
+        mov     word[edi + icmp_packet_t.checksum], 0 ; clear ICMP checksum prior to re-calc
 
         ; Calculate the length of the ICMP data (IP payload)
         xor     eax, eax
-        mov     ah, byte[esi + IP_PACKET.TotalLength]
-        mov     al, byte[esi + IP_PACKET.TotalLength + 1]
+        mov     ah, byte[esi + ip_packet_t.total_length]
+        mov     al, byte[esi + ip_packet_t.total_length + 1]
         sub     ax, word[IPHeaderLength] ; ax=ICMP-packet length
 
         stdcall checksum_jb, edi, eax ; buf_ptr, buf_size
 
-        mov     byte[edi + ICMP_PACKET.Checksum], ah
-        mov     byte[edi + ICMP_PACKET.Checksum + 1], al
+        mov     byte[edi + icmp_packet_t.checksum], ah
+        mov     byte[edi + icmp_packet_t.checksum + 1], al
 
         ; Queue packet for transmission
         mov     ebx, [buffer_number]
