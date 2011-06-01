@@ -17,8 +17,7 @@
 struct memory_block_t
   next_block dd ?
   prev_block dd ?
-  list_fd    dd ?
-  list_bk    dd ?
+  list       linked_list_t
   base       dd ?
   size       dd ?
   flags      dd ?
@@ -40,18 +39,18 @@ macro calc_index op
 
 macro remove_from_list op
 {
-        mov     edx, [op + memory_block_t.list_fd]
-        mov     ecx, [op + memory_block_t.list_bk]
+        mov     edx, [op + memory_block_t.list.next_ptr]
+        mov     ecx, [op + memory_block_t.list.prev_ptr]
         test    edx, edx
         jz      @f
-        mov     [edx + memory_block_t.list_bk], ecx
+        mov     [edx + memory_block_t.list.prev_ptr], ecx
 
     @@: test    ecx, ecx
         jz      @f
-        mov     [ecx + memory_block_t.list_fd], edx
+        mov     [ecx + memory_block_t.list.next_ptr], edx
 
-    @@: mov     [op + memory_block_t.list_fd], 0
-        mov     [op + memory_block_t.list_bk], 0
+    @@: mov     [op + memory_block_t.list.next_ptr], 0
+        mov     [op + memory_block_t.list.prev_ptr], 0
 }
 
 macro remove_from_free op
@@ -73,12 +72,12 @@ macro remove_from_free op
 
 macro remove_from_used op
 {
-        mov     edx, [op + memory_block_t.list_fd]
-        mov     ecx, [op + memory_block_t.list_bk]
-        mov     [edx + memory_block_t.list_bk], ecx
-        mov     [ecx + memory_block_t.list_fd], edx
-        mov     [op + memory_block_t.list_fd], 0
-        mov     [op + memory_block_t.list_bk], 0
+        mov     edx, [op + memory_block_t.list.next_ptr]
+        mov     ecx, [op + memory_block_t.list.prev_ptr]
+        mov     [edx + memory_block_t.list.prev_ptr], ecx
+        mov     [ecx + memory_block_t.list.next_ptr], edx
+        mov     [op + memory_block_t.list.next_ptr], 0
+        mov     [op + memory_block_t.list.prev_ptr], 0
 }
 
 align 4
@@ -98,9 +97,9 @@ proc init_kernel_heap
         mov     [mem_block_end], mem_block_map + 512
         mov     [mem_block_arr], HEAP_BASE
 
-        mov     eax, mem_used.fd - MEM_LIST_OFFSET
-        mov     [mem_used.fd], eax
-        mov     [mem_used.bk], eax
+        mov     eax, mem_used.next_ptr - MEM_LIST_OFFSET
+        mov     [mem_used.next_ptr], eax
+        mov     [mem_used.prev_ptr], eax
 
         stdcall alloc_pages, 32
         mov     ecx, 32
@@ -119,16 +118,16 @@ proc init_kernel_heap
         xor     eax, eax
         mov     [edi + memory_block_t.next_block], ebx
         mov     [edi + memory_block_t.prev_block], eax
-        mov     [edi + memory_block_t.list_fd], eax
-        mov     [edi + memory_block_t.list_bk], eax
+        mov     [edi + memory_block_t.list.next_ptr], eax
+        mov     [edi + memory_block_t.list.prev_ptr], eax
         mov     [edi + memory_block_t.base], HEAP_BASE
         mov     [edi + memory_block_t.size], 4096 * sizeof.memory_block_t
         mov     [edi + memory_block_t.flags], USED_BLOCK
 
         mov     [ebx + memory_block_t.next_block], eax
         mov     [ebx + memory_block_t.prev_block], eax
-        mov     [ebx + memory_block_t.list_fd], eax
-        mov     [ebx + memory_block_t.list_bk], eax
+        mov     [ebx + memory_block_t.list.next_ptr], eax
+        mov     [ebx + memory_block_t.list.prev_ptr], eax
         mov     [ebx + memory_block_t.base], HEAP_BASE + 4096 * sizeof.memory_block_t
 
         mov     ecx, [pg_data.kernel_pages]
@@ -201,7 +200,7 @@ get_small_block:
         jmp     .find
 
   .next:
-        mov     edi, [edi + memory_block_t.list_fd]
+        mov     edi, [edi + memory_block_t.list.next_ptr]
         test    edi, edi
         jnz     .check_size
 
@@ -308,8 +307,8 @@ endl
         mov     eax, [edi + memory_block_t.prev_block]
         mov     [esi + memory_block_t.prev_block], eax
         mov     [edi + memory_block_t.prev_block], esi
-        mov     [esi + memory_block_t.list_fd], 0
-        mov     [esi + memory_block_t.list_bk], 0
+        mov     [esi + memory_block_t.list.next_ptr], 0
+        mov     [esi + memory_block_t.list.prev_ptr], 0
         and     eax, eax
         jz      @f
         mov     [eax + memory_block_t.next_block], esi
@@ -341,21 +340,21 @@ endl
         btr     [mem_block_mask], ecx
 
     @@: mov     edx, [mem_block_list + eax * 4]
-        mov     [edi + memory_block_t.list_fd], edx
+        mov     [edi + memory_block_t.list.next_ptr], edx
         test    edx, edx
         jz      @f
-        mov     [edx + memory_block_t.list_bk], edi
+        mov     [edx + memory_block_t.list.prev_ptr], edi
 
     @@: mov     [mem_block_list + eax * 4], edi
         bts     [mem_block_mask], eax
 
   .m_eq_ind:
-        mov     ecx, mem_used.fd - MEM_LIST_OFFSET
-        mov     edx, [ecx + memory_block_t.list_fd]
-        mov     [esi + memory_block_t.list_fd], edx
-        mov     [esi + memory_block_t.list_bk], ecx
-        mov     [ecx + memory_block_t.list_fd], esi
-        mov     [edx + memory_block_t.list_bk], esi
+        mov     ecx, mem_used.next_ptr - MEM_LIST_OFFSET
+        mov     edx, [ecx + memory_block_t.list.next_ptr]
+        mov     [esi + memory_block_t.list.next_ptr], edx
+        mov     [esi + memory_block_t.list.prev_ptr], ecx
+        mov     [ecx + memory_block_t.list.next_ptr], esi
+        mov     [edx + memory_block_t.list.prev_ptr], esi
 
         mov     [esi + memory_block_t.flags], USED_BLOCK
         mov     eax, [esi + memory_block_t.base]
@@ -374,12 +373,12 @@ endl
         jnz     @f
         btr     [mem_block_mask], ebx
 
-    @@: mov     ecx, mem_used.fd - MEM_LIST_OFFSET
-        mov     edx, [ecx + memory_block_t.list_fd]
-        mov     [edi + memory_block_t.list_fd], edx
-        mov     [edi + memory_block_t.list_bk], ecx
-        mov     [ecx + memory_block_t.list_fd], edi
-        mov     [edx + memory_block_t.list_bk], edi
+    @@: mov     ecx, mem_used.next_ptr - MEM_LIST_OFFSET
+        mov     edx, [ecx + memory_block_t.list.next_ptr]
+        mov     [edi + memory_block_t.list.next_ptr], edx
+        mov     [edi + memory_block_t.list.prev_ptr], ecx
+        mov     [ecx + memory_block_t.list.next_ptr], edi
+        mov     [edx + memory_block_t.list.prev_ptr], edi
 
         mov     [edi + memory_block_t.flags], USED_BLOCK
         mov     eax, [edi + memory_block_t.base]
@@ -409,14 +408,14 @@ proc free_kernel_space stdcall uses ebx ecx edx esi edi, base:dword
         call    wait_mutex ; ebx
 
         mov     eax, [base]
-        mov     esi, [mem_used.fd]
+        mov     esi, [mem_used.next_ptr]
 
-    @@: cmp     esi, mem_used.fd - MEM_LIST_OFFSET
+    @@: cmp     esi, mem_used.next_ptr - MEM_LIST_OFFSET
         je      .fail
 
         cmp     [esi + memory_block_t.base], eax
         je      .found
-        mov     esi, [esi + memory_block_t.list_fd]
+        mov     esi, [esi + memory_block_t.list.next_ptr]
         jmp     @b
 
   .found:
@@ -491,10 +490,10 @@ proc free_kernel_space stdcall uses ebx ecx edx esi edi, base:dword
 
     @@: mov     esi, [mem_block_list + eax * 4]
         mov     [mem_block_list + eax * 4], edi
-        mov     [edi + memory_block_t.list_fd], esi
+        mov     [edi + memory_block_t.list.next_ptr], esi
         test    esi, esi
         jz      @f
-        mov     [esi + memory_block_t.list_bk], edi
+        mov     [esi + memory_block_t.list.prev_ptr], edi
 
     @@: bts     [mem_block_mask], eax
 
@@ -515,10 +514,10 @@ proc free_kernel_space stdcall uses ebx ecx edx esi edi, base:dword
 
         mov     edi, [mem_block_list + eax * 4]
         mov     [mem_block_list + eax * 4], esi
-        mov     [esi + memory_block_t.list_fd], edi
+        mov     [esi + memory_block_t.list.next_ptr], edi
         test    edi, edi
         jz      @f
-        mov     [edi + memory_block_t.list_bk], esi
+        mov     [edi + memory_block_t.list.prev_ptr], esi
 
     @@: bts     [mem_block_mask], eax
         mov     [esi + memory_block_t.flags], FREE_BLOCK
@@ -624,15 +623,15 @@ proc kernel_free stdcall, base:dword
         call    wait_mutex ; ebx
 
         mov     eax, [base]
-        mov     esi, [mem_used.fd]
+        mov     esi, [mem_used.next_ptr]
 
-    @@: cmp     esi, mem_used.fd - MEM_LIST_OFFSET
+    @@: cmp     esi, mem_used.next_ptr - MEM_LIST_OFFSET
         je      .fail
 
         cmp     [esi + memory_block_t.base], eax
         cmp     [esi + memory_block_t.base], eax
         je      .found
-        mov     esi, [esi + memory_block_t.list_fd]
+        mov     esi, [esi + memory_block_t.list.next_ptr]
         jmp     @b
 
   .found:
@@ -1296,11 +1295,11 @@ destroy_smap:
         lock    dec [esi + smem_t.refcount]
         jnz     .done
 
-        mov     ecx, [esi + smem_t.bk]
-        mov     edx, [esi + smem_t.fd]
+        mov     ecx, [esi + smem_t.prev_ptr]
+        mov     edx, [esi + smem_t.next_ptr]
 
-        mov     [ecx + smem_t.fd], edx
-        mov     [edx + smem_t.bk], ecx
+        mov     [ecx + smem_t.next_ptr], edx
+        mov     [edx + smem_t.prev_ptr], ecx
 
         stdcall kernel_free, [esi + smem_t.base]
         mov     eax, esi
@@ -1359,7 +1358,7 @@ endl
         mov     edx, E_PARAM
         jz      .fail
 
-        mov     esi, [shmem_list.fd]
+        mov     esi, [shmem_list.next_ptr]
 
 align 4
 
@@ -1371,7 +1370,7 @@ align 4
         test    eax, eax
         je      .found
 
-        mov     esi, [esi + smem_t.fd]
+        mov     esi, [esi + smem_t.next_ptr]
         jmp     @b
 
   .not_found:
@@ -1423,12 +1422,12 @@ align 4
         lea     eax, [esi + smem_t.name]
         stdcall strncpy, eax, [name], 31
 
-        mov     eax, [shmem_list.fd]
-        mov     [esi + smem_t.bk], shmem_list
-        mov     [esi + smem_t.fd], eax
+        mov     eax, [shmem_list.next_ptr]
+        mov     [esi + smem_t.prev_ptr], shmem_list
+        mov     [esi + smem_t.next_ptr], eax
 
-        mov     [eax + smem_t.bk], esi
-        mov     [shmem_list.fd], esi
+        mov     [eax + smem_t.prev_ptr], esi
+        mov     [shmem_list.next_ptr], esi
 
         mov     [action], SHM_OPEN
         mov     [owner_access], SHM_WRITE
@@ -1548,7 +1547,7 @@ proc shmem_close stdcall, name:dword
         add     esi, APP_OBJ_OFFSET
 
   .next:
-        mov     eax, [esi + app_object_t.fd]
+        mov     eax, [esi + app_object_t.next_ptr]
         test    eax, eax
         jz      @f
 

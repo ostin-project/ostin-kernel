@@ -322,8 +322,8 @@ create_cursor:
         xor     ebx, ebx
         mov     [eax + cursor_t.magic], 'CURS'
         mov     [eax + cursor_t.destroy], destroy_cursor
-        mov     [eax + cursor_t.hot_x], ebx
-        mov     [eax + cursor_t.hot_y], ebx
+        mov     [eax + cursor_t.hot.x], ebx
+        mov     [eax + cursor_t.hot.y], ebx
 
         stdcall kernel_alloc, 0x1000
         test    eax, eax
@@ -339,14 +339,14 @@ create_cursor:
 
         movzx   ecx, word[esi + 10]
         movzx   edx, word[esi + 12]
-        mov     [edi + cursor_t.hot_x], ecx
-        mov     [edi + cursor_t.hot_y], edx
+        mov     [edi + cursor_t.hot.x], ecx
+        mov     [edi + cursor_t.hot.y], edx
 
         stdcall init_cursor, eax, esi
 
         mov     eax, [.hcursor]
-        lea     eax, [eax + cursor_t.list_next]
-        lea     edx, [_display.cr_list.next]
+        lea     eax, [eax + cursor_t.list.next_ptr]
+        lea     edx, [_display.cr_list.next_ptr]
 
         pushfd
         cli
@@ -379,8 +379,8 @@ create_cursor:
         shr     ebx, 16
         movzx   ecx, bh
         movzx   edx, bl
-        mov     [eax + cursor_t.hot_x], ecx
-        mov     [eax + cursor_t.hot_y], edx
+        mov     [eax + cursor_t.hot.x], ecx
+        mov     [eax + cursor_t.hot.y], edx
 
         xchg    edi, eax
         mov     ecx, 1024
@@ -564,7 +564,7 @@ endl
         mov     ebx, [BytesPerScanLine]
 
         xor     edx, edx
-        sub     ecx, [esi + cursor_t.hot_x]
+        sub     ecx, [esi + cursor_t.hot.x]
         lea     ebx, [ecx + 32 - 1]
         mov     [x], ecx
         sets    dl
@@ -576,7 +576,7 @@ endl
         mov     [_dx], edi
 
         xor     edx, edx
-        sub     eax, [esi + cursor_t.hot_y]
+        sub     eax, [esi + cursor_t.hot.y]
         lea     edi, [eax + 32 - 1]
         mov     [y], eax
         sets    dl
@@ -671,7 +671,7 @@ endl
         mov     eax, [y]
 
         xor     edx, edx
-        sub     ecx, [esi + cursor_t.hot_x]
+        sub     ecx, [esi + cursor_t.hot.x]
         lea     ebx, [ecx + 32 - 1]
         mov     [x], ecx
         sets    dl
@@ -683,7 +683,7 @@ endl
         mov     [_dx], edi
 
         xor     edx, edx
-        sub     eax, [esi + cursor_t.hot_y]
+        sub     eax, [esi + cursor_t.hot.y]
         lea     edi, [eax + 32 - 1]
         mov     [y], eax
         sets    dl
@@ -777,9 +777,9 @@ init_display:
         mov     [edi + display_t.move_cursor], eax
         mov     [edi + display_t.restore_cursor], eax
 
-        lea     ecx, [edi + display_t.cr_list.next]
-        mov     [edi + display_t.cr_list.next], ecx
-        mov     [edi + display_t.cr_list.prev], ecx
+        lea     ecx, [edi + display_t.cr_list.next_ptr]
+        mov     [edi + display_t.cr_list.next_ptr], ecx
+        mov     [edi + display_t.cr_list.prev_ptr], ecx
 
         cmp     word[SCR_MODE], 0x13
         jbe     .fail

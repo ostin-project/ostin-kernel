@@ -15,24 +15,21 @@
 ;;======================================================================================================================
 
 struct mutex_t
-  count dd ?
-  next  dd ?
-  prev  dd ?
+  count    dd ?
+  list     linked_list_t
 ends
 
-struct mutex_waiter_t
-  next dd ?
-  prev dd ?
-  task dd ?
+struct mutex_waiter_t linked_list_t
+  task     dd ?
 ends
 
 ; void  __fastcall mutex_init(struct mutex *lock)
 align 4
 mutex_init:
-        lea     eax, [ecx + mutex_t.next]
+        lea     eax, [ecx + mutex_t.list]
         mov     [ecx + mutex_t.count], 1
-        mov     [ecx + mutex_t.next], eax
-        mov     [ecx + mutex_t.prev], eax
+        mov     [ecx + mutex_t.list.next_ptr], eax
+        mov     [ecx + mutex_t.list.prev_ptr], eax
         ret
 
 
@@ -48,12 +45,12 @@ mutex_lock:
         push    esi
         sub     esp, sizeof.mutex_waiter_t
 
-        mov     eax, [ecx + mutex_t.prev]
-        lea     esi, [ecx + mutex_t.next]
+        mov     eax, [ecx + mutex_t.list.prev_ptr]
+        lea     esi, [ecx + mutex_t.list]
 
-        mov     [ecx + mutex_t.prev], esp
-        mov     [esp + mutex_waiter_t.next], esi
-        mov     [esp + mutex_waiter_t.prev], eax
+        mov     [ecx + mutex_t.list.prev_ptr], esp
+        mov     [esp + mutex_waiter_t.next_ptr], esi
+        mov     [esp + mutex_waiter_t.prev_ptr], eax
         mov     [eax], esp
 
         mov     edx, [TASK_BASE]
@@ -69,12 +66,12 @@ mutex_lock:
         call    change_task
         jmp     .forever
 
-    @@: mov     edx, [esp + mutex_waiter_t.next]
-        mov     eax, [esp + mutex_waiter_t.prev]
+    @@: mov     edx, [esp + mutex_waiter_t.next_ptr]
+        mov     eax, [esp + mutex_waiter_t.prev_ptr]
 
-        mov     [eax + mutex_waiter_t.next], edx
-        cmp     [ecx + mutex_t.next], esi
-        mov     [edx + mutex_waiter_t.prev], eax
+        mov     [eax + mutex_waiter_t.next_ptr], edx
+        cmp     [ecx + mutex_t.list.next_ptr], esi
+        mov     [edx + mutex_waiter_t.prev_ptr], eax
         jne     @f
 
         mov     [ecx + mutex_t.count], 0
@@ -93,8 +90,8 @@ mutex_unlock:
         pushfd
         cli
 
-        lea     eax, [ecx + mutex_t.next]
-        cmp     eax, [ecx + mutex_t.next]
+        lea     eax, [ecx + mutex_t.list]
+        cmp     eax, [ecx + mutex_t.list.next_ptr]
         mov     [ecx + mutex_t.count], 1
         je      @f
 

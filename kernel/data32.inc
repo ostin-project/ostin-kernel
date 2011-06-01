@@ -121,12 +121,12 @@ kernel_file      db 'KERNEL  MNT'
 align 4
 
 shmem_list:
-  .bk dd shmem_list
-  .fd dd shmem_list
+  .prev_ptr dd shmem_list
+  .next_ptr dd shmem_list
 
 dll_list:
-  .bk dd dll_list
-  .fd dd dll_list
+  .prev_ptr dd dll_list
+  .next_ptr dd dll_list
 
 MAX_DEFAULT_DLL_ADDR = 0x20000000
 MIN_DEFAULT_DLL_ADDR = 0x10000000
@@ -295,8 +295,8 @@ mem_block_mask    rd 2
 large_block_mask  rd 1
 
 mem_used:
-  .fd dd ?
-  .bk dd ?
+  .next_ptr dd ?
+  .prev_ptr dd ?
 
 mem_block_arr     rd 1
 mem_block_start   rd 1
@@ -316,8 +316,8 @@ sys_page_map      rd 1
 os_stack_seg      rd 1
 
 srv:
-  .fd dd ?
-  .bk dd ?
+  .next_ptr dd ?
+  .prev_ptr dd ?
 
 align 16
 

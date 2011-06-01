@@ -26,6 +26,7 @@ include "include/proc32.inc"
 include "include/struct.inc"
 
 include "include/kglobals.inc"
+include "include/kernel32.inc"
 include "config.inc"
 
 include "include/const.inc"
@@ -308,12 +309,12 @@ high_code:
         mov     [_display.disable_mouse], __sys_disable_mouse
 
         movzx   eax, [BOOT_VAR + BOOT_X_RES] ; X max
-        mov     [_display.width], eax
+        mov     [_display.box.width], eax
         dec     eax
         mov     [Screen_Max_X], eax
         mov     [screen_workarea.right], eax
         movzx   eax, [BOOT_VAR + BOOT_Y_RES] ; Y max
-        mov     [_display.height], eax
+        mov     [_display.box.height], eax
         dec     eax
         mov     [Screen_Max_Y], eax
         mov     [screen_workarea.bottom], eax
@@ -330,8 +331,8 @@ high_code:
         mov     [BytesPerScanLine], ax
         mov     [_display.pitch], eax
 
-    @@: mov     eax, [_display.width]
-        mul     [_display.height]
+    @@: mov     eax, [_display.box.width]
+        mul     [_display.box.height]
         mov     [_WinMapSize], eax
 
         mov     esi, BOOT_VAR + BOOT_BIOS_DISKS
@@ -505,9 +506,9 @@ high_code:
         mov     [unpack.p], eax
 
         call    init_events
-        mov     eax, srv.fd - SRV_FD_OFFSET
-        mov     [srv.fd], eax
-        mov     [srv.bk], eax
+        mov     eax, srv.next_ptr - SRV_FD_OFFSET
+        mov     [srv.next_ptr], eax
+        mov     [srv.prev_ptr], eax
 
         mov     edi, irq_tab
         xor     eax, eax
@@ -687,8 +688,8 @@ end if
         mov     [SLOT_BASE + 256 + app_data_t.except_mask], eax
 
         mov     ebx, SLOT_BASE + 256 + APP_OBJ_OFFSET
-        mov     [SLOT_BASE + 256 + app_data_t.fd_obj], ebx
-        mov     [SLOT_BASE + 256 + app_data_t.bk_obj], ebx
+        mov     [SLOT_BASE + 256 + app_data_t.obj.next_ptr], ebx
+        mov     [SLOT_BASE + 256 + app_data_t.obj.prev_ptr], ebx
 
         mov     [SLOT_BASE + 256 + app_data_t.cur_dir], sysdir_path
         mov     [SLOT_BASE + 256 + app_data_t.tls_base], eax
@@ -4937,8 +4938,8 @@ set_screen:
 
         stdcall kernel_free, [_WinMapAddress]
 
-        mov     eax, [_display.width]
-        mul     [_display.height]
+        mov     eax, [_display.box.width]
+        mul     [_display.box.height]
         mov     [_WinMapSize], eax
 
         stdcall kernel_alloc, eax

@@ -30,8 +30,9 @@ uglobal
 endg
 
 EV_SPACE   = 512
-FreeEvents = event_start - event_t.fd ; "виртуальный" event, используются только поля:
-                                      ;  FreeEvents.fd=event_start и FreeEvents.bk=event_end
+; "виртуальный" event, используются только поля:
+; FreeEvents.next_ptr=event_start и FreeEvents.prev_ptr=event_end
+FreeEvents = event_start - event_t.next_ptr
 
 align 4
 init_events:                                       ;; used from kernel.asm
@@ -43,14 +44,14 @@ init_events:                                       ;; used from kernel.asm
         mov     ebx, FreeEvents ; previos - начало списка
         push    ebx ; оно же и конец потом будет
 
-    @@: mov     [ebx + event_t.fd], eax
-        mov     [eax + event_t.bk], ebx
+    @@: mov     [ebx + event_t.next_ptr], eax
+        mov     [eax + event_t.prev_ptr], ebx
         mov     ebx, eax ; previos <- current
         add     eax, sizeof.event_t ; new current
         loop    @b
         pop     eax ; вот оно концом и стало
-        mov     [ebx + event_t.fd], eax
-        mov     [eax + event_t.bk], ebx
+        mov     [ebx + event_t.next_ptr], eax
+        mov     [eax + event_t.prev_ptr], ebx
 
   .fail:
         ret
@@ -96,14 +97,14 @@ set_event: ;; INTERNAL use !!! don't use for Call
         ; scratched: ebx,ecx,esi,edi
 
         mov     eax, FreeEvents
-        cmp     eax, [eax + event_t.fd]
+        cmp     eax, [eax + event_t.next_ptr]
         jne     @f ; not empty ???
         pushad
         call    init_events
         popad
         jz      RemoveEventTo.break ; POPF+RET
 
-    @@: mov     eax, [eax + event_t.fd]
+    @@: mov     eax, [eax + event_t.next_ptr]
         mov     [eax + event_t.magic], 'EVNT'
         mov     [eax + event_t.destroy], destroy_event.internal
         mov     [eax + event_t.state], ecx
@@ -124,14 +125,14 @@ RemoveEventTo: ;; INTERNAL use !!! don't use for Call
         ; scratched: ebx,ecx
 
         mov     ecx, eax ; ecx=eax=Self, ebx=NewLeft
-        xchg    ecx, [ebx + event_t.fd] ; NewLeft.fd=Self, ecx=NewRight
+        xchg    ecx, [ebx + event_t.next_ptr] ; NewLeft.next_ptr=Self, ecx=NewRight
         cmp     eax, ecx ; стоп, себе думаю...
         je      .break ; - а не дурак ли я?
-        mov     [ecx + event_t.bk], eax ; NewRight.bk=Self
-        xchg    ebx, [eax + event_t.bk] ; Self.bk=NewLeft, ebx=OldLeft
-        xchg    ecx, [eax + event_t.fd] ; Self.fd=NewRight, ecx=OldRight
-        mov     [ebx + event_t.fd], ecx ; OldLeft.fd=OldRight
-        mov     [ecx + event_t.bk], ebx ; OldRight.bk=OldLeft
+        mov     [ecx + event_t.prev_ptr], eax ; NewRight.prev_ptr=Self
+        xchg    ebx, [eax + event_t.prev_ptr] ; Self.prev_ptr=NewLeft, ebx=OldLeft
+        xchg    ecx, [eax + event_t.next_ptr] ; Self.next_ptr=NewRight, ecx=OldRight
+        mov     [ebx + event_t.next_ptr], ecx ; OldLeft.next_ptr=OldRight
+        mov     [ecx + event_t.prev_ptr], ebx ; OldRight.prev_ptr=OldLeft
 
   .break:
         popfd
@@ -379,7 +380,7 @@ get_event_queue:
         ;    eax - адрес объекта event_t (=0 => fail)
 
         add     ebx, APP_EV_OFFSET
-        mov     eax, [ebx + app_object_t.bk] ; выбираем с конца, по принципу FIFO
+        mov     eax, [ebx + app_object_t.prev_ptr] ; выбираем с конца, по принципу FIFO
         cmp     eax, ebx ; empty ???
         je      get_event_alone.ret0
 

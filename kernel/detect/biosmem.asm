@@ -16,9 +16,7 @@
 
 ; Query physical memory map from BIOS.
 
-struct phoenix_smap_addr_range_t
-  offset dq ?
-  length dq ?
+struct phoenix_smap_addr_range_t range64_t
   type   dd ?
 ends
 

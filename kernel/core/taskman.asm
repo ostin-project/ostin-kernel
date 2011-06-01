@@ -1063,12 +1063,12 @@ endl
   .noinc:
         shl     ebx, 8
         lea     edx, [ebx + SLOT_BASE + APP_EV_OFFSET]
-        mov     [SLOT_BASE + app_data_t.fd_ev + ebx], edx
-        mov     [SLOT_BASE + app_data_t.bk_ev + ebx], edx
+        mov     [SLOT_BASE + app_data_t.ev.next_ptr + ebx], edx
+        mov     [SLOT_BASE + app_data_t.ev.prev_ptr + ebx], edx
 
         add     edx, APP_OBJ_OFFSET - APP_EV_OFFSET
-        mov     [SLOT_BASE + app_data_t.fd_obj + ebx], edx
-        mov     [SLOT_BASE + app_data_t.bk_obj + ebx], edx
+        mov     [SLOT_BASE + app_data_t.obj.next_ptr + ebx], edx
+        mov     [SLOT_BASE + app_data_t.obj.prev_ptr + ebx], edx
 
         mov     ecx, [def_cursor]
         mov     [SLOT_BASE + app_data_t.cursor + ebx], ecx

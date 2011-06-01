@@ -685,7 +685,7 @@ end if
         mov     eax, [SLOT_BASE + eax + app_data_t.dlls_list_ptr]
         test    eax, eax
         jz      .fail
-        mov     esi, [eax + dll_handle_t.fd]
+        mov     esi, [eax + dll_handle_t.next_ptr]
 
   .scan_hdll:
         cmp     esi, eax
@@ -696,7 +696,7 @@ end if
         jb      .fault_in_hdll
 
   .scan_hdll.next:
-        mov     esi, [esi + dll_handle_t.fd]
+        mov     esi, [esi + dll_handle_t.next_ptr]
         jmp     .scan_hdll
 
   .fault_in_hdll:
@@ -921,7 +921,7 @@ proc safe_map_page stdcall, slot:dword, req_access:dword, ofs:dword
         mov     eax, [SLOT_BASE + eax + app_data_t.dlls_list_ptr]
         test    eax, eax
         jz      .no_hdll
-        mov     ecx, [eax + dll_handle_t.fd]
+        mov     ecx, [eax + dll_handle_t.next_ptr]
 
   .scan_hdll:
         cmp     ecx, eax
@@ -931,7 +931,7 @@ proc safe_map_page stdcall, slot:dword, req_access:dword, ofs:dword
         sub     ebx, [ecx + dll_handle_t.base]
         cmp     ebx, [ecx + dll_handle_t.size]
         jb      .hdll_found
-        mov     ecx, [ecx + dll_handle_t.fd]
+        mov     ecx, [ecx + dll_handle_t.next_ptr]
         jmp     .scan_hdll
 
   .no_hdll:
@@ -977,8 +977,8 @@ sys_IPC:
         mov     eax, [current_slot]
         pushf
         cli
-        mov     [eax + app_data_t.ipc_start], ecx ; set fields in extended information area
-        mov     [eax + app_data_t.ipc_size], edx
+        mov     [eax + app_data_t.ipc.offset], ecx ; set fields in extended information area
+        mov     [eax + app_data_t.ipc.length], edx
 
         add     edx, ecx
         add     edx, 4095
@@ -1013,8 +1013,8 @@ sys_IPC:
 ;       mov     eax, [current_slot]
 ;       pushf
 ;       cli
-;       mov     [eax + app_data_t.ipc_start], ebx ; set fields in extended information area
-;       mov     [eax + app_data_t.ipc_size], ecx
+;       mov     [eax + app_data_t.ipc.offset], ebx ; set fields in extended information area
+;       mov     [eax + app_data_t.ipc.length], ecx
 ;
 ;       add     ecx, ebx
 ;       add     ecx, 4095

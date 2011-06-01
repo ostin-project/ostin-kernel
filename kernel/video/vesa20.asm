@@ -309,7 +309,7 @@ __sys_putpixel:
         ; not forced:
 
         push    eax
-        mov     edx, [_display.width] ; screen x size
+        mov     edx, [_display.box.width] ; screen x size
         imul    edx, ebx
         add     eax, [_WinMapAddress]
         movzx   edx, byte[eax + edx]

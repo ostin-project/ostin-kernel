@@ -444,24 +444,22 @@ EVENT_EXTENDED      = 0x00000200
 EV_INTR             = 1
 
 struct app_object_t ; common object header
-  magic   dd ?
-  destroy dd ? ; internal destructor
-  fd      dd ? ; next object in list
-  bk      dd ? ; prev object in list
-  pid     dd ? ; owner id
+  magic    dd ?
+  destroy  dd ? ; internal destructor
+  next_ptr dd ? ; next object in list
+  prev_ptr dd ? ; prev object in list
+  pid      dd ? ; owner id
 ends
 
 APP_OBJ_OFFSET  = 48
 APP_EV_OFFSET   = 40
 
 struct cursor_t app_object_t ; magic = 'CURS'
-  base      dd ?     ; allocated memory
-  hot_x     dd ?     ; hotspot coords
-  hot_y     dd ?
+  base    dd ?          ; allocated memory
+  hot     point32_t     ; hotspot coords
 
-  list_next dd ?     ; next cursor in cursor list
-  list_prev dd ?     ; prev cursor in cursor list
-  dev_obj   dd ?     ; device-specific data
+  list    linked_list_t ; next/prev cursor in cursor list
+  dev_obj dd ?          ; device-specific data
 ends
 
 struct event_code_t
@@ -474,9 +472,7 @@ struct event_t app_object_t ; magic = 'EVNT'
   code  event_code_t
 ends
 
-struct smem_t
-  bk       dd ?
-  fd       dd ?
+struct smem_t linked_list_t
   base     dd ?
   size     dd ?
   access   dd ?
@@ -489,9 +485,7 @@ struct smap_t app_object_t ; magic = 'SMAP'
   parent  dd ?     ; smem_t
 ends
 
-struct dll_descriptor_t
-  bk          dd ?
-  fd          dd ?
+struct dll_descriptor_t linked_list_t
   data        dd ?
   size        dd ?
   timestamp   dq ?
@@ -505,9 +499,7 @@ struct dll_descriptor_t
   name        rb 0
 ends
 
-struct dll_handle_t
-  fd       dd ? ; next object in list
-  bk       dd ? ; prev object in list
+struct dll_handle_t linked_list_t
   pid      dd ? ; owner id
 
   base     dd ? ; mapped base
@@ -517,10 +509,7 @@ struct dll_handle_t
 ends
 
 struct display_t
-  x              dd ?
-  y              dd ?
-  width          dd ?
-  height         dd ?
+  box            box32_t
   bpp            dd ?
   vrefresh       dd ?
   pitch          dd ?
@@ -531,8 +520,7 @@ struct display_t
   connector      dd ?
   crtc           dd ?
 
-  cr_list.next   dd ?
-  cr_list.prev   dd ?
+  cr_list        linked_list_t
 
   cursor         dd ?
 
@@ -622,8 +610,8 @@ struct service_t
   srv_name    rb 16 ; ASCIIZ string
   magic       dd ?  ; ' SRV'
   size        dd ?  ; size of structure Service
-  fd          dd ?  ; next Service descriptor
-  bk          dd ?  ; prev Service descriptor
+  next_ptr    dd ?  ; next Service descriptor
+  prev_ptr    dd ?  ; prev Service descriptor
   base        dd ?  ; service base address
   entry       dd ?  ; service START function
   srv_proc    dd ?  ; user mode service handler

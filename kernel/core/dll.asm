@@ -367,16 +367,16 @@ proc get_service stdcall, sz_name:dword
         jnz     @f
         ret
 
-    @@: mov     edx, [srv.fd]
+    @@: mov     edx, [srv.next_ptr]
 
-    @@: cmp     edx, srv.fd - SRV_FD_OFFSET
+    @@: cmp     edx, srv.next_ptr - SRV_FD_OFFSET
         je      .not_load
 
         stdcall strncmp, edx, [sz_name], 16
         test    eax, eax
         je      .ok
 
-        mov     edx, [edx + service_t.fd]
+        mov     edx, [edx + service_t.next_ptr]
         jmp     @b
 
   .not_load:
@@ -419,12 +419,12 @@ proc reg_service stdcall, name:dword, handler:dword
         mov     [eax + service_t.magic], ' SRV'
         mov     [eax + service_t.size], sizeof.service_t
 
-        mov     ebx, srv.fd - SRV_FD_OFFSET
-        mov     edx, [ebx + service_t.fd]
-        mov     [eax + service_t.fd], edx
-        mov     [eax + service_t.bk], ebx
-        mov     [ebx + service_t.fd], eax
-        mov     [edx + service_t.bk], eax
+        mov     ebx, srv.next_ptr - SRV_FD_OFFSET
+        mov     edx, [ebx + service_t.next_ptr]
+        mov     [eax + service_t.next_ptr], edx
+        mov     [eax + service_t.prev_ptr], ebx
+        mov     [ebx + service_t.next_ptr], eax
+        mov     [edx + service_t.prev_ptr], eax
 
         mov     ecx, [handler]
         mov     [eax + service_t.srv_proc], ecx
@@ -1092,7 +1092,7 @@ endl
         mov     ebx, [esi + SLOT_BASE + app_data_t.dlls_list_ptr]
         test    ebx, ebx
         jz      .not_in_process
-        mov     esi, [ebx + dll_handle_t.fd]
+        mov     esi, [ebx + dll_handle_t.next_ptr]
 
   .scan_in_process:
         cmp     esi, ebx
@@ -1113,7 +1113,7 @@ endl
         ret
 
   .next_in_process:
-        mov     esi, [esi + dll_handle_t.fd]
+        mov     esi, [esi + dll_handle_t.next_ptr]
         jmp     .scan_in_process
 
   .not_in_process:
@@ -1122,7 +1122,7 @@ endl
         stdcall get_fileinfo, edi, eax
         test    eax, eax
         jnz     .fail
-        mov     esi, [dll_list.fd]
+        mov     esi, [dll_list.next_ptr]
 
   .scan_for_dlls:
         cmp     esi, dll_list
@@ -1141,7 +1141,7 @@ endl
         jz      .dll_already_loaded
 
   .continue_scan:
-        mov     esi, [esi + dll_descriptor_t.fd]
+        mov     esi, [esi + dll_descriptor_t.next_ptr]
         jmp     .scan_for_dlls
 
         ; new DLL
@@ -1175,11 +1175,11 @@ endl
         mov     dword[esi + dll_descriptor_t.timestamp + 4], eax
         ; initialize dll_descriptor_t struct
         and     [esi + dll_descriptor_t.refcount], 0 ; no dll_handle_t-s yet; later it will be incremented
-        mov     [esi + dll_descriptor_t.fd], dll_list
-        mov     eax, [dll_list.bk]
-        mov     [dll_list.bk], esi
-        mov     [esi + dll_descriptor_t.bk], eax
-        mov     [eax + dll_descriptor_t.fd], esi
+        mov     [esi + dll_descriptor_t.next_ptr], dll_list
+        mov     eax, [dll_list.prev_ptr]
+        mov     [dll_list.prev_ptr], esi
+        mov     [esi + dll_descriptor_t.prev_ptr], eax
+        mov     [eax + dll_descriptor_t.next_ptr], esi
 
         ; calculate size of loaded DLL
         mov     edx, [coff]
@@ -1378,11 +1378,11 @@ endl
         pop     ebx
         test    eax, eax
         jz      .fail_and_free_user
-        mov     edx, [eax + dll_handle_t.fd]
-        mov     [ebx + dll_handle_t.fd], edx
-        mov     [ebx + dll_handle_t.bk], eax
-        mov     [eax + dll_handle_t.fd], ebx
-        mov     [edx + dll_handle_t.bk], ebx
+        mov     edx, [eax + dll_handle_t.next_ptr]
+        mov     [ebx + dll_handle_t.next_ptr], edx
+        mov     [ebx + dll_handle_t.prev_ptr], eax
+        mov     [eax + dll_handle_t.next_ptr], ebx
+        mov     [edx + dll_handle_t.prev_ptr], ebx
         mov     eax, ebx
         mov     ebx, [img_base]
         mov     [eax + dll_handle_t.base], ebx
@@ -1487,10 +1487,10 @@ dereference_dll:
 
         sub     [esi + dll_descriptor_t.refcount], eax
         jnz     .ret
-        mov     eax, [esi + dll_descriptor_t.fd]
-        mov     edx, [esi + dll_descriptor_t.bk]
-        mov     [eax + dll_descriptor_t.bk], edx
-        mov     [edx + dll_descriptor_t.fd], eax
+        mov     eax, [esi + dll_descriptor_t.next_ptr]
+        mov     edx, [esi + dll_descriptor_t.prev_ptr]
+        mov     [eax + dll_descriptor_t.prev_ptr], edx
+        mov     [edx + dll_descriptor_t.next_ptr], eax
         stdcall kernel_free, [esi + dll_descriptor_t.coff_hdr]
         stdcall kernel_free, [esi + dll_descriptor_t.data]
         mov     eax, esi
@@ -1560,10 +1560,10 @@ destroy_hdll:
         mov     eax, [eax + dll_handle_t.refcount]
         call    dereference_dll
         pop     eax
-        mov     edx, [eax + dll_handle_t.bk]
-        mov     ebx, [eax + dll_handle_t.fd]
-        mov     [ebx + dll_handle_t.bk], edx
-        mov     [edx + dll_handle_t.fd], ebx
+        mov     edx, [eax + dll_handle_t.prev_ptr]
+        mov     ebx, [eax + dll_handle_t.next_ptr]
+        mov     [ebx + dll_handle_t.prev_ptr], edx
+        mov     [edx + dll_handle_t.next_ptr], ebx
         call    free
         pop     edi esi ecx ebx
         ret
@@ -1575,7 +1575,7 @@ destroy_all_hdlls:
         jz      .ret
 
   .loop:
-        mov     eax, [esi + dll_handle_t.fd]
+        mov     eax, [esi + dll_handle_t.next_ptr]
         cmp     eax, esi
         jz      free
         call    destroy_hdll
@@ -1587,10 +1587,10 @@ destroy_all_hdlls:
 align 4
 stop_all_services:
         push    ebp
-        mov     edx, [srv.fd]
+        mov     edx, [srv.next_ptr]
 
   .next:
-        cmp     edx, srv.fd - SRV_FD_OFFSET
+        cmp     edx, srv.next_ptr - SRV_FD_OFFSET
         je      .done
         cmp     [edx + service_t.magic], ' SRV'
         jne     .next
@@ -1598,7 +1598,7 @@ stop_all_services:
         jne     .next
 
         mov     ebx, [edx + service_t.entry]
-        mov     edx, [edx + service_t.fd]
+        mov     edx, [edx + service_t.next_ptr]
         test    ebx, ebx
         jz      .next
 
@@ -1632,13 +1632,13 @@ create_kernel_object:
 
         pushfd
         cli
-        mov     edx, [ecx + app_object_t.fd]
-        mov     [eax + app_object_t.fd], edx
-        mov     [eax + app_object_t.bk], ecx
+        mov     edx, [ecx + app_object_t.next_ptr]
+        mov     [eax + app_object_t.next_ptr], edx
+        mov     [eax + app_object_t.prev_ptr], ecx
         mov     [eax + app_object_t.pid], ebx
 
-        mov     [ecx + app_object_t.fd], eax
-        mov     [edx + app_object_t.bk], eax
+        mov     [ecx + app_object_t.next_ptr], eax
+        mov     [edx + app_object_t.prev_ptr], eax
         popfd
 
   .fail:
@@ -1651,10 +1651,10 @@ destroy_kernel_object:
 
         pushfd
         cli
-        mov     ebx, [eax + app_object_t.fd]
-        mov     ecx, [eax + app_object_t.bk]
-        mov     [ebx + app_object_t.bk], ecx
-        mov     [ecx + app_object_t.fd], ebx
+        mov     ebx, [eax + app_object_t.next_ptr]
+        mov     ecx, [eax + app_object_t.prev_ptr]
+        mov     [ebx + app_object_t.prev_ptr], ecx
+        mov     [ecx + app_object_t.next_ptr], ebx
         popfd
 
         xor     edx, edx ; clear common header

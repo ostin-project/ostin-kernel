@@ -359,7 +359,7 @@ blit_32:
         mov  edi, ebp
 
         imul edi, [_display.pitch]
-        imul ebp, [_display.width]
+        imul ebp, [_display.box.width]
         add  ebp, ebx
         add  ebp, [_WinMapAddress]
 
@@ -403,7 +403,7 @@ align 4
 
         add esi, [esp+BLITTER.stride]
         add edi, [_display.pitch]
-        add ebp, [_display.width]
+        add ebp, [_display.box.width]
 
         mov edx, [esp+BLITTER.w]
         dec [esp+BLITTER.h]
@@ -449,7 +449,7 @@ align 4
 
         add esi, [esp+BLITTER.stride]
         add edi, [_display.pitch]
-        add ebp, [_display.width]
+        add ebp, [_display.box.width]
 
         mov edx, [esp+BLITTER.w]
         dec [esp+BLITTER.h]

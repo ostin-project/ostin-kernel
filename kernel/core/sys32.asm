@@ -498,7 +498,7 @@ terminate: ; terminate application
         shl     esi, 8
         add     esi, SLOT_BASE + APP_OBJ_OFFSET
 
-    @@: mov     eax, [esi + app_object_t.fd]
+    @@: mov     eax, [esi + app_object_t.next_ptr]
         test    eax, eax
         jz      @f
 

@@ -16,9 +16,7 @@
 ;;======================================================================================================================
 
 ; socket data structure
-struct socket_t
-  prev_ptr          dd ? ; pointer to previous socket in list
-  next_ptr          dd ? ; pointer to next socket in list
+struct socket_t linked_list_t
   number            dd ? ; socket number (unique within single process)
   pid               dd ? ; application process id
   local_ip          dd ? ; local IP address

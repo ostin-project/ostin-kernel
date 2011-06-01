@@ -14,7 +14,6 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-include "include/kernel32.inc"
 include "include/sync.inc"
 
 include "blkdev/cd_drv.asm"

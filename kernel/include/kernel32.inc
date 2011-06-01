@@ -14,30 +14,14 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-;struc db [a] { common . db a
-;  if ~used .
-;    display 'not used db: ',`.,13,10
-;  end if }
-;struc dw [a] { common . dw a
-;  if ~used .
-;    display 'not used dw: ',`.,13,10
-;  end if }
-;struc dd [a] { common . dd a
-;  if ~used .
-;    display 'not used dd: ',`.,13,10
-;  end if }
-;struc dp [a] { common . dp a
-;  if ~used .
-;    display 'not used dp: ',`.,13,10
-;  end if }
-;struc dq [a] { common . dq a
-;  if ~used .
-;    display 'not used dq: ',`.,13,10
-;  end if }
-;struc dt [a] { common . dt a
-;  if ~used .
-;    display 'not used dt: ',`.,13,10
-;  end if }
+;;----------------------------------------------------------------------------------------------------------------------
+;;///// point //////////////////////////////////////////////////////////////////////////////////////////////////////////
+;;----------------------------------------------------------------------------------------------------------------------
+
+struct point8_t
+  x db ?
+  y db ?
+ends
 
 struct point16_t
   x dw ?
@@ -49,40 +33,204 @@ struct point32_t
   y dd ?
 ends
 
-struct rect16_t
-  left   dw ?
-  top    dw ?
-  right  dw ?
-  bottom dw ?
+struct point64_t
+  x dq ?
+  y dq ?
 ends
 
-struct rect32_t
-  left   dd ?
-  top    dd ?
-  right  dd ?
-  bottom dd ?
+;;----------------------------------------------------------------------------------------------------------------------
+;;///// size ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+;;----------------------------------------------------------------------------------------------------------------------
+
+struct size8_t
+  width  db ?
+  height db ?
 ends
 
-struct box16_t
-  left   dw ?
-  top    dw ?
+struct size16_t
   width  dw ?
   height dw ?
 ends
 
-struct box32_t
-  left   dd ?
-  top    dd ?
+struct size32_t
   width  dd ?
   height dd ?
 ends
 
+struct size64_t
+  width  dq ?
+  height dq ?
+ends
+
+;;----------------------------------------------------------------------------------------------------------------------
+;;///// range //////////////////////////////////////////////////////////////////////////////////////////////////////////
+;;----------------------------------------------------------------------------------------------------------------------
+
+struct range8_t
+  offset db ?
+  length db ?
+ends
+
+struct range16_t
+  offset dw ?
+  length dw ?
+ends
+
+struct range32_t
+  offset dd ?
+  length dd ?
+ends
+
+struct range64_t
+  offset dq ?
+  length dq ?
+ends
+
+;;----------------------------------------------------------------------------------------------------------------------
+;;///// rect //////////////////////////////////////////////////////////////////////////////////////////////////////////
+;;----------------------------------------------------------------------------------------------------------------------
+
+struct rect8_t
+  union
+    struct
+      left   db ?
+      top    db ?
+      right  db ?
+      bottom db ?
+    ends
+    struct
+      top_left     point8_t
+      bottom_right point8_t
+    ends
+  ends
+ends
+
+struct rect16_t
+  union
+    struct
+      left   dw ?
+      top    dw ?
+      right  dw ?
+      bottom dw ?
+    ends
+    struct
+      top_left     point16_t
+      bottom_right point16_t
+    ends
+  ends
+ends
+
+struct rect32_t
+  union
+    struct
+      left   dd ?
+      top    dd ?
+      right  dd ?
+      bottom dd ?
+    ends
+    struct
+      top_left     point32_t
+      bottom_right point32_t
+    ends
+  ends
+ends
+
+struct rect64_t
+  union
+    struct
+      left   dq ?
+      top    dq ?
+      right  dq ?
+      bottom dq ?
+    ends
+    struct
+      top_left     point64_t
+      bottom_right point64_t
+    ends
+  ends
+ends
+
+;;----------------------------------------------------------------------------------------------------------------------
+;;///// box ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+;;----------------------------------------------------------------------------------------------------------------------
+
+struct box8_t
+  union
+    struct
+      left   db ?
+      top    db ?
+      width  db ?
+      height db ?
+    ends
+    struct
+      origin point8_t
+      size   size8_t
+    ends
+  ends
+ends
+
+struct box16_t
+  union
+    struct
+      left   dw ?
+      top    dw ?
+      width  dw ?
+      height dw ?
+    ends
+    struct
+      origin point16_t
+      size   size16_t
+    ends
+  ends
+ends
+
+struct box32_t
+  union
+    struct
+      left   dd ?
+      top    dd ?
+      width  dd ?
+      height dd ?
+    ends
+    struct
+      origin point32_t
+      size   size32_t
+    ends
+  ends
+ends
+
+struct box64_t
+  union
+    struct
+      left   dq ?
+      top    dq ?
+      width  dq ?
+      height dq ?
+    ends
+    struct
+      origin point64_t
+      size   size64_t
+    ends
+  ends
+ends
+
+;;----------------------------------------------------------------------------------------------------------------------
+;;///// linked list ////////////////////////////////////////////////////////////////////////////////////////////////////
+;;----------------------------------------------------------------------------------------------------------------------
+
+struct linked_list_t
+  prev_ptr  dd ?
+  next_ptr  dd ?
+  list_data rb 0
+ends
+
+;;----------------------------------------------------------------------------------------------------------------------
+
 ; unused
 ;struct display_mode_t
-;  width  dw ?
-;  height dw ?
-;  bpp    dw ?
-;  freq   dw ?
+;  size size16_t
+;  bpp  dw ?
+;  freq dw ?
 ;ends
 
 ; constants definition
@@ -156,10 +304,8 @@ struct app_data_t
   heap_base       dd ?
   heap_top        dd ?
   cursor          dd ?
-  fd_ev           dd ?
-  bk_ev           dd ?
-  fd_obj          dd ?
-  bk_obj          dd ?
+  ev              linked_list_t
+  obj             linked_list_t
   saved_esp       dd ?
   io_map          rd 2
   dbg_state       dd ?
@@ -177,8 +323,7 @@ struct app_data_t
                   dd ?
   mem_size        dd ?
   saved_box       box32_t
-  ipc_start       dd ?
-  ipc_size        dd ?
+  ipc             range32_t
   event_mask      dd ?
   debugger_slot   dd ?
                   dd ?
