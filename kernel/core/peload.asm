@@ -14,7 +14,7 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-include 'export.inc'
+include "include/export.inc"
 
 align 4
 proc load_PE stdcall, file_name:dword

@@ -196,9 +196,9 @@ error_with_code:
 	jmp	$-1	; just in case
 
 ; Include main heap code
-include '../proc32.inc'
-include '../const.inc'
-include 'malloc.asm'
+include "include/proc32.inc"
+include "include/const.inc"
+include "malloc.asm"
 
 i_end:
 

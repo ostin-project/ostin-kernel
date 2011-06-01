@@ -15,20 +15,20 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-include "macros.inc"
+include "include/macros.inc"
 
 USE_COM_IRQ     equ 1 ; make irq 3 and irq 4 available for PCI devices
 
 ; Enabling the next line will enable serial output console
 ;debug_com_base equ 0x3f8 ; 0x3f8 is com1, 0x2f8 is com2, 0x3e8 is com3, 0x2e8 is com4, no irq's are used
 
-include "proc32.inc"
-include "struct.inc"
+include "include/proc32.inc"
+include "include/struct.inc"
 
-include "kglobals.inc"
+include "include/kglobals.inc"
 include "lang.inc"
 
-include "const.inc"
+include "include/const.inc"
 
 max_processes   equ 255
 tss_step        equ (128 + 8192) ; tss & i/o - 65535 ports, * 256 = 557056 * 4
@@ -228,7 +228,7 @@ org $ + 0x10000
 __DEBUG__ fix 1
 __DEBUG_LEVEL__ fix 1
 
-include 'init.asm'
+include "init.asm"
 
 org OS_BASE + $
 
@@ -577,12 +577,12 @@ high_code:
         mov     dl, 0x76
         out     dx, al
 
-include 'detect/disks.inc'
+include "detect/disks.inc"
 
         call    Parser_params
 
 ; READ RAMDISK IMAGE FROM HD
-include 'boot/rdload.asm'
+include "boot/rdload.asm"
 
 ;       mov     [dma_hdd], 1
 
@@ -590,7 +590,7 @@ include 'boot/rdload.asm'
         call    calculatefatchain
 
 ; LOAD VMODE DRIVER
-include 'vmodeld.asm'
+include "vmodeld.asm"
 
 if 0
 
@@ -947,8 +947,8 @@ end if
 
         ; Fly :)
 
-include 'unpacker.asm'
-include 'fdo.inc'
+include "unpacker.asm"
+include "include/fdo.inc"
 
 align 4
 boot_log:
@@ -1596,7 +1596,7 @@ endg
 
   .no_set_pci_access:
 
-include 'vmodeint.asm'
+include "vmodeint.asm"
 
   .sys_setup_err:
         or      dword[esp + 32], -1
@@ -2087,7 +2087,7 @@ sysfn_getcpuclock: ; 18.5 = GET TSC/SEC
         ret
 
 ;  SAVE ramdisk to /hd/1/menuet.img
-include 'blkdev/rdsave.asm'
+include "blkdev/rdsave.asm"
 
 align 4
 sysfn_getactive: ; 18.7 = get active window

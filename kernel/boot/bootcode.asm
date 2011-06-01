@@ -147,7 +147,7 @@ FirstDataSector dw 0 ; begin of data
 ;
 ;=========================================================================
 
-include 'bootvesa.asm'
+include "bootvesa.asm"
 
 start_of_code:
         cld
@@ -849,7 +849,7 @@ end if
         mov     [boot_dev], al
 
 ; GET MEMORY MAP
-include '../detect/biosmem.asm'
+include "detect/biosmem.asm"
 
         ; READ DISKETTE TO MEMORY
         cmp     [boot_dev], 0
