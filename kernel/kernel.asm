@@ -26,7 +26,7 @@ include "include/proc32.inc"
 include "include/struct.inc"
 
 include "include/kglobals.inc"
-include "lang.inc"
+include "config.inc"
 
 include "include/const.inc"
 
@@ -80,12 +80,12 @@ version db "Kolibri OS  version 0.7.7.0+     ", 13, 10, 13, 10, 0
 include "boot/preboot.inc"
 include "boot/bootstr.inc"
 
-if lang eq en
+if KCONFIG_LANGUAGE eq en
 include "boot/booteng.inc"
-else if lang eq ru
+else if KCONFIG_LANGUAGE eq ru
 include "boot/bootru.inc"
 include "boot/ru.inc"
-else if lang eq et
+else if KCONFIG_LANGUAGE eq et
 include "boot/bootet.inc"
 include "boot/et.inc"
 else

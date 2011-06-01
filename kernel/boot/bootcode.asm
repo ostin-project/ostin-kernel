@@ -180,7 +180,7 @@ no_hd_load:
         mov     ax, 3
         int     0x10
 
-if lang eq ru
+if KCONFIG_LANGUAGE eq ru
 
         mov     bp, RU_FNT1 ; RU_FNT1 - First part
         mov     bx, 0x1000 ; 768 bytes
@@ -196,7 +196,7 @@ if lang eq ru
         mov     ax, 0x1100
         int     0x10
 
-else if lang eq et
+else if KCONFIG_LANGUAGE eq et
 
         mov     bp, ET_FNT ; ET_FNT1
         mov     bx, 0x1000
@@ -721,7 +721,7 @@ end virtual
         xor     dx, dx
         div     bx
 
-if lang eq ru
+if KCONFIG_LANGUAGE eq ru
 
         ; подождите 5 секунд, 4/3/2 секунды, 1 секунду
         cmp     al, 5
@@ -734,7 +734,7 @@ if lang eq ru
 
     @@: mov     [time_str + 9], cl
 
-else if lang eq et
+else if KCONFIG_LANGUAGE eq et
 
         cmp     al, 1
         ja      @f
