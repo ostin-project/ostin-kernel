@@ -43,7 +43,7 @@ iglobal
     ; interrupt handlers addresses (for interrupt gate construction)
     dd irq0, irq_serv.irq_1, irq_serv.irq_2
 
-if  USE_COM_IRQ
+if KCONFIG_USE_COM_IRQ
 
     dd irq_serv.irq_3, irq_serv.irq_4
 

@@ -14,8 +14,6 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-GREEDY_KERNEL equ 0
-
 struct app_header_00_t
   banner   dq ?
   version  dd ? ; +8
@@ -214,9 +212,7 @@ endl
 
     @@: mov     [ebx + app_data_t.tls_base], edx
 
-if GREEDY_KERNEL
-
-else
+if ~KCONFIG_GREEDY_KERNEL
 
         mov     ecx, [hdr_mem]
         mov     edi, [file_size]
@@ -392,7 +388,7 @@ endl
         shr     ecx, 12
         mov     [img_pages], ecx
 
-if GREEDY_KERNEL
+if KCONFIG_GREEDY_KERNEL
 
         lea     eax, [ecx + ebx + 2] ; only image size
 
@@ -472,7 +468,7 @@ end if
         test    ecx, ecx
         jz      .done
 
-if GREEDY_KERNEL
+if KCONFIG_GREEDY_KERNEL
 
         mov     eax, 0x02
         rep     stosd

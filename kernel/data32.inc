@@ -73,7 +73,7 @@ boot_pal_vga     db 'Setting VGA 640x480 palette', 0
 boot_failed      db 'Failed to start first app', 0
 boot_mtrr        db 'Setting MTRR', 0
 
-if preboot_blogesc
+if KCONFIG_BOOT_LOG_ESC
 boot_tasking     db 'All set - press ESC to start', 0
 end if
 
@@ -148,7 +148,7 @@ boot_y          dd 10
 pci_bios_entry  dd 0
                 dw pci_code_sel
 
-if __DEBUG__ eq 1
+if KCONFIG_DEBUG eq 1
   include_debug_strings
 end if
 

@@ -17,8 +17,6 @@
 ; Virtual-8086 mode manager
 ; diamond, 2007, 2008
 
-DEBUG_SHOW_IO = 0
-
 struct v86_machine_t
   pagedir dd ? ; page directory
   pages   dd ? ; translation table: V86 address -> flat linear address
@@ -242,7 +240,7 @@ init_sys_v86:
         mov     dword[ebx + 0x09b * 4 + 0x1000], 0x9b000 or 0111b
         mov     dword[ebx + 0x09b * 4 + 0x1800], OS_BASE + 0x9b000
 
-if ~DEBUG_SHOW_IO
+if ~KCONFIG_DEBUG_SHOW_IO
 
         ; allow access to all ports
         mov     ecx, [esi + v86_machine_t.iopm]
@@ -737,7 +735,7 @@ v86_exc_c:
 
     @@: call    sys_msg_board_str
 
-if DEBUG_SHOW_IO
+if KCONFIG_DEBUG_SHOW_IO
 
         mov     edx, ebx
         mov     ebx, 200

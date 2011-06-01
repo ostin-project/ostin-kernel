@@ -17,11 +17,6 @@
 
 include "include/macros.inc"
 
-USE_COM_IRQ     equ 1 ; make irq 3 and irq 4 available for PCI devices
-
-; Enabling the next line will enable serial output console
-;debug_com_base equ 0x3f8 ; 0x3f8 is com1, 0x2f8 is com2, 0x3e8 is com3, 0x2e8 is com4, no irq's are used
-
 include "include/proc32.inc"
 include "include/struct.inc"
 
@@ -226,8 +221,8 @@ include "boot/shutdown.asm"
 use32
 org $ + 0x10000
 
-__DEBUG__ fix 1
-__DEBUG_LEVEL__ fix 1
+__DEBUG__ equ KCONFIG_DEBUG
+__DEBUG_LEVEL__ equ KCONFIG_DEBUG_LEVEL
 
 include "init.asm"
 
@@ -863,34 +858,34 @@ first_app_found:
 
         ; Setup serial output console (if enabled)
 
-if defined debug_com_base
+if KCONFIG_DEBUG_COM_BASE
 
         ; enable Divisor latch
-        mov     dx, debug_com_base + 3
+        mov     dx, KCONFIG_DEBUG_COM_BASE + 3
         mov     al, 1 shl 7
         out     dx, al
 
         ; Set speed to 115200 baud (max speed)
-        mov     dx, debug_com_base
+        mov     dx, KCONFIG_DEBUG_COM_BASE
         mov     al, 0x01
         out     dx, al
 
-        mov     dx, debug_com_base + 1
+        mov     dx, KCONFIG_DEBUG_COM_BASE + 1
         mov     al, 0x00
         out     dx, al
 
         ; No parity, 8bits words, one stop bit, dlab bit back to 0
-        mov     dx, debug_com_base + 3
+        mov     dx, KCONFIG_DEBUG_COM_BASE + 3
         mov     al, 3
         out     dx, al
 
         ; disable interrupts
-        mov     dx, debug_com_base + 1
+        mov     dx, KCONFIG_DEBUG_COM_BASE + 1
         mov     al, 0
         out     dx, al
 
         ; clear +  enable fifo (64 bits)
-        mov     dx, debug_com_base + 2
+        mov     dx, KCONFIG_DEBUG_COM_BASE + 2
         mov     al, 0x7 + (1 shl 5)
         out     dx, al
 
@@ -898,7 +893,7 @@ end if
 
         ; START MULTITASKING
 
-if preboot_blogesc
+if KCONFIG_BOOT_LOG_ESC
 
         mov     esi, boot_tasking
         call    boot_log
@@ -4375,17 +4370,17 @@ sys_msg_board:
         cmp     eax, 1
         jne     .smbl1
 
-if defined debug_com_base
+if KCONFIG_DEBUG_COM_BASE
 
         push    dx ax
 
     @@: ; Wait for empty transmit register  (yes, this slows down system)
-        mov     dx, debug_com_base + 5
+        mov     dx, KCONFIG_DEBUG_COM_BASE + 5
         in      al, dx
         test    al, 1 shl 5
         jz      @b
 
-        mov     dx, debug_com_base      ; Output the byte
+        mov     dx, KCONFIG_DEBUG_COM_BASE      ; Output the byte
         mov     al, bl
         out     dx, al
 
