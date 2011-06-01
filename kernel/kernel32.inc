@@ -191,12 +191,6 @@ struct app_data_t
   wnd_clientbox   box32_t
 ends
 
-struct mutex_t
-  count dd ?
-  next  dd ?
-  prev  dd ?
-ends
-
 include "blkdev/cd_drv.asm"
 include "blkdev/cdrom.asm"
 include "blkdev/fdc.asm"
