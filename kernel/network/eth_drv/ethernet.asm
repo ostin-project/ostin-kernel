@@ -72,15 +72,15 @@ end virtual
 ; Include individual drivers source files at this point.
 ; If you create a new driver, include it below.
 
-include "drivers/rtl8029.inc"
-include "drivers/i8255x.inc"
-include "drivers/rtl8139.inc"
-include "drivers/3c59x.inc"
-include "drivers/sis900.inc"
-include "drivers/pcnet32.inc"
-include "drivers/rtl8169.inc"
-include "drivers/forcedeth.inc"
-include "drivers/r6040.inc"
+include "drivers/rtl8029.asm"
+include "drivers/i8255x.asm"
+include "drivers/rtl8139.asm"
+include "drivers/3c59x.asm"
+include "drivers/sis900.asm"
+include "drivers/pcnet32.asm"
+include "drivers/rtl8169.asm"
+include "drivers/forcedeth.asm"
+include "drivers/r6040.asm"
 
 ; PCICards
 ; ========
@@ -246,8 +246,8 @@ iglobal
   subnet_mask:   dd 0x00ffffff ; 255.255.255.0
 endg
 
-include "arp.inc" ; arp-protocol functions
-include "pci.inc" ; PCI bus access functions
+include "arp.asm" ; arp-protocol functions
+include "pci.asm" ; PCI bus access functions
 
 proc eth_tx stdcall uses ebx esi edi
         ; Description

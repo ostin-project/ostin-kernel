@@ -1202,4 +1202,4 @@ get_stack_base:
         mov     eax, [eax + app_data_t.pl0_stack]
         ret
 
-include "debug.inc"
+include "debug.asm"

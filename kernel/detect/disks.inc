@@ -14,7 +14,7 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-include 'dev_fd.inc'
-include 'dev_hdcd.inc'
-include 'getcache.inc'
-include 'sear_par.inc'
+include 'dev_fd.asm'
+include 'dev_hdcd.asm'
+include 'getcache.asm'
+include 'sear_par.asm'

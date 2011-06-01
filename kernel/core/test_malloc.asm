@@ -198,7 +198,7 @@ error_with_code:
 ; Include main heap code
 include '../proc32.inc'
 include '../const.inc'
-include 'malloc.inc'
+include 'malloc.asm'
 
 i_end:
 

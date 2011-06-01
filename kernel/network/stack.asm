@@ -118,10 +118,10 @@ macro _memset_dw adr, value, amount
 
 ; Below, the main network layer source code is included
 ;
-include "queue.inc"
-include "eth_drv/ethernet.inc"
-include "ip.inc"
-include "socket.inc"
+include "queue.asm"
+include "eth_drv/ethernet.asm"
+include "ip.asm"
+include "socket.asm"
 
 stack_init:
         ; Description

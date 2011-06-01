@@ -92,9 +92,9 @@ else
 include "boot/bootge.inc"
 end if
 
-include "boot/bootcode.inc"
-include "bus/pci/pci16.inc"
-include "detect/biosdisk.inc"
+include "boot/bootcode.asm"
+include "bus/pci/pci16.asm"
+include "detect/biosdisk.asm"
 
 ;;----------------------------------------------------------------------------------------------------------------------
 ;;///// SWITCH TO 32 BIT PROTECTED MODE ////////////////////////////////////////////////////////////////////////////////
@@ -220,7 +220,7 @@ tmp_page_tabs dd ?
 use16
 org $ - 0x10000
 
-include "boot/shutdown.inc"
+include "boot/shutdown.asm"
 
 use32
 org $ + 0x10000
@@ -228,7 +228,7 @@ org $ + 0x10000
 __DEBUG__ fix 1
 __DEBUG_LEVEL__ fix 1
 
-include 'init.inc'
+include 'init.asm'
 
 org OS_BASE + $
 
@@ -582,7 +582,7 @@ include 'detect/disks.inc'
         call    Parser_params
 
 ; READ RAMDISK IMAGE FROM HD
-include 'boot/rdload.inc'
+include 'boot/rdload.asm'
 
 ;       mov     [dma_hdd], 1
 
@@ -590,7 +590,7 @@ include 'boot/rdload.inc'
         call    calculatefatchain
 
 ; LOAD VMODE DRIVER
-include 'vmodeld.inc'
+include 'vmodeld.asm'
 
 if 0
 
@@ -947,7 +947,7 @@ end if
 
         ; Fly :)
 
-include 'unpacker.inc'
+include 'unpacker.asm'
 include 'fdo.inc'
 
 align 4
@@ -1596,7 +1596,7 @@ endg
 
   .no_set_pci_access:
 
-include 'vmodeint.inc'
+include 'vmodeint.asm'
 
   .sys_setup_err:
         or      dword[esp + 32], -1
@@ -2087,7 +2087,7 @@ sysfn_getcpuclock: ; 18.5 = GET TSC/SEC
         ret
 
 ;  SAVE ramdisk to /hd/1/menuet.img
-include 'blkdev/rdsave.inc'
+include 'blkdev/rdsave.asm'
 
 align 4
 sysfn_getactive: ; 18.7 = get active window

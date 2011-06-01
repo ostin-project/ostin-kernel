@@ -163,7 +163,7 @@ uglobal
   problem_partition db 0 ; used for partitions search
 endg
 
-include  'part_set.inc'
+include  'part_set.asm'
 
 set_FAT:
         ; input  : EAX = cluster

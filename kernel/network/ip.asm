@@ -70,9 +70,9 @@ macro GET_IHL reg, header_addr
         shl     reg, 2
 }
 
-include "tcp.inc"
-include "udp.inc"
-include "icmp.inc"
+include "tcp.asm"
+include "udp.asm"
+include "icmp.asm"
 
 proc ip_rx stdcall
         ; Description
