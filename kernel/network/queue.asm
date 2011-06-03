@@ -23,12 +23,14 @@
 ;uglobal
 ;  freeBuff_cnt dd ?
 ;endg
-freeBuff:
-        ; Description
-        ;   buffer number in eax  ( ms word zeroed )
-        ;   all other registers preserved
-        ; This always works, so no error returned
-
+;-----------------------------------------------------------------------------------------------------------------------
+freeBuff: ;/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> eax = buffer number (ms word zeroed)
+;-----------------------------------------------------------------------------------------------------------------------
+;# all other registers preserved
+;# This always works, so no error returned
+;-----------------------------------------------------------------------------------------------------------------------
 ;       inc     [freeBuff_cnt]
 ;       DEBUGF  1, "K : freeBuff (%u)\n", [freeBuff_cnt]
         push    ebx
@@ -44,13 +46,17 @@ freeBuff:
 
         ret
 
-queueSize:
-        ; Description
-        ;   Counts the number of entries in a queue
-        ;   queue number in ebx ( ms word zeroed )
-        ;   Queue size returned in eax
-        ; This always works, so no error returned
-
+;-----------------------------------------------------------------------------------------------------------------------
+queueSize: ;////////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Counts the number of entries in a queue
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx = queue number (ms word zeroed)
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = queue size
+;-----------------------------------------------------------------------------------------------------------------------
+;# This always works, so no error returned
+;-----------------------------------------------------------------------------------------------------------------------
         xor     eax, eax
         shl     ebx, 1
         add     ebx, queues
@@ -73,15 +79,18 @@ queueSize:
 ;uglobal
 ;  queue_cnt dd ?
 ;endg
-queue:
-        ; Description
-        ;   Adds a buffer number to the *end* of a queue
-        ;   This is quite quick because these queues will be short
-        ;   queue number in eax ( ms word zeroed )
-        ;   buffer number in ebx  ( ms word zeroed )
-        ;   all other registers preserved
-        ; This always works, so no error returned
-
+;-----------------------------------------------------------------------------------------------------------------------
+queue: ;////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Adds a buffer number to the *end* of a queue
+;-----------------------------------------------------------------------------------------------------------------------
+;? eax = queue number (ms word zeroed)
+;? ebx = buffer number (ms word zeroed)
+;-----------------------------------------------------------------------------------------------------------------------
+;# all other registers preserved
+;# This is quite quick because these queues will be short
+;# This always works, so no error returned
+;-----------------------------------------------------------------------------------------------------------------------
 ;       inc     [queue_cnt]
 ;       DEBUGF  1, "K : queue (%u)\n", [queue_cnt]
         push    ebx
@@ -123,14 +132,18 @@ queue:
 ;uglobal
 ;  dequeue_cnt dd ?
 ;endg
-dequeue:
-        ; Description
-        ;   removes a buffer number from the head of a queue
-        ;   This is fast, as it unlinks the first entry in the list
-        ;   queue number in eax ( ms word zeroed )
-        ;   buffer number returned in eax ( ms word zeroed )
-        ;   all other registers preserved
-
+;-----------------------------------------------------------------------------------------------------------------------
+dequeue: ;//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? removes a buffer number from the head of a queue
+;-----------------------------------------------------------------------------------------------------------------------
+;> eax = queue number (ms word zeroed)
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = buffer number(ms word zeroed)
+;-----------------------------------------------------------------------------------------------------------------------
+;# all other registers preserved
+;# This is fast, as it unlinks the first entry in the list
+;-----------------------------------------------------------------------------------------------------------------------
         push    ebx
         shl     eax, 1
         add     eax, queues ; eax now holds address of queue
@@ -153,11 +166,11 @@ dequeue:
         pop     ebx
         ret
 
-queueInit:
-        ; Description
-        ;   Initialises the queues to empty, and creates the free queue
-        ;   list.
-
+;-----------------------------------------------------------------------------------------------------------------------
+queueInit: ;////////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Initialises the queues to empty, and creates the free queue list.
+;-----------------------------------------------------------------------------------------------------------------------
         mov     esi, queues
         mov     ecx, NUMQUEUES
         mov     ax, NO_BUFFER

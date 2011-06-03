@@ -31,15 +31,19 @@ PCI_BASE_ADDRESS_SPACE_IO equ 0x01
 PCI_VENDOR_ID             equ 0x00 ; 16 bit
 PCI_BASE_ADDRESS_IO_MASK  equ 0xfffffffc
 
-config_cmd:
-        ; Description
-        ;   creates a command dword  for use with the PCI bus
-        ; bus # in ebx
-        ;   devfn in ecx
-        ;   where in edx
-        ; command dword returned in eax
-        ; Only eax destroyed
-
+;-----------------------------------------------------------------------------------------------------------------------
+config_cmd: ;///////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? creates a command dword  for use with the PCI bus
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx = bus #
+;> ecx = devfn
+;> edx = where
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = command dword
+;-----------------------------------------------------------------------------------------------------------------------
+;# Only eax destroyed
+;-----------------------------------------------------------------------------------------------------------------------
         push    ecx
         mov     eax, ebx
         shl     eax, 16
@@ -51,15 +55,19 @@ config_cmd:
         and     eax, 0xfffffffc
         ret
 
-pcibios_read_config_byte:
-        ; Description
-        ;   reads a byte from the PCI config space
-        ; bus # in ebx
-        ;   devfn in ecx
-        ;   where in edx ( ls 16 bits significant )
-        ; byte returned in al ( rest of eax zero )
-        ; Only eax/edx destroyed
-
+;-----------------------------------------------------------------------------------------------------------------------
+pcibios_read_config_byte: ;/////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? reads a byte from the PCI config space
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx = bus #
+;> ecx = devfn
+;> edx = where (ls 16 bits significant)
+;-----------------------------------------------------------------------------------------------------------------------
+;< al = byte read (rest of eax zeroed)
+;-----------------------------------------------------------------------------------------------------------------------
+;# Only eax/edx destroyed
+;-----------------------------------------------------------------------------------------------------------------------
         call    config_cmd
         push    dx
         mov     dx, 0xcf8
@@ -73,15 +81,19 @@ pcibios_read_config_byte:
         in      al, dx
         ret
 
-pcibios_read_config_word:
-        ; Description
-        ;   reads a word from the PCI config space
-        ; bus # in ebx
-        ;   devfn in ecx
-        ;   where in edx ( ls 16 bits significant )
-        ; word returned in ax ( rest of eax zero )
-        ; Only eax/edx destroyed
-
+;-----------------------------------------------------------------------------------------------------------------------
+pcibios_read_config_word: ;/////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? reads a word from the PCI config space
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx = bus #
+;> ecx = devfn
+;> edx = where (ls 16 bits significant)
+;-----------------------------------------------------------------------------------------------------------------------
+;< ax = word read (rest of eax zeroed)
+;-----------------------------------------------------------------------------------------------------------------------
+;# Only eax/edx destroyed
+;-----------------------------------------------------------------------------------------------------------------------
         call    config_cmd
         push    dx
         mov     dx, 0xcf8
@@ -95,15 +107,19 @@ pcibios_read_config_word:
         in      ax, dx
         ret
 
-pcibios_read_config_dword:
-        ; Description
-        ;   reads a dword from the PCI config space
-        ; bus # in ebx
-        ;   devfn in ecx
-        ;   where in edx ( ls 16 bits significant )
-        ; dword returned in eax
-        ; Only eax/edx destroyed
-
+;-----------------------------------------------------------------------------------------------------------------------
+pcibios_read_config_dword: ;////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? reads a dword from the PCI config space
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx = bus #
+;> ecx = devfn
+;> edx = where (ls 16 bits significant)
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = dword read
+;-----------------------------------------------------------------------------------------------------------------------
+;# Only eax/edx destroyed
+;-----------------------------------------------------------------------------------------------------------------------
         push    edx
         call    config_cmd
         push    dx
@@ -116,14 +132,18 @@ pcibios_read_config_dword:
         pop     edx
         ret
 
-pcibios_write_config_byte:
-        ; Description
-        ;   write a byte in al to the PCI config space
-        ; bus # in ebx
-        ;   devfn in ecx
-        ;   where in edx ( ls 16 bits significant )
-        ; Only eax/edx destroyed
-
+;-----------------------------------------------------------------------------------------------------------------------
+pcibios_write_config_byte: ;////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? write a byte to the PCI config space
+;-----------------------------------------------------------------------------------------------------------------------
+;> al = byte to write
+;> ebx = bus #
+;> ecx = devfn
+;> edx = where (ls 16 bits significant)
+;-----------------------------------------------------------------------------------------------------------------------
+;# Only eax/edx destroyed
+;-----------------------------------------------------------------------------------------------------------------------
         push    ax
         call    config_cmd
         push    dx
@@ -137,34 +157,40 @@ pcibios_write_config_byte:
         out     dx, al
         ret
 
-pcibios_write_config_word:
-        ; Description
-        ;   write a word in ax to the PCI config space
-        ; bus # in ebx
-        ;   devfn in ecx
-        ;   where in edx ( ls 16 bits significant )
-        ; Only eax/edx destroyed
+;-----------------------------------------------------------------------------------------------------------------------
+pcibios_write_config_word: ;////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? write a word to the PCI config space
+;-----------------------------------------------------------------------------------------------------------------------
+;> ax = word to write
+;> ebx = bus #
+;> ecx = devfn
+;> edx = where (ls 16 bits significant)
+;-----------------------------------------------------------------------------------------------------------------------
+;# Only eax/edx destroyed
+;-----------------------------------------------------------------------------------------------------------------------
+        push    ax
+        call    config_cmd
+        push    dx
+        mov     dx, 0xCF8
+        out     dx, eax
+        pop     dx
+        pop     ax
 
-    push    ax
-    call    config_cmd
-    push    dx
-    mov     dx, 0xCF8
-    out     dx, eax
-    pop     dx
-    pop     ax
+        and     dx, 0x02
+        add     dx, 0xCFC
+        out     dx, ax
+        ret
 
-    and     dx, 0x02
-    add     dx, 0xCFC
-    out     dx, ax
-    ret
-
-delay_us:
-        ; Description
-        ;   delays for 30 to 60 us
-        ; I would prefer this routine to be able to delay for
-        ; a selectable number of microseconds, but this works for now.
-        ; If you know a better way to do 2us delay, pleae tell me!
-
+;-----------------------------------------------------------------------------------------------------------------------
+delay_us: ;/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? delays for 30 to 60 us
+;-----------------------------------------------------------------------------------------------------------------------
+;# I would prefer this routine to be able to delay for
+;# a selectable number of microseconds, but this works for now.
+;# If you know a better way to do 2us delay, pleae tell me!
+;-----------------------------------------------------------------------------------------------------------------------
         push    eax
         push    ecx
 
@@ -189,17 +215,20 @@ delay_us:
 
         ret
 
-scan_bus:
-        ; Description
-        ;   Scans the PCI bus for a supported device
-        ;   If a supported device is found, the drvr_ variables are initialised
-        ;   to that drivers functions ( as defined in the PCICards table)
-        ; io_addr   holds card I/O space. 32 bit, but only LS 16 bits valid
-        ;   pci_data  holds the PCI vendor + device code
-        ;   pci_dev   holds PCI bus dev #
-        ;   pci_bus   holds PCI bus #
-        ; io_addr will be zero if no card found
-
+;-----------------------------------------------------------------------------------------------------------------------
+scan_bus: ;/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Scans the PCI bus for a supported device
+;? If a supported device is found, the drvr_ variables are initialised
+;? to that drivers functions ( as defined in the PCICards table)
+;-----------------------------------------------------------------------------------------------------------------------
+;> [io_addr] = holds card I/O space. 32 bit, but only LS 16 bits valid
+;> [pci_data] = holds the PCI vendor + device code
+;> [pci_dev] = holds PCI bus dev #
+;> [pci_bus] = holds PCI bus #
+;-----------------------------------------------------------------------------------------------------------------------
+;< [io_addr] = 0 (no card found)
+;-----------------------------------------------------------------------------------------------------------------------
         xor     eax, eax
         mov     [hdrtype], al
         mov     [pci_data], eax

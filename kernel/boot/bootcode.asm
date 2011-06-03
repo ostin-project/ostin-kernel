@@ -21,22 +21,31 @@
 ;
 ;==========================================================================
 
-putchar:
-        ; in: al=character
+;-----------------------------------------------------------------------------------------------------------------------
+putchar: ;//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> al = character
+;-----------------------------------------------------------------------------------------------------------------------
         mov     ah, 0x0e
         mov     bh, 0
         int     0x10
         ret
 
-print:
-        ; in: si->string
+;-----------------------------------------------------------------------------------------------------------------------
+print: ;////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> si = string
+;-----------------------------------------------------------------------------------------------------------------------
         mov     al, 186
         call    putchar
         mov     al, ' '
         call    putchar
 
-printplain:
-        ; in: si->string
+;-----------------------------------------------------------------------------------------------------------------------
+printplain: ;///////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> si = string
+;-----------------------------------------------------------------------------------------------------------------------
         pusha
         lodsb
 
@@ -47,10 +56,15 @@ printplain:
         popa
         ret
 
-getkey:
-        ; get number in range [bl,bh] (bl,bh in ['0'..'9'])
-        ; in: bx=range
-        ; out: ax=digit (1..9, 10 for 0)
+;-----------------------------------------------------------------------------------------------------------------------
+getkey: ;///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? get number in range [bl,bh] (bl,bh in ['0'..'9'])
+;-----------------------------------------------------------------------------------------------------------------------
+;> bx = range
+;-----------------------------------------------------------------------------------------------------------------------
+;< ax = digit (1..9, 10 for 0)
+;-----------------------------------------------------------------------------------------------------------------------
         mov     ah, 0
         int     0x16
         cmp     al, bl
@@ -66,8 +80,12 @@ getkey:
 
     @@: ret
 
-setcursor:
-        ; in: dl=column, dh=row
+;-----------------------------------------------------------------------------------------------------------------------
+setcursor: ;////////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> dl = column
+;> dh = row
+;-----------------------------------------------------------------------------------------------------------------------
         mov     ah, 2
         mov     bh, 0
         int     0x10
@@ -79,7 +97,9 @@ macro _setcursor row, column
         call    setcursor
 }
 
-boot_read_floppy:
+;-----------------------------------------------------------------------------------------------------------------------
+boot_read_floppy: ;/////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
         push    si
         xor     si, si
         mov     ah, 2 ; read
@@ -93,24 +113,31 @@ boot_read_floppy:
         jb      @b
         mov     si, badsect
 
-sayerr_plain:
+;-----------------------------------------------------------------------------------------------------------------------
+sayerr_plain: ;/////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
         call    printplain
         jmp     $
 
     @@: pop     si
         ret
 
-conv_abs_to_THS:
-        ; convert abs. sector number (AX) to BIOS T:H:S
-        ; sector number = (abs.sector%BPB_SecPerTrk)+1
-        ; pre.track number = (abs.sector/BPB_SecPerTrk)
-        ; head number = pre.track number%BPB_NumHeads
-        ; track number = pre.track number/BPB_NumHeads
-        ; Return: cl - sector number
-        ;         ch - track number
-        ;         dl - drive number (0 = a:)
-        ;         dh - head number
-
+;-----------------------------------------------------------------------------------------------------------------------
+conv_abs_to_THS: ;//////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? convert abs. sector number to BIOS T:H:S
+;?   sector number = (abs.sector % BPB_SecPerTrk) + 1
+;?   pre.track number = abs.sector / BPB_SecPerTrk
+;?   head number = pre.track number % BPB_NumHeads
+;?   track number = pre.track number / BPB_NumHeads
+;-----------------------------------------------------------------------------------------------------------------------
+;> ax = sector number
+;-----------------------------------------------------------------------------------------------------------------------
+;< cl = sector number
+;< ch = track number
+;< dl = drive number (0 = a:)
+;< dh = head number
+;-----------------------------------------------------------------------------------------------------------------------
         push    bx
         mov     bx, word[BPB_SecPerTrk]
         xor     dx, dx
@@ -149,7 +176,9 @@ FirstDataSector dw 0 ; begin of data
 
 include "bootvesa.asm"
 
-start_of_code:
+;-----------------------------------------------------------------------------------------------------------------------
+start_of_code: ;////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
         cld
         ; if bootloader sets ax = 'KL', then ds:si points to loader block
         cmp     ax, 'KL'
@@ -160,12 +189,12 @@ start_of_code:
     @@: ; if bootloader sets cx = 'HA' and dx = 'RD', then bx contains identifier of source hard disk
         ; (see comment to bx_from_load)
         cmp     cx, 'HA'
-        jnz     no_hd_load
+        jnz     .no_hd_load
         cmp     dx, 'RD'
-        jnz     no_hd_load
+        jnz     .no_hd_load
         mov     word[cs:bx_from_load], bx
 
-no_hd_load:
+  .no_hd_load:
         ; set up stack
         mov     ax, 0x3000
         mov     ss, ax
@@ -225,7 +254,7 @@ end if
         mov     si, space_msg
         mov     dx, 25 - d80x25_top_num - d80x25_bottom_num
 
-dfl1:
+  .dfl1:
         push    si
         mov     cx, 80
 
@@ -235,7 +264,7 @@ dfl1:
 
         pop     si
         dec     dx
-        jnz     dfl1
+        jnz     .dfl1
 
         ; draw bottom
         mov     si, d80x25_bottom
@@ -262,19 +291,19 @@ dfl1:
         and     ax, bx
         and     dx, bx
         cmp     ax, dx
-        jnz     cpugood
+        jnz     .cpugood
         mov     si, not386
 
-sayerr:
+  .sayerr:
         call    print
         jmp     $
 
-cpugood:
+  .cpugood:
         push    0
         popf
         sti
 
-; set up esp
+        ; set up esp
         movzx   esp, sp
 
         push    0
@@ -324,12 +353,12 @@ cpugood:
         out     0x60, al
         xor     cx, cx
 
-wait_loop: ; variant 2
+  .wait_loop: ; variant 2
         ; reading state of port of 8042 controller
         in      al, 0x64
         and     al, 00000010b ; ready flag
         ; wait until 8042 controller is ready
-        loopnz  wait_loop
+        loopnz  .wait_loop
 
         ; set keyboard typematic rate & delay
         mov     al, 0xf3
@@ -352,9 +381,9 @@ wait_loop: ; variant 2
         mov     ax, 0x5300
         xor     bx, bx
         int     0x15
-        jc      apm_end ; APM not found
+        jc      .apm_end ; APM not found
         test    cx, 2
-        jz      apm_end ; APM 32-bit protected-mode interface not supported
+        jz      .apm_end ; APM 32-bit protected-mode interface not supported
         mov     [es:BOOT_APM_VERSION], ax ; Save APM Version
         mov     [es:BOOT_APM_FLAGS], cx ; Save APM flags
 
@@ -380,20 +409,20 @@ wait_loop: ; variant 2
         mov     [es:BOOT_APM_CODE16_SEG], cx
         mov     [es:BOOT_APM_DATA16_SEG], dx
 
-apm_end:
+  .apm_end:
         _setcursor d80x25_top_num, 0
 
         ; CHECK current of code
         cmp     [cfgmanager.loader_block], -1
-        jz      noloaderblock
+        jz      .noloaderblock
         les     bx, [cfgmanager.loader_block]
         cmp     byte[es:bx], 1
         mov     si, loader_block_error
-        jnz     sayerr
+        jnz     .sayerr
         push    0
         pop     es
 
-noloaderblock:
+  .noloaderblock:
         ; DISPLAY VESA INFORMATION
         call    print_vesa_info
         call    calc_vmodes_table
@@ -853,7 +882,7 @@ include "detect/biosmem.asm"
 
         ; READ DISKETTE TO MEMORY
         cmp     [boot_dev], 0
-        jne     no_sys_on_floppy
+        jne     .no_sys_on_floppy
         mov     si, diskload
         call    print
         xor     ax, ax ; reset drive
@@ -904,7 +933,7 @@ include "detect/biosmem.asm"
         pop     es
         pop     dx cx
         test    ah, ah
-        jnz     sayerr_floppy
+        jnz     .sayerr_floppy
         add     dword[si + 8 * 3 + 2], 512 * 18
         inc     dh
         cmp     dh, 2
@@ -912,7 +941,7 @@ include "detect/biosmem.asm"
         mov     dh, 0
         inc     ch
         cmp     ch, 80
-        jae     ok_sys_on_floppy
+        jae     .ok_sys_on_floppy
         pusha
         mov     al, ch
         shr     ch, 2
@@ -998,7 +1027,7 @@ include "detect/biosmem.asm"
         test    ah, ah
         jz      @f
 
-sayerr_floppy:
+  .sayerr_floppy:
         mov     dx, 0x3f2
         mov     al, 0
         out     dx, al
@@ -1028,7 +1057,7 @@ sayerr_floppy:
         int     0x15
         pop     es
         test    ah, ah
-        jnz     sayerr_floppy
+        jnz     .sayerr_floppy
 
         mov     ax, cx
         shl     ax, 1
@@ -1136,7 +1165,7 @@ sayerr_floppy:
         test    ah, ah
         popa
         pop     es
-        jnz     sayerr_floppy
+        jnz     .sayerr_floppy
 
   .skip:
         ; skip cluster di
@@ -1171,13 +1200,13 @@ sayerr_floppy:
         jnz     .read_loop
         pop     bx ; clear stack
 
-ok_sys_on_floppy:
+  .ok_sys_on_floppy:
         mov     si, backspace2
         call    printplain
         mov     si, okt
         call    printplain
 
-no_sys_on_floppy:
+  .no_sys_on_floppy:
         xor     ax, ax ; reset drive
         xor     dx, dx
         int     0x13
@@ -1192,12 +1221,12 @@ no_sys_on_floppy:
         mov     ax, [es:BOOT_VESA_MODE] ; vga & 320x200
         mov     bx, ax
         cmp     ax, 0x13
-        je      setgr
+        je      .setgr
         cmp     ax, 0x12
-        je      setgr
+        je      .setgr
         mov     ax, 0x4f02 ; Vesa
 
-setgr:
+  .setgr:
         int     0x10
         test    ah, ah
         mov     si, fatalsel
@@ -1205,7 +1234,7 @@ setgr:
 
         ; set mode 0x12 graphics registers:
         cmp     bx, 0x12
-        jne     gmok2
+        jne     .gmok2
 
         mov     al, 0x05
         mov     dx, 0x3ce
@@ -1226,6 +1255,6 @@ setgr:
         pop     dx
         out     dx, al ; select GDC bit mask register for writes to 0x3cf
 
-gmok2:
+  .gmok2:
         push    ds
         pop     es

@@ -38,14 +38,17 @@ struct udp_packet_t
   data     db ? ; +08
 ends
 
-proc udp_rx stdcall
-        ; Description
-        ;   UDP protocol handler
-        ;   This is a kernel function, called by ip_rx
-        ; IP buffer address given in edx
-        ; IP buffer number in eax
-        ; Free up (or re-use) IP buffer when finished
-
+;-----------------------------------------------------------------------------------------------------------------------
+proc udp_rx stdcall ;///////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? UDP protocol handler
+;? This is a kernel function, called by ip_rx
+;-----------------------------------------------------------------------------------------------------------------------
+;> eax = IP buffer number
+;> edx = IP buffer address
+;-----------------------------------------------------------------------------------------------------------------------
+;# Free up (or re-use) IP buffer when finished
+;-----------------------------------------------------------------------------------------------------------------------
         push    eax
 
         ; First validate the header & checksum. Discard buffer if error

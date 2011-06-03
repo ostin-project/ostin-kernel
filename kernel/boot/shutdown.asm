@@ -16,7 +16,9 @@
 ;;======================================================================================================================
 
 align 4
-pr_mode_exit:
+;-----------------------------------------------------------------------------------------------------------------------
+pr_mode_exit: ;/////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
         ; setup stack
         mov     ax, 0x3000
         mov     ss, ax
@@ -60,56 +62,65 @@ pr_mode_exit:
         out     0xa1, al
         sti
 
-temp_3456:
+  .temp_3456:
         xor     ax, ax
         mov     es, ax
         mov     al, [es:BOOT_VRR]
         cmp     al, 1
-        jl      nbw
+        jl      .nbw
         cmp     al, 4
-        jle     nbw32
+        jle     .nbw32
 
-nbw:
+  .nbw:
         in      al, 0x60
         cmp     al, 6
-        jae     nbw
+        jae     .nbw
         mov     bl, al
 
-nbw2:
+  .nbw2:
         in      al, 0x60
         cmp     al, bl
-        je      nbw2
+        je      .nbw2
         cmp     al, 240 ; ax, 240
-        jne     nbw31
+        jne     .nbw31
         mov     al, bl
         dec     ax
-        jmp     nbw32
+        jmp     .nbw32
 
-nbw31:
+  .nbw31:
         add     bl, 128
         cmp     al, bl
-        jne     nbw
+        jne     .nbw
         sub     al, 129
 
-nbw32:
+  .nbw32:
         dec     ax
         dec     ax ; 2 = power off
-        jnz     no_apm_off
+        jnz     .no_apm_off
         call    APM_PowerOff
         jmp     $
 
-no_apm_off:
+  .no_apm_off:
         dec     ax ; 3 = reboot
-        jnz     restart_kernel ; 4 = restart kernel
+        jnz     .restart_kernel ; 4 = restart kernel
         push    0x40
         pop     ds
         mov     word[0x0072], 0x1234
         jmp     0xf000:0xfff0
 
-rdelay:
+  .restart_kernel:
+        mov     ax, 0x0003 ; set text mode for screen
+        int     0x10
+        jmp     0x4000:0x0000
+
+;-----------------------------------------------------------------------------------------------------------------------
+rdelay: ;///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
         ret
 
-APM_PowerOff:
+;-----------------------------------------------------------------------------------------------------------------------
+APM_PowerOff: ;/////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
         mov     ax, 0x5304
         xor     bx, bx
         int     0x15
@@ -150,12 +161,9 @@ APM_PowerOff:
         ;!!!!!!!!!!!!!!!!!!!!!!!!
         ret
 
-restart_kernel:
-        mov     ax, 0x0003 ; set text mode for screen
-        int     0x10
-        jmp     0x4000:0000
-
-restart_kernel_4000:
+;-----------------------------------------------------------------------------------------------------------------------
+restart_kernel_4000: ;//////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
         cli
 
         push    ds
@@ -191,13 +199,13 @@ restart_kernel_4000:
         jcxz    $ + 2
         sti
 
-; We must read data from keyboard port,
-; because there may be situation when previous keyboard interrupt is lost
-; (due to return to real mode and IRQ reprogramming)
-; and next interrupt will not be generated (as keyboard waits for handling)
+        ; We must read data from keyboard port,
+        ; because there may be situation when previous keyboard interrupt is lost
+        ; (due to return to real mode and IRQ reprogramming)
+        ; and next interrupt will not be generated (as keyboard waits for handling)
         in      al, 0x60
 
-; bootloader interface
+        ; bootloader interface
         push    0x1000
         pop     ds
         mov     si, kernel_restart_bootblock

@@ -87,17 +87,17 @@ EXTRA_IS_ARP_PACKET_PTR      equ 0  ; if Extra contain pointer to ARP_PACKET
 EXTRA_IS_ARP_ENTRY_PTR       equ -1 ; if Extra contain pointer to ARP_ENTRY
 
 align 4
-proc arp_table_manager stdcall uses ebx esi edi ecx edx, Opcode:DWORD, Index:DWORD, Extra:DWORD
-        ; Description
-        ;   Does a most required operations with ARP-table
-        ; IN:
-        ;   Operation: see Opcode's constants below
-        ;     Index: Index of entry in the ARP-table
-        ;     Extra: Extra parameter for some Opcodes
-        ;  OUT:
-        ;    EAX = Returned value depends on opcodes, more detailed see below
-
-
+;-----------------------------------------------------------------------------------------------------------------------
+proc arp_table_manager stdcall uses ebx esi edi ecx edx, Opcode:DWORD, Index:DWORD, Extra:DWORD ;///////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Does a most required operations with ARP-table
+;-----------------------------------------------------------------------------------------------------------------------
+;> [Opcode] = see Opcode's constants below
+;> [Index] = Index of entry in the ARP-table
+;> [Extra] = Extra parameter for some Opcodes
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = Returned value depends on opcodes, more detailed see below
+;-----------------------------------------------------------------------------------------------------------------------
         mov     ebx, dword[ARPTable_ptr] ; ARPTable base
         mov     ecx, dword[NumARP] ; ARP-entries counter
 
@@ -116,15 +116,16 @@ proc arp_table_manager stdcall uses ebx esi edi ecx edx, Opcode:DWORD, Index:DWO
         je      .get_entries_number
         jmp     .exit ; if unknown opcode
 
-        ; BEGIN TIMER
-        ; Description:
-        ;   it must be callback every second. It is responsible for removing expired routes.
-        ; IN:
-        ;   Operation: ARP_TABLE_TIMER
-        ;   Index: must be zero
-        ;   Extra: must be zero
-        ; OUT:
-        ;   EAX=not defined
+;-----------------------------------------------------------------------------------------------------------------------
+;? TIMER
+;? it must be callback every second. It is responsible for removing expired routes.
+;-----------------------------------------------------------------------------------------------------------------------
+;> [Opcode] = ARP_TABLE_TIMER
+;> [Index] = must be zero
+;> [Extra] = must be zero
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = not defined
+;-----------------------------------------------------------------------------------------------------------------------
 
   .timer:
         test    ecx, ecx
@@ -168,20 +169,18 @@ proc arp_table_manager stdcall uses ebx esi edi ecx edx, Opcode:DWORD, Index:DWO
 
         jmp     .exit
 
-        ; END TIMER
-
-        ; BEGIN ADD
-        ; Description:
-        ;   it adds an entry in the table. If ARP-table already
-        ;   contains same IP, it will be updated.
-        ; IN:
-        ;   Operation: ARP_TABLE_ADD
-        ;   Index: specifies what contains Extra-parameter
-        ;   Extra: if Index==EXTRA_IS_ARP_PACKET_PTR,
-        ;          then Extra contains pointer to ARP_PACKET,
-        ;          otherwise Extra contains pointer to arp_packet_t
-        ; OUT:
-        ;   EAX=index of entry, that has been added
+;-----------------------------------------------------------------------------------------------------------------------
+;? ADD
+;? it adds an entry in the table. If ARP-table already contains same IP, it will be updated.
+;-----------------------------------------------------------------------------------------------------------------------
+;> [Opcode] = ARP_TABLE_ADD
+;> [Index] = specifies what contains Extra-parameter
+;> [Extra] = if Index==EXTRA_IS_ARP_PACKET_PTR,
+;>           then Extra contains pointer to ARP_PACKET,
+;>           otherwise Extra contains pointer to arp_packet_t
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = index of entry, that has been added
+;-----------------------------------------------------------------------------------------------------------------------
 
   .add:
         sub     esp, sizeof.arp_entry_t ; Allocate ARP_ENTRY_SIZE byte in stack
@@ -249,17 +248,16 @@ proc arp_table_manager stdcall uses ebx esi edi ecx edx, Opcode:DWORD, Index:DWO
         add     esp, sizeof.arp_entry_t ; free stack
         jmp     .exit
 
-        ; END ADD
-
-        ; BEGIN DEL
-        ; Description:
-        ;   it deletes an entry in the table.
-        ; IN:
-        ;   Operation: ARP_TABLE_DEL
-        ;   Index: index of entry, that should be deleted
-        ;   Extra: must be zero
-        ; OUT:
-        ;   EAX=not defined
+;-----------------------------------------------------------------------------------------------------------------------
+;? DEL
+;? it deletes an entry in the table.
+;-----------------------------------------------------------------------------------------------------------------------
+;> [Opcode] = ARP_TABLE_DEL
+;> [Index] = index of entry, that should be deleted
+;> [Extra] = must be zero
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = not defined
+;-----------------------------------------------------------------------------------------------------------------------
 
   .del:
         mov     esi, [Index]
@@ -278,17 +276,16 @@ proc arp_table_manager stdcall uses ebx esi edi ecx edx, Opcode:DWORD, Index:DWO
         dec     dword[NumARP] ; decrease arp-entries counter
         jmp     .exit
 
-        ; END DEL
-
-        ; BEGIN GET
-        ; Description:
-        ;   it reads an entry of table into buffer.
-        ; IN:
-        ;   Operation: ARP_TABLE_GET
-        ;   Index: index of entry, that should be read
-        ;   Extra: pointer to buffer for reading(size must be equal to sizeof.arp_entry_t)
-        ; OUT:
-        ;   EAX=not defined
+;-----------------------------------------------------------------------------------------------------------------------
+;? GET
+;? it reads an entry of table into buffer.
+;-----------------------------------------------------------------------------------------------------------------------
+;> [Opcode] = ARP_TABLE_GET
+;> [Index] = index of entry, that should be read
+;> [Extra] = pointer to buffer for reading(size must be equal to sizeof.arp_entry_t)
+;----------------------------------------------------------------------------------------------------------------------
+;< eax = not defined
+;-----------------------------------------------------------------------------------------------------------------------
 
   .get:
         mov     esi, [Index]
@@ -299,26 +296,26 @@ proc arp_table_manager stdcall uses ebx esi edi ecx edx, Opcode:DWORD, Index:DWO
         rep     movsw
         jmp     .exit
 
-        ; END GET
-
-        ; BEGIN IP_TO_MAC
-        ; Description:
-        ;   it gets an IP from Index, scans each entry in the table and writes
-        ;   MAC, that relates to specified IP, into buffer specified in Extra.
-        ;   And if it cannot find an IP-address in the table, it does an ARP-request of that.
-        ; IN:
-        ;   Operation: ARP_TABLE_IP_TO_MAC
-        ;   Index: IP that should be transformed into MAC
-        ;   Extra: pointer to buffer where will be written the MAC-address.
-        ; OUT:
-        ;   EAX=ARP table entry status code.
-        ;       If EAX==ARP_NO_ENTRY, IP isn't found in the table and we have sent the request.
-        ;       If EAX==ARP_AWAITING_RESPONSE, we wait the response from remote system.
-        ;       If EAX==ARP_RESPONSE_TIMEOUT, remote system not responds too long.
-        ;       If EAX==ARP_VALID_MAPPING, all is ok, we've got a true MAC.
-        ; If MAC will equal to a zero, in the buffer. It means, that IP-address was not yet
-        ; resolved, or that doesn't exist. I recommend you, to do at most 3-5 calls of this
-        ; function with 1sec delay. sure, only if it not return a valid MAC after a first call.
+;-----------------------------------------------------------------------------------------------------------------------
+;? IP_TO_MAC
+;? it gets an IP from Index, scans each entry in the table and writes
+;? MAC, that relates to specified IP, into buffer specified in Extra.
+;? And if it cannot find an IP-address in the table, it does an ARP-request of that.
+;-----------------------------------------------------------------------------------------------------------------------
+;> [Opcode] = ARP_TABLE_IP_TO_MAC
+;> [Index] = IP that should be transformed into MAC
+;> [Extra] = pointer to buffer where will be written the MAC-address.
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = ARP table entry status code.
+;<   If EAX==ARP_NO_ENTRY, IP isn't found in the table and we have sent the request.
+;<   If EAX==ARP_AWAITING_RESPONSE, we wait the response from remote system.
+;<   If EAX==ARP_RESPONSE_TIMEOUT, remote system not responds too long.
+;<   If EAX==ARP_VALID_MAPPING, all is ok, we've got a true MAC.
+;-----------------------------------------------------------------------------------------------------------------------
+;# If MAC will equal to a zero, in the buffer. It means, that IP-address was not yet
+;# resolved, or that doesn't exist. I recommend you, to do at most 3-5 calls of this
+;# function with 1sec delay. sure, only if it not return a valid MAC after a first call.
+;-----------------------------------------------------------------------------------------------------------------------
 
   .ip_to_mac:
         xor     eax, eax
@@ -373,38 +370,37 @@ proc arp_table_manager stdcall uses ebx esi edi ecx edx, Opcode:DWORD, Index:DWO
         mov     eax, ARP_NO_ENTRY
         jmp     .exit
 
-        ; END IP_TO_MAC
-
-        ; BEGIN GET_ENTRIES_NUMBER
-        ; Description:
-        ;   returns an ARP-entries number in the ARPTable
-        ; IN:
-        ;   Operation: ARP_TABLE_GET_ENTRIES_NUMBER
-        ;   Index: must be zero
-        ;   Extra: must be zero
-        ; OUT:
-        ;   EAX=ARP-entries number in the ARPTable
+;-----------------------------------------------------------------------------------------------------------------------
+;? BEGIN GET_ENTRIES_NUMBER
+;? returns an ARP-entries number in the ARPTable
+;-----------------------------------------------------------------------------------------------------------------------
+;> [Opcode] = ARP_TABLE_GET_ENTRIES_NUMBER
+;> [Index] = must be zero
+;> [Extra] = must be zero
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = ARP-entries number in the ARPTable
+;-----------------------------------------------------------------------------------------------------------------------
 
   .get_entries_number:
         mov     eax, dword[NumARP]
         jmp     .exit
 
-        ; END GET_ENTRIES_NUMBER
-
   .exit:
         ret
 endp
 
-arp_handler:
-        ; Description
-        ;   Called when an ARP packet is received on the ethernet
-        ;   Header + Data is in Ether_buffer[]
-        ;    It looks to see if the packet is a request to resolve this Hosts
-        ;    IP address. If it is, send the ARP reply packet.
-        ;   This Hosts IP address is in dword[stack_ip] (in network format)
-        ;    This Hosts MAC address is in node_addr[6]
-        ;   All registers may be destroyed
-
+;-----------------------------------------------------------------------------------------------------------------------
+arp_handler: ;//////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Called when an ARP packet is received on the ethernet
+;? It looks to see if the packet is a request to resolve this Hosts IP address. If it is, send the ARP reply packet.
+;-----------------------------------------------------------------------------------------------------------------------
+;> [Ether_buffer] = Header + Data
+;> [stack_ip] = this Hosts IP address (in network format)
+;> [node_addr] = this Hosts MAC address
+;-----------------------------------------------------------------------------------------------------------------------
+;# All registers may be destroyed
+;-----------------------------------------------------------------------------------------------------------------------
         ; Is this a REQUEST?
         ; Is this a request for My Host IP
         ; Yes - So construct a response message.
@@ -457,17 +453,17 @@ arp_handler:
   .exit:
         ret
 
-proc arp_request stdcall uses ebx esi edi, TargetIP:DWORD, SenderIP_ptr:DWORD, SenderMAC_ptr:DWORD
-        ; Description
-        ;   Sends an ARP request on the ethernet
-        ; IN:
-        ;   TargetIP      : requested IP address
-        ;   SenderIP_ptr  : POINTER to sender's IP address(our system's address)
-        ;   SenderMAC_ptr : POINTER to sender's MAC address(our system's address)
-        ; OUT:
-        ;   EAX=0 (if all is ok), otherwise EAX is not defined
-        ; EBX,ESI,EDI will be saved
-
+;-----------------------------------------------------------------------------------------------------------------------
+proc arp_request stdcall uses ebx esi edi, TargetIP:DWORD, SenderIP_ptr:DWORD, SenderMAC_ptr:DWORD ;////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Sends an ARP request on the ethernet
+;-----------------------------------------------------------------------------------------------------------------------
+;> [TargetIP] = requested IP address
+;> [SenderIP_ptr] = POINTER to sender's IP address(our system's address)
+;> [SenderMAC_ptr] = POINTER to sender's MAC address(our system's address)
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = 0 (ok), not defined otherwise
+;-----------------------------------------------------------------------------------------------------------------------
         inc     dword[arp_tx_count] ; increase counter
 
         sub     esp, 28 ; allocate memory for arp_packet_t

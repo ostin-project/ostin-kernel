@@ -109,19 +109,20 @@ ICMP_PHOTURIS_UNKNOWN_INDEX      equ 1  ; unknown sec index
 ICMP_PHOTURIS_AUTH_FAILED        equ 2  ; auth failed
 ICMP_PHOTURIS_DECRYPT_FAILED     equ 3  ; decrypt failed
 
-
-proc icmp_rx stdcall uses ebx esi edi, buffer_number:DWORD, IPPacketBase:DWORD, IPHeaderLength:DWORD
-        ; Description
-        ;   ICMP protocol handler
-        ;   This is a kernel function, called by ip_rx
-        ; IN:
-        ;   buffer_number  - # of IP-buffer. This buffer must be reused or marked as empty afterwards
-        ;   IPPacketBase   - ip_packet_t base address
-        ;   IPHeaderLength - Header length of ip_packet_t
-        ; OUT:
-        ;   EAX=not defined
-        ; All used registers will be saved
-
+;-----------------------------------------------------------------------------------------------------------------------
+proc icmp_rx stdcall uses ebx esi edi, buffer_number:DWORD, IPPacketBase:DWORD, IPHeaderLength:DWORD ;//////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? ICMP protocol handler
+;-----------------------------------------------------------------------------------------------------------------------
+;> [buffer_number] = # of IP-buffer. This buffer must be reused or marked as empty afterwards
+;> [IPPacketBase] = ip_packet_t base address
+;> [IPHeaderLength] = Header length of ip_packet_t
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = not defined
+;-----------------------------------------------------------------------------------------------------------------------
+;# This is a kernel function, called by ip_rx
+;# All used registers will be saved
+;-----------------------------------------------------------------------------------------------------------------------
         mov     esi, [IPPacketBase] ; esi=ip_packet_t base address
         mov     edi, esi
         add     edi, [IPHeaderLength] ; edi=icmp_packet_t base address

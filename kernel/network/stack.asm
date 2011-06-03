@@ -15,17 +15,6 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-;*******************************************************************
-;   Interface
-;      The interfaces defined in ETHERNET.INC plus:
-;      stack_init
-;      stack_handler
-;      app_stack_handler
-;      app_socket_handler
-;      checksum
-;
-;*******************************************************************
-
 uglobal
   StackCounters:
     dumped_rx_count dd 0
@@ -123,13 +112,14 @@ include "eth_drv/ethernet.asm"
 include "ip.asm"
 include "socket.asm"
 
-stack_init:
-        ; Description
-        ;   Clear all allocated memory to zero. This ensures that
-        ;   on startup, the stack is inactive, and consumes no resources
-        ;   This is a kernel function, called prior to the OS main loop
-        ;   in set_variables
-
+;-----------------------------------------------------------------------------------------------------------------------
+stack_init: ;///////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Clear all allocated memory to zero. This ensures that
+;? on startup, the stack is inactive, and consumes no resources
+;? This is a kernel function, called prior to the OS main loop
+;? in set_variables
+;-----------------------------------------------------------------------------------------------------------------------
         ; Init two address spaces with default values
         _memset_dw      stack_data_start, 0, 0x20000 / 4
         _memset_dw      resendQ, 0, NUMRESENDENTRIES * 2
@@ -148,11 +138,12 @@ stack_init:
         ret
 
 align 4
-stack_handler:
-        ; Description
-        ;   The kernel loop routine for the stack
-        ;   This is a kernel function, called in the main loop
-
+;-----------------------------------------------------------------------------------------------------------------------
+stack_handler: ;////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? The kernel loop routine for the stack
+;? This is a kernel function, called in the main loop
+;-----------------------------------------------------------------------------------------------------------------------
         call    ethernet_driver
         call    ip_rx
 
@@ -181,14 +172,16 @@ stack_handler:
   .sh_exit:
         ret
 
-proc checksum_jb stdcall uses ebx esi ecx, buf_ptr:DWORD, buf_size:DWORD
-        ; IN:
-        ;   buf_ptr=POINTER to buffer
-        ;   buf_size=SIZE of buffer
-        ; OUT:
-        ;   AX=16-bit checksum
-        ; Saves all used registers
-
+;-----------------------------------------------------------------------------------------------------------------------
+proc checksum_jb stdcall uses ebx esi ecx, buf_ptr:DWORD, buf_size:DWORD ;//////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> [buf_ptr] = POINTER to buffer
+;> [buf_size] = SIZE of buffer
+;-----------------------------------------------------------------------------------------------------------------------
+;< ax = 16-bit checksum
+;-----------------------------------------------------------------------------------------------------------------------
+; Saves all used registers
+;-----------------------------------------------------------------------------------------------------------------------
         xor     eax, eax
         xor     ebx, ebx ; accumulator
         mov     esi, dword[buf_ptr]
@@ -213,13 +206,14 @@ proc checksum_jb stdcall uses ebx esi ecx, buf_ptr:DWORD, buf_size:DWORD
         ret
 endp
 
-checksum:
-        ; Description
-        ;   checkAdd1,checkAdd2, checkSize1, checkSize2, checkResult
-        ;   Dont break anything; Most registers are used by the caller
-        ;   This code is derived from the 'C' source, cksum.c, in the book
-        ;   Internetworking with TCP/IP Volume II by D.E. Comer
-
+;-----------------------------------------------------------------------------------------------------------------------
+checksum: ;/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? checkAdd1, checkAdd2, checkSize1, checkSize2, checkResult
+;? Dont break anything; Most registers are used by the caller
+;? This code is derived from the 'C' source, cksum.c, in the book
+;? Internetworking with TCP/IP Volume II by D.E. Comer
+;-----------------------------------------------------------------------------------------------------------------------
         pusha
         mov     eax, [checkAdd1]
         xor     edx, edx ; edx is the accumulative checksum
@@ -310,13 +304,17 @@ iglobal
     dd app_stack_handler.15
 endg
 
-app_stack_handler:
-        ; Description
-        ;   This is an application service, called by int 0x40, function 52
-        ;   It provides application access to the network interface layer
-        ; in ebx,ecx
-        ; out eax
-
+;-----------------------------------------------------------------------------------------------------------------------
+app_stack_handler: ;////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? This is an application service, called by int 0x40, function 52
+;? It provides application access to the network interface layer
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx = ...
+;> ecx = ...
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = ...
+;-----------------------------------------------------------------------------------------------------------------------
         cmp     ebx, 15
         ja      .fail ; if more than 15 then exit
 
@@ -430,11 +428,14 @@ app_stack_handler:
 ;       cmp     ebx,2
 ;       jne     a_resp ; arp response
 
-a_probe:
-        ; arp probe, sender IP must be set to 0.0.0.0, target IP is set to address being probed
-        ; ecx: pointer to target MAC, MAC should set to 0 by application
-        ; edx: target IP
-
+;-----------------------------------------------------------------------------------------------------------------------
+a_probe: ;//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? arp probe, sender IP must be set to 0.0.0.0, target IP is set to address being probed
+;-----------------------------------------------------------------------------------------------------------------------
+;> ecx = pointer to target MAC, MAC should set to 0 by application
+;> edx = target IP
+;-----------------------------------------------------------------------------------------------------------------------
         push    dword[stack_ip]
 
         mov     edx, [stack_ip]
@@ -445,10 +446,13 @@ a_probe:
         pop     dword[stack_ip]
         ret
 
-a_ann:
-        ; arp announce, sender IP must be set to target IP
-        ; ecx: pointer to target MAC
-
+;-----------------------------------------------------------------------------------------------------------------------
+a_ann: ;////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? arp announce, sender IP must be set to target IP
+;-----------------------------------------------------------------------------------------------------------------------
+;> ecx = pointer to target MAC
+;-----------------------------------------------------------------------------------------------------------------------
         mov     edx, [stack_ip]
         mov     esi, ecx ; pointer to target MAC address
         call    arp_request
@@ -460,10 +464,11 @@ a_ann:
         stdcall arp_table_manager, ecx, edx, esi ; Opcode, Index, Extra
         ret
 
-ash_eth_enable:
-        ; Probe for the card. This will reset it and enable the interface
-        ; if found
-
+;-----------------------------------------------------------------------------------------------------------------------
+ash_eth_enable: ;///////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Probe for the card. This will reset it and enable the interface if found
+;-----------------------------------------------------------------------------------------------------------------------
         call    eth_probe
         test    eax, eax
         jz      .ash_eth_done ; Abort if no hardware found
@@ -490,14 +495,19 @@ iglobal
     dd socket_read_packet    ; 11
 endg
 
-app_socket_handler:
-        ; Description
-        ;   This is an application service, called by int 0x40, function 53
-        ;   It provides application access to stack socket services
-        ;   such as opening sockets
-        ; in ebx,ecx,edx,wsi
-        ; out eax
-
+;-----------------------------------------------------------------------------------------------------------------------
+app_socket_handler: ;///////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? This is an application service, called by int 0x40, function 53
+;? It provides application access to stack socket services such as opening sockets
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx = ...
+;> ecx = ...
+;> edx = ...
+;> esi = ...
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = ...
+;-----------------------------------------------------------------------------------------------------------------------
         cmp     eax, 255
         je      stack_internal_status
 
@@ -523,35 +533,35 @@ uglobal
   ARPTmp: rb 14
 endg
 
-stack_internal_status:
-        ; Description
-        ;   Returns information about the internal status of the stack
-        ;   This is only useful for debugging
-        ;   It works with the ethernet driver
-        ;   sub function in ebx
-        ;   return requested data in eax
-        ;***************************************************************************
-        ; This sub function allows access to debugging information on the stack
-        ; ecx holds the request:
-        ; 100 : return length of empty queue
-        ; 101 : return length of IPOUT QUEUE
-        ; 102 : return length of IPIN QUEUE
-        ; 103 : return length of NET1OUT QUEUE
-        ; 200 : return # of ARP entries
-        ; 201 : return size of ARP table ( max # entries )
-        ; 202 : select ARP table entry #
-        ; 203 : return IP of selected table entry
-        ; 204 : return High 4 bytes of MAC address of selected table entry
-        ; 205 : return low  2 bytes of MAC address of selected table entry
-        ; 206 : return status word of selected table entry
-        ; 207 : return Time to live of selected table entry
-        ;  2 : return number of IP packets received
-        ;  3 : return number of packets transmitted
-        ;  4 : return number of received packets dumped
-        ;  5 : return number of arp packets received
-        ;  6 : return status of packet driver
-        ;  ( 0 == not active, FFFFFFFF = successful )
-
+;-----------------------------------------------------------------------------------------------------------------------
+stack_internal_status: ;////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Returns information about the internal status of the stack
+;? This is only useful for debugging
+;? It works with the ethernet driver
+;? sub function in ebx
+;? return requested data in eax
+;-----------------------------------------------------------------------------------------------------------------------
+;; This sub function allows access to debugging information on the stack
+;; ecx holds the request:
+;>   100 - return length of empty queue
+;>   101 - return length of IPOUT QUEUE
+;>   102 - return length of IPIN QUEUE
+;>   103 - return length of NET1OUT QUEUE
+;>   200 - return # of ARP entries
+;>   201 - return size of ARP table ( max # entries )
+;>   202 - select ARP table entry #
+;>   203 - return IP of selected table entry
+;>   204 - return High 4 bytes of MAC address of selected table entry
+;>   205 - return low  2 bytes of MAC address of selected table entry
+;>   206 - return status word of selected table entry
+;>   207 - return Time to live of selected table entry
+;>   2 - return number of IP packets received
+;>   3 - return number of packets transmitted
+;>   4 - return number of received packets dumped
+;>   5 - return number of arp packets received
+;>   6 - return status of packet driver (0 - not active, -1 - successful)
+;-----------------------------------------------------------------------------------------------------------------------
         cmp     ebx, 100
         jnz     .notsis100
 
@@ -710,13 +720,15 @@ stack_internal_status:
         xor     eax, eax
         ret
 
-stack_get_packet:
-        ; Description
-        ;   extracts an IP packet from the NET1 output queue
-        ;   and sends the data to the calling process
-        ;   pointer to data in edx
-        ;   returns number of bytes read in eax
-
+;-----------------------------------------------------------------------------------------------------------------------
+stack_get_packet: ;/////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? extracts an IP packet from the NET1 output queue and sends the data to the calling process
+;-----------------------------------------------------------------------------------------------------------------------
+;> edx = pointer to data
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = number of bytes read
+;-----------------------------------------------------------------------------------------------------------------------
         ; Look for a buffer to tx
         mov     eax, NET1OUT_QUEUE
         call    dequeue
@@ -756,15 +768,16 @@ stack_get_packet:
         xor     eax, eax
         ret
 
-
-
-stack_insert_packet:
-        ; Description
-        ;   writes an IP packet into the stacks receive queue
-        ;   # of bytes to write in ecx
-        ;   pointer to data in edx
-        ; returns 0 in eax ok, -1 == failed
-
+;-----------------------------------------------------------------------------------------------------------------------
+stack_insert_packet: ;//////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? writes an IP packet into the stacks receive queue
+;-----------------------------------------------------------------------------------------------------------------------
+;> ecx = # of bytes to write
+;> edx = pointer to data
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = 0 (ok) or -1 (failed)
+;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, EMPTY_QUEUE
         call    dequeue
         cmp     ax, NO_BUFFER

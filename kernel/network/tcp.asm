@@ -76,11 +76,11 @@ struct tcp_packet_t
   data            db ? ; +24
 ends
 
-proc tcp_tcb_handler stdcall uses ebx
-        ; Description
-        ;   Handles sockets in the timewait state, closing them
-        ;   when the TCB timer expires
-
+;-----------------------------------------------------------------------------------------------------------------------
+proc tcp_tcb_handler stdcall uses ebx ;/////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Handles sockets in the timewait state, closing them when the TCB timer expires
+;-----------------------------------------------------------------------------------------------------------------------
         ; scan through all the sockets, decrementing active timers
 
         mov     ebx, net_sockets
@@ -124,11 +124,13 @@ proc tcp_tcb_handler stdcall uses ebx
         ret
 endp
 
-proc tcp_tx_handler stdcall
-        ; Description
-        ;   Handles queued TCP data
-        ;   This is a kernel function, called by stack_handler
-
+;-----------------------------------------------------------------------------------------------------------------------
+proc tcp_tx_handler stdcall ;///////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Handles queued TCP data
+;-----------------------------------------------------------------------------------------------------------------------
+;# This is a kernel function, called by stack_handler
+;-----------------------------------------------------------------------------------------------------------------------
         ; decrement all resend buffers timers. If they
         ; expire, queue them for sending, and restart the timer.
         ; If the retries counter reach 0, delete the entry
@@ -225,14 +227,17 @@ proc tcp_tx_handler stdcall
         ret
 endp
 
-proc tcp_rx stdcall uses ebx
-        ; Description
-        ;  TCP protocol handler
-        ;  This is a kernel function, called by ip_rx
-        ;  IP buffer address given in edx
-        ;   IP buffer number in eax
-        ;   Free up (or re-use) IP buffer when finished
-
+;-----------------------------------------------------------------------------------------------------------------------
+proc tcp_rx stdcall uses ebx ;//////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? TCP protocol handler
+;-----------------------------------------------------------------------------------------------------------------------
+;> eax = IP buffer number
+;> edx = IP buffer address
+;-----------------------------------------------------------------------------------------------------------------------
+;# Free up (or re-use) IP buffer when finished
+;# This is a kernel function, called by ip_rx
+;-----------------------------------------------------------------------------------------------------------------------
         ; The process is as follows.
         ; Look for a socket with matching remote IP, remote port, local port
         ; if not found, then
@@ -369,16 +374,19 @@ proc tcp_rx stdcall uses ebx
         ret
 endp
 
-proc build_tcp_packet stdcall, sockAddr:DWORD
-        ; Description
-        ;   builds an IP Packet with TCP data fully populated for transmission
-        ;   You may destroy any and all registers
-        ;    TCP control flags specified in bl
-        ;    This TCB is in [sktAddr]
-        ;    User data pointed to by esi
-        ;   Data length in ecx
-        ;    Transmit buffer number in eax
-
+;-----------------------------------------------------------------------------------------------------------------------
+proc build_tcp_packet stdcall, sockAddr:DWORD ;/////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? builds an IP Packet with TCP data fully populated for transmission
+;-----------------------------------------------------------------------------------------------------------------------
+;> eax = Ttansmit buffer number
+;> bl = TCP control flags specified
+;> ecx = data length
+;> esi = pointer to user data
+;> [sktAddr] = this TCB
+;-----------------------------------------------------------------------------------------------------------------------
+;# You may destroy any and all registers
+;-----------------------------------------------------------------------------------------------------------------------
         push    ecx ; Save data length
 
         ; convert buffer pointer eax to the absolute address
@@ -493,9 +501,11 @@ proc build_tcp_packet stdcall, sockAddr:DWORD
         ret
 endp
 
-proc inc_inet_esi stdcall
-        ; Increments the 32 bit value pointed to by esi in internet order
-
+;-----------------------------------------------------------------------------------------------------------------------
+proc inc_inet_esi stdcall ;/////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Increments the 32 bit value pointed to by esi in internet order
+;-----------------------------------------------------------------------------------------------------------------------
         push    eax
         mov     eax, [esi]
         bswap   eax
@@ -506,10 +516,11 @@ proc inc_inet_esi stdcall
         ret
 endp
 
-proc add_inet_esi stdcall
-        ; Increments the 32 bit value pointed to by esi in internet order
-        ; by the value in ecx
-
+;-----------------------------------------------------------------------------------------------------------------------
+proc add_inet_esi stdcall ;/////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Increments the 32 bit value pointed to by esi in internet order by the value in ecx
+;-----------------------------------------------------------------------------------------------------------------------
         push    eax
         mov     eax, [esi]
         bswap   eax
@@ -535,14 +546,17 @@ iglobal
     stateTCB_CLOSED
 endg
 
-proc tcpStateMachine stdcall, sockAddr:DWORD
-        ; Description
-        ;   TCP state machine
-        ;   This is a kernel function, called by tcp_rx
-        ; IP buffer address given in edx
-        ; Socket/TCB address in ebx
-        ; The IP buffer will be released by the caller
-
+;-----------------------------------------------------------------------------------------------------------------------
+proc tcpStateMachine stdcall, sockAddr:DWORD ;//////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? TCP state machine
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx = Socket/TCB address
+;> edx = IP buffer address
+;-----------------------------------------------------------------------------------------------------------------------
+;# The IP buffer will be released by the caller
+;# This is a kernel function, called by tcp_rx
+;-----------------------------------------------------------------------------------------------------------------------
         ; as a packet has been received, update the TCB timer
         mov     [ebx + socket_t.tcb_timer], TWOMSL
 
@@ -627,12 +641,15 @@ proc tcpStateMachine stdcall, sockAddr:DWORD
         ret
 endp
 
-proc signal_network_event
-        ; Description
-        ;   Signals about network event to socket owner
-        ;   This is a kernel function, called from TCP handler
-        ; Socket/TCB address in ebx
-
+;-----------------------------------------------------------------------------------------------------------------------
+proc signal_network_event ;/////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Signals about network event to socket owner
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx = Socket/TCB address
+;-----------------------------------------------------------------------------------------------------------------------
+;# This is a kernel function, called from TCP handler
+;-----------------------------------------------------------------------------------------------------------------------
         push    ecx esi eax
         mov     eax, [ebx + socket_t.pid]
         mov     ecx, 1
@@ -653,7 +670,9 @@ proc signal_network_event
         ret
 endp
 
-proc stateTCB_LISTEN stdcall, sockAddr:DWORD
+;-----------------------------------------------------------------------------------------------------------------------
+proc stateTCB_LISTEN stdcall, sockAddr:DWORD ;//////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
         ; In this case, we are expecting a SYN packet
         ; For now, if the packet is a SYN, process it, and send a response
         ; If not, ignore it
@@ -715,7 +734,9 @@ proc stateTCB_LISTEN stdcall, sockAddr:DWORD
         ret
 endp
 
-proc stateTCB_SYN_SENT stdcall, sockAddr:DWORD
+;-----------------------------------------------------------------------------------------------------------------------
+proc stateTCB_SYN_SENT stdcall, sockAddr:DWORD ;////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
         ; We are awaiting an ACK to our SYN, with a SYM
         ; Look at control flags - expecting an ACK
 
@@ -775,7 +796,9 @@ proc stateTCB_SYN_SENT stdcall, sockAddr:DWORD
         ret
 endp
 
-proc stateTCB_SYN_RECEIVED stdcall, sockAddr:DWORD
+;-----------------------------------------------------------------------------------------------------------------------
+proc stateTCB_SYN_RECEIVED stdcall, sockAddr:DWORD ;////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
         ; In this case, we are expecting an ACK packet
         ; For now, if the packet is an ACK, process it,
         ; If not, ignore it
@@ -802,7 +825,9 @@ proc stateTCB_SYN_RECEIVED stdcall, sockAddr:DWORD
         ret
 endp
 
-proc stateTCB_ESTABLISHED stdcall, sockAddr:DWORD
+;-----------------------------------------------------------------------------------------------------------------------
+proc stateTCB_ESTABLISHED stdcall, sockAddr:DWORD ;/////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
         ; Here we are expecting data, or a request to close
         ; OR both...
 
@@ -964,8 +989,11 @@ proc stateTCB_ESTABLISHED stdcall, sockAddr:DWORD
         ret
 endp
 
-proc stateTCB_FIN_WAIT_1 stdcall, sockAddr:DWORD
+;-----------------------------------------------------------------------------------------------------------------------
+proc stateTCB_FIN_WAIT_1 stdcall, sockAddr:DWORD ;//////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
         ; We can either receive an ACK of a fin, or a fin
+
         mov     al, [edx + 20 + tcp_packet_t.flags]
         and     al, TH_FIN + TH_ACK
 
@@ -1013,8 +1041,9 @@ proc stateTCB_FIN_WAIT_1 stdcall, sockAddr:DWORD
         ret
 endp
 
-
-proc stateTCB_FIN_WAIT_2 stdcall, sockAddr:DWORD
+;-----------------------------------------------------------------------------------------------------------------------
+proc stateTCB_FIN_WAIT_2 stdcall, sockAddr:DWORD ;//////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
         test    [edx + 20 + tcp_packet_t.flags], TH_FIN
         jz      .exit
 
@@ -1053,13 +1082,17 @@ proc stateTCB_FIN_WAIT_2 stdcall, sockAddr:DWORD
         ret
 endp
 
-proc stateTCB_CLOSE_WAIT stdcall, sockAddr:DWORD
-        ; Intentionally left empty
-        ; socket_close_tcp handles this
+;-----------------------------------------------------------------------------------------------------------------------
+proc stateTCB_CLOSE_WAIT stdcall, sockAddr:DWORD ;//////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;# Intentionally left empty, socket_close_tcp handles this
+;-----------------------------------------------------------------------------------------------------------------------
         ret
 endp
 
-proc stateTCB_CLOSING stdcall, sockAddr:DWORD
+;-----------------------------------------------------------------------------------------------------------------------
+proc stateTCB_CLOSING stdcall, sockAddr:DWORD ;/////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
         ; We can either receive an ACK of a fin, or a fin
         test    [edx + 20 + tcp_packet_t.flags], TH_ACK
         jz      .exit
@@ -1070,7 +1103,9 @@ proc stateTCB_CLOSING stdcall, sockAddr:DWORD
         ret
 endp
 
-proc stateTCB_LAST_ACK stdcall, sockAddr:DWORD
+;-----------------------------------------------------------------------------------------------------------------------
+proc stateTCB_LAST_ACK stdcall, sockAddr:DWORD ;////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
         ; Look at control flags - expecting an ACK
         test    [edx + 20 + tcp_packet_t.flags], TH_ACK
         jz      .exit
@@ -1082,10 +1117,14 @@ proc stateTCB_LAST_ACK stdcall, sockAddr:DWORD
         ret
 endp
 
-proc stateTCB_TIME_WAIT stdcall, sockAddr:DWORD
+;-----------------------------------------------------------------------------------------------------------------------
+proc stateTCB_TIME_WAIT stdcall, sockAddr:DWORD ;///////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
         ret
 endp
 
-proc stateTCB_CLOSED stdcall, sockAddr:DWORD
+;-----------------------------------------------------------------------------------------------------------------------
+proc stateTCB_CLOSED stdcall, sockAddr:DWORD ;//////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
         ret
 endp

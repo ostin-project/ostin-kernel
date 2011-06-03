@@ -36,50 +36,45 @@ iglobal
     dd 0x170, 0x00, 0x170, 0x10
 endg
 
-file_system:
-        ; IN:
-        ;
-        ; eax = 0  ; read file          /RamDisk/First  6
-        ; eax = 8  ; lba read
-        ; eax = 15 ; get_disk_info
-        ;
-        ; OUT:
-        ;
-        ; eax = 0  : read ok
-        ; eax = 1  : no hd base and/or partition defined
-        ; eax = 2  : function is unsupported for this FS
-        ; eax = 3  : unknown FS
-        ; eax = 4  : partition not defined at hd
-        ; eax = 5  : file not found
-        ; eax = 6  : end of file
-        ; eax = 7  : memory pointer not in application area
-        ; eax = 8  : disk full
-        ; eax = 9  : fat table corrupted
-        ; eax = 10 : access denied
-        ; eax = 11 : disk error
-        ;
-        ; ebx = size
-
-        ; for subfunction 16 (start application) error codes must be negative
-        ;    because positive values are valid PIDs
-        ; so possible return values are:
-        ; eax > 0 : process created, eax=PID
-
-        ; -0x10 <= eax < 0 : -eax is filesystem error code:
-        ; eax = -1  = 0xFFFFFFFF : no hd base and/or partition defined
-        ; eax = -3  = 0xFFFFFFFD : unknown FS
-        ; eax = -5  = 0xFFFFFFFB : file not found
-        ; eax = -6  = 0xFFFFFFFA : unexpected end of file (probably not executable file)
-        ; eax = -9  = 0xFFFFFFF7 : fat table corrupted
-        ; eax = -10 = 0xFFFFFFF6 : access denied
-
-        ; -0x20 <= eax < -0x10: eax is process creation error code:
-        ; eax = -0x20 = 0xFFFFFFE0 : too many processes
-        ; eax = -0x1F = 0xFFFFFFE1 : not Menuet/Kolibri executable
-        ; eax = -0x1E = 0xFFFFFFE2 : no memory
-
-        ; ebx is not changed
-
+;-----------------------------------------------------------------------------------------------------------------------
+file_system: ;//////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> eax = 0 - read file          /RamDisk/First  6
+;>       8 - lba read
+;>       15 - get_disk_info
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = 0 (ok) or error code
+;< ebx = size
+;-----------------------------------------------------------------------------------------------------------------------
+;# Error codes:
+;#   1 - no hd base and/or partition defined
+;#   2 - function is unsupported for this FS
+;#   3 - unknown FS
+;#   4 - partition not defined at hd
+;#   5 - file not found
+;#   6 - end of file
+;#   7 - memory pointer not in application area
+;#   8 - disk full
+;#   9 - fat table corrupted
+;#   10 - access denied
+;#   11 - disk error
+;-----------------------------------------------------------------------------------------------------------------------
+;# for subfunction 16 (start application) error codes must be negative because positive values are valid PIDs
+;# so possible return values are:
+;#   eax = PID (1+) - process created
+;#     filesystem error code:
+;#       -1 - no hd base and/or partition defined
+;#       -3 - unknown FS
+;#       -5 - file not found
+;#       -6 - unexpected end of file (probably not executable file)
+;#       -9 - fat table corrupted
+;#       -10 - access denied
+;#     process creation error code:
+;#       -0x20 - too many processes
+;#       -0x1F - not Menuet/Kolibri executable
+;#       -0x1E - no memory
+;#   ebx is not changed
+;-----------------------------------------------------------------------------------------------------------------------
         ; Extract parameters
 ;       add     eax, std_application_base_address ; abs start of info block
 
@@ -353,12 +348,16 @@ endg
 ;       jmp     fs_yesharddisk_all
         jmp     fs_for_new_semantic
 
-choice_necessity_partition:
+;-----------------------------------------------------------------------------------------------------------------------
+choice_necessity_partition: ;///////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, [edi + 1 + 12]
         call    StringToNumber
         mov     [fat32part], eax
 
-choice_necessity_partition_1:
+;-----------------------------------------------------------------------------------------------------------------------
+choice_necessity_partition_1: ;/////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
         mov     ecx, [hdpos]
         xor     eax, eax
         mov     [hd_entries], eax ; entries in hd cache
@@ -399,7 +398,9 @@ choice_necessity_partition_1:
         call    partition_data_transfer_1
         ret
 
-old_path_harddisk:
+;-----------------------------------------------------------------------------------------------------------------------
+old_path_harddisk: ;////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, [edi + 1]
         cmp     eax, 'HD  '
         je      fs_yesharddisk
@@ -476,10 +477,12 @@ old_path_harddisk:
         mov     [esp + 24], ebx
         ret
 
-fs_give_dir1:
-        ; /RD,/FD,/HD - only read is allowed
-        ; other operations return "access denied", eax=10
-        ; (execute operation returns eax=-10)
+;-----------------------------------------------------------------------------------------------------------------------
+fs_give_dir1: ;/////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;# /RD,/FD,/HD - only read is allowed
+;# other operations return "access denied", eax = 10 (execute operation returns eax = -10)
+;-----------------------------------------------------------------------------------------------------------------------
         cmp     dword[esp + 20], 0
         jz      .read
         add     esp, 20
@@ -508,7 +511,9 @@ fs_give_dir1:
         mov     dword[esp + 24], 32 * 1 ; dir/data size
         ret
 
-LBA_read_ramdisk:
+;-----------------------------------------------------------------------------------------------------------------------
+LBA_read_ramdisk: ;/////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
         cmp     [lba_read_enabled], 1
         je      .lbarrl1
 
@@ -543,13 +548,13 @@ LBA_read_ramdisk:
         xor     eax, eax
         ret
 
-LBA_read:
-        ; IN:
-        ;
-        ; eax = LBA block to read
-        ; ebx = pointer to FIRST/SECOND/THIRD/FOURTH
-        ; ecx = abs pointer to return area
-
+;-----------------------------------------------------------------------------------------------------------------------
+LBA_read: ;/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> eax = LBA block to read
+;> ebx = pointer to FIRST/SECOND/THIRD/FOURTH
+;> ecx = abs pointer to return area
+;-----------------------------------------------------------------------------------------------------------------------
         cmp     [lba_read_enabled], 1
         je      .lbarl1
         mov     eax, 2
@@ -651,15 +656,16 @@ LBA_read:
 
         ret
 
-expand_pathz:
-        ; IN:
-        ;   esi = asciiz path & file
-        ;   edi = buffer for path & file name
-        ; OUT:
-        ;   edi = directory & file : / 11 + / 11 + / 11 - zero terminated
-        ;   ebx = /file name - zero terminated
-        ;   esi = pointer after source
-
+;-----------------------------------------------------------------------------------------------------------------------
+expand_pathz: ;/////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> esi = asciiz path & file
+;> edi = buffer for path & file name
+;-----------------------------------------------------------------------------------------------------------------------
+;< edi = directory & file : / 11 + / 11 + / 11 - zero terminated
+;< ebx = /file name - zero terminated
+;< esi = pointer after source
+;-----------------------------------------------------------------------------------------------------------------------
         push    eax
         push    ecx
         push    edi ; [esp+0]
@@ -721,21 +727,18 @@ expand_pathz:
         pop     eax
         ret
 
-StringToNumber:
-        ;*******************************************
-        ;* string to number
-        ;* input eax - 4 byte string
-        ;* output eax - number
-        ;*******************************************
-        ;    ПЕРЕВОД СТРОКОВОГО ЧИСЛА В ЧИСЛОВОЙ ВИД
-        ;    Вход:
-        ;        EDI - адрес строки с числом. Конец числа отмечен кодом 0Dh
-        ;    Выход:
-        ;        CF - индикатор ошибок:
-        ;            0 - ошибок нет;
-        ;            1 - ошибка
-        ;        Если CF=0, то AX - число.
-
+;-----------------------------------------------------------------------------------------------------------------------
+StringToNumber: ;///////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? ПЕРЕВОД СТРОКОВОГО ЧИСЛА В ЧИСЛОВОЙ ВИД
+;-----------------------------------------------------------------------------------------------------------------------
+;> edi = адрес строки с числом. Конец числа отмечен кодом 0Dh
+;-----------------------------------------------------------------------------------------------------------------------
+;< CF - индикатор ошибок:
+;<   0 - ошибок нет;
+;<   1 - ошибка
+;< Если CF = 0, то ax - число.
+;-----------------------------------------------------------------------------------------------------------------------
         push    bx
         push    cx
         push    dx

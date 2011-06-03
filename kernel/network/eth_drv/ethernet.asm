@@ -249,18 +249,19 @@ endg
 include "arp.asm" ; arp-protocol functions
 include "pci.asm" ; PCI bus access functions
 
-proc eth_tx stdcall uses ebx esi edi
-        ; Description
-        ;   Looks at the NET1OUT_QUEUE for data to send.
-        ;   Stores that destination IP in a location used by the tx routine
-        ;   Looks up the MAC address in the ARP table; stores that where
-        ;   the tx routine can get it
-        ;   Get the length of the data. Store that where the tx routine wants it
-        ;   Call tx
-        ;   Places buffer on empty queue when the tx routine finished
-
+;-----------------------------------------------------------------------------------------------------------------------
+proc eth_tx stdcall uses ebx esi edi ;//////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Looks at the NET1OUT_QUEUE for data to send.
+;? Stores that destination IP in a location used by the tx routine
+;? Looks up the MAC address in the ARP table; stores that where
+;? the tx routine can get it
+;? Get the length of the data. Store that where the tx routine wants it
+;? Call tx
+;? Places buffer on empty queue when the tx routine finished
+;-----------------------------------------------------------------------------------------------------------------------
 local MACAddress dp ? ; allocate 6 bytes in the stack
-
+;-----------------------------------------------------------------------------------------------------------------------
         ; Look for a buffer to tx
         mov     eax, NET1OUT_QUEUE
         call    dequeue
@@ -334,16 +335,18 @@ endp
 ;  ether_IP_handler_cnt dd ?
 ;endg
 
-ether_IP_handler:
-        ; Description
-        ;   Called when an IP ethernet packet is received on the ethernet
-        ;   Header + Data is in Ether_buffer[]
-        ;   We just need to get a buffer from the 'free' queue, and
-        ;   store the packet in it, then insert the packet number into the
-        ;   IPRX queue.
-        ;   If no queue entry is available, the packet is silently discarded
-        ;   All registers may be destroyed
-
+;-----------------------------------------------------------------------------------------------------------------------
+ether_IP_handler: ;/////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Called when an IP ethernet packet is received on the ethernet
+;? Header + Data is in Ether_buffer[]
+;? We just need to get a buffer from the 'free' queue, and
+;? store the packet in it, then insert the packet number into the
+;? IPRX queue.
+;? If no queue entry is available, the packet is silently discarded
+;-----------------------------------------------------------------------------------------------------------------------
+;# All registers may be destroyed
+;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, EMPTY_QUEUE
         call    dequeue
         cmp     ax, NO_BUFFER
@@ -376,14 +379,16 @@ ether_IP_handler:
   .eiph00x:
         ret
 
-eth_probe:
-        ; Description
-        ;   Searches for an ethernet card. If found, the card is enabled and
-        ;   the ethernet -> IP link established
-        ;   This function scans the PCI bus looking for a supported device.
-        ;   ISA bus is currently not supported.
-        ; eax is 0 if no hardware found
-
+;-----------------------------------------------------------------------------------------------------------------------
+eth_probe: ;////////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Searches for an ethernet card. If found, the card is enabled and
+;? the ethernet -> IP link established
+;? This function scans the PCI bus looking for a supported device.
+;? ISA bus is currently not supported.
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = 0 (no hardware found) or I/O address
+;-----------------------------------------------------------------------------------------------------------------------
         ; Find a card on the PCI bus, and get it's address
         call    scan_bus ; Find the ethernet cards PIC address
         xor     eax, eax
@@ -397,11 +402,13 @@ eth_probe:
   .ep_00x:
         ret
 
-ethernet_driver:
-        ; Description
-        ;   The ethernet RX and TX handler
-        ;   This is a kernel function, called by stack_handler
-
+;-----------------------------------------------------------------------------------------------------------------------
+ethernet_driver: ;//////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? The ethernet RX and TX handler
+;-----------------------------------------------------------------------------------------------------------------------
+;# This is a kernel function, called by stack_handler
+;-----------------------------------------------------------------------------------------------------------------------
         ; Do nothing if the driver is inactive
         cmp     byte[ethernet_active], 0
         je      .eth_exit
@@ -412,13 +419,14 @@ ethernet_driver:
   .eth_exit:
         ret
 
-eth_rx:
-        ; Description
-        ;   Polls the ethernet card for received data. Extracts if present
-        ;   Depending on the Protocol within the packet:
-        ;   ARP : Pass to ARP_handler. This may result in an ARP reply being tx'ed
-        ;   IP  : Store in an IP buffer
-
+;-----------------------------------------------------------------------------------------------------------------------
+eth_rx: ;///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Polls the ethernet card for received data. Extracts if present
+;? Depending on the Protocol within the packet:
+;?   ARP: Pass to ARP_handler. This may result in an ARP reply being tx'ed
+;?   IP: Store in an IP buffer
+;-----------------------------------------------------------------------------------------------------------------------
         xor     ax, ax
         mov     [eth_rx_data_len], ax
         call    dword[drvr_poll] ; Call the drivers poll function

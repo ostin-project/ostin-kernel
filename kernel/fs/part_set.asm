@@ -144,8 +144,13 @@ endg
 ; +-> PARTITION3
 ; +-> PARTITION4
 
-set_PARTITION_variables:
-set_FAT32_variables: ; deprecated
+;-----------------------------------------------------------------------------------------------------------------------
+set_FAT32_variables: ;//////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+set_PARTITION_variables: ;//////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;# set_FAT32_variables is deprecated
+;-----------------------------------------------------------------------------------------------------------------------
         and     [problem_partition], 0
         call    reserve_hd1
         call    reserve_hd_channel
@@ -153,47 +158,47 @@ set_FAT32_variables: ; deprecated
         pushad
 
         cmp     dword[hdpos], 0
-        je      problem_hd
+        je      .problem_hd
 
         xor     ecx, ecx ; partition count
 ;       or      edx, -1 ; flag for partition
         xor     eax, eax ; address MBR
         xor     ebp, ebp ; extended partition start
 
-new_mbr:
+  .new_mbr:
         test    ebp, ebp ; is there extended partition? (MBR or EMBR)
-        jnz     extended_already_set ; yes
+        jnz     .extended_already_set ; yes
         xchg    ebp, eax ; no. set it now
 
-extended_already_set:
+  .extended_already_set:
         add     eax, ebp ; mbr=mbr+0, ext_part=ext_start+relat_start
         mov     ebx, buffer
         call    hd_read
         cmp     [hd_error], 0
-        jne     problem_hd
+        jne     .problem_hd
 
         cmp     word[ebx + 0x1fe], 0xaa55 ; is it valid boot sector?
-        jnz     end_partition_chain
+        jnz     .end_partition_chain
         push    eax ; push only one time
         cmp     dword[ebx + 0x1be + 0x0c], 0 ; skip over empty partition
-        jnz     test_primary_partition_0
+        jnz     .test_primary_partition_0
         cmp     dword[ebx + 0x1be + 0x0c + 16], 0
-        jnz     test_primary_partition_1
+        jnz     .test_primary_partition_1
         cmp     dword[ebx + 0x1be + 0x0c + 16 + 16], 0
-        jnz     test_primary_partition_2
+        jnz     .test_primary_partition_2
         cmp     dword[ebx + 0x1be + 0x0c + 16 + 16 + 16], 0
-        jnz     test_primary_partition_3
+        jnz     .test_primary_partition_3
         pop     eax
-        jmp     end_partition_chain
+        jmp     .end_partition_chain
 
-test_primary_partition_0:
+  .test_primary_partition_0:
         mov     al, [ebx + 0x1be + 4] ; get primary partition type
         call    scan_partition_types
-        jnz     test_primary_partition_1 ; no. skip over
+        jnz     .test_primary_partition_1 ; no. skip over
 
         inc     ecx
         cmp     ecx, [known_part] ; is it wanted partition?
-        jnz     test_primary_partition_1 ; no
+        jnz     .test_primary_partition_1 ; no
 
         pop     eax
 ;       mov     edx, eax ; start sector
@@ -207,22 +212,22 @@ test_primary_partition_0:
         mov     cl, [ebx + 0x1be + 4] ; fs_type
 ;       mov     [fs_type], dl ; save for FS recognizer (separate FAT vs NTFS)
 ;       pop     edx
-        jmp     hd_and_partition_ok
+        jmp     .hd_and_partition_ok
 
-test_primary_partition_1:
+  .test_primary_partition_1:
         mov     al, [ebx + 0x1be + 4 + 16] ; get primary partition type
         call    scan_partition_types
-        jnz     test_primary_partition_2 ; no. skip over
+        jnz     .test_primary_partition_2 ; no. skip over
 
         inc     ecx
         cmp     ecx, [known_part] ; is it wanted partition?
-        jnz     test_primary_partition_2 ; no
+        jnz     .test_primary_partition_2 ; no
 
         pop     eax
         add     eax, [ebx + 0x1be + 8 + 16]
         mov     edx, [ebx + 0x1be + 12 + 16]
         mov     cl, [ebx + 0x1be + 4 + 16]
-        jmp     hd_and_partition_ok
+        jmp     .hd_and_partition_ok
 
 ;       mov     edx, eax
 ;       add     edx, [ebx + 0x1be + 8 + 16]
@@ -234,20 +239,20 @@ test_primary_partition_1:
 ;       mov     [fs_type], dl
 ;       pop     edx
 
-test_primary_partition_2:
+  .test_primary_partition_2:
         mov     al, [ebx + 0x1be + 4 + 16 + 16] ; get primary partition type
         call    scan_partition_types
-        jnz     test_primary_partition_3 ; no. skip over
+        jnz     .test_primary_partition_3 ; no. skip over
 
         inc     ecx
         cmp     ecx, [known_part] ; is it wanted partition?
-        jnz     test_primary_partition_3 ; no
+        jnz     .test_primary_partition_3 ; no
 
         pop     eax
         add     eax, [ebx + 0x1be + 8 + 16 + 16]
         mov     edx, [ebx + 0x1be + 12 + 16 + 16]
         mov     cl, [ebx + 0x1be + 4 + 16 + 16]
-        jmp     hd_and_partition_ok
+        jmp     .hd_and_partition_ok
 
 ;       mov     edx, eax
 ;       add     edx, [ebx + 0x1be + 8 + 16 + 16]
@@ -259,20 +264,20 @@ test_primary_partition_2:
 ;       mov     [fs_type], dl
 ;       pop     edx
 
-test_primary_partition_3:
+  .test_primary_partition_3:
         mov     al, [ebx + 0x1be + 4 + 16 + 16 + 16] ; get primary partition type
         call    scan_partition_types
-        jnz     test_ext_partition_0 ; no. skip over
+        jnz     .test_ext_partition_0 ; no. skip over
 
         inc     ecx
         cmp     ecx, [known_part] ; is it wanted partition?
-        jnz     test_ext_partition_0 ; no
+        jnz     .test_ext_partition_0 ; no
 
         pop     eax
         add     eax, [ebx + 0x1be + 8 + 16 + 16 + 16]
         mov     edx, [ebx + 0x1be + 12 + 16 + 16 + 16]
         mov     cl, [ebx + 0x1be + 4 + 16 + 16 + 16]
-        jmp     hd_and_partition_ok
+        jmp     .hd_and_partition_ok
 
 ;       mov     edx, eax
 ;       add     edx, [ebx + 0x1be + 8 + 16 + 16 + 16]
@@ -284,86 +289,69 @@ test_primary_partition_3:
 ;       mov     [fs_type], dl
 ;       pop     edx
 
-test_ext_partition_0:
+  .test_ext_partition_0:
         pop     eax ; просто выкидываем из стека
         mov     al, [ebx + 0x1be + 4] ; get extended partition type
         call    scan_extended_types
-        jnz     test_ext_partition_1
+        jnz     .test_ext_partition_1
 
         mov     eax, [ebx + 0x1be + 8] ; add relative start
         test    eax, eax ; is there extended partition?
-        jnz     new_mbr ; yes. read it
+        jnz     .new_mbr ; yes. read it
 
-test_ext_partition_1:
+  .test_ext_partition_1:
         mov     al, [ebx + 0x1be + 4 + 16] ; get extended partition type
         call    scan_extended_types
-        jnz     test_ext_partition_2
+        jnz     .test_ext_partition_2
 
         mov     eax, [ebx + 0x1be + 8 + 16] ; add relative start
         test    eax, eax ; is there extended partition?
-        jnz     new_mbr ; yes. read it
+        jnz     .new_mbr ; yes. read it
 
-test_ext_partition_2:
+  .test_ext_partition_2:
         mov     al, [ebx + 0x1be + 4 + 16 + 16] ; get extended partition type
         call    scan_extended_types
-        jnz     test_ext_partition_3
+        jnz     .test_ext_partition_3
 
         mov     eax, [ebx + 0x1be + 8 + 16 + 16] ; add relative start
         test    eax, eax ; is there extended partition?
-        jnz     new_mbr ; yes. read it
+        jnz     .new_mbr ; yes. read it
 
-test_ext_partition_3:
+  .test_ext_partition_3:
         mov     al, [ebx + 0x1be + 4 + 16 + 16 + 16] ; get extended partition type
         call    scan_extended_types
-        jnz     end_partition_chain ; no. end chain
+        jnz     .end_partition_chain ; no. end chain
 
         mov     eax, [ebx + 0x1be + 8 + 16 + 16 + 16] ; get start of extended partition
         test    eax, eax ; is there extended partition?
-        jnz     new_mbr ; yes. read it
+        jnz     .new_mbr ; yes. read it
 
-end_partition_chain:
+  .end_partition_chain:
 ;       mov     [partition_count], ecx
 
 ;       cmp     edx, -1 ; found wanted partition?
 ;       jnz     hd_and_partition_ok ; yes. install it
 ;       jmp     problem_partition_or_fat
 
-problem_hd:
+  .problem_hd:
         or      [problem_partition], 2
-        jmp     return_from_part_set
+        jmp     .return_from_part_set
 
-scan_partition_types:
-        push    ecx
-        mov     edi, partition_types
-        mov     ecx, partition_types_end - partition_types
-        cld
-        repne   scasb ; is partition type ok?
-        pop     ecx
-        ret
-
-scan_extended_types:
-        push    ecx
-        mov     edi, extended_types
-        mov     ecx, extended_types_end - extended_types
-        cld
-        repne   scasb ; is it extended partition?
-        pop     ecx
-        ret
-
-problem_fat_dec_count: ; bootsector is missing or another problem
+  .problem_fat_dec_count:
+        ; bootsector is missing or another problem
 ;       dec     [partition_count] ; remove it from partition_count
 
-problem_partition_or_fat:
+  .problem_partition_or_fat:
         or      [problem_partition], 1
 
-return_from_part_set:
+  .return_from_part_set:
         popad
 ;       mov     [fs_type], 0
         call    free_hd_channel
         mov     [hd1_status], 0 ; free
         ret
 
-hd_and_partition_ok:
+  .hd_and_partition_ok:
         ; eax = PARTITION_START edx=PARTITION_LENGTH cl=fs_type
         mov     [fs_type], cl
 ;       mov     eax,edx
@@ -380,9 +368,9 @@ hd_and_partition_ok:
         mov     ebx, buffer
         call    hd_read ; read boot sector of partition
         cmp     [hd_error], 0
-        jz      boot_read_ok
+        jz      .boot_read_ok
         cmp     [fs_type], 7
-        jnz     problem_fat_dec_count
+        jnz     .problem_fat_dec_count
         ; NTFS duplicates bootsector:
         ;   NT4/2k/XP+ saves bootsector copy in the end of disk
         ;   NT 3.51 saves bootsector copy in the middle of disk
@@ -392,7 +380,7 @@ hd_and_partition_ok:
         cmp     [hd_error], 0
         jnz     @f
         call    ntfs_test_bootsec
-        jnc     boot_read_ok
+        jnc     .boot_read_ok
 
     @@: and     [hd_error], 0
         mov     eax, edx
@@ -400,9 +388,9 @@ hd_and_partition_ok:
         add     eax, [PARTITION_START]
         call    hd_read
         cmp     [hd_error], 0
-        jnz     problem_fat_dec_count ; no chance...
+        jnz     .problem_fat_dec_count ; no chance...
 
-boot_read_ok:
+  .boot_read_ok:
         ; if we are running on NTFS, check bootsector
 
         call    ntfs_test_bootsec ; test ntfs
@@ -414,10 +402,10 @@ boot_read_ok:
         mov     eax, [PARTITION_START] ; ext2 test changes [buffer]
         call    hd_read
         cmp     [hd_error], 0
-        jnz     problem_fat_dec_count
+        jnz     .problem_fat_dec_count
 
         cmp     word[ebx + 0x1fe], 0xaa55 ; is it valid boot sector?
-        jnz     problem_fat_dec_count
+        jnz     .problem_fat_dec_count
 
         movzx   eax, word[ebx + 0x0e] ; sectors reserved
         add     eax, [PARTITION_START]
@@ -425,12 +413,12 @@ boot_read_ok:
 
         movzx   eax, byte[ebx + 0x0d] ; sectors per cluster
         test    eax, eax
-        jz      problem_fat_dec_count
+        jz      .problem_fat_dec_count
         mov     [SECTORS_PER_CLUSTER], eax
 
         movzx   ecx, word[ebx + 0x0b] ; bytes per sector
         cmp     ecx, 0x200
-        jnz     problem_fat_dec_count
+        jnz     .problem_fat_dec_count
         mov     [BYTES_PER_SECTOR], ecx
 
         movzx   eax, word[ebx + 0x11] ; count of rootdir entries (=0 fat32)
@@ -444,15 +432,15 @@ boot_read_ok:
 
         movzx   eax, word[ebx + 0x16] ; sectors per fat <65536
         test    eax, eax
-        jnz     fat16_fatsize
+        jnz     .fat16_fatsize
         mov     eax, [ebx + 0x24] ; sectors per fat
 
-  fat16_fatsize:
+  .fat16_fatsize:
         mov     [SECTORS_PER_FAT], eax
 
         movzx   eax, byte[ebx + 0x10] ; number of fats
         test    eax, eax ; if 0 it's not fat partition
-        jz      problem_fat_dec_count
+        jz      .problem_fat_dec_count
         mov     [NUMBER_OF_FATS], eax
         imul    eax, [SECTORS_PER_FAT]
         add     eax, [FAT_START]
@@ -462,10 +450,10 @@ boot_read_ok:
 
         movzx   eax, word[ebx + 0x13] ; total sector count <65536
         test    eax, eax
-        jnz     fat16_total
+        jnz     .fat16_total
         mov     eax, [ebx + 0x20] ; total sector count
 
-  fat16_total:
+  .fat16_total:
         add     eax, [PARTITION_START]
         dec     eax
         mov     [PARTITION_END], eax
@@ -480,11 +468,11 @@ boot_read_ok:
 
         ; limits by Microsoft Hardware White Paper v1.03
         cmp     eax, 4085 ; 0x0ff5
-        jb      problem_fat_dec_count ; fat12 not supported
+        jb      .problem_fat_dec_count ; fat12 not supported
         cmp     eax, 65525 ; 0xfff5
-        jb      fat16_partition
+        jb      .fat16_partition
 
-fat32_partition:
+  .fat32_partition:
         mov     eax, [ebx + 0x2c] ; rootdir cluster
         mov     [ROOT_CLUSTER], eax
         movzx   eax, word[ebx + 0x30] ; fs info sector
@@ -507,7 +495,7 @@ fat32_partition:
         mov     [hd1_status], 0 ; free
         ret
 
-fat16_partition:
+  .fat16_partition:
         xor     eax, eax
         mov     [ROOT_CLUSTER], eax
 
@@ -520,4 +508,31 @@ fat16_partition:
         mov     [fs_type], 16 ; Fat16
         call    free_hd_channel
         mov     [hd1_status], 0 ; free
+        ret
+
+; XREF: fs/ext2.asm (ext2_setup)
+return_from_part_set = set_PARTITION_variables.return_from_part_set
+; XREF: fs/ntfs.asm (ntfs_setup)
+problem_fat_dec_count = set_PARTITION_variables.problem_fat_dec_count
+
+;-----------------------------------------------------------------------------------------------------------------------
+scan_partition_types: ;/////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        push    ecx
+        mov     edi, partition_types
+        mov     ecx, partition_types_end - partition_types
+        cld
+        repne   scasb ; is partition type ok?
+        pop     ecx
+        ret
+
+;-----------------------------------------------------------------------------------------------------------------------
+scan_extended_types: ;//////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        push    ecx
+        mov     edi, extended_types
+        mov     ecx, extended_types_end - extended_types
+        cld
+        repne   scasb ; is it extended partition?
+        pop     ecx
         ret

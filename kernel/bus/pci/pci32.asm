@@ -50,7 +50,9 @@ end if
 endg
 
 align 4
-pci_api:
+;-----------------------------------------------------------------------------------------------------------------------
+pci_api: ;//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
         ;cross
         mov     eax, ebx
         mov     ebx, ecx
@@ -78,7 +80,9 @@ end if
         ret
 
 align 4
-pci_api_drv:
+;-----------------------------------------------------------------------------------------------------------------------
+pci_api_drv: ;//////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
         cmp     [pci_access_enabled], 1
         jne     .fail
 
@@ -90,8 +94,6 @@ pci_api_drv:
   .fail:
         or      eax, -1
         ret
-
-;; ============================================
 
 pci_fn_0:
         ; PCI function 0: get pci version (AH.AL)
@@ -108,13 +110,17 @@ pci_fn_2:
         mov     al, [BOOT_VAR + BOOT_PCI_DATA]
         ret
 
-pci_service_not_supported:
+;-----------------------------------------------------------------------------------------------------------------------
+pci_service_not_supported: ;////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
         or      eax, -1
         mov     [esp + 32], eax
         ret
 
 align 4
-pci_make_config_cmd:
+;-----------------------------------------------------------------------------------------------------------------------
+pci_make_config_cmd: ;//////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
         ; creates a command dword  for use with the PCI bus
         ; bus # in ah
         ; device+func in bh (dddddfff)
@@ -129,12 +135,18 @@ pci_make_config_cmd:
         ret
 
 align 4
-pci_read_reg:
-        ; read a register from the PCI config space into EAX/AX/AL
-        ; IN: ah=bus,device+func=bh,register address=bl
-        ;     number of bytes to read (1,2,4) coded into AL, bits 0-1
-        ;     (0 - byte, 1 - word, 2 - dword)
-
+;-----------------------------------------------------------------------------------------------------------------------
+pci_read_reg: ;/////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? read a register from the PCI config space
+;-----------------------------------------------------------------------------------------------------------------------
+;> al = number of bytes to read (0 - byte, 1 - word, 2 - dword)
+;> ah = bus
+;> bh = device + func
+;> bl = register address
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax/ax/al = value read
+;-----------------------------------------------------------------------------------------------------------------------
         cmp     [BOOT_VAR + BOOT_PCI_DATA], 2 ; what mechanism will we use?
         je      .pci_read_reg_2
 
@@ -261,12 +273,17 @@ pci_read_reg:
         ret
 
 align 4
-pci_write_reg:
-        ; write a register from ECX/CX/CL into the PCI config space
-        ; IN: ah=bus,device+func=bh,register address (dword aligned)=bl,
-        ;     value to write in ecx
-        ;     number of bytes to write (1,2,4) coded into AL, bits 0-1
-        ;     (0 - byte, 1 - word, 2 - dword)
+;-----------------------------------------------------------------------------------------------------------------------
+pci_write_reg: ;////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? write a register into the PCI config space
+;-----------------------------------------------------------------------------------------------------------------------
+;> al = number of bytes to write (0 - byte, 1 - word, 2 - dword)
+;> ah = bus
+;> bh = device + func
+;> bl = register address (dword aligned)
+;> ecx/cx/cl = value to write
+;-----------------------------------------------------------------------------------------------------------------------
 
         cmp     [BOOT_VAR + BOOT_PCI_DATA], 2 ; what mechanism will we use?
         je      .pci_write_reg_2
@@ -395,14 +412,18 @@ pci_write_reg:
 
 if defined mmio_pci_addr ; must be set above
 
-pci_mmio_init:
-        ; IN:  bx = device's PCI bus address (bbbbbbbbdddddfff)
-        ; Returns  eax = user heap space available (bytes)
-        ; Error codes
-        ;   eax = -1 : PCI user access blocked,
-        ;   eax = -2 : device not registered for uMMIO service
-        ;   eax = -3 : user heap initialization failure
-
+;-----------------------------------------------------------------------------------------------------------------------
+pci_mmio_init: ;////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> bx = device's PCI bus address (bbbbbbbbdddddfff)
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = user heap space available (bytes) or error code
+;-----------------------------------------------------------------------------------------------------------------------
+;# Error codes:
+;#   -1 - PCI user access blocked
+;#   -2 - device not registered for uMMIO service
+;#   -3 - user heap initialization failure
+;-----------------------------------------------------------------------------------------------------------------------
         cmp     bx, mmio_pci_addr
         jz      @f
         mov     eax, -2
@@ -416,21 +437,26 @@ pci_mmio_init:
     @@: mov     eax, -3
         ret
 
-pci_mmio_map:
-        ; maps a block of PCI memory to user-accessible linear address
-        ; WARNING! This VERY EXPERIMENTAL service is for one chosen PCI device only!
-        ; The target device address should be set in kernel var mmio_pci_addr
-        ; IN:  ah = BAR#;
-        ; IN: ebx = block size (bytes);
-        ; IN: ecx = offset in MMIO block (in 4K-pages, to avoid misaligned pages);
-        ; Returns eax = MMIO block's linear address in the userspace (if no error)
-        ; Error codes
-        ;   eax = -1 : user access to PCI blocked,
-        ;   eax = -2 : an invalid BAR register referred
-        ;   eax = -3 : no i/o space on that BAR
-        ;   eax = -4 : a port i/o BAR register referred
-        ;   eax = -5 : dynamic userspace allocation problem
-
+;-----------------------------------------------------------------------------------------------------------------------
+pci_mmio_map: ;/////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? maps a block of PCI memory to user-accessible linear address
+;? WARNING! This VERY EXPERIMENTAL service is for one chosen PCI device only!
+;-----------------------------------------------------------------------------------------------------------------------
+;> ah = BAR#
+;> ebx = block size (bytes)
+;> ecx = offset in MMIO block (in 4K-pages, to avoid misaligned pages)
+;> [mmio_pci_addr] = target device address
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = MMIO block's linear address in the userspace or error code
+;-----------------------------------------------------------------------------------------------------------------------
+;# Error codes:
+;#   -1 - user access to PCI blocked
+;#   -2 - an invalid BAR register referred
+;#   -3 - no i/o space on that BAR
+;#   -4 - a port i/o BAR register referred
+;#   -5 - dynamic userspace allocation problem
+;-----------------------------------------------------------------------------------------------------------------------
         and     edx, 0x0000ffff
         cmp     ah, 6
         jc     .bar_0_5
@@ -494,14 +520,19 @@ mmio_map_over:
         mov     eax, edi
         ret
 
-pci_mmio_unmap:
-        ; unmaps the linear space previously tied to a PCI memory block
-        ; IN: ebx = linear address of space previously allocated by pci_mmio_map
-        ; returns eax = 1 if successfully unmapped
-        ; Error codes
-        ;   eax = -1 if no user PCI access allowed,
-        ;   eax =  0 if unmapping failed
-
+;-----------------------------------------------------------------------------------------------------------------------
+pci_mmio_unmap: ;///////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? unmaps the linear space previously tied to a PCI memory block
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx = linear address of space previously allocated by pci_mmio_map
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = 1 (ok) or error code
+;-----------------------------------------------------------------------------------------------------------------------
+;# Error codes:
+;#   -1 - if no user PCI access allowed
+;#    0 - if unmapping failed
+;-----------------------------------------------------------------------------------------------------------------------
         stdcall user_free, ebx
         ret
 
@@ -518,7 +549,9 @@ endg
 ;-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 align 4
-sys_pcibios:
+;-----------------------------------------------------------------------------------------------------------------------
+sys_pcibios: ;//////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
         cmp     [pci_access_enabled], 1
         jne     .unsupported_func
         cmp     [pci_bios_entry], 0

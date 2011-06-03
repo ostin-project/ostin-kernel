@@ -74,13 +74,16 @@ include "tcp.asm"
 include "udp.asm"
 include "icmp.asm"
 
-proc ip_rx stdcall
-        ; Description
-        ;   This is a kernel function, called by stack_handler
-        ;   Processes all IP-packets received by the network layer
-        ;   It calls the appropriate protocol handler
+;-----------------------------------------------------------------------------------------------------------------------
+proc ip_rx stdcall ;////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Processes all IP-packets received by the network layer
+;? It calls the appropriate protocol handler
+;-----------------------------------------------------------------------------------------------------------------------
+;# This is a kernel function, called by stack_handler
+;-----------------------------------------------------------------------------------------------------------------------
 local buffer_number dd ?
-
+;-----------------------------------------------------------------------------------------------------------------------
         ; Look for a buffer to tx
         mov     eax, IPIN_QUEUE
         call    dequeue

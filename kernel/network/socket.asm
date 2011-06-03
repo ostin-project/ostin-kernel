@@ -61,14 +61,15 @@ iglobal
   network_free_hint dd 1024 / 8
 endg
 
-proc net_socket_alloc stdcall uses ebx ecx edx edi
-        ;; Allocate memory for socket data and put new socket into the list
-        ; Newly created socket is initialized with calling PID and number and
-        ; put into beginning of list (which is a fastest way).
-        ;
-        ; @return socket structure address in EAX
-        ;;
-
+;-----------------------------------------------------------------------------------------------------------------------
+proc net_socket_alloc stdcall uses ebx ecx edx edi ;////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Allocate memory for socket data and put new socket into the list.
+;? Newly created socket is initialized with calling PID and number and
+;? put into beginning of list (which is a fastest way).
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = socket_t structure address
+;-----------------------------------------------------------------------------------------------------------------------
         stdcall kernel_alloc, SOCKETBUFFSIZE
         DEBUGF  1, "K : net_socket_alloc (0x%x)\n", eax
         ; check if we can allocate needed amount of memory
@@ -126,12 +127,13 @@ proc net_socket_alloc stdcall uses ebx ecx edx edi
         ret
 endp
 
-proc net_socket_free stdcall uses ebx ecx edx, sockAddr:DWORD
-        ;; Free socket data memory and pop socket off the list
-        ;
-        ; @param sockAddr is a socket structure address
-        ;;
-
+;-----------------------------------------------------------------------------------------------------------------------
+proc net_socket_free stdcall uses ebx ecx edx, sockAddr:DWORD ;/////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Free socket data memory and pop socket off the list.
+;-----------------------------------------------------------------------------------------------------------------------
+;> [sockAddr] = socket_t structure address
+;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, [sockAddr]
         DEBUGF  1, "K : net_socket_free (0x%x)\n", eax
         ; check if we got something similar to socket structure address
@@ -178,16 +180,18 @@ proc net_socket_free stdcall uses ebx ecx edx, sockAddr:DWORD
         ret
 endp
 
-proc net_socket_num_to_addr stdcall uses ebx ecx, sockNum:DWORD
-        ;; Get socket structure address by its number
-        ; Scan through sockets list to find the socket with specified number.
-        ; This proc uses socket_t.pid indirectly to check if socket is owned by
-        ; calling process.
-        ;
-        ; @param sockNum is a socket number
-        ; @return socket structure address or 0 (not found) in EAX
-        ;;
-
+;-----------------------------------------------------------------------------------------------------------------------
+proc net_socket_num_to_addr stdcall uses ebx ecx, sockNum:DWORD ;///////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Get socket structure address by its number.
+;? Scan through sockets list to find the socket with specified number.
+;? This proc uses socket_t.pid indirectly to check if socket is owned by
+;? calling process.
+;-----------------------------------------------------------------------------------------------------------------------
+;> [sockNum] = socket number
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = socket_t structure address or 0 (not found)
+;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, [sockNum]
         ; check if we got something similar to socket number
         or      eax, eax
@@ -216,16 +220,18 @@ proc net_socket_num_to_addr stdcall uses ebx ecx, sockNum:DWORD
         ret
 endp
 
-proc net_socket_addr_to_num stdcall uses ebx ecx, sockAddr:DWORD
-        ;; Get socket number by its structure address
-        ; Scan through sockets list to find the socket with specified address.
-        ; This proc uses socket_t.pid indirectly to check if socket is owned by
-        ; calling process.
-        ;
-        ; @param sockAddr is a socket structure address
-        ; @return socket number (socket_t.number) or 0 (not found) in EAX
-        ;;
-
+;-----------------------------------------------------------------------------------------------------------------------
+proc net_socket_addr_to_num stdcall uses ebx ecx, sockAddr:DWORD ;//////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Get socket number by its structure address.
+;? Scan through sockets list to find the socket with specified address.
+;? This proc uses socket_t.pid indirectly to check if socket is owned by
+;? calling process.
+;-----------------------------------------------------------------------------------------------------------------------
+;> [sockAddr] = socket_t structure address
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = socket number (socket_t.number) or 0 (not found)
+;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, [sockAddr]
         ; check if we got something similar to socket structure address
         or      eax, eax
@@ -254,18 +260,20 @@ proc net_socket_addr_to_num stdcall uses ebx ecx, sockAddr:DWORD
         ret
 endp
 
-proc is_localport_unused stdcall
-        ;; [53.9] Check if local port is used by any socket in the system.
-        ; Scan through sockets list, checking socket_t.local_port.
-        ; Useful when you want a to generate a unique local port number.
-        ; This proc doesn't guarantee that after calling it and trying to use
-        ; the port reported being free in calls to socket_open/socket_open_tcp it'll
-        ; still be free or otherwise it'll still be used if reported being in use.
-        ;
-        ; @param BX is a port number
-        ; @return 1 (port is free) or 0 (port is in use) in EAX
-        ;;
-
+;-----------------------------------------------------------------------------------------------------------------------
+proc is_localport_unused stdcall ;//////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? [53.9] Check if local port is used by any socket in the system.
+;? Scan through sockets list, checking socket_t.local_port.
+;? Useful when you want a to generate a unique local port number.
+;? This proc doesn't guarantee that after calling it and trying to use
+;? the port reported being free in calls to socket_open/socket_open_tcp it'll
+;? still be free or otherwise it'll still be used if reported being in use.
+;-----------------------------------------------------------------------------------------------------------------------
+;> bx = port number
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = 1 (port is free) or 0 (port is in use)
+;-----------------------------------------------------------------------------------------------------------------------
         movzx   ebx, bx
         mov     eax, [network_free_ports]
         bt      [eax], ebx
@@ -274,17 +282,17 @@ proc is_localport_unused stdcall
         ret
 endp
 
-;======================================
-set_local_port:
-;--------------------------------------
+;-----------------------------------------------------------------------------------------------------------------------
+set_local_port: ;///////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
 ;? Set local port in socket structure.
-;--------------------------------------
-;> eax -> struct socket_t
+;-----------------------------------------------------------------------------------------------------------------------
+;> eax = pointer to struct socket_t
 ;> bx = local port, or 0 if the kernel must select it itself
-;--------------------------------------
-;< CF set on error / cleared on success
-;< [eax+socket_t.local_port] filled on success
-;======================================
+;-----------------------------------------------------------------------------------------------------------------------
+;< CF = 0 (ok) or 1 (error)
+;< [eax + socket_t.local_port] = filled port (on success)
+;-----------------------------------------------------------------------------------------------------------------------
         ; 0. Prepare: save registers, make eax point to ports table, expand port to ebx.
         push    eax ecx
         mov     eax, [network_free_ports]
@@ -375,15 +383,17 @@ set_local_port:
         clc
         ret
 
-proc socket_open stdcall
-        ;; [53.0] Open DGRAM socket (connectionless, unreliable)
-        ;
-        ; @param BX is local port number
-        ; @param CX is remote port number
-        ; @param EDX is remote IP address
-        ; @return socket number or -1 (error) in EAX
-        ;;
-
+;-----------------------------------------------------------------------------------------------------------------------
+proc socket_open stdcall ;//////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> [53.0] Open DGRAM socket (connectionless, unreliable).
+;-----------------------------------------------------------------------------------------------------------------------
+;> bx = local port number
+;> cx = remote port number
+;> edx = remote IP address
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = socket number or -1 (error)
+;-----------------------------------------------------------------------------------------------------------------------
         call    net_socket_alloc
         or      eax, eax
         jz      .error
@@ -413,18 +423,20 @@ proc socket_open stdcall
         ret
 endp
 
-proc socket_open_tcp stdcall
-        ;; [53.5] Open STREAM socket (connection-based, sequenced, reliable, two-way)
-        ;
-        ; @param BX is local port number
-        ; @param CX is remote port number
-        ; @param EDX is remote IP address
-        ; @param ESI is open mode (SOCKET_ACTIVE, SOCKET_PASSIVE)
-        ; @return socket number or -1 (error) in EAX
-        ;;
-
+;-----------------------------------------------------------------------------------------------------------------------
+proc socket_open_tcp stdcall ;//////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? [53.5] Open STREAM socket (connection-based, sequenced, reliable, two-way).
+;-----------------------------------------------------------------------------------------------------------------------
+;> bx = local port number
+;> cx = remote port number
+;> edx = remote IP address
+;> esi = open mode (SOCKET_ACTIVE, SOCKET_PASSIVE)
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = socket number or -1 (error)
+;-----------------------------------------------------------------------------------------------------------------------
 local sockAddr dd ?
-
+;-----------------------------------------------------------------------------------------------------------------------
         cmp     esi, SOCKET_PASSIVE
         jne     .skip_port_check
 
@@ -526,13 +538,15 @@ local sockAddr dd ?
         ret
 endp
 
-proc socket_close stdcall
-        ;; [53.1] Close DGRAM socket
-        ;
-        ; @param EBX is socket number
-        ; @return 0 (closed successfully) or -1 (error) in EAX
-        ;;
-
+;-----------------------------------------------------------------------------------------------------------------------
+proc socket_close stdcall ;/////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? [53.1] Close DGRAM socket.
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx = socket number
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = 0 (closed successfully) or -1 (error)
+;-----------------------------------------------------------------------------------------------------------------------
         DEBUGF  1, "K : socket_close (0x%x)\n", ebx
         stdcall net_socket_num_to_addr, ebx
         or      eax, eax
@@ -549,17 +563,19 @@ proc socket_close stdcall
         ret
 endp
 
-proc socket_close_tcp stdcall
-        ;; [53.8] Close STREAM socket
-        ; Closing TCP sockets takes time, so when you get successful return code
-        ; from this function doesn't always mean that socket is actually closed.
-        ;
-        ; @param EBX is socket number
-        ; @return 0 (closed successfully) or -1 (error) in EAX
-        ;;
-
+;-----------------------------------------------------------------------------------------------------------------------
+proc socket_close_tcp stdcall ;/////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? [53.8] Close STREAM socket.
+;? Closing TCP sockets takes time, so when you get successful return code
+;? from this function doesn't always mean that socket is actually closed.
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx = socket number
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = 0 (closed successfully) or -1 (error)
+;-----------------------------------------------------------------------------------------------------------------------
 local sockAddr dd ?
-
+;-----------------------------------------------------------------------------------------------------------------------
         DEBUGF  1, "K : socket_close_tcp (0x%x)\n", ebx
         ; first, remove any resend entries
         pusha
@@ -661,13 +677,15 @@ local sockAddr dd ?
         ret
 endp
 
-proc socket_poll stdcall
-        ;; [53.2] Poll socket
-        ;
-        ; @param EBX is socket number
-        ; @return count or bytes in rx buffer or 0 (error) in EAX
-        ;;
-
+;-----------------------------------------------------------------------------------------------------------------------
+proc socket_poll stdcall ;//////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? [53.2] Poll socket.
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx = socket number
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = count or bytes in rx buffer or 0 (error)
+;-----------------------------------------------------------------------------------------------------------------------
 ;       DEBUGF  1, "socket_poll(0x%x)\n", ebx
         stdcall net_socket_num_to_addr, ebx
         or      eax, eax
@@ -681,13 +699,15 @@ proc socket_poll stdcall
         ret
 endp
 
-proc socket_status stdcall
-        ;; [53.6] Get socket TCB state
-        ;
-        ; @param EBX is socket number
-        ; @return socket TCB state or 0 (error) in EAX
-        ;;
-
+;-----------------------------------------------------------------------------------------------------------------------
+proc socket_status stdcall ;////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? [53.6] Get socket TCB state.
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx = socket number
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = socket TCB state or 0 (error)
+;-----------------------------------------------------------------------------------------------------------------------
 ;       DEBUGF  1, "socket_status(0x%x)\n", ebx
         stdcall net_socket_num_to_addr, ebx
         or      eax, eax
@@ -701,17 +721,19 @@ proc socket_status stdcall
         ret
 endp
 
-proc socket_read stdcall
-        ;; [53.3] Get one byte from rx buffer
-        ; This function can return 0 in two cases: if there's one byte read and
-        ; non left, and if an error occured. Behavior should be changed and function
-        ; shouldn't be used for now. Consider using [53.11] instead.
-        ;
-        ; @param EBX is socket number
-        ; @return number of bytes left in rx buffer or 0 (error) in EAX
-        ; @return byte read in BL
-        ;;
-
+;-----------------------------------------------------------------------------------------------------------------------
+proc socket_read stdcall ;//////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? [53.3] Get one byte from rx buffer.
+;? This function can return 0 in two cases: if there's one byte read and
+;? non left, and if an error occured. Behavior should be changed and function
+;? shouldn't be used for now. Consider using [53.11] instead.
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx = socket number
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = number of bytes left in rx buffer or 0 (error)
+;< bl = byte read
+;-----------------------------------------------------------------------------------------------------------------------
 ;       DEBUGF  1, "socket_read(0x%x)\n", ebx
         stdcall net_socket_num_to_addr, ebx
         or      eax, eax
@@ -753,19 +775,21 @@ proc socket_read stdcall
         ret
 endp
 
-proc socket_read_packet stdcall
-        ;; [53.11] Get specified number of bytes from rx buffer
-        ; Number of bytes in rx buffer can be less than requested size. In this case,
-        ; only available number of bytes is read.
-        ; This function can return 0 in two cases: if there's no data to read, and if
-        ; an error occured. Behavior should be changed.
-        ;
-        ; @param EBX is socket number
-        ; @param ECX is pointer to application buffer
-        ; @param EDX is application buffer size (number of bytes to read)
-        ; @return number of bytes read or 0 (error) in EAX
-        ;;
-
+;-----------------------------------------------------------------------------------------------------------------------
+proc socket_read_packet stdcall ;///////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? [53.11] Get specified number of bytes from rx buffer.
+;? Number of bytes in rx buffer can be less than requested size. In this case,
+;? only available number of bytes is read.
+;? This function can return 0 in two cases: if there's no data to read, and if
+;? an error occured. Behavior should be changed.
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx = socket number
+;> ecx = pointer to application buffer
+;> edx = application buffer size (number of bytes to read)
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = number of bytes read or 0 (error)
+;-----------------------------------------------------------------------------------------------------------------------
 ;       DEBUGF  1, "socket_read_packet(0x%x)\n", ebx
         stdcall net_socket_num_to_addr, ebx ; get real socket address
         or      eax, eax
@@ -833,15 +857,17 @@ proc socket_read_packet stdcall
         retn    ; exit, or go back to shift remaining bytes if any
 endp
 
-proc socket_write stdcall
-        ;; [53.4] Send data through DGRAM socket
-        ;
-        ; @param EBX is socket number
-        ; @param ECX is application data size (number of bytes to send)
-        ; @param EDX is pointer to application data buffer
-        ; @return 0 (sent successfully) or -1 (error) in EAX
-        ;;
-
+;-----------------------------------------------------------------------------------------------------------------------
+proc socket_write stdcall ;/////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? [53.4] Send data through DGRAM socket.
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx = socket number
+;> ecx = application data size (number of bytes to send)
+;> edx = pointer to application data buffer
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = 0 (sent successfully) or -1 (error)
+;-----------------------------------------------------------------------------------------------------------------------
 ;       DEBUGF  1, "socket_write(0x%x)\n", ebx
         stdcall net_socket_num_to_addr, ebx ; get real socket address
         or      eax, eax
@@ -993,17 +1019,19 @@ proc socket_write stdcall
         ret
 endp
 
-proc socket_write_tcp stdcall
-        ;; [53.7] Send data through STREAM socket
-        ;
-        ; @param EBX is socket number
-        ; @param ECX is application data size (number of bytes to send)
-        ; @param EDX is pointer to application data buffer
-        ; @return 0 (sent successfully) or -1 (error) in EAX
-        ;;
-
+;-----------------------------------------------------------------------------------------------------------------------
+proc socket_write_tcp stdcall ;/////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? [53.7] Send data through STREAM socket
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx = socket number
+;> ecx = application data size (number of bytes to send)
+;> edx = pointer to application data buffer
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax = 0 (sent successfully) or -1 (error)
+;-----------------------------------------------------------------------------------------------------------------------
 local sockAddr dd ?
-
+;-----------------------------------------------------------------------------------------------------------------------
 ;       DEBUGF  1, "socket_write_tcp(0x%x)\n", ebx
         stdcall net_socket_num_to_addr, ebx
         or      eax, eax

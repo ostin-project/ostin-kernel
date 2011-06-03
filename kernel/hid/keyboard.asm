@@ -50,40 +50,17 @@ endg
 
 iglobal
   hotkey_tests dd \
-    hotkey_test0, \
-    hotkey_test1, \
-    hotkey_test2, \
-    hotkey_test3, \
-    hotkey_test4
+    hotkey_do_test.test0, \
+    hotkey_do_test.test1, \
+    hotkey_do_test.test2, \
+    hotkey_do_test.test3, \
+    hotkey_do_test.test4
   hotkey_tests_num = 5
 endg
 
-hotkey_test0:
-        test    al, al
-        setz    al
-        ret
-
-hotkey_test1:
-        test    al, al
-        setnp   al
-        ret
-
-hotkey_test2:
-        cmp     al, 3
-        setz    al
-        ret
-
-hotkey_test3:
-        cmp     al, 1
-        setz    al
-        ret
-
-hotkey_test4:
-        cmp     al, 2
-        setz    al
-        ret
-
-hotkey_do_test:
+;-----------------------------------------------------------------------------------------------------------------------
+hotkey_do_test: ;///////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
         push    eax
         mov     edx, [kb_state]
         shr     edx, cl
@@ -100,6 +77,31 @@ hotkey_do_test:
         pop     eax
         ret
 
+  .test0:
+        test    al, al
+        setz    al
+        ret
+
+  .test1:
+        test    al, al
+        setnp   al
+        ret
+
+  .test2:
+        cmp     al, 3
+        setz    al
+        ret
+
+  .test3:
+        cmp     al, 1
+        setz    al
+        ret
+
+  .test4:
+        cmp     al, 2
+        setz    al
+        ret
+
   .fail:
         stc
         pop     eax
@@ -107,7 +109,9 @@ hotkey_do_test:
 
 
 align 4
-set_keyboard_data:
+;-----------------------------------------------------------------------------------------------------------------------
+set_keyboard_data: ;////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
         movzx   eax, word[TASK_COUNT] ; top window process
         movzx   eax, word[WIN_POS + eax * 2]
         shl     eax, 8
@@ -130,7 +134,9 @@ set_keyboard_data:
         ret
 
 align 4
-irq1:
+;-----------------------------------------------------------------------------------------------------------------------
+irq1: ;/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
         movzx   eax, word[TASK_COUNT] ; top window process
         movzx   eax, word[WIN_POS + eax * 2]
         shl     eax, 8
@@ -139,14 +145,17 @@ irq1:
 
         in      al, 0x60
 
-send_scancode:
-        mov      [keyboard_data], al
+;-----------------------------------------------------------------------------------------------------------------------
+send_scancode: ;////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ch = scancode
+;> cl = ext_code
+;> bh = 0 - normal key
+;> bh = 1 - modifier (Shift/Ctrl/Alt)
+;> bh = 2 - extended code
+;-----------------------------------------------------------------------------------------------------------------------
 
-        ; ch = scancode
-        ; cl = ext_code
-        ; bh = 0 - normal key
-        ; bh = 1 - modifier (Shift/Ctrl/Alt)
-        ; bh = 2 - extended code
+        mov      [keyboard_data], al
 
         mov     ch, al
         cmp     al, 0xe0
