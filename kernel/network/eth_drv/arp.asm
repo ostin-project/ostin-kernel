@@ -366,7 +366,7 @@ proc arp_table_manager stdcall uses ebx esi edi ecx edx, Opcode:DWORD, Index:DWO
         jmp     .exit
 
   .ip_to_mac_send_request:
-        stdcall arp_request, [Index], stack_ip, node_addr ; TargetIP,SenderIP_ptr,SenderMAC_ptr
+        stdcall arp_request, [Index], stack_ip, node_addr ; TargetIP, SenderIP_ptr, SenderMAC_ptr
         mov     eax, ARP_NO_ENTRY
         jmp     .exit
 

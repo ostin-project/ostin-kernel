@@ -72,15 +72,42 @@ end virtual
 ; Include individual drivers source files at this point.
 ; If you create a new driver, include it below.
 
-include "drivers/rtl8029.asm"
-include "drivers/i8255x.asm"
-include "drivers/rtl8139.asm"
+match =1, KCONFIG_NET_DRIVER_E3C59X
+{
 include "drivers/3c59x.asm"
-include "drivers/sis900.asm"
-include "drivers/pcnet32.asm"
-include "drivers/rtl8169.asm"
+}
+match =1, KCONFIG_NET_DRIVER_FORCEDETH
+{
 include "drivers/forcedeth.asm"
+}
+match =1, KCONFIG_NET_DRIVER_I8255X
+{
+include "drivers/i8255x.asm"
+}
+match =1, KCONFIG_NET_DRIVER_PCNET32
+{
+include "drivers/pcnet32.asm"
+}
+match =1, KCONFIG_NET_DRIVER_R6040
+{
 include "drivers/r6040.asm"
+}
+match =1, KCONFIG_NET_DRIVER_RTL8029
+{
+include "drivers/rtl8029.asm"
+}
+match =1, KCONFIG_NET_DRIVER_RTL8139
+{
+include "drivers/rtl8139.asm"
+}
+match =1, KCONFIG_NET_DRIVER_RTL8169
+{
+include "drivers/rtl8169.asm"
+}
+match =1, KCONFIG_NET_DRIVER_SIS900
+{
+include "drivers/sis900.asm"
+}
 
 ; PCICards
 ; ========
@@ -98,14 +125,20 @@ PCICARDS_ENTRY_SIZE equ 24 ; Size of each PCICARDS entry
 
 iglobal
   PCICards:
+
+if KCONFIG_NET_DRIVER_I8255X
     dd  0x12098086, I8255x_probe, I8255x_reset, I8255x_poll, I8255x_transmit, 0
     dd  0x10298086, I8255x_probe, I8255x_reset, I8255x_poll, I8255x_transmit, 0
     dd  0x12298086, I8255x_probe, I8255x_reset, I8255x_poll, I8255x_transmit, 0
     dd  0x10308086, I8255x_probe, I8255x_reset, I8255x_poll, I8255x_transmit, 0
     dd  0x24498086, I8255x_probe, I8255x_reset, I8255x_poll, I8255x_transmit, 0
+end if
 
+if KCONFIG_NET_DRIVER_RTL8029
     dd  0x802910ec, rtl8029_probe, rtl8029_reset, rtl8029_poll, rtl8029_transmit, 0
+end if
 
+if KCONFIG_NET_DRIVER_RTL8139
 ;   dd  0x813910ec, rtl8139_probe, rtl8139_reset, rtl8139_poll, rtl8139_transmit, rtl8139_cable
 ;   dd  0x813810ec, rtl8139_probe, rtl8139_reset, rtl8139_poll, rtl8139_transmit, rtl8139_cable
 ;   dd  0x12111113, rtl8139_probe, rtl8139_reset, rtl8139_poll, rtl8139_transmit, rtl8139_cable
@@ -125,13 +158,17 @@ iglobal
 ;   dd  0x1211126c, rtl8139_probe, rtl8139_reset, rtl8139_poll, rtl8139_transmit, rtl8139_cable
 ;   dd  0x81391743, rtl8139_probe, rtl8139_reset, rtl8139_poll, rtl8139_transmit, rtl8139_cable
 ;   dd  0x8139021b, rtl8139_probe, rtl8139_reset, rtl8139_poll, rtl8139_transmit, rtl8139_cable
+end if
 
+if KCONFIG_NET_DRIVER_RTL8169
     dd  0x816810ec, rtl8169_probe, rtl8169_reset, rtl8169_poll, rtl8169_transmit, 0
     dd  0x816910ec, rtl8169_probe, rtl8169_reset, rtl8169_poll, rtl8169_transmit, 0
     dd  0x011616ec, rtl8169_probe, rtl8169_reset, rtl8169_poll, rtl8169_transmit, 0
     dd  0x43001186, rtl8169_probe, rtl8169_reset, rtl8169_poll, rtl8169_transmit, 0
     dd  0x816710ec, rtl8169_probe, rtl8169_reset, rtl8169_poll, rtl8169_transmit, 0
+end if
 
+if KCONFIG_NET_DRIVER_E3C59X
     dd  0x590010b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
     dd  0x592010b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
     dd  0x597010b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
@@ -143,12 +180,12 @@ iglobal
     dd  0x900410b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
     dd  0x900510b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
     dd  0x900610b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x900A10b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
+    dd  0x900a10b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
     dd  0x905010b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
     dd  0x905110b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
     dd  0x905510b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
     dd  0x905810b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x905A10b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
+    dd  0x905a10b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
     dd  0x920010b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
     dd  0x980010b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
     dd  0x980510b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
@@ -164,17 +201,23 @@ iglobal
     dd  0x656210b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
     dd  0x656410b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
     dd  0x450010b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
+end if
 
+if KCONFIG_NET_DRIVER_SIS900
     dd  0x09001039, SIS900_probe, SIS900_reset, SIS900_poll, SIS900_transmit, 0
     dd  0x70161039, SIS900_probe, SIS900_reset, SIS900_poll, SIS900_transmit, 0
+end if
 
+if KCONFIG_NET_DRIVER_PCNET32
     dd  0x20001022, pcnet32_probe, pcnet32_reset, pcnet32_poll, pcnet32_xmit, 0
     dd  0x26251022, pcnet32_probe, pcnet32_reset, pcnet32_poll, pcnet32_xmit, 0
     dd  0x20011022, pcnet32_probe, pcnet32_reset, pcnet32_poll, pcnet32_xmit, 0
+end if
 
+if KCONFIG_NET_DRIVER_FORCEDETH
     dd  0x006610de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; nVidia Corporation nForce2 Ethernet Controller
     dd  0x01c310de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x00D610de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
+    dd  0x00d610de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
     dd  0x008610de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
     dd  0x008c10de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
     dd  0x00e610de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
@@ -212,8 +255,11 @@ iglobal
     dd  0x0ab210de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
     dd  0x0ab310de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
     dd  0x0d7d10de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
+end if
 
-    dd  0x604017F3, r6040_probe, r6040_reset, r6040_poll, r6040_transmit, 0
+if KCONFIG_NET_DRIVER_R6040
+    dd  0x604017f3, r6040_probe, r6040_reset, r6040_poll, r6040_transmit, 0
+end if
 
   rb PCICARDS_ENTRY_SIZE ; end of list marker, do not remove
 endg
@@ -224,7 +270,7 @@ uglobal
   gateway_ip:      dd 0
   dns_ip:          dd 0
 
-  eth_rx_data_len: dw 0
+  eth_rx_data_len  dw 0
   eth_status:      dd 0
   io_addr:         dd 0
   hdrtype:         db 0

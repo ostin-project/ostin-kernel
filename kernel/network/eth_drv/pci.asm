@@ -172,13 +172,13 @@ pcibios_write_config_word: ;////////////////////////////////////////////////////
         push    ax
         call    config_cmd
         push    dx
-        mov     dx, 0xCF8
+        mov     dx, 0xcf8
         out     dx, eax
         pop     dx
         pop     ax
 
         and     dx, 0x02
-        add     dx, 0xCFC
+        add     dx, 0xcfc
         out     dx, ax
         ret
 
