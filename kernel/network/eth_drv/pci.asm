@@ -24,12 +24,45 @@
 ;***************************************************************************
 
 ; PCI Bus defines
-PCI_HEADER_TYPE           equ 0x0e ; 8 bit
-PCI_BASE_ADDRESS_0        equ 0x10 ; 32 bit
-PCI_BASE_ADDRESS_5        equ 0x24 ; 32 bits
-PCI_BASE_ADDRESS_SPACE_IO equ 0x01
-PCI_VENDOR_ID             equ 0x00 ; 16 bit
-PCI_BASE_ADDRESS_IO_MASK  equ 0xfffffffc
+PCI_HEADER_TYPE                = 0x0e ; 8 bit
+PCI_BASE_ADDRESS_0             = 0x10 ; 32 bit
+PCI_BASE_ADDRESS_5             = 0x24 ; 32 bits
+PCI_BASE_ADDRESS_SPACE_IO      = 0x01
+PCI_VENDOR_ID                  = 0x00 ; 16 bit
+PCI_BASE_ADDRESS_IO_MASK       = 0xfffffffc
+
+PCI_COMMAND_IO                 = 0x1   ; Enable response in I/O space
+PCI_COMMAND_MEM                = 0x2   ; Enable response in mem space
+PCI_COMMAND_MASTER             = 0x4   ; Enable bus mastering
+PCI_LATENCY_TIMER              = 0x0d  ; 8 bits
+PCI_COMMAND_SPECIAL            = 0x8   ; Enable response to special cycles
+PCI_COMMAND_INVALIDATE         = 0x10  ; Use memory write and invalidate
+PCI_COMMAND_VGA_PALETTE        = 0x20  ; Enable palette snooping
+PCI_COMMAND_PARITY             = 0x40  ; Enable parity checking
+PCI_COMMAND_WAIT               = 0x80  ; Enable address/data stepping
+PCI_COMMAND_SERR               = 0x100 ; Enable SERR
+PCI_COMMAND_FAST_BACK          = 0x200 ; Enable back-to-back writes
+
+PCI_VENDOR_ID                  = 0x00  ; 16 bits
+PCI_DEVICE_ID                  = 0x02  ; 16 bits
+PCI_COMMAND                    = 0x04  ; 16 bits
+
+PCI_BASE_ADDRESS_0             = 0x10  ; 32 bits
+PCI_BASE_ADDRESS_1             = 0x14  ; 32 bits
+PCI_BASE_ADDRESS_2             = 0x18  ; 32 bits
+PCI_BASE_ADDRESS_3             = 0x1c  ; 32 bits
+PCI_BASE_ADDRESS_4             = 0x20  ; 32 bits
+PCI_BASE_ADDRESS_5             = 0x24  ; 32 bits
+
+PCI_BASE_ADDRESS_MEM_TYPE_MASK = 0x06
+PCI_BASE_ADDRESS_MEM_TYPE_32   = 0x00 ; 32 bit address
+PCI_BASE_ADDRESS_MEM_TYPE_1M   = 0x02 ; Below 1M [obsolete]
+PCI_BASE_ADDRESS_MEM_TYPE_64   = 0x04 ; 64 bit address
+
+PCI_BASE_ADDRESS_IO_MASK       = not 0x03
+PCI_BASE_ADDRESS_MEM_MASK      = not 0x0f
+PCI_BASE_ADDRESS_SPACE_IO      = 0x01
+PCI_ROM_ADDRESS                = 0x30 ; 32 bits
 
 ;-----------------------------------------------------------------------------------------------------------------------
 config_cmd: ;///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -341,3 +374,163 @@ scan_bus: ;/////////////////////////////////////////////////////////////////////
 
   .sb_exit2:
         ret
+
+;-----------------------------------------------------------------------------------------------------------------------
+proc CONFIG_CMD, where:byte ;///////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        movzx   eax, byte[pci_bus]
+        shl     eax, 8
+        mov     al, [pci_dev]
+        shl     eax, 8
+        mov     al, [where]
+        and     al, not 3
+        or      eax, 0x80000000
+        ret
+endp
+
+;-----------------------------------------------------------------------------------------------------------------------
+proc pci_read_config_byte, where:dword ;////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        push    edx
+        stdcall CONFIG_CMD, [where]
+        mov     dx, 0xcf8
+        out     dx, eax
+        mov     edx, [where]
+        and     edx, 3
+        add     edx, 0xcfc
+        in      al, dx
+        pop     edx
+        ret
+endp
+
+;-----------------------------------------------------------------------------------------------------------------------
+proc pci_read_config_word, where:dword ;////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        push    edx
+        stdcall CONFIG_CMD, [where]
+        mov     dx, 0xcf8
+        out     dx, eax
+        mov     edx, [where]
+        and     edx, 2
+        add     edx, 0xcfc
+        in      ax, dx
+        pop     edx
+        ret
+endp
+
+;-----------------------------------------------------------------------------------------------------------------------
+proc pci_read_config_dword, where:dword ;///////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        push    edx
+        stdcall CONFIG_CMD, [where]
+        mov     edx, 0xcf8
+        out     dx, eax
+        mov     edx, 0xcfc
+        in      eax, dx
+        pop     edx
+        ret
+endp
+
+;-----------------------------------------------------------------------------------------------------------------------
+proc pci_write_config_byte, where:dword, value:byte ;///////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        push    edx
+        stdcall CONFIG_CMD, [where]
+        mov     dx, 0xcf8
+        out     dx, eax
+        mov     edx, [where]
+        and     edx, 3
+        add     edx, 0xcfc
+        mov     al, [value]
+        out     dx, al
+        pop     edx
+        ret
+endp
+
+;-----------------------------------------------------------------------------------------------------------------------
+proc pci_write_config_word, where:dword, value:word ;///////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        push    edx
+        stdcall CONFIG_CMD, [where]
+        mov     dx, 0xcf8
+        out     dx, eax
+        mov     edx, [where]
+        and     edx, 2
+        add     edx, 0xcfc
+        mov     ax, [value]
+        out     dx, ax
+        pop     edx
+        ret
+endp
+
+;-----------------------------------------------------------------------------------------------------------------------
+proc pci_write_config_dword, where:dword, value:dword ;/////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        push    edx
+        stdcall CONFIG_CMD, [where]
+        mov     edx, 0xcf8
+        out     dx, eax
+        mov     edx, 0xcfc
+        mov     eax, [value]
+        out     dx, eax
+        pop     edx
+        ret
+endp
+
+;-----------------------------------------------------------------------------------------------------------------------
+proc adjust_pci_device ;////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Set device to be a busmaster in case BIOS neglected to do so.
+;? Also adjust PCI latency timer to a reasonable value, 32.
+;-----------------------------------------------------------------------------------------------------------------------
+;       DEBUGF  1, "K : adjust_pci_device\n"
+
+        stdcall pci_read_config_word, PCI_COMMAND
+        mov     bx, ax
+        or      bx, PCI_COMMAND_MASTER or PCI_COMMAND_IO
+        cmp     ax, bx
+        je      @f
+;       DEBUGF  1, "K : adjust_pci_device: The PCI BIOS has not enabled this device!\nK :   Updating PCI command %x->%x. pci_bus %x pci_device_fn %x\n", ax, bx, [pci_bus]:2, [pci_dev]:2
+        stdcall pci_write_config_word, PCI_COMMAND, ebx
+
+    @@: stdcall pci_read_config_byte, PCI_LATENCY_TIMER
+        cmp     al, 32
+        jae     @f
+;       DEBUGF  1, "K : adjust_pci_device: PCI latency timer (CFLT) is unreasonably low at %d.\nK :   Setting to 32 clocks.\n", al
+        stdcall pci_write_config_byte, PCI_LATENCY_TIMER, 32
+
+    @@: ret
+endp
+
+;-----------------------------------------------------------------------------------------------------------------------
+proc pci_bar_start, index:dword ;///////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Find the start of a pci resource
+;-----------------------------------------------------------------------------------------------------------------------
+        stdcall pci_read_config_dword, [index]
+        test    eax, PCI_BASE_ADDRESS_SPACE_IO
+        jz      @f
+        and     eax, PCI_BASE_ADDRESS_IO_MASK
+        jmp     .exit
+
+    @@: push    eax
+        and     eax, PCI_BASE_ADDRESS_MEM_TYPE_MASK
+        cmp     eax, PCI_BASE_ADDRESS_MEM_TYPE_64
+        jne     .not64
+        mov     eax, [index]
+        add     eax, 4
+        stdcall pci_read_config_dword, eax
+        or      eax, eax
+        jz      .not64
+;       DEBUGF  1, "K : pci_bar_start: Unhandled 64bit BAR\n"
+        add     esp, 4
+        or      eax, -1
+        ret
+
+  .not64:
+        pop     eax
+        and     eax, PCI_BASE_ADDRESS_MEM_MASK
+
+  .exit:
+        ret
+endp

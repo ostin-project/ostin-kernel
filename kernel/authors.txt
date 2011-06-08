@@ -30,6 +30,7 @@ Other contributors (in alphabetic order):
   Ivan Poddubny <ivan.poddubny@gmail.com>
   Jan-Michael Brummer <buzz2@gmx.de>
   Jarek Pelczar <jpelczar@interia.pl>
+  Jason Delozier <cordata51@hotmail.com>
   Johnny_B
   Juan M. Caravaca <bitrider@wanadoo.es>
   kasTIgar
