@@ -16,15 +16,6 @@
 ;? Query physical memory map from BIOS
 ;;======================================================================================================================
 
-struct phoenix_smap_addr_range_t range64_t
-  type   dd ?
-ends
-
-PHOENIX_SMAP_TYPE_AVAILABLE    = 0x01
-PHOENIX_SMAP_TYPE_RESERVED     = 0x02
-PHOENIX_SMAP_TYPE_ACPI_RECLAIM = 0x03
-PHOENIX_SMAP_TYPE_ACPI_NVS     = 0x04
-
         push    ds
         ; first call to fn E820
         mov     eax, 0xe820

@@ -460,8 +460,8 @@ cfgmanager:
         adc     byte[di + preboot_biosdisk - preboot_device], 0
         ; default value for VRR is OFF
         cmp     byte[di + preboot_vrrm - preboot_device], 0
-        jnz	@f
-        mov	byte[di + preboot_vrrm - preboot_device], 2
+        jnz     @f
+        mov     byte[di + preboot_vrrm - preboot_device], 2
 
     @@: ; notify user
         _setcursor 5, 2
