@@ -60,7 +60,7 @@ write_cache: ;//////////////////////////////////////////////////////////////////
         cmp     [dma_hdd], 1
         jnz     .nodma
 
-    @@: ; Объединяем запись цепочки последовательных секторов в одно обращение к диску
+    @@: ; combining consecutive sectors write into one disk operation
         cmp     ecx, 1
         jz      .nonext
         cmp     dword[esi + 8 + 4], 2

@@ -118,28 +118,28 @@ hd_read_pio: ;//////////////////////////////////////////////////////////////////
         xor     eax, eax
         mov     edx, [hdbase]
         inc     edx
-        out     dx, al ; ATAFeatures регистр "особенностей"
+        out     dx, al ; ATAFeatures "capabilities" register
         inc     edx
         inc     eax
-        out     dx, al ; ATASectorCount счётчик секторов
+        out     dx, al ; ATASectorCount sectors counter
         inc     edx
         mov     eax, [esp + 4]
-        out     dx, al ; ATASectorNumber регистр номера сектора
+        out     dx, al ; ATASectorNumber sector number register
         shr     eax, 8
         inc     edx
-        out     dx, al ; ATACylinder номер цилиндра (младший байт)
+        out     dx, al ; ATACylinder cylinder number (low byte)
         shr     eax, 8
         inc     edx
-        out     dx, al ; номер цилиндра (старший байт)
+        out     dx, al ; cylinder number (high byte)
         shr     eax, 8
         inc     edx
         and     al, 1 + 2 + 4 + 8
         add     al, byte[hdid]
         add     al, 128 + 64 + 32
-        out     dx, al ; номер головки/номер диска
+        out     dx, al ; head/disk number
         inc     edx
         mov     al, 0x20
-        out     dx, al ; ATACommand регистр команд
+        out     dx, al ; ATACommand command register
         sti
 
         call    wait_for_sector_buffer

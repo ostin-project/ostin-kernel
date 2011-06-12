@@ -637,24 +637,24 @@ proc page_fault_handler ;///////////////////////////////////////////////////////
         mov     eax, [pf_err_code]
 
         cmp     ebx, OS_BASE ; ebx == .err_addr
-        jb      .user_space ; страница в памяти приложения
+        jb      .user_space ; page in application memory
 
         cmp     ebx, page_tabs
-        jb      .kernel_space ; страница в памяти ядра
+        jb      .kernel_space ; page in kernel memory
 
         cmp     ebx, kernel_tabs
-        jb      .alloc ; .app_tabs ; таблицы страниц приложения, просто создадим одну
+        jb      .alloc ; .app_tabs ; application page tables, simply create one
 
-if 0 ; пока это просто лишнее
+if 0 ; this is superfluous for now
 
         cmp     ebx, LFB_BASE
-        jb      .core_tabs ; таблицы страниц ядра
+        jb      .core_tabs ; kernel page tables
 
-        ; Ошибка
+        ; error
 
   .lfb:
-        ; область LFB
-        ; Ошибка
+        ; LFB area
+        ; error
         jmp     .fail
 
 end if
@@ -672,18 +672,18 @@ end if
 
   .user_space:
         test    eax, PG_MAP
-        jnz     .err_access ; Страница присутствует, Ошибка доступа?
+        jnz     .err_access ; page is present, access violation?
 
         shr     ebx, 12
         mov     ecx, ebx
         shr     ecx, 10
         mov     edx, [master_tab + ecx * 4]
         test    edx, PG_MAP
-        jz      .fail ; таблица страниц не создана, неверный адрес в программе
+        jz      .fail ; page table not created, invalid address in application
 
         mov     eax, [page_tabs + ebx * 4]
         test    eax, 2
-        jz      .fail ; адрес не зарезервирован для использования, Ошибка
+        jz      .fail ; address is not reserved for use, error
 
   .alloc:
         call    alloc_page
@@ -745,14 +745,14 @@ end if
 
   .kernel_space:
         test    eax, PG_MAP
-        jz      .fail ; страница не присутствует
+        jz      .fail ; page is not present
 
         test    eax, 12 ; U/S (+below)
-        jnz     .fail ; приложение обратилось к памяти ядра
+        jnz     .fail ; application accessed the kernel memory
 ;       test    eax, 8
-;       jnz     .fail   ; установлен зарезервированный бит в таблицах страниц. добавлено в P4/Xeon
+;       jnz     .fail ; reserved bit is set in page tables. added in P4/Xeon
 
-        ; попытка записи в защищённую страницу ядра
+        ; write attempt in protected kernel page
         cmp     ebx, tss.io_map_0
         jb      .fail
 

@@ -184,7 +184,7 @@ proc strtoint_dec stdcall, strs ;///////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         pushad
         xor     edx, edx
-        ; поиск конца
+        ; scanning for end
         mov     esi, [strs]
 
     @@: lodsb
@@ -199,7 +199,7 @@ proc strtoint_dec stdcall, strs ;///////////////////////////////////////////////
     @@: dec     ebx
         or      ebx, ebx
         jz      @f
-        imul    ecx, ecx, 10 ; порядок
+        imul    ecx, ecx, 10 ; base
         jmp     @b
 
     @@: xchg    ebx, ecx

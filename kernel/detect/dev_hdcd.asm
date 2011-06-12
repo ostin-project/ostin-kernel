@@ -15,15 +15,15 @@
 ;;======================================================================================================================
 
 ;******************************************************
-; поиск приводов HDD и CD
-; автор исходного текста Кулаков Владимир Геннадьевич.
-; адаптация и доработка Mario79
+; Find HDD and CD drives
+; Source code author - Vladimir G. Kulakov.
+; Adoption and improvements - Mario79
 ;******************************************************
 
 ;-----------------------------------------------------------------------------------------------------------------------
 FindHDD: ;//////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;? ПОИСК HDD и CD
+;? Find HDDs and CDs
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     [ChannelNumber], 1
         mov     [DiskNumber], 0
@@ -80,57 +80,57 @@ FindHDD: ;//////////////////////////////////////////////////////////////////////
         ret
 
 uglobal
-  SectorAddress dd ? ; Адрес считываемого сектора в режиме LBA
+  SectorAddress dd ? ; address of sector read in LBA mode
 endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
 ReadHDD_ID: ;///////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;? ЧТЕНИЕ ИДЕНТИФИКАТОРА ЖЕСТКОГО ДИСКА
+;? Read HDD device identifier
 ;-----------------------------------------------------------------------------------------------------------------------
-;; Входные параметры передаются через глобальные переменные:
-;> [ChannelNumber] = номер канала (1 или 2)
-;> [DiskNumber] = номер диска на канале (0 или 1)
+;; Arguments are in global variables:
+;> [ChannelNumber] = channel number (1 or 2)
+;> [DiskNumber] = drive number on channel (0 or 1)
 ;-----------------------------------------------------------------------------------------------------------------------
-;; Идентификационный блок данных считывается в массив Sector512.
+;; Identification data block is read into Sector512.
 ;-----------------------------------------------------------------------------------------------------------------------
-        ; Задать режим CHS
+        ; set CHS mode
         mov     [ATAAddressMode], 0
-        ; Послать команду идентификации устройства
+        ; send device identification command
         mov     [ATAFeatures], 0
         mov     [ATAHead], 0
         mov     [ATACommand], 0xec
         call    SendCommandToHDD
-        cmp     [DevErrorCode], 0 ; проверить код ошибки
-        jne     .End  ; закончить, сохранив код ошибки
+        cmp     [DevErrorCode], 0 ; check for error
+        jne     .End  ; exit, saving error code
         mov     dx, [ATABasePortAddr]
-        add     dx, 7 ; адрес регистра состояни
+        add     dx, 7 ; status register address
         mov     ecx, 0x0000ffff
 
   .WaitCompleet:
-        ; Проверить время выполнения команды
+        ; check commamd execution duration
         dec     ecx
 ;       cmp     ecx,0
-        jz      .Error1 ; ошибка тайм-аута
-        ; Проверить готовность
+        jz      .Error1 ; timeout error
+        ; check if device is ready
         in      al, dx
-        test    al, 0x80 ; состояние сигнала BSY
+        test    al, 0x80 ; BSY signal state
         jnz     .WaitCompleet
-        test    al, 1 ; состояние сигнала ERR
+        test    al, 1 ; ERR signal state
         jnz     .Error6
-        test    al, 0x08 ; состояние сигнала DRQ
+        test    al, 0x08 ; DRQ signal state
         jz      .WaitCompleet
-        ; Принять блок данных от контроллера
+        ; receive data block from controller
 ;       mov     ax, ds
 ;       mov     es, ax
-        mov     edi, Sector512 ; offset Sector512
-        mov     dx, [ATABasePortAddr] ; регистр данных
-        mov     cx, 256 ; число считываемых слов
-        rep     insw ; принять блок данных
+        mov     edi, Sector512 ; offset of Sector512
+        mov     dx, [ATABasePortAddr] ; data register
+        mov     cx, 256 ; number of words to read
+        rep     insw ; receive data block
         ret
 
   .Error1:
-        ; Записать код ошибки
+        ; save error code
         mov     [DevErrorCode], 1
         ret
 
@@ -142,119 +142,115 @@ ReadHDD_ID: ;///////////////////////////////////////////////////////////////////
 
 
 iglobal
-  StandardATABases dw 0x1f0, 0x170 ; Стандартные базовые адреса каналов 1 и 2
+  StandardATABases dw 0x1f0, 0x170 ; channels 1 and 2 standard base addresses
 endg
 
 uglobal
-  ChannelNumber   dw ? ; Номер канала
-  DiskNumber      db ? ; Номер диска
-  ATABasePortAddr dw ? ; Базовый адрес группы портов контроллера ATA
+  ChannelNumber   dw ? ; channel number
+  DiskNumber      db ? ; drive number
+  ATABasePortAddr dw ? ; base address of ATA controller ports group
 
-  ; Параметры ATA-команды
-  ATAFeatures     db ? ; особенности
-  ATASectorCount  db ? ; количество обрабатываемых секторов
-  ATASectorNumber db ? ; номер начального сектора
-  ATACylinder     dw ? ; номер начального цилиндра
-  ATAHead         db ? ; номер начальной головки
-  ATAAddressMode  db ? ; режим адресации (0 - CHS, 1 - LBA)
-  ATACommand      db ? ; код команды, подлежащей выполнению
+  ; ATA command arguments
+  ATAFeatures     db ? ; capabilities
+  ATASectorCount  db ? ; number of sectors to work on
+  ATASectorNumber db ? ; start sector number
+  ATACylinder     dw ? ; start cylinder number
+  ATAHead         db ? ; start head number
+  ATAAddressMode  db ? ; addressing mode (0 - CHS, 1 - LBA)
+  ATACommand      db ? ; command code to execute
 
-  ; Код ошибки (0 - нет ошибок, 1 - превышен допустимый интервал ожидания, 2 - неверный код режима адресации,
-  ; 3 - неверный номер канала, 4 - неверный номер диска, 5 - неверный номер головки, 6 - ошибка при выполнении команды)
+  ; Error code (0 - success, 1 - timeout, 2 - invalid addressing mode, 3 - invalid channel number,
+  ; 4 - invalid drive number, 5 - invalid head number, 6 - command execution error)
   DevErrorCode    dd ?
 endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
 SendCommandToHDD: ;/////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;? ПОСЛАТЬ КОМАНДУ ЗАДАННОМУ ДИСКУ
+;? Send command to specified drive
 ;-----------------------------------------------------------------------------------------------------------------------
-;; Входные параметры передаются через глобальные переменные:
-;> [ChannelNumber] = номер канала (1 или 2)
-;> [DiskNumber] = номер диска (0 или 1)
-;> [ATAFeatures] = "особенности"
-;> [ATASectorCount] = количество секторов
-;> [ATASectorNumber] = номер начального сектора
-;> [ATACylinder] = номер начального цилиндра
-;> [ATAHead] = номер начальной головки
-;> [ATAAddressMode] = режим адресации (0-CHS, 1-LBA)
-;> [ATACommand] = код команды
+;; Arguments are in global variables:
+;> [ChannelNumber] = channel number (1 or 2)
+;> [DiskNumber] = drive number (0 or 1)
+;> [ATAFeatures] = "capabilities"
+;> [ATASectorCount] = sectors count
+;> [ATASectorNumber] = start sector number
+;> [ATACylinder] = start cylinder number
+;> [ATAHead] = start head number
+;> [ATAAddressMode] = addressing mode (0 - CHS, 1 - LBA)
+;> [ATACommand] = command code
 ;-----------------------------------------------------------------------------------------------------------------------
-;; После успешного выполнения функции:
-;> [ATABasePortAddr] - базовый адрес HDD;
-;> [DevErrorCode] - ноль.
-;; При возникновении ошибки в DevErrorCode будет возвращен код ошибки.
+;< [DevErrorCode] - error code
+;< [ATABasePortAddr] - base HDD address (on success)
 ;-----------------------------------------------------------------------------------------------------------------------
-        ; Проверить значение кода режима
+        ; check if addressing mode is valid
         cmp     [ATAAddressMode], 1
         ja      .Err2
-        ; Проверить корректность номера канала
+        ; check if channel number is valid
         mov     bx, [ChannelNumber]
         cmp     bx, 1
         jb      .Err3
         cmp     bx, 2
         ja      .Err3
-        ; Установить базовый адрес
+        ; set base address
         dec     bx
         shl     bx, 1
         movzx   ebx, bx
         mov     ax, [ebx + StandardATABases]
         mov     [ATABasePortAddr], ax
-        ; Ожидание готовности HDD к приему команды
-        ; Выбрать нужный диск
+        ; wait for HDD being ready to receive command
+        ; select needed drive
         mov     dx, [ATABasePortAddr]
-        add     dx, 6 ; адрес регистра головок
+        add     dx, 6 ; heads register address
         mov     al, [DiskNumber]
-        cmp     al, 1 ; проверить номера диска
+        cmp     al, 1 ; check if drive number is valid
         ja      .Err4
         shl     al, 4
         or      al, 10100000b
         out     dx, al
-        ; Ожидать, пока диск не будет готов
+        ; wait until drive is ready
         inc     dx
         mov     ecx, 0x0fff
 ;       mov     eax, [timer_ticks]
 ;       mov     [TickCounter_1], eax
 
   .WaitHDReady:
-        ; Проверить время ожидани
+        ; check execution duration
         dec     ecx
 ;       cmp     ecx, 0
         jz     .Err1
 ;       mov     eax, [timer_ticks]
 ;       sub     eax, [TickCounter_1]
-;       cmp     eax, 300 ; ожидать 300 тиков
-;       ja      .Err1 ; ошибка тайм-аута
-        ; Прочитать регистр состояни
+;       cmp     eax, 300 ; wait for 300 ticks
+;       ja      .Err1 ; timeout error
+        ; read status register
         in      al, dx
-        ; Проверить состояние сигнала BSY
-        test    al, 0x80
+        test    al, 0x80 ; BSY signal state
         jnz     .WaitHDReady
-        ; Проверить состояние сигнала DRQ
-        test    al, 0x08
+        test    al, 0x08 ; DRQ signal state
         jnz     .WaitHDReady
-        ; Загрузить команду в регистры контроллера
+        ; load command into controller registers
         cli
         mov     dx, [ATABasePortAddr]
-        inc     dx ; регистр "особенностей"
+        inc     dx ; "capabilities" register
         mov     al, [ATAFeatures]
         out     dx, al
-        inc     dx ; счетчик секторов
+        inc     dx ; sectors counter
         mov     al, [ATASectorCount]
         out     dx, al
-        inc     dx ; регистр номера сектора
+        inc     dx ; sector number register
         mov     al, [ATASectorNumber]
         out     dx, al
-        inc     dx ; номер цилиндра (младший байт)
+        inc     dx ; cylinder number (low byte)
         mov     ax, [ATACylinder]
         out     dx, al
-        inc     dx ; номер цилиндра (старший байт)
+        inc     dx ; cylinder number (high byte)
         mov     al, ah
         out     dx, al
-        inc     dx ; номер головки/номер диска
+        inc     dx ; head/drive number
         mov     al, [DiskNumber]
         shl     al, 4
-        cmp     [ATAHead], 0x0f ; проверить номер головки
+        cmp     [ATAHead], 0x0f ; check if head number is valid
         ja      .Err5
         or      al, [ATAHead]
         or      al, 10100000b
@@ -262,17 +258,17 @@ SendCommandToHDD: ;/////////////////////////////////////////////////////////////
         shl     ah, 6
         or      al, ah
         out     dx, al
-        ; Послать команду
+        ; send command
         mov     al, [ATACommand]
-        inc     dx ; регистр команд
+        inc     dx ; command register
         out     dx, al
         sti
-        ; Сбросить признак ошибки
+        ; reset error code
         mov     [DevErrorCode], 0
         ret
 
   .Err1:
-        ; Записать код ошибки
+        ; save error code
         mov     [DevErrorCode], 1
         ret
 
@@ -290,23 +286,22 @@ SendCommandToHDD: ;/////////////////////////////////////////////////////////////
 
   .Err5:
         mov     [DevErrorCode], 5
-        ; Завершение работы программы
         ret
 
 ;-----------------------------------------------------------------------------------------------------------------------
 ReadCD_ID: ;////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;? ЧТЕНИЕ ИДЕНТИФИКАТОРА УСТРОЙСТВА ATAPI
+;? Read ATAPI device identifier
 ;-----------------------------------------------------------------------------------------------------------------------
-;; Входные параметры передаются через глобальные перменные:
-;> [ChannelNumber] = номер канала;
-;> [DiskNumber] = номер диска на канале.
+;; Arguments are in global variables:
+;> [ChannelNumber] = channel number
+;> [DiskNumber] = drive number on channel
 ;-----------------------------------------------------------------------------------------------------------------------
-;; Идентификационный блок данных считывается в массив Sector512.
+;; Identification data block is read into Sector512.
 ;-----------------------------------------------------------------------------------------------------------------------
-        ; Задать режим CHS
+        ; set CHS mode
         mov     [ATAAddressMode], 0
-        ; Послать команду идентификации устройства
+        ; send device identification command
         mov     [ATAFeatures], 0
         mov     [ATASectorCount], 0
         mov     [ATASectorNumber], 0
@@ -314,37 +309,37 @@ ReadCD_ID: ;////////////////////////////////////////////////////////////////////
         mov     [ATAHead], 0
         mov     [ATACommand], 0xa1
         call    SendCommandToHDD
-        cmp     [DevErrorCode], 0 ; проверить код ошибки
-        jne     .End_1 ; закончить, сохранив код ошибки
-        ; Ожидать готовность данных HDD
+        cmp     [DevErrorCode], 0 ; check for error
+        jne     .End_1 ; exit, saving error code
+        ; wait for device to become ready
         mov     dx, [ATABasePortAddr]
-        add     dx, 7 ; порт 1х7h
+        add     dx, 7 ; port 1x7h
         mov     ecx, 0x0000ffff
 
   .WaitCompleet_1:
-        ; Проверить врем
+        ; check execution duration
         dec     ecx
 ;       cmp     ecx, 0
-        jz      .Error1_1 ; ошибка тайм-аута
-        ; Проверить готовность
+        jz      .Error1_1 ; timeout error
+        ; check if device it ready
         in      al, dx
-        test    al, 0x80 ; состояние сигнала BSY
+        test    al, 0x80 ; BSY signal state
         jnz     .WaitCompleet_1
-        test    al, 1 ; состояние сигнала ERR
+        test    al, 1 ; ERR signal state
         jnz     .Error6_1
-        test    al, 0x08 ; состояние сигнала DRQ
+        test    al, 0x08 ; DRQ signal state
         jz      .WaitCompleet_1
-        ; Принять блок данных от контроллера
+        ; receive data block from controller
 ;       mov     ax, ds
 ;       mov     es, ax
-        mov     edi, Sector512  ; offset Sector512
-        mov     dx, [ATABasePortAddr] ; порт 1x0h
-        mov     cx, 256 ; число считываемых слов
+        mov     edi, Sector512  ; offset of Sector512
+        mov     dx, [ATABasePortAddr] ; port 1x0h
+        mov     cx, 256 ; number of words to read
         rep     insw
         ret
 
   .Error1_1:
-        ; Записать код ошибки
+        ; save error code
         mov     [DevErrorCode], 1
         ret
 
@@ -357,54 +352,53 @@ ReadCD_ID: ;////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 DeviceReset: ;//////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;? СБРОС УСТРОЙСТВА
+;? Reset device
 ;-----------------------------------------------------------------------------------------------------------------------
-;; Входные параметры передаются через глобальные переменные:
-;> ChannelNumber - номер канала (1 или 2);
-;> DiskNumber - номер диска (0 или 1).
+;; Arguments are in global variables:
+;> ChannelNumber - channel number (1 or 2)
+;> DiskNumber - drive number on channel (0 or 1)
 ;-----------------------------------------------------------------------------------------------------------------------
-        ; Проверить корректность номера канала
+        ; check if channel number is valid
         mov     bx, [ChannelNumber]
         cmp     bx, 1
         jb      .Err3_2
         cmp     bx, 2
         ja      .Err3_2
-        ; Установить базовый адрес
+        ; set base address
         dec     bx
         shl     bx, 1
         movzx   ebx, bx
         mov     dx, [ebx + StandardATABases]
         mov     [ATABasePortAddr], dx
-        ; Выбрать нужный диск
-        add     dx, 6 ; адрес регистра головок
+        ; select needed drive
+        add     dx, 6 ; heads register address
         mov     al, [DiskNumber]
-        cmp     al, 1 ; проверить номера диска
+        cmp     al, 1 ; check if drive number is valid
         ja      .Err4_2
         shl     al, 4
         or      al, 10100000b
         out     dx, al
-        ; Послать команду "Сброс"
+        ; send "reset" command
         mov     al, 0x08
-        inc     dx ; регистр команд
+        inc     dx ; command register
         out     dx, al
         mov     ecx, 0x00080000
 
   .WaitHDReady_1:
-        ; Проверить время ожидани
+        ; check execution duration
         dec     ecx
 ;       cmp     ecx, 0
-        je      .Err1_2 ; ошибка тайм-аута
-        ; Прочитать регистр состояни
+        je      .Err1_2 ; timeout error
+        ; read status register
         in      al, dx
-        ; Проверить состояние сигнала BSY
-        test    al, 0x80
+        test    al, 0x80 ; BSY signal state
         jnz     .WaitHDReady_1
-        ; Сбросить признак ошибки
+        ; reset error code
         mov     [DevErrorCode], 0
         ret
 
   .Err1_2:
-        ; Обработка ошибок
+        ; save error code
         mov     [DevErrorCode], 1
         ret
 
@@ -414,7 +408,6 @@ DeviceReset: ;//////////////////////////////////////////////////////////////////
 
   .Err4_2:
         mov     [DevErrorCode], 4
-        ; Записать код ошибки
         ret
 
 EndFindHDD:

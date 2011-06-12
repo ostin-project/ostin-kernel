@@ -361,7 +361,7 @@ VGA_putpixel: ;/////////////////////////////////////////////////////////////////
         mov     ecx, eax
         mov     eax, [esp + 32 - 8 + 4] ; color
         shl     ebx, 9
-        lea     ebx, [ebx + ebx * 4] ; умножение на 5
+        lea     ebx, [ebx + ebx * 4] ; * 5
         lea     edx, [ebx + ecx * 4] ; + x*BytesPerPixel (Vesa2.0 32)
         mov     edi, edx
         add     edi, [LFBAddress] ; + LFB address
@@ -469,7 +469,7 @@ VGA_draw_bar_1: ;///////////////////////////////////////////////////////////////
         add     eax, [temp.cx]
         and     eax, 0xfff8
         shl     ebx, 9
-        lea     ebx, [ebx + ebx * 4] ; умножение на 5
+        lea     ebx, [ebx + ebx * 4] ; * 5
         lea     ebx, [ebx + eax * 4] ; + x*BytesPerPixel (Vesa2.0 32)
         mov     esi, ebx
         add     esi, [LFBAddress] ; + LFB address

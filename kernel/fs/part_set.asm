@@ -92,10 +92,10 @@ uglobal
       .inode_size                    dd ?
       .count_pointer_in_block        dd ? ;  block_size / 4
       .count_pointer_in_block_square dd ? ; (block_size / 4)**2
-      .ext2_save_block               dd ? ; блок на глобальную 1 процедуру
-      .ext2_temp_block               dd ? ; блок для мелких процедур
-      .ext2_save_inode               dd ? ; inode на глобальную процедуру
-      .ext2_temp_inode               dd ? ; inode для мелких процедур
+      .ext2_save_block               dd ? ; block for 1 global procedure
+      .ext2_temp_block               dd ? ; block for small procedures
+      .ext2_save_inode               dd ? ; inode for global procedure
+      .ext2_temp_inode               dd ? ; inode for small procedures
       .sb                            dd ? ; superblock
       .groups_count                  dd ?
     if $ > fs_dependent_data_end
@@ -290,7 +290,7 @@ set_PARTITION_variables: ;//////////////////////////////////////////////////////
 ;       pop     edx
 
   .test_ext_partition_0:
-        pop     eax ; просто выкидываем из стека
+        pop     eax ; just throwing out of stack
         mov     al, [ebx + 0x1be + 4] ; get extended partition type
         call    scan_extended_types
         jnz     .test_ext_partition_1
@@ -362,7 +362,7 @@ set_PARTITION_variables: ;//////////////////////////////////////////////////////
 
 ;       mov     edx, [PARTITION_END]
 ;       sub     edx, eax
-;       inc     edx ; edx = length of partition зачем оно нам??
+;       inc     edx ; edx = length of partition // what do we need it for?
 
 ;       mov     [hd_setup], 1
         mov     ebx, buffer

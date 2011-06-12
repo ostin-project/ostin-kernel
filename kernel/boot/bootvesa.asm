@@ -87,7 +87,7 @@ virtual at 0xa000
   modes_table:
 end virtual
 
-cursor_pos   dw 0 ; временное хранение курсора.
+cursor_pos   dw 0 ; temporary cursor storage.
 home_cursor  dw 0 ; current shows rows a table
 end_cursor   dw 0 ; end of position current shows rows a table
 scroll_start dw 0 ; start position of scroll bar
@@ -204,7 +204,7 @@ calc_vmodes_table: ;////////////////////////////////////////////////////////////
         lfs     si, [es:vi.video_mode_ptr]
 
         mov     bx, modes_table
-        ; save no vesa mode of work 320x200, EGA/CGA 256 цветов and 640x480, VGA 16 цветов
+        ; save no vesa mode of work 320x200, EGA/CGA 256 colors and 640x480, VGA 16 colors
         mov     word[es:bx], 640
         mov     word[es:bx + 2], 480
         mov     word[es:bx + 6], 0x13

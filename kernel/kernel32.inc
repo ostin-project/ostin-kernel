@@ -26,6 +26,8 @@ include "blkdev/rd.asm"
 
 include "bus/pci/pci32.asm"
 
+include "charset.asm"
+
 include "core/conf_lib.asm"
 include "core/dll.asm"
 include "core/exports.inc"

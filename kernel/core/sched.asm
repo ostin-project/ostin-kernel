@@ -194,8 +194,7 @@ do_change_task: ;///////////////////////////////////////////////////////////////
 ;#   [CURRENT_TASK] and [TASK_BASE] must be changed before (e.g. in find_next_task)
 ;#   [current_slot] is the outcoming (old), and set here to a new value (ebx)
 ;# scratched: eax,ecx,esi
-;# TODO: Надо бы убрать использование do_change_task из V86 и после этого перенести обработку
-;#       task_data_t.counter_add/sum в do_change_task
+;# TODO: Eliminate use of do_change_task in V86 and then move task_data_t.counter_add/sum handling to do_change_task
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     esi, ebx
         xchg    esi, [current_slot]

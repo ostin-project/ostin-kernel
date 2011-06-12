@@ -205,7 +205,7 @@ v86_set_page: ;/////////////////////////////////////////////////////////////////
 ;< eax = V86 address, para-aligned (0x10 multiple)
 ;-----------------------------------------------------------------------------------------------------------------------
 ;# destroys: nothing
-;# недописана!!!
+;# not finished!!!
 ;-----------------------------------------------------------------------------------------------------------------------
 ;       push    ebx ecx edx edi
 ;       lea     ebx, [esi + v86_machine_t.mutex]
@@ -423,8 +423,8 @@ v86_exc_c: ;////////////////////////////////////////////////////////////////////
         jnz     .nogp
         ; Otherwise we can safely access byte at CS:IP
         ; (because it is #GP, not #PF handler)
-        ; Если бы мы могли схлопотать исключение только из-за чтения байтов кода,
-        ; мы бы его уже схлопотали и это было бы не #GP
+        ; If we were able to get an exception just because of reading code bytes,
+        ; we would've already got it and it wouldn't be a #GP
         movzx   esi, word[esp + v86_regs_t.cs]
         shl     esi, 4
         add     esi, [esp + v86_regs_t.eip]

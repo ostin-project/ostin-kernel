@@ -176,8 +176,8 @@ file_system_lfn: ;//////////////////////////////////////////////////////////////
         cmp     dword[ebx], 1
         jnz     .access_denied
         xor     eax, eax
-        mov     ebp, [ebx + 12] ; количество блоков для считывания
-        mov     edx, [ebx + 16] ; куда записывать рузельтат
+        mov     ebp, [ebx + 12] ; blocks to read
+        mov     edx, [ebx + 16] ; result buffer ptr
 ;       add     edx, std_application_base_address
         push    dword[ebx + 4] ; first block
         mov     ebx, [ebx + 8] ; flags

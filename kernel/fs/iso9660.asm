@@ -153,7 +153,7 @@ fs_CdRead: ;////////////////////////////////////////////////////////////////////
   .l1:
         push    ecx edx
         push    0
-        mov     eax, [edi + 10] ; реальный размер файловой секции
+        mov     eax, [edi + 10] ; real file section size
         sub     eax, ebx
         jb      .eof
         cmp     eax, ecx
@@ -176,7 +176,7 @@ fs_CdRead: ;////////////////////////////////////////////////////////////////////
         jb      .incomplete_sector
         ; we may read and memmove complete sector
         mov     [CDDataBuf_pointer], edx
-        call    ReadCDWRetr ; читаем сектор файла
+        call    ReadCDWRetr ; reading file sector
         cmp     [DevErrorCode], 0
         jne     .noaccess_3
         add     edx, 2048
@@ -189,7 +189,7 @@ fs_CdRead: ;////////////////////////////////////////////////////////////////////
   .incomplete_sector:
         ; we must read and memmove incomplete sector
         mov     [CDDataBuf_pointer], CDDataBuf
-        call    ReadCDWRetr ; читаем сектор файла
+        call    ReadCDWRetr ; reading file sector
         cmp     [DevErrorCode], 0
         jne     .noaccess_3
         push    ecx
@@ -263,7 +263,7 @@ fs_CdReadFolder: ;//////////////////////////////////////////////////////////////
   .found_dir:
         mov     eax, [edi + 2] ; eax=cluster
         mov     [CDSectorAddress], eax
-        mov     eax, [edi + 10] ; размер директрории
+        mov     eax, [edi + 10] ; directory size
 
   .doit:
         ; init header
@@ -276,7 +276,8 @@ fs_CdReadFolder: ;//////////////////////////////////////////////////////////////
         mov     byte[edx], 1 ; version
         mov     [cd_mem_location], edx
         add     [cd_mem_location], 32
-        ; начинаем переброску БДВК в УСВК
+
+        ; convert "БДВК" info "УСВК"
 
 ; .mainloop:
         mov     [cd_counter_block], 0
@@ -286,12 +287,12 @@ fs_CdReadFolder: ;//////////////////////////////////////////////////////////////
   .read_to_buffer:
         inc     [CDSectorAddress]
         mov     [CDDataBuf_pointer], CDDataBuf
-        call    ReadCDWRetr ; читаем сектор директории
+        call    ReadCDWRetr ; reading directory sector
         cmp     [DevErrorCode], 0
         jne     .noaccess_1
         call    .get_names_from_buffer
         sub     eax, 2048
-        ; директория закончилась?
+        ; is it the end of directory?
         ja      .read_to_buffer
         mov     edi, [cd_counter_block]
         mov     [edx + 8], edi
@@ -338,17 +339,17 @@ fs_CdReadFolder: ;//////////////////////////////////////////////////////////////
         call    uni2ansi_char
         cld
         stosb
-        ; проверка конца файла
+        ; check for filename end
         mov     ax, [esi]
-        cmp     ax, 0x3b00 ; сепаратор конца файла ';'
+        cmp     ax, 0x3b00 ; ';' - filename terminator
         je      .cd_get_parameters_of_file_1
-        ; проверка для файлов не заканчивающихся сепаратором
+        ; check for filenames not ending with terminator
         movzx   eax, byte[ebp - 33]
         add     eax, ebp
         sub     eax, 34
         cmp     esi, eax
         je      .cd_get_parameters_of_file_1
-        ; проверка конца папки
+        ; check for end of directory
         movzx   eax, byte[ebp - 1]
         add     eax, ebp
         cmp     esi, eax
@@ -376,17 +377,17 @@ fs_CdReadFolder: ;//////////////////////////////////////////////////////////////
         jbe     .unicode_parent_directory
         cld
         movsw
-        ; проверка конца файла
+        ; check for end of filename
         mov     ax, [esi]
-        cmp     ax, 0x3b00 ; сепаратор конца файла ';'
+        cmp     ax, 0x3b00 ; ';' - filename terminator
         je      .cd_get_parameters_of_file_2
-        ; проверка для файлов не заканчивающихся сепаратором
+        ; check for filenames not ending with terminator
         movzx   eax, byte[ebp - 33]
         add     eax, ebp
         sub     eax, 34
         cmp     esi, eax
         je      .cd_get_parameters_of_file_2
-        ; проверка конца папки
+        ; check for end of directory
         movzx   eax, byte[ebp - 1]
         add     eax, ebp
         cmp     esi, eax
@@ -421,62 +422,62 @@ cd_get_parameters_of_file: ;////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 cd_get_parameters_of_file_1: ;//////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        ; получаем атрибуты файла
+        ; getting file attributes
         xor     eax, eax
-        ; файл не архивировался
+        ; not an archived file
         inc     eax
         shl     eax, 1
-        ; это каталог?
+        ; is it a directory?
         test    byte[ebp - 8], 2
         jz      .file
         inc     eax
 
   .file:
-        ; метка тома не как в FAT, в этом виде отсутсвует
-        ; файл не является системным
+        ; disk label is not as in FAT, not present in that form
+        ; not a system file
         shl     eax, 3
-        ; файл является скрытым? (атрибут существование)
+        ; is it a hidden file? (existence attribute)
         test    byte[ebp - 8], 1
         jz      .hidden
         inc     eax
 
   .hidden:
         shl     eax, 1
-        ; файл всегда только для чтения, так как это CD
+        ; file is always read-only since this is CD
         inc     eax
         mov     [edi], eax
-        ; получаем время для файла
-        ; час
+        ; getting file time
+        ; hours
         movzx   eax, byte[ebp - 12]
         shl     eax, 8
-        ; минута
+        ; minutes
         mov     al, [ebp - 11]
         shl     eax, 8
-        ; секунда
+        ; seconds
         mov     al, [ebp - 10]
-        ; время создания файла
+        ; file creation time
         mov     [edi + 8], eax
-        ; время последнего доступа
+        ; file last access time
         mov     [edi + 16], eax
-        ; время последней записи
+        ; file last modification time
         mov     [edi + 24], eax
-        ; получаем дату для файла
-        ; год
+        ; getting file date
+        ; year
         movzx   eax, byte[ebp - 15]
         add     eax, 1900
         shl     eax, 8
-        ; месяц
+        ; month
         mov     al, [ebp - 14]
         shl     eax, 8
-        ; день
+        ; day
         mov     al, [ebp - 13]
-        ; дата создания файла
+        ; file creation date
         mov     [edi + 12], eax
-        ; время последнего доступа
+        ; file last access date
         mov     [edi + 20], eax
-        ; время последней записи
+        ; file last modification date
         mov     [edi + 28], eax
-        ; получаем тип данных имени
+        ; getting filename encoding
         xor     eax, eax
         test    dword[ebx + 4], 1 ; 0=ANSI, 1=UNICODE
         jnz     .unicode_1
@@ -487,7 +488,7 @@ cd_get_parameters_of_file_1: ;//////////////////////////////////////////////////
         inc     eax
         mov     [edi + 4], eax
 
-    @@: ; получаем размер файла в байтах
+    @@: ; getting file size (in bytes)
         xor     eax, eax
         mov     [edi + 32 + 4], eax
         mov     eax, [ebp - 23]
@@ -542,21 +543,21 @@ cd_find_lfn: ;//////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     [cd_appl_data], 0
         push    eax esi
-        ; 16 сектор начало набора дескрипторов томов
+        ; sector 16 - beginning of volume descriptor set
 
         call    WaitUnitReady
         cmp     [DevErrorCode], 0
         jne     .access_denied
 
         call    prevent_medium_removal
-        ; тестовое чтение
+        ; test read
         mov     [CDSectorAddress], 16
         mov     [CDDataBuf_pointer], CDDataBuf
         call    ReadCDWRetr ; _1
         cmp      [DevErrorCode], 0
         jne     .access_denied
 
-        ; вычисление последней сессии
+        ; calculating last session
         call    WaitUnitReady
         cmp     [DevErrorCode], 0
         jne     .access_denied
@@ -579,31 +580,31 @@ cd_find_lfn: ;//////////////////////////////////////////////////////////////////
         jne     .access_denied
 
   .start_check:
-        ; проверка на вшивость
+        ; dummy check
         cmp     dword[CDDataBuf + 1], 'CD00'
         jne     .access_denied
         cmp     byte[CDDataBuf + 5], '1'
         jne     .access_denied
-        ; сектор является терминатором набор дескрипторов томов?
+        ; is it a volume descriptor set terminator?
         cmp     byte[CDDataBuf], 0xff
         je      .access_denied
-        ; сектор является дополнительным и улучшенным дескриптором тома?
+        ; is it a supplementary volume descriptor?
         cmp     byte[CDDataBuf], 0x2
         jne     .start
-        ; сектор является дополнительным дескриптором тома?
+        ; is it an enhanced volume descriptor (version = 2)?
         cmp     byte[CDDataBuf + 6], 0x1
         jne     .start
 
-        ; параметры root директрории
-        mov     eax, [CDDataBuf + 0x9c + 2] ; начало root директрории
+        ; root directory parameters
+        mov     eax, [CDDataBuf + 0x9c + 2] ; root directory start
         mov     [CDSectorAddress], eax
-        mov     eax, [CDDataBuf + 0x9c + 10] ; размер root директрории
+        mov     eax, [CDDataBuf + 0x9c + 10] ; root directory size
         cmp     byte[esi], 0
         jnz     @f
         mov     [cd_current_pointer_of_input], CDDataBuf + 0x9c
         jmp     .done
 
-    @@: ; начинаем поиск
+    @@: ; beginning search
 
   .mainloop:
         dec     [CDSectorAddress]
@@ -611,7 +612,7 @@ cd_find_lfn: ;//////////////////////////////////////////////////////////////////
   .read_to_buffer:
         inc     dword[CDSectorAddress]
         mov     [CDDataBuf_pointer], CDDataBuf
-        call    ReadCDWRetr ; читаем сектор директории
+        call    ReadCDWRetr ; reading directory sector
         cmp     [DevErrorCode], 0
         jne     .access_denied
         push    ebp
@@ -619,11 +620,11 @@ cd_find_lfn: ;//////////////////////////////////////////////////////////////////
         pop     ebp
         jnc     .found
         sub     eax, 2048
-        ; директория закончилась?
+        ; end of directory?
         cmp     eax, 0
         ja      .read_to_buffer
 
-        ; нет искомого элемента цепочки
+        ; needed entry not found
 
   .access_denied:
         pop     esi eax
@@ -632,20 +633,20 @@ cd_find_lfn: ;//////////////////////////////////////////////////////////////////
         ret
 
   .found:
-        ; искомый элемент цепочки найден
-        ; конец пути файла
+        ; needed entry found
+        ; end of filename
         cmp    byte[esi - 1], 0
         jz    .done
 
   .nested:
         mov     eax, [cd_current_pointer_of_input]
         push    dword[eax + 2]
-        pop     dword[CDSectorAddress] ; начало директории
-        mov     eax, [eax + 2 + 8] ; размер директории
+        pop     dword[CDSectorAddress] ; directory start
+        mov     eax, [eax + 2 + 8] ; directory size
         jmp     .mainloop
 
   .done:
-        ; указатель файла найден
+        ; pointer to file found
         test    ebp, ebp
         jz      @f
         mov     esi, ebp
@@ -683,13 +684,13 @@ cd_get_name: ;//////////////////////////////////////////////////////////////////
         mov     ebp, [cd_current_pointer_of_input_2]
         mov     [cd_current_pointer_of_input], ebp
         mov     eax, [ebp]
-        test    eax, eax ; входы закончились?
+        test    eax, eax ; end of entries?
         jz      .next_sector
-        cmp     ebp, CDDataBuf + 2048 ; буфер закончился?
+        cmp     ebp, CDDataBuf + 2048 ; end of buffer?
         jae     .next_sector
         movzx   eax, byte[ebp]
-        add     [cd_current_pointer_of_input_2], eax ; следующий вход каталога
-        add     ebp, 33 ; указатель установлен на начало имени
+        add     [cd_current_pointer_of_input_2], eax ; next directory entry
+        add     ebp, 33 ; pointer set to beginning of name
         pop     eax
         clc
         ret
@@ -734,9 +735,9 @@ cd_compare_name: ;//////////////////////////////////////////////////////////////
         jne     .name_not_coincide
 
   .coincides:
-        cmp     byte[esi], '/' ; разделитель пути, конец имени текущего элемента
+        cmp     byte[esi], '/' ; path separator, end of current element name
         je      .done
-        cmp     byte[esi], 0 ; разделитель пути, конец имени текущего элемента
+        cmp     byte[esi], 0 ; path separator, end of current element name
         je      .done
         jmp     .loop
 
@@ -746,16 +747,16 @@ cd_compare_name: ;//////////////////////////////////////////////////////////////
         ret
 
   .done:
-        ; проверка конца файла
-        cmp     word[edi], 0x3b00 ; сепаратор конца файла ';'
+        ; check for end of filename
+        cmp     word[edi], 0x3b00 ; ';' - filename terminator
         je      .done_1
-        ; проверка для файлов не заканчивающихся сепаратором
+        ; check for filenames not ending with terminator
         movzx   eax, byte[ebp - 33]
         add     eax, ebp
         sub     eax, 34
         cmp     edi, eax
         je      .done_1
-        ; проверка конца папки
+        ; check for end of directory
         movzx   eax, byte[ebp - 1]
         add     eax, ebp
         cmp     edi, eax

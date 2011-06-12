@@ -30,8 +30,9 @@ uglobal
 endg
 
 EV_SPACE   = 512
-; "виртуальный" event, используются только поля:
-; FreeEvents.next_ptr=event_start и FreeEvents.prev_ptr=event_end
+; "virtual" event, fields used:
+;   FreeEvents.next_ptr = event_start and
+;   FreeEvents.prev_ptr = event_end
 FreeEvents = event_start - event_t.next_ptr
 
 align 4
@@ -45,32 +46,32 @@ init_events: ;//////////////////////////////////////////////////////////////////
         jz      .fail
         ; eax - current event, ebx - previos event below
         mov     ecx, EV_SPACE ; current - in allocated space
-        mov     ebx, FreeEvents ; previos - начало списка
-        push    ebx ; оно же и конец потом будет
+        mov     ebx, FreeEvents ; previos - start of list
+        push    ebx ; same will be the end of list
 
     @@: mov     [ebx + event_t.next_ptr], eax
         mov     [eax + event_t.prev_ptr], ebx
         mov     ebx, eax ; previos <- current
         add     eax, sizeof.event_t ; new current
         loop    @b
-        pop     eax ; вот оно концом и стало
+        pop     eax ; and here it becomes the end of list
         mov     [ebx + event_t.next_ptr], eax
         mov     [eax + event_t.prev_ptr], ebx
 
   .fail:
         ret
 
-EVENT_WATCHED  equ 0x10000000 ; бит 28
-EVENT_SIGNALED equ 0x20000000 ; бит 29
-MANUAL_RESET   equ 0x40000000 ; бит 30
-MANUAL_DESTROY equ 0x80000000 ; бит 31
+EVENT_WATCHED  equ 0x10000000 ; bit 28
+EVENT_SIGNALED equ 0x20000000 ; bit 29
+MANUAL_RESET   equ 0x40000000 ; bit 30
+MANUAL_DESTROY equ 0x80000000 ; bit 31
 
 align 4
 ;-----------------------------------------------------------------------------------------------------------------------
 create_event: ;/////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;? Переносим event_t из списка FreeEvents в список ObjList текущего слота
-;? event_t.state устанавливаем из ecx, event_t.code косвенно из esi (если esi<>0)
+;? Moving event_t from FreeEvents list info ObjList list of current slot
+;? event_t.state is set from ecx, event_t.code is set indirectly from esi (if esi<>0)
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> esi = event data
 ;> ecx = flags
@@ -91,9 +92,9 @@ create_event: ;/////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 set_event: ;////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;? Берем новый event из FreeEvents, заполняем его поля, как указано в ecx,edx,esi
-;? и устанавливаем в список, указанный в ebx.
-;? Возвращаем сам event (в eax), и его uid (в edx)
+;? Taking new event from FreeEvents, filling its fields as specified by ecx, edx, esi
+;? and adding to list pointed by ebx.
+;? Returning event itself (in eax), and its uid (in edx)
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> ebx = start-chain "virtual" event for entry new event Right of him
 ;> ecx = flags (copied to event_t.state)
@@ -131,16 +132,16 @@ set_event: ;////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 RemoveEventTo: ;////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> eax = указатель на event, КОТОРЫЙ вставляем
-;> ebx = указатель на event, ПОСЛЕ которого вставляем
+;> eax = pointer to event, WHICH is being inserted
+;> ebx = pointer to event, AFTER which it's being inserted
 ;-----------------------------------------------------------------------------------------------------------------------
 ;# scratched: ebx,ecx
 ;# INTERNAL use !!! don't use for Call
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     ecx, eax ; ecx=eax=Self, ebx=NewLeft
         xchg    ecx, [ebx + event_t.next_ptr] ; NewLeft.next_ptr=Self, ecx=NewRight
-        cmp     eax, ecx ; стоп, себе думаю...
-        je      .break ; - а не дурак ли я?
+        cmp     eax, ecx ; stop, I'm thinking...
+        je      .break ; - what if I'm a fool?
         mov     [ecx + event_t.prev_ptr], eax ; NewRight.prev_ptr=Self
         xchg    ebx, [eax + event_t.prev_ptr] ; Self.prev_ptr=NewLeft, ebx=OldLeft
         xchg    ecx, [eax + event_t.next_ptr] ; Self.next_ptr=NewRight, ecx=OldRight
@@ -164,23 +165,23 @@ NotDummyTest: ;/////////////////////////////////////////////////////////////////
         push    edi
 
   .small:
-        ; криво как-то...
+        ; a bit askew...
         pop     edi
         pushfd
         cli
         call    pid_to_slot ; saved all registers (eax - retval)
         shl     eax, 8
         jz      RemoveEventTo.break ; POPF+RET
-        jmp     edi ; штатный возврат
+        jmp     edi ; ordinary return
 
 align 4
 ;-----------------------------------------------------------------------------------------------------------------------
 raise_event: ;//////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;? Устанавливаем данные event_t.code
-;? Если там флаг EVENT_SIGNALED уже активен - больше ничего
-;? Иначе: этот флаг взводится, за исключением случая наличия флага EVENT_WATCHED в edx
-;? В этом случае EVENT_SIGNALED взводится лишь при наличие EVENT_WATCHED в самом событии
+;? Setting up event_t.code data
+;? If EVENT_SIGNALED flag is already set - doing nothing
+;? Otherwise: this flag is being set, except if EVENT_WATCHED flag is set in edx
+;? In that case EVENT_SIGNALED is only being set if EVENT_WATCHED is present in the event itself
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax = event
 ;> ebx = uid (for Dummy testing)
@@ -230,8 +231,8 @@ align 4
 ;-----------------------------------------------------------------------------------------------------------------------
 send_event: ;///////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;? Создает новый event_t (вытаскивает из списка FreeEvents) в списке EventList
-;? целевого слота (eax=pid), с данными из esi косвенно, и state=EVENT_SIGNALED
+;? Creates new event_t (taking it from FreeEvents list) in EventList list of
+;? target slot (eax=pid), with (indirect) data from esi, and state=EVENT_SIGNALED
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax = slots pid, to sending new event
 ;> esi = pointer to sending data (in code field of new event)
@@ -282,26 +283,26 @@ Wait_events: ;//////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 Wait_events_ex: ;///////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;? Ожидание "абстрактного" события через перевод слота в 5-ю позицию.
-;? Абстрактность заключена в том, что факт события определяется функцией app_data_t.wait_test,
-;? которая задается клиентом и может быть фактически любой.
-;? Это позволяет shed-у надежно определить факт события, и не совершать "холостых" переключений,
-;? предназначенных для разборок типа "свой/чужой" внутри задачи.
+;? Waiting for an "abstract" event putting slot into 5th state.
+;? Abstractness is in the fact that event is being detected by app_data_t.wait_test function,
+;? which is provided by client and could do almost anything.
+;? This allowes shed detecting the event reliably, without making any "dummy" switches to
+;? do "our/foreign" kind of analysis inside the task.
 ;-----------------------------------------------------------------------------------------------------------------------
-;> edx = wait_test, клиентская ф-я тестирования (адрес кода)
-;> ecx = wait_param, дополнительный параметр, возможно необходимый для [wait_test]
+;> edx = wait_test, pointer to client testing function
+;> ecx = wait_param, additional argument, probably needed for [wait_test]
 ;> ebx = wait_timeout
 ;-----------------------------------------------------------------------------------------------------------------------
-;< eax = результат вызова [wait_test] (=0 => timeout)
+;< eax = [wait_test] call result (=0 => timeout)
 ;-----------------------------------------------------------------------------------------------------------------------
 ;# scratched: esi
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     esi, [current_slot]
         mov     [esi + app_data_t.wait_param], ecx
         pushad
-        mov     ebx, esi ; пока это вопрос, чего куды сувать..........
-        pushfd  ; это следствие общей концепции: пусть ф-я тестирования имеет
-        cli     ; право рассчитывать на закрытые прерывания, как при вызове из shed
+        mov     ebx, esi ; still a question, what goes where...
+        pushfd  ; consequence of general concept: allow test function to disable interrupts,
+        cli     ; like if it was called from shed
         call    edx
         popfd
         mov     [esp + 28], eax
@@ -322,12 +323,12 @@ align 4
 ;-----------------------------------------------------------------------------------------------------------------------
 wait_event: ;///////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;? Ожидание флага EVENT_SIGNALED в совершенно конкретном Event
-;? (устанавливаемого, надо полагать, через raise_event)
-;? При активном флаге MANUAL_RESET - больше ничего
-;? Иначе: флаги EVENT_SIGNALED и EVENT_WATCHED у полученного события сбрасываются,
-;? и, при активном MANUAL_DESTROY - перемещается в список ObjList текущего слота,
-;? а при не активном - уничтожается штатно (destroy_event.internal)
+;? Wait for EVENT_SIGNALED flag in a concrete Event
+;? (being set, probably, by raise_event)
+;? Doing nothing if MANUAL_RESET flag is set
+;? Otherwise: EVENT_SIGNALED and EVENT_WATCHED event flags will be reset
+;? If MANUAL_DESTROY event flag is set, event is moved to ObjList list of current slot,
+;? otherwise, event is destroyes (with destroy_event.internal)
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax = event
 ;> ebx = uid (for Dummy testing)
@@ -346,16 +347,16 @@ align 4
 get_event_ex: ;/////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? f68:14
-;? Ожидание любого события в очереди EventList текущего слота
-;? Данные события code - копируются в память приложения (косвенно по edi)
-;? При активном флаге MANUAL_RESET - больше ничего
-;? Иначе: флаги EVENT_SIGNALED и EVENT_WATCHED у полученного события сбрасываются,
-;? и, при активном MANUAL_DESTROY - перемещается в список ObjList текущего слота,
-;? а при не активном - уничтожается штатно (destroy_event.internal)
+;? Wait for any event in EventList list of current slot
+;? Event code - copied into application memory (pointed by edi)
+;? If MANUAL_RESET flag is set - doing nothing
+;? Otherwise: EVENT_SIGNALED and EVENT_WATCHED event flags will be reset
+;? If MANUAL_DESTROY event flag is set, event is moved to ObjList list of current slot,
+;? otherwise, event is destroyes (with destroy_event.internal)
 ;-----------------------------------------------------------------------------------------------------------------------
-;> edi = адрес в коде приложения для копирования данных из event_t.code
+;> edi = pointer to application memory to receive event_t.code
 ;-----------------------------------------------------------------------------------------------------------------------
-;< eax = собственно event_t (будем называть это его хэндлом)
+;< eax = pointer to event_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;# scratched: ebx, ecx, edx, esi, edi
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -383,12 +384,12 @@ align 4
 ;-----------------------------------------------------------------------------------------------------------------------
 destroy_event: ;////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;? Переносим event_t в список FreeEvents, чистим поля magic,destroy,pid,id
+;? Move event_t into FreeEvents list, clearing magic, destroy, pid, id fields
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax = event
 ;> ebx = uid (for Dummy testing)
 ;-----------------------------------------------------------------------------------------------------------------------
-;< eax = адрес объекта event_t (=0 => fail)
+;< eax = pointer to event_t (=0 => fail)
 ;-----------------------------------------------------------------------------------------------------------------------
 ;# scratched: ebx, ecx
 ;# EXPORT use
@@ -410,11 +411,11 @@ align 4
 ;-----------------------------------------------------------------------------------------------------------------------
 get_event_queue: ;//////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;? клиентская ф-я тестирования для get_event_ex
+;? Client testing function for get_event_ex
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx = адрес app_data_t слота тестирования
+;> ebx = pointer to app_data_t of slot being tested
 ;-----------------------------------------------------------------------------------------------------------------------
-;< eax = адрес объекта event_t (=0 => fail)
+;< eax = pointer to event_t (=0 => fail)
 ;-----------------------------------------------------------------------------------------------------------------------
 ;# warning:
 ;#   * don't use [TASK_BASE],[current_slot],[CURRENT_TASK] - it is not for your slot
@@ -422,7 +423,7 @@ get_event_queue: ;//////////////////////////////////////////////////////////////
 ;#   * it is not restriction for scratched registers
 ;-----------------------------------------------------------------------------------------------------------------------
         add     ebx, APP_EV_OFFSET
-        mov     eax, [ebx + app_object_t.prev_ptr] ; выбираем с конца, по принципу FIFO
+        mov     eax, [ebx + app_object_t.prev_ptr] ; checking from the end (FIFO)
         cmp     eax, ebx ; empty ???
         je      get_event_alone.ret0
 
@@ -433,11 +434,11 @@ align 4
 ;-----------------------------------------------------------------------------------------------------------------------
 get_event_alone: ;//////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;? клиентская ф-я тестирования для wait_event
+;? Client testing function for wait_event
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx = адрес app_data_t слота тестирования
+;> ebx = pointer to app_data_t of slot being tested
 ;-----------------------------------------------------------------------------------------------------------------------
-;< eax = адрес объекта event_t (=0 => fail)
+;< eax = pointer to event_t (=0 => fail)
 ;-----------------------------------------------------------------------------------------------------------------------
 ;# warning:
 ;#   * don't use [TASK_BASE],[current_slot],[CURRENT_TASK] - it is not for your slot
@@ -463,7 +464,7 @@ sys_sendwindowmsg: ;////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         dec     ebx
         jnz     .ret ; subfunction==1 ?
-;       pushfd  ; а нафига?
+;       pushfd  ; what for?
         cli
         sub     ecx, 2
         je      .sendkey
@@ -486,7 +487,7 @@ sys_sendwindowmsg: ;////////////////////////////////////////////////////////////
         mov     [KEY_COUNT + 1 + eax], dl
 
   .result:
-        setae   byte[esp + 32] ; считаем, что исходно: dword[esp+32]==72
+        setae   byte[esp + 32] ; initially, dword[esp+32]==72
 
   .retf:
 ;       popfd
@@ -500,9 +501,9 @@ sys_getevent: ;/////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? f11
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     ebx, [current_slot] ; пока это вопрос, чего куды сувать..........
-        pushfd  ; это следствие общей концепции: пусть ф-я тестирования имеет
-        cli     ; право рассчитывать на закрытые прерывания, как при вызове из shed
+        mov     ebx, [current_slot] ; still a question, what goes where...
+        pushfd  ; consequence of general concept: allow test function to disable interrupts,
+        cli     ; like if it was called from shed
         call    get_event_for_app
         popfd
         mov     [esp + 32], eax
@@ -530,11 +531,11 @@ align 4
 ;-----------------------------------------------------------------------------------------------------------------------
 get_event_for_app: ;////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;? клиентская ф-я тестирования для приложений (f10,f23)
+;? Client test function for applcations (f10,f23)
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx = адрес app_data_t слота тестирования
+;> ebx = pointer to app_data_t of slot being tested
 ;-----------------------------------------------------------------------------------------------------------------------
-;< eax = номер события (=0 => no events)
+;< eax = pointer to event_t (=0 => no events)
 ;-----------------------------------------------------------------------------------------------------------------------
 ;# used from f10,f11,f23
 ;# warning:
@@ -548,11 +549,11 @@ get_event_for_app: ;////////////////////////////////////////////////////////////
         mov     ecx, [edi + task_data_t.event_mask]
 
   .loop:
-        ; пока не исчерпаем все биты маски
-        bsr     eax, ecx ; находим ненулевой бит маски (31 -> 0)
-        jz      .no_events ; исчерпали все биты маски, но ничего не нашли ???
-        btr     ecx, eax ; сбрасываем проверяемый бит маски
-        ; переходим на обработчик этого (eax) бита
+        ; until we reset all mask bits
+        bsr     eax, ecx ; find non-zero mask bit (31 -> 0)
+        jz      .no_events ; all mask bits reset but didn't find anything???
+        btr     ecx, eax ; reset mask bit being checked
+        ; jumping to this (eax) bit handler
         cmp     eax, 16
         jae     .IRQ ; eax=[16..31]=retvals, events irq0..irq15
         cmp     eax, 9
@@ -574,7 +575,7 @@ get_event_for_app: ;////////////////////////////////////////////////////////////
         ret
 
   .IRQ:
-        ; TODO: сделать так же, как и для FlagAutoReset (BgrRedraw,Mouse,IPC,Stack,Debug)
+        ; TODO: do the same as for FlagAutoReset (BgrRedraw,Mouse,IPC,Stack,Debug)
         mov     edx, [irq_owner + eax * 4 - 64] ; eax==16+irq
         cmp     edx, [edi + task_data_t.pid]
         jne     .loop

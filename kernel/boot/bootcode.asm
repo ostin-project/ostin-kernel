@@ -349,7 +349,7 @@ end if
         mov     [es:BOOT_IDE_BASE_ADDR], cx
 
   .nopci:
-        mov     al, 0xf6 ; Сброс клавиатуры, разрешить сканирование
+        mov     al, 0xf6 ; reset keyboard, allow scanning
         out     0x60, al
         xor     cx, cx
 
@@ -752,7 +752,7 @@ end virtual
 
 if KCONFIG_LANGUAGE eq ru
 
-        ; подождите 5 секунд, 4/3/2 секунды, 1 секунду
+        ; wait for 5 "секунд", 4/3/2 "секунды", 1 "секунду"
         cmp     al, 5
         mov     cl, ' '
         jae     @f
@@ -774,7 +774,7 @@ else if KCONFIG_LANGUAGE eq et
 
 else
 
-        ; wait 5/4/3/2 seconds, 1 second
+        ; wait for 5/4/3/2 "seconds", 1 "second"
         cmp     al, 1
         mov     cl, 's'
         ja      @f

@@ -720,9 +720,8 @@ end if
         shl     eax, 2
         mov     [CPU_FREQ], eax ; save tsc / sec
 
-        ; вообще-то производительность в данном конкретном месте
-        ; совершенно некритична, но чтобы заткнуть любителей
-        ; оптимизирующих компиляторов ЯВУ...
+        ; actually, performance in this particular place is not critical, but just to shut optimizing HLL compiler
+        ; fans up...
 ;       mov     ebx, 1000000
 ;       div     ebx
         mov     edx, 2251799814
@@ -3103,8 +3102,8 @@ endg
         ; now counter in ecx
         ; (edx:eax) esi:edi => edx:esi
         ; Fast Call MSR can't be destroy
-        ; Но MSR_AMD_EFER можно изменять, т.к. в этом регистре лиш
-        ; включаются/выключаются расширенные возможности
+        ; But MSR_AMD_EFER could be changed since this register only
+        ; turns on/off extended capabilities
         cmp     edx, MSR_SYSENTER_CS
         je      @f
         cmp     edx, MSR_SYSENTER_ESP
