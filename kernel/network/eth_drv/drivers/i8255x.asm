@@ -15,8 +15,8 @@
 ;; You should have received a copy of the GNU General Public License along with this program. If not, see
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
-;; References:
-;; * eepro100 driver - etherboot 5.0.6 project
+;# References:
+;# * eepro100 driver - etherboot 5.0.6 project
 ;;======================================================================================================================
 
 rxfd_status      = eth_data_start

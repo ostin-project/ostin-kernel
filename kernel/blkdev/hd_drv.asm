@@ -13,10 +13,8 @@
 ;; You should have received a copy of the GNU General Public License along with this program. If not, see
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
-
-; Low-level driver for HDD access
-; DMA support by Mario79
-; Access through BIOS by diamond
+;? Low-level driver for HDD access
+;;======================================================================================================================
 
 align 4
 ;-----------------------------------------------------------------------------------------------------------------------

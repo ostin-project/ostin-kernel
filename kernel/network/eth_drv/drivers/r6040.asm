@@ -14,8 +14,8 @@
 ;; You should have received a copy of the GNU General Public License along with this program. If not, see
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
-;; References:
-;; * R6040.c - linux driver
+;# References:
+;# * R6040.c - linux driver
 ;;======================================================================================================================
 
 ;; A few user-configurable values.

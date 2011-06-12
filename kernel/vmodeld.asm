@@ -13,15 +13,9 @@
 ;; You should have received a copy of the GNU General Public License along with this program. If not, see
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
-
-; Load of videomode driver in memory
-;
-; (driver is located at VMODE_BASE  - 32kb) // if this area not occuped anything
-;
-; Author: Trans
-; Date:  19.07.2003
-;
-; Include in MeOS kernel and compile with FASM
+;? Load of videomode driver in memory
+;? (driver is located at VMODE_BASE  - 32kb) // if this area not occuped anything
+;;======================================================================================================================
 
         ; LOAD VIDEOMODE DRIVER
         ; If vmode.mdr file not found

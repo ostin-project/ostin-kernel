@@ -15,8 +15,8 @@
 ;; You should have received a copy of the GNU General Public License along with this program. If not, see
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
-;; References:
-;; * SIS900 driver - etherboot 5.0.6 project
+;# References:
+;# * SIS900 driver - etherboot 5.0.6 project
 ;;======================================================================================================================
 
 ;********************************************************************
@@ -25,11 +25,6 @@
 ;   * Update Poll routine to support packet fragmentation
 ;   * Add additional support for other sis900 based cards
 ;********************************************************************
-
-; comment the next line out if you don't want debug info printed
-; on the debug board. This option adds a lot of bytes to the driver
-; so it's worth to comment it out.
-;SIS900_DEBUG equ 1
 
 ;* buffers and descriptors
 cur_rx db 0

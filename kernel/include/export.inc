@@ -13,8 +13,8 @@
 ;; You should have received a copy of the GNU General Public License along with this program. If not, see
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
-
-; Macroinstruction for making export section
+;? Macroinstruction for making export section
+;;======================================================================================================================
 
 
 macro export dllname,[label,string]

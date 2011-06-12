@@ -13,15 +13,9 @@
 ;; You should have received a copy of the GNU General Public License along with this program. If not, see
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
-
-; Call of videomode driver's functions
-;
-; (Add in System function 21 (and/or 26) as a subfunction 13)
-;
-; Author: Trans
-; Date:  19.07.2003
-;
-; Include in MeOS kernel and compile with FASM
+;? Call of videomode driver's functions
+;? (Add in System function 21 (and/or 26) as a subfunction 13)
+;;======================================================================================================================
 
 uglobal
   old_screen_width  dd ?

@@ -13,15 +13,8 @@
 ;; You should have received a copy of the GNU General Public License along with this program. If not, see
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
-
-;*************************************************************
-;* 13.02.2010 Find all partition and check supported FS
-;* 12.07.2007 Check all 4 entry of MBR and EMBR
-;* 29.04.2006 Elimination of hangup after the
-;*             expiration hd_wait_timeout -  Mario79
-;* 28.01.2006 find all Fat16/32 partition in all input point
-;*            to MBR - Mario79
-;*************************************************************
+;? Find all partitions with supported file systems
+;;======================================================================================================================
 
 uglobal
   ;******************************************************

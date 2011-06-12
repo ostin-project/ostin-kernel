@@ -13,12 +13,11 @@
 ;; You should have received a copy of the GNU General Public License along with this program. If not, see
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
-
-;**********************************************************
-; Direct work with CD device (ATAPI)
-;**********************************************************
-; Source code author (partial) - Vladimir G. Kulakov.
-; Adoption, improvements and development - Mario79, <Lrz>
+;? Direct work with CD (ATAPI) devices
+;;======================================================================================================================
+;# References:
+;# * "Programming on the hardware level" book by V.G. Kulakov
+;;======================================================================================================================
 
 MaxRetr        equ 10       ; maximum retry count
 BSYWaitTime    equ 1000     ; maximum wait time for busy -> ready transition (in ticks)

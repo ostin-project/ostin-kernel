@@ -14,8 +14,8 @@
 ;; You should have received a copy of the GNU General Public License along with this program. If not, see
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
-;; References:
-;; * RFC 792 "Internet Control Message Protocol"
+;# References:
+;# * RFC 792 "Internet Control Message Protocol"
 ;;======================================================================================================================
 
 struct icmp_packet_t

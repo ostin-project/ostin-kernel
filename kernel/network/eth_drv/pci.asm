@@ -13,15 +13,9 @@
 ;; You should have received a copy of the GNU General Public License along with this program. If not, see
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
-
-;***************************************************************************
-;
-;  PCI CODE FOLLOWS
-;
-;  the following functions provide access to the PCI interface.
-;  These functions are used by scan_bus, and also some ethernet drivers
-;
-;***************************************************************************
+;? The following functions provide access to the PCI interface.
+;? These functions are used by scan_bus, and also some ethernet drivers
+;;======================================================================================================================
 
 ; PCI Bus defines
 PCI_HEADER_TYPE                = 0x0e ; 8 bit

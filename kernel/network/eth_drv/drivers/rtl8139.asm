@@ -15,10 +15,10 @@
 ;; You should have received a copy of the GNU General Public License along with this program. If not, see
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
-;; References:
-;; * www.realtek.com.hw - data sheets
-;; * rtl8139.c - linux driver
-;; * 8139too.c - linux driver
+;# References:
+;# * www.realtek.com.hw - data sheets
+;# * rtl8139.c - linux driver
+;# * 8139too.c - linux driver
 ;;======================================================================================================================
 
 ETH_ALEN               = 6

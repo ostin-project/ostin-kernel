@@ -33,6 +33,7 @@ Other contributors (in alphabetic order):
   Jason Delozier <cordata51@hotmail.com>
   Johnny_B
   Juan M. Caravaca <bitrider@wanadoo.es>
+  Kaitz
   kasTIgar
   kmeaw
   <kristol@nic.fi>
@@ -42,6 +43,7 @@ Other contributors (in alphabetic order):
   Mihail Lisovin (Mihasik)
   Mihail Semenyako (mike.dld) <mike.dld@gmail.com>
   Mike Hibbett <mikeh@oceanfree.net>
+  Nable
   NoName
   Paolo Franchetti <pfranz73@tiscali.it>
   Paolo Minazzi <paolo.minazzi@inwind.it>

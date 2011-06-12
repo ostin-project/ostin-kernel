@@ -19,7 +19,6 @@
 ; The various defines for queue names can be found in stack.inc
 ;*******************************************************************
 
-
 ;uglobal
 ;  freeBuff_cnt dd ?
 ;endg

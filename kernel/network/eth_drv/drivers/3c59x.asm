@@ -21,16 +21,11 @@
 ;; HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 ;; OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ;;======================================================================================================================
-;; References:
-;; * www.3Com.com - data sheets
-;; * DP83840A.pdf - ethernet physical layer
-;; * 3c59x.c - linux driver
+;# References:
+;# * www.3Com.com - data sheets
+;# * DP83840A.pdf - ethernet physical layer
+;# * 3c59x.c - linux driver
 ;;======================================================================================================================
-
-; comment the next line out if you don't want debug info printed
-; on the debug board. This option adds a lot of bytes to the driver
-; so it's worth to comment it out.
-;E3C59X_DEBUG   equ 1
 
 ; forcing full duplex mode makes sense at some cards and link types
 E3C59X_FORCE_FD equ 1

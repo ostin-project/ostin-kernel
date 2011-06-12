@@ -13,10 +13,8 @@
 ;; You should have received a copy of the GNU General Public License along with this program. If not, see
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
-
-;-------------------------------------------------------------------------
-; Loading configuration from ini file
-;-------------------------------------------------------------------------
+;? Loading configuration from ini file
+;;======================================================================================================================
 
 iglobal
   conf_path_sect db 'path', 0

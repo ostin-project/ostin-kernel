@@ -13,12 +13,8 @@
 ;; You should have received a copy of the GNU General Public License along with this program. If not, see
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
-
-;-------------------------------------------------------------------------
-;
-;  File path partial substitution (according to configuration)
-;
-;-------------------------------------------------------------------------
+;? File path partial substitution (according to configuration)
+;;======================================================================================================================
 
 iglobal
   ; pointer to memory for path replace table,

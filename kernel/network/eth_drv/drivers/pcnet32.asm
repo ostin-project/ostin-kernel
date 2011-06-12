@@ -15,8 +15,8 @@
 ;; You should have received a copy of the GNU General Public License along with this program. If not, see
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
-;; References:
-;; * PCNet32 driver - etherboot 5.0.6 project
+;# References:
+;# * PCNet32 driver - etherboot 5.0.6 project
 ;;======================================================================================================================
 
 PCNET32_PORT_AUI     = 0x00

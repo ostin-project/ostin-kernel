@@ -14,8 +14,8 @@
 ;; You should have received a copy of the GNU General Public License along with this program. If not, see
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
-;; References:
-;; * PCI bus scanning code - etherboot 5.0.6 project
+;# References:
+;# * PCI bus scanning code - etherboot 5.0.6 project
 ;;======================================================================================================================
 
 ETHER_IP   equ 0x0008 ; Reversed from 0800 for intel

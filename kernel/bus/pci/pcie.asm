@@ -24,10 +24,11 @@ align 4
 pci_ext_config: ;///////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? PCIe extended (memory-mapped) config space detection
-;? WARNINGs:
-;?   1) Very Experimental!
-;?   2) direct HT-detection (no ACPI or BIOS service used)
-;?   3) Only AMD/HT processors currently supported
+;-----------------------------------------------------------------------------------------------------------------------
+;# WARNINGs:
+;#   1) Very Experimental!
+;#   2) direct HT-detection (no ACPI or BIOS service used)
+;#   3) Only AMD/HT processors currently supported
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     ebx, [mmio_pcie_cfg_addr]
         or      ebx, ebx

@@ -13,9 +13,8 @@
 ;; You should have received a copy of the GNU General Public License along with this program. If not, see
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
-
-; Detect all BIOS hard drives.
-; diamond, 2008
+;? Detect all BIOS hard drives.
+;;======================================================================================================================
 
         xor     cx, cx
         mov     es, cx

@@ -13,8 +13,8 @@
 ;; You should have received a copy of the GNU General Public License along with this program. If not, see
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
-
-; Query physical memory map from BIOS.
+;? Query physical memory map from BIOS
+;;======================================================================================================================
 
 struct phoenix_smap_addr_range_t range64_t
   type   dd ?

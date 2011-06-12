@@ -13,9 +13,8 @@
 ;; You should have received a copy of the GNU General Public License along with this program. If not, see
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
-
-; Virtual-8086 mode manager
-; diamond, 2007, 2008
+;? Virtual-8086 mode manager
+;;======================================================================================================================
 
 struct v86_machine_t
   pagedir dd ? ; page directory
