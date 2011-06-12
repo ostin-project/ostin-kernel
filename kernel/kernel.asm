@@ -1,7 +1,7 @@
 ;;======================================================================================================================
 ;;///// kernel.asm ///////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
 ;;======================================================================================================================
-;; (c) 2004-2010 KolibriOS team <http://kolibrios.org/>
+;; (c) 2004-2011 KolibriOS team <http://kolibrios.org/>
 ;; (c) 2000-2004 MenuetOS <http://menuetos.net/>
 ;;======================================================================================================================
 ;; This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
@@ -165,8 +165,8 @@ B32:
 
         ; CLEAR 0x280000 - HEAP_BASE
         xor     eax, eax
-        mov     edi, 0x280000
-        mov     ecx, (HEAP_BASE - OS_BASE - 0x280000) / 4
+        mov     edi, CLEAN_ZONE
+        mov     ecx, (HEAP_BASE - OS_BASE - CLEAN_ZONE) / 4
         cld
         rep     stosd
 
@@ -181,7 +181,7 @@ B32:
 
         ; SAVE & CLEAR 0-0xffff
         xor     esi, esi
-        mov     edi, 0x2f0000
+        mov     edi, BOOT_VAR - OS_BASE
         mov     ecx, 0x10000 / 4
         rep     movsd
         mov     edi, 0x1000
@@ -5308,7 +5308,7 @@ system_shutdown: ;//////////////////////////////////////////////////////////////
         mov     ecx, 1000
         rep     movsb
 
-        mov     esi, OS_BASE + 0x2f0000 ; restore 0x0 - 0xffff
+        mov     esi, BOOT_VAR ; restore 0x0 - 0xffff
         mov     edi, OS_BASE
         mov     ecx, 0x10000 / 4
         cld

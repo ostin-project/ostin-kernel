@@ -1,7 +1,7 @@
 ;;======================================================================================================================
 ;;///// pci32.asm ////////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
 ;;======================================================================================================================
-;; (c) 2004-2010 KolibriOS team <http://kolibrios.org/>
+;; (c) 2004-2011 KolibriOS team <http://kolibrios.org/>
 ;; (c) 2002 MenuetOS <http://menuetos.net/>
 ;;======================================================================================================================
 ;; This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
@@ -567,9 +567,9 @@ sys_pcibios: ;//////////////////////////////////////////////////////////////////
         cmp     ebp, 1 ; PCI_FUNCTION_ID
         jnz     .not_PCI_BIOS_PRESENT
         mov     edx, 'PCI '
-        mov     al, [OS_BASE + 0x2f0000 + BOOT_PCI_DATA]
-        mov     bx, word[OS_BASE + 0x2f0000 + BOOT_PCI_DATA + 2]
-        mov     cl, [OS_BASE + 0x2f0000 + BOOT_PCI_DATA + 1]
+        mov     al, [BOOT_VAR + BOOT_PCI_DATA]
+        mov     bx, word[BOOT_VAR + BOOT_PCI_DATA + 2]
+        mov     cl, [BOOT_VAR + BOOT_PCI_DATA + 1]
         xor     ah, ah
         jmp     .return_abcd
 

@@ -1,7 +1,8 @@
 ;;======================================================================================================================
 ;;///// const.inc ////////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
 ;;======================================================================================================================
-;; (c) 2006-2010 KolibriOS team <http://kolibrios.org/>
+;; (c) 2011 Ostin project <http://ostin.googlecode.com/>
+;; (c) 2006-2011 KolibriOS team <http://kolibrios.org/>
 ;;======================================================================================================================
 ;; This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
 ;; License as published by the Free Software Foundation, either version 2 of the License, or (at your option) any later
@@ -281,6 +282,7 @@ RAMDISK             = OS_BASE + 0x0100000
 RAMDISK_FAT         = OS_BASE + 0x0280000
 FLOPPY_FAT          = OS_BASE + 0x0282000
 
+CLEAN_ZONE          = 0x284000
 IDE_DMA             = 0x284000
 
 BgrAuxTable         = OS_BASE + 0x0298000
@@ -327,7 +329,9 @@ BgrDrawMode         = OS_BASE + 0x033bff4
 BgrDataWidth        = OS_BASE + 0x033bff8
 BgrDataHeight       = OS_BASE + 0x033bffc
 
-sys_pgmap           = OS_BASE + 0x033c000
+BOOT_VAR            = OS_BASE + 0x0340000
+
+sys_pgmap           = OS_BASE + 0x0350000
 
 ;UPPER_KERNEL_PAGES = OS_BASE + 0x0400000 ; unused
 
