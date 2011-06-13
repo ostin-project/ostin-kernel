@@ -1,6 +1,7 @@
 ;;======================================================================================================================
 ;;///// bootcode.asm /////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
 ;;======================================================================================================================
+;; (c) 2011 Ostin project <http://ostin.googlecode.com/>
 ;; (c) 2004-2011 KolibriOS team <http://kolibrios.org/>
 ;; (c) 2000-2004 MenuetOS <http://menuetos.net/>
 ;;======================================================================================================================
@@ -14,6 +15,42 @@
 ;; You should have received a copy of the GNU General Public License along with this program. If not, see
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
+
+; those constants could be changed by l10n files, included below
+
+boot.FRAME.VD   = 0xba
+boot.FRAME.HD   = 0xcd
+boot.FRAME.TLDD = 0xc9
+boot.FRAME.TRDD = 0xbb
+boot.FRAME.BLDD = 0xc8
+boot.FRAME.BRDD = 0xbc
+
+boot.FRAME.VS   = 0xb3
+boot.FRAME.HS   = 0xc4
+boot.FRAME.TLSS = 0xda
+boot.FRAME.TRSS = 0xbf
+boot.FRAME.BLSS = 0xc0
+boot.FRAME.BRSS = 0xd9
+
+match =en, KCONFIG_LANGUAGE
+{
+include "boot_en.asm"
+}
+match =ru, KCONFIG_LANGUAGE
+{
+include "boot_ru.asm"
+}
+match =et, KCONFIG_LANGUAGE
+{
+include "boot_et.asm"
+}
+match =ge, KCONFIG_LANGUAGE
+{
+include "boot_ge.asm"
+}
+
+include "bootvesa.asm"
+include "charset16.asm"
 
 ;;======================================================================================================================
 ;;///// 16 BIT FUNCTIONS ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -45,13 +82,14 @@ printplain: ;///////////////////////////////////////////////////////////////////
 ;> si = string
 ;-----------------------------------------------------------------------------------------------------------------------
         pusha
-        lodsb
 
-    @@: call    putchar
-        lodsb
+    @@: call    charset16.utf8_char_to_ansi
         test    al, al
-        jnz     @b
-        popa
+        jz      @f
+        call    putchar
+        jmp     @b
+
+    @@: popa
         ret
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -89,11 +127,11 @@ setcursor: ;////////////////////////////////////////////////////////////////////
         int     0x10
         ret
 
-macro _setcursor row, column
-{
-        mov     dx, row * 256 + column
-        call    setcursor
-}
+;///macro _setcursor row, column
+;///{
+;///        mov     dx, row * 256 + column
+;///        call    setcursor
+;///}
 
 ;-----------------------------------------------------------------------------------------------------------------------
 boot_read_floppy: ;/////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -170,7 +208,38 @@ FirstDataSector dw 0 ; begin of data
 ;;///// 16 BIT CODE ////////////////////////////////////////////////////////////////////////////////////////////////////
 ;;======================================================================================================================
 
-include "bootvesa.asm"
+;-----------------------------------------------------------------------------------------------------------------------
+boot.draw_frame: ;//////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> es = 0xb800
+;> ah = pack[4(bg color), 4(fg color)]
+;-----------------------------------------------------------------------------------------------------------------------
+        xor     di, di
+
+        mov     al, boot.FRAME.TLDD
+        stosw
+        mov     al, boot.FRAME.HD
+        mov     cx, 78
+        rep     stosw
+        mov     al, boot.FRAME.TRDD
+        stosw
+
+        mov     cx, 23
+    @@: mov     al, boot.FRAME.VD
+        stosw
+        add     di, 78 * 2
+        stosw
+        loop    @b
+
+        mov     al, boot.FRAME.BLDD
+        stosw
+        mov     al, boot.FRAME.HD
+        mov     cx, 78
+        rep     stosw
+        mov     al, boot.FRAME.BRDD
+        stosw
+
+        ret
 
 ;-----------------------------------------------------------------------------------------------------------------------
 start_of_code: ;////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -205,30 +274,9 @@ start_of_code: ;////////////////////////////////////////////////////////////////
         mov     ax, 3
         int     0x10
 
-if KCONFIG_LANGUAGE eq ru
+if defined boot.init_l10n
 
-        mov     bp, RU_FNT1 ; RU_FNT1 - First part
-        mov     bx, 0x1000 ; 768 bytes
-        mov     cx, 0x30 ; 48 symbols
-        mov     dx, 0x80 ; 128 - position of first symbol
-        mov     ax, 0x1100
-        int     0x10
-
-        mov     bp, RU_FNT2 ; RU_FNT2 - Second part
-        mov     bx, 0x1000 ; 512 bytes
-        mov     cx, 0x20 ; 32 symbols
-        mov     dx, 0xe0 ; 224 - position of first symbol
-        mov     ax, 0x1100
-        int     0x10
-
-else if KCONFIG_LANGUAGE eq et
-
-        mov     bp, ET_FNT ; ET_FNT1
-        mov     bx, 0x1000
-        mov     cx, 255 ; 256 symbols
-        xor     dx, dx ; 0 - position of first symbol
-        mov     ax, 0x1100
-        int     0x10
+        call    boot.init_l10n
 
 end if
 
@@ -236,43 +284,51 @@ end if
         push    0xb800
         pop     es
         xor     di, di
-        mov     ah, 1 * 16 + 15
+        mov     ah, 0x1f ; pack[4(bg color), 4(fg color)]
 
-        ; draw top
-        mov     si, d80x25_top
-        mov     cx, d80x25_top_num * 80
+        mov     al, ' '
+        mov     cx, 80 * 25
+        rep     stosw
 
-    @@: lodsb
-        stosw
-        loop    @b
 
-        ; draw spaces
-        mov     si, space_msg
-        mov     dx, 25 - d80x25_top_num - d80x25_bottom_num
+        call    boot.draw_frame
 
-  .dfl1:
-        push    si
-        mov     cx, 80
+;///        ; draw top
+;///        mov     si, d80x25_top
+;///        mov     cx, d80x25_top_num * 80
+;///
+;///    @@: lodsb
+;///        stosw
+;///        loop    @b
+;///
+;///        ; draw spaces
+;///        mov     si, space_msg
+;///        mov     dx, 25 - d80x25_top_num - d80x25_bottom_num
+;///
+;///  .dfl1:
+;///        push    si
+;///        mov     cx, 80
+;///
+;///    @@: lodsb
+;///        stosw
+;///        loop    @b
+;///
+;///        pop     si
+;///        dec     dx
+;///        jnz     .dfl1
+;///
+;///        ; draw bottom
+;///        mov     si, d80x25_bottom
+;///        mov     cx, d80x25_bottom_num * 80
+;///
+;///    @@: lodsb
+;///        stosw
+;///        loop    @b
+;///
+;///        mov     byte[space_msg + 80], 0 ; now space_msg is null terminated
 
-    @@: lodsb
-        stosw
-        loop    @b
-
-        pop     si
-        dec     dx
-        jnz     .dfl1
-
-        ; draw bottom
-        mov     si, d80x25_bottom
-        mov     cx, d80x25_bottom_num * 80
-
-    @@: lodsb
-        stosw
-        loop    @b
-
-        mov     byte[space_msg + 80], 0 ; now space_msg is null terminated
-
-        _setcursor d80x25_top_num, 0
+        mov     dx, d80x25_top_num * 256 + 0
+        call    setcursor
 
         ; TEST FOR 386+
         mov     bx, 0x4000
@@ -383,15 +439,16 @@ end if
         mov     [es:BOOT_APM_VERSION], ax ; Save APM Version
         mov     [es:BOOT_APM_FLAGS], cx ; Save APM flags
 
-        ; Write APM ver ----
-        and     ax, 0x0f0f
-        add     ax, '00'
-        mov     si, msg_apm
-        mov     [si + 5], ah
-        mov     [si + 7], al
-        _setcursor 0, 3
-        call    printplain
-        ; ------------------
+;///        ; Write APM ver ----
+;///        and     ax, 0x0f0f
+;///        add     ax, '00'
+;///        mov     si, msg_apm
+;///        mov     [si + 5], ah
+;///        mov     [si + 7], al
+;///        mov     dx, 0 * 256 + 3
+;///        call    setcursor
+;///        call    printplain
+;///        ; ------------------
 
         mov     ax, 0x5304 ; Disconnect interface
         xor     bx, bx
@@ -406,7 +463,8 @@ end if
         mov     [es:BOOT_APM_DATA16_SEG], dx
 
   .apm_end:
-        _setcursor d80x25_top_num, 0
+        mov     dx, d80x25_top_num * 256 + 0
+        call    setcursor
 
         ; CHECK current of code
         cmp     [cfgmanager.loader_block], -1
@@ -420,7 +478,7 @@ end if
 
   .noloaderblock:
         ; DISPLAY VESA INFORMATION
-        call    print_vesa_info
+;///        call    print_vesa_info
         call    calc_vmodes_table
         call    check_first_parm ; check and enable cursor_pos
 
@@ -464,7 +522,8 @@ cfgmanager:
         mov     byte[di + preboot_vrrm - preboot_device], 2
 
     @@: ; notify user
-        _setcursor 5, 2
+        mov     dx, 5 * 256 + 2
+        call    setcursor
 
         mov     si, linef
         call    printplain
@@ -480,7 +539,8 @@ cfgmanager:
         mov     word[.timer + 2], cs
 
   .printcfg:
-        _setcursor 9, 0
+        mov     dx, 9 * 256 + 0
+        call    setcursor
         mov     si, current_cfg_msg
         call    print
         mov     si, curvideo_msg
@@ -517,7 +577,7 @@ cfgmanager:
         push    di
 
   .write_remark:
-        lodsb
+        call    charset16.utf8_char_to_ansi
         test    al, al
         jz      @f
         stosw
@@ -529,7 +589,8 @@ cfgmanager:
         loop    .write_remarks
 
   .wait:
-        _setcursor 25, 0 ; out of screen
+        mov     dx, 25 * 256 + 0 ; out of screen
+        call    setcursor
         ; set timer interrupt handler
         cli
         push    0
@@ -554,9 +615,10 @@ cfgmanager:
         mov     [es:8 * 4], eax
         mov     [.timer], eax
 
-        _setcursor 7, 0
-        mov     si, space_msg
-        call    printplain
+        mov     dx, 7 * 256 + 0
+        call    setcursor
+;///        mov     si, space_msg
+;///        call    printplain
         ; clear remarks and restore normal attributes
         push    es
         mov     di, ((21 - num_remarks) * 80 + 2) * 2
@@ -585,13 +647,15 @@ cfgmanager:
         jz      .change_c
         cmp     al, 'd'
         jnz     .show_remarks
-        _setcursor 15, 0
+        mov     dx, 15 * 256 + 0
+        call    setcursor
         mov     si, bdev
         call    print
         mov     bx, '14'
         call    getkey
         mov     [preboot_device], al
-        _setcursor 13, 0
+        mov     dx, 13 * 256 + 0
+        call    setcursor
 
   .d:
         mov     [.bSettingsChanged], 1
@@ -601,7 +665,8 @@ cfgmanager:
   .change_a:
   .loops:
         call    draw_vmodes_table
-        _setcursor 25, 0 ; out of screen
+        mov     dx, 25 * 256 + 0 ; out of screen
+        call    setcursor
         xor     ax, ax
         int     0x16
 ;       call    clear_table_cursor ; clear current position of cursor
@@ -677,7 +742,8 @@ cfgmanager:
         jmp    .d
 
   .change_b:
-        _setcursor 15, 0
+        mov     dx, 15 * 256 + 0
+        call    setcursor
 ;       mov     si, ask_dma
 ;       call    print
 ;       mov     bx, '13'
@@ -688,17 +754,20 @@ cfgmanager:
         mov     bx, '12'
         call    getkey
         mov     [preboot_biosdisk], al
-        _setcursor 11, 0
+        mov     dx, 11 * 256 + 0
+        call    setcursor
         jmp     .d
 
   .change_c:
-        _setcursor 15, 0
+        mov     dx, 15 * 256 + 0
+        call    setcursor
         mov     si, vrrmprint
         call    print
         mov     bx, '12'
         call    getkey
         mov     [preboot_vrrm], al
-        _setcursor 12, 0
+        mov     dx, 12 * 256 + 0
+        call    setcursor
         jmp     .d
 
   .say_on_off:
@@ -746,46 +815,48 @@ end virtual
         xor     dx, dx
         div     bx
 
-if KCONFIG_LANGUAGE eq ru
-
-        ; wait for 5 "секунд", 4/3/2 "секунды", 1 "секунду"
-        cmp     al, 5
-        mov     cl, ' '
-        jae     @f
-        cmp     al, 1
-        mov     cl, 227 ; 'у'
-        jz      @f
-        mov     cl, 235 ; 'ы'
-
-    @@: mov     [time_str + 9], cl
-
-else if KCONFIG_LANGUAGE eq et
-
-        cmp     al, 1
-        ja      @f
-        mov     [time_str + 9], ' '
-        mov     [time_str + 10], ' '
-
-    @@:
-
-else
-
-        ; wait for 5/4/3/2 "seconds", 1 "second"
-        cmp     al, 1
-        mov     cl, 's'
-        ja      @f
-        mov     cl, ' '
-
-    @@: mov     [time_str + 9], cl
-
-end if
+;///if KCONFIG_LANGUAGE eq ru
+;///
+;///        ; wait for 5 "секунд", 4/3/2 "секунды", 1 "секунду"
+;///        cmp     al, 5
+;///        mov     cl, ' '
+;///        jae     @f
+;///        cmp     al, 1
+;///        mov     cl, 227 ; 'у'
+;///        jz      @f
+;///        mov     cl, 235 ; 'ы'
+;///
+;///    @@: mov     [time_str + 9], cl
+;///
+;///else if KCONFIG_LANGUAGE eq et
+;///
+;///        cmp     al, 1
+;///        ja      @f
+;///        mov     [time_str + 9], ' '
+;///        mov     [time_str + 10], ' '
+;///
+;///    @@:
+;///
+;///else
+;///
+;///        ; wait for 5/4/3/2 "seconds", 1 "second"
+;///        cmp     al, 1
+;///        mov     cl, 's'
+;///        ja      @f
+;///        mov     cl, ' '
+;///
+;///    @@: mov     [time_str + 9], cl
+;///
+;///end if
 
         add     al, '0'
         mov     [time_str + 1], al
         mov     si, time_msg
-        _setcursor 7, 0
+        mov     dx, 7 * 256 + 0
+        call    setcursor
         call    print
-        _setcursor 25, 0
+        mov     dx, 25 * 256 + 0
+        call    setcursor
         popad
         pop     ds
         iret
@@ -799,14 +870,17 @@ end if
 
   .continue:
         sti
-        _setcursor 6, 0
-        mov     si, space_msg
-        call    printplain
-        call    printplain
-        _setcursor 6, 0
+        mov     dx, 6 * 256 + 0
+        call    setcursor
+;///        mov     si, space_msg
+;///        call    printplain
+;///        call    printplain
+        mov     dx, 6 * 256 + 0
+        call    setcursor
         mov     si, loading_msg
         call    print
-        _setcursor 15, 0
+        mov     dx, 15 * 256 + 0
+        call    setcursor
         cmp     [.bSettingsChanged], 0
         jz      .load
         cmp     [.loader_block], -1
@@ -830,7 +904,7 @@ end if
         cmp     al, 'y'
         jnz     .waityn
         call    putchar
-        mov     byte[space_msg + 80], 186
+;///        mov     byte[space_msg + 80], 186
 
         pop     eax
         push    cs
@@ -844,11 +918,13 @@ end if
   .cont:
         push    cs
         pop     ds
-        mov     si, space_msg
+;///        mov     si, space_msg
         mov     byte[si + 80], 0
-        _setcursor 15, 0
+        mov     dx, 15 * 256 + 0
+        call    setcursor
         call    printplain
-        _setcursor 15, 0
+        mov     dx, 15 * 256 + 0
+        call    setcursor
 
   .load:
 

@@ -1,6 +1,7 @@
 ;;======================================================================================================================
 ;;///// kernel.asm ///////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
 ;;======================================================================================================================
+;; (c) 2011 Ostin project <http://ostin.googlecode.com/>
 ;; (c) 2004-2011 KolibriOS team <http://kolibrios.org/>
 ;; (c) 2000-2004 MenuetOS <http://menuetos.net/>
 ;;======================================================================================================================
@@ -75,18 +76,6 @@ version db "Kolibri OS  version 0.7.7.0+     ", 13, 10, 13, 10, 0
 
 include "boot/preboot.inc"
 include "boot/bootstr.inc"
-
-if KCONFIG_LANGUAGE eq en
-include "boot/booteng.inc"
-else if KCONFIG_LANGUAGE eq ru
-include "boot/bootru.inc"
-include "boot/ru.inc"
-else if KCONFIG_LANGUAGE eq et
-include "boot/bootet.inc"
-include "boot/et.inc"
-else
-include "boot/bootge.inc"
-end if
 
 include "boot/bootcode.asm"
 include "bus/pci/pci16.asm"
