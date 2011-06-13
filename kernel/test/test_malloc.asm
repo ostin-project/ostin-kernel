@@ -46,16 +46,16 @@ run_test1: ;////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, 1
         call    malloc_with_test
-        mov     byte [eax], 0xDD
+        mov     byte[eax], 0xdd
         mov     esi, eax
         mov     eax, 1
         call    malloc_with_test
-        cmp     byte [esi], 0xDD
+        cmp     byte[esi], 0xdd
         jnz     memory_destroyed
-        mov     byte [eax], 0xEE
+        mov     byte[eax], 0xee
         xchg    eax, esi
         call    free
-        cmp     byte [esi], 0xEE
+        cmp     byte[esi], 0xee
         jnz     memory_destroyed
         xchg    eax, esi
         call    free
@@ -99,10 +99,10 @@ run_test3: ;////////////////////////////////////////////////////////////////////
         push    ebx
         push    eax
 ;       mov     ecx, [saved_state_num]
-;       mov     [saved_state+ecx*8], eax
+;       mov     [saved_state + ecx * 8], eax
         call    malloc_with_test
 ;       mov     ecx, [saved_state_num]
-;       mov     [saved_state+ecx*8+4], eax
+;       mov     [saved_state + ecx * 8 + 4], eax
 ;       inc     [saved_state_num]
         pop     ecx
         pop     ebx
@@ -122,12 +122,12 @@ run_test3: ;////////////////////////////////////////////////////////////////////
         sub     edx, esi
         neg     edx
         dec     edx
-        mov     eax, [esp+edx*8]
+        mov     eax, [esp + edx * 8]
 ;       mov     ecx, [saved_state_num]
-;       mov     [saved_state+ecx*8], -1
-;       mov     [saved_state+ecx*8+4], eax
+;       mov     [saved_state + ecx * 8], -1
+;       mov     [saved_state + ecx * 8 + 4], eax
 ;       inc     [saved_state_num]
-        mov     ecx, [esp+edx*8+4]
+        mov     ecx, [esp + edx * 8 + 4]
         push    edi eax
         mov     edi, eax
         mov     al, [edi]
@@ -140,12 +140,12 @@ run_test3: ;////////////////////////////////////////////////////////////////////
         dec     esi
         pop     eax ecx
         push    edi
-        lea     edi, [esp+4]
+        lea     edi, [esp + 4]
 
     @@: dec     edx
         js      @f
         xchg    eax, [edi]
-        xchg    ecx, [edi+4]
+        xchg    ecx, [edi + 4]
         add     edi, 8
         jmp     @b
 
@@ -180,13 +180,13 @@ malloc_with_test: ;/////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 wait_mutex: ;///////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        inc     dword [ebx]
+        inc     dword[ebx]
         ret
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kernel_alloc: ;/////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     dword [esp+4], bufsize
+        cmp     dword[esp + 4], bufsize
         jnz     error1
         mov     eax, buffer
         ret     4
@@ -254,7 +254,7 @@ include "include/proc32.inc"
 include "include/struct.inc"
 include "include/kernel32.inc"
 include "include/const.inc"
-include "malloc.asm"
+include "core/malloc.asm"
 
 i_end:
 
@@ -265,6 +265,7 @@ mst memory_state_t
 align 16
 bufsize = 0x40000 ; change if malloc.inc changes
 buffer rb bufsize
+
 zeroend:
 
 saved_state_num dd ?
@@ -272,4 +273,5 @@ saved_state     rd 0x10000
 
 align 4
 rb 0x10000 ; for stack
+
 mem:

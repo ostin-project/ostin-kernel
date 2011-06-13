@@ -14,9 +14,10 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-; void __stdcall unpack(void* packed_data, void* unpacked_data);
 ;-----------------------------------------------------------------------------------------------------------------------
 unpack: ;///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;# void __stdcall unpack(void* packed_data, void* unpacked_data);
 ;-----------------------------------------------------------------------------------------------------------------------
         pushad
         mov     esi, [esp + 32 + 4]
@@ -559,7 +560,7 @@ end if
 
 uglobal
   align 4
-  ;unpack.p           rd unpack.LZMA_BASE_SIZE + (unpack.LZMA_LIT_SIZE shl (unpack.lc+unpack.lp))
+; unpack.p            rd unpack.LZMA_BASE_SIZE + (unpack.LZMA_LIT_SIZE shl (unpack.lc + unpack.lp))
   unpack.p            dd ?
   unpack.code_        dd ?
   unpack.range        dd ?
