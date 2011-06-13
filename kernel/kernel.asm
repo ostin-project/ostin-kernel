@@ -21,7 +21,7 @@ include "include/proc32.inc"
 include "include/struct.inc"
 
 include "include/kglobals.inc"
-include "include/kernel32.inc"
+include "include/kernel.inc"
 include "config.inc"
 
 include "include/const.inc"
@@ -48,8 +48,8 @@ pci_data_sel    equ (pci_data_32 - gdts)
 ;;    - Bootcode.inc  Hardware setup
 ;;    - Pci16.inc     PCI functions
 ;;
-;;   Kernel32.inc
-;;    - Sys32.inc     Process management
+;;   Kernel.inc
+;;    - Sys.inc       Process management
 ;;    - Shutdown.inc  Shutdown and restart
 ;;    - Fat32.inc     Read / write hd
 ;;    - Vesa12.inc    Vesa 1.2 driver
@@ -58,7 +58,7 @@ pci_data_sel    equ (pci_data_32 - gdts)
 ;;    - Stack.inc     Network interface
 ;;    - Mouse.inc     Mouse pointer
 ;;    - Scincode.inc  Window skinning
-;;    - Pci32.inc     PCI functions
+;;    - Pci.inc       PCI functions
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -626,7 +626,7 @@ end if
         call    display_number.force
 
         ; BUILD SCHEDULER
-        call    build_scheduler ; sys32.inc
+        call    build_scheduler ; sys.inc
 
         mov     esi, boot_devices
         call    boot_log
@@ -1030,7 +1030,7 @@ endg
 ;;///// INCLUDED SYSTEM FILES //////////////////////////////////////////////////////////////////////////////////////////
 ;;----------------------------------------------------------------------------------------------------------------------
 
-include "kernel32.inc"
+include "kernel.inc"
 
 ;;----------------------------------------------------------------------------------------------------------------------
 ;;///// KERNEL FUNCTIONS ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -5531,7 +5531,7 @@ scan_rsdp:
 
 end if
 
-include "data32.inc"
+include "data.inc"
 
 uglobals_size = $ - endofcode
 diff16 "end of kernel code", 0, $

@@ -1,5 +1,5 @@
 ;;======================================================================================================================
-;;///// kernel32.inc /////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
+;;///// kernel.inc ///////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
 ;;======================================================================================================================
 ;; (c) 2004-2011 KolibriOS team <http://kolibrios.org/>
 ;;======================================================================================================================
@@ -24,7 +24,7 @@ include "blkdev/hd_drv.asm"
 include "blkdev/ide_cache.asm"
 include "blkdev/rd.asm"
 
-include "bus/pci/pci32.asm"
+include "bus/pci/pci.asm"
 
 include "charset.asm"
 
@@ -39,7 +39,7 @@ include "core/memory.asm"
 include "core/peload.asm"
 include "core/sched.asm"
 include "core/string.asm"
-include "core/sys32.asm"
+include "core/sys.asm"
 include "core/syscall.asm"
 include "core/taskman.asm"
 include "core/v86.asm"

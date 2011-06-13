@@ -252,7 +252,7 @@ error_with_code: ;//////////////////////////////////////////////////////////////
 ; Include main heap code
 include "include/proc32.inc"
 include "include/struct.inc"
-include "include/kernel32.inc"
+include "include/kernel.inc"
 include "include/const.inc"
 include "core/malloc.asm"
 
