@@ -135,68 +135,68 @@ v_mode_error: ;/////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Write message about incorrect v_mode and write message about jmp on swith v_mode
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     dx, 19 * 256 + 2
-        call    setcursor
+;///        mov     dx, 19 * 256 + 2
+;///        call    setcursor
         mov     si, fatalsel
-        call    printplain
-        mov     dx, 20 * 256 + 2
-        call    setcursor
+        call    boot.print_string
+;///        mov     dx, 20 * 256 + 2
+;///        call    setcursor
         mov     si, pres_key
-        call    printplain
+        call    boot.print_string
         xor     eax, eax
         int     0x16
         jmp     cfgmanager.d
 
-;-----------------------------------------------------------------------------------------------------------------------
-print_vesa_info: ;//////////////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        mov     dx, 5 * 256 + 2
-        call    setcursor
-
-        mov     [es:vi.vesa_signature], 'VBE2'
-        mov     ax, 0x4f00
-        mov     di, vi ;0xa000
-        int     0x10
-        or      ah, ah
-        jz      @f
-        mov     [es:vi.vesa_signature], 'VESA'
-        mov     ax, 0x4f00
-        mov     di, vi
-        int     0x10
-        or      ah, ah
-        jnz     .exit
-
-    @@: cmp     [es:vi.vesa_signature], 'VESA'
-        jne     .exit
-        cmp     [es:vi.vesa_version], 0x0100
-        jb      .exit
-        jmp     .vesaok2
-
-  .exit:
-        mov     si, novesa
-        call    printplain
-        ret
-
-  .vesaok2:
-        mov     ax, [es:vi.vesa_version]
-        add     ax, '00'
-
-        mov     [s_vesa.ver], ah
-        mov     [s_vesa.ver + 2], al
-        mov     si, s_vesa
-        call    printplain
-
-        mov     dx, 4 * 256 + 2
-        call    setcursor
-        mov     si, word[es:vi.oem_string_ptr]
-        mov     di, si
-
-        push    ds
-        mov     ds, word[es:vi.oem_string_ptr + 2]
-        call    printplain
-        pop     ds
-
-        ret
+;///;-----------------------------------------------------------------------------------------------------------------------
+;///print_vesa_info: ;//////////////////////////////////////////////////////////////////////////////////////////////////////
+;///;-----------------------------------------------------------------------------------------------------------------------
+;///        mov     dx, 5 * 256 + 2
+;///        call    setcursor
+;///
+;///        mov     [es:vi.vesa_signature], 'VBE2'
+;///        mov     ax, 0x4f00
+;///        mov     di, vi ;0xa000
+;///        int     0x10
+;///        or      ah, ah
+;///        jz      @f
+;///        mov     [es:vi.vesa_signature], 'VESA'
+;///        mov     ax, 0x4f00
+;///        mov     di, vi
+;///        int     0x10
+;///        or      ah, ah
+;///        jnz     .exit
+;///
+;///    @@: cmp     [es:vi.vesa_signature], 'VESA'
+;///        jne     .exit
+;///        cmp     [es:vi.vesa_version], 0x0100
+;///        jb      .exit
+;///        jmp     .vesaok2
+;///
+;///  .exit:
+;///        mov     si, novesa
+;///        call    boot.print_string
+;///        ret
+;///
+;///  .vesaok2:
+;///        mov     ax, [es:vi.vesa_version]
+;///        add     ax, '00'
+;///
+;///        mov     [s_vesa.ver], ah
+;///        mov     [s_vesa.ver + 2], al
+;///        mov     si, s_vesa
+;///        call    boot.print_string
+;///
+;///        mov     dx, 4 * 256 + 2
+;///        call    setcursor
+;///        mov     si, word[es:vi.oem_string_ptr]
+;///        mov     di, si
+;///
+;///        push    ds
+;///        mov     ds, word[es:vi.oem_string_ptr + 2]
+;///        call    boot.print_string
+;///        pop     ds
+;///
+;///        ret
 
 ;-----------------------------------------------------------------------------------------------------------------------
 calc_vmodes_table: ;////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -343,25 +343,25 @@ draw_current_vmode: ;///////////////////////////////////////////////////////////
         cmp     word[es:si + 6], 0x13
         je      .no_vesa_0x13
 
-        mov     di, loader_block_error
-        movzx   eax, word[es:si + 0]
-        mov     ecx, 10
-        call    int2strnz
-        mov     byte[es:di], 'x'
-        inc     di
-        movzx   eax, word[es:si + 2]
-        call    int2strnz
-        mov     byte[es:di], 'x'
-        inc     di
-        movzx   eax, word[es:si + 8]
-        call    int2strnz
-        mov     dword[es:di], 0x00000d0a
-        mov     si, loader_block_error
-        push    ds
-        push    es
-        pop     ds
-        call    printplain
-        pop     ds
+;///        mov     di, loader_block_error
+;///        movzx   eax, word[es:si + 0]
+;///        mov     ecx, 10
+;///        call    int2strnz
+;///        mov     byte[es:di], 'x'
+;///        inc     di
+;///        movzx   eax, word[es:si + 2]
+;///        call    int2strnz
+;///        mov     byte[es:di], 'x'
+;///        inc     di
+;///        movzx   eax, word[es:si + 8]
+;///        call    int2strnz
+;///        mov     dword[es:di], 0x00000d0a
+;///        mov     si, loader_block_error
+;///        push    ds
+;///        push    es
+;///        pop     ds
+;///        call    boot.print_string
+;///        pop     ds
         ret
 
   .no_vesa_0x13:
@@ -372,7 +372,7 @@ draw_current_vmode: ;///////////////////////////////////////////////////////////
         mov     si, mode9
 
   .print:
-        call    printplain
+        call    boot.print_string
         ret
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -488,13 +488,13 @@ check_first_parm: ;/////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 draw_vmodes_table: ;////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     dx, 9 * 256 + 2
-        call    setcursor
+;///        mov     dx, 9 * 256 + 2
+;///        call    setcursor
         mov     si, gr_mode
-        call    printplain
+        call    boot.print_string
 
         mov     si, _st
-        call    printplain
+        call    boot.print_string
 
         push    word[cursor_pos]
         pop     ax
@@ -650,7 +650,7 @@ draw_vmodes_table: ;////////////////////////////////////////////////////////////
         jnz     @f
         mov     byte[si + 53], 30 ; 'up arrow' symbol
 
-    @@: call    printplain
+    @@: call    boot.print_string
         pop     si
         add     si, size_of_step
 
@@ -659,7 +659,7 @@ draw_vmodes_table: ;////////////////////////////////////////////////////////////
 
   ._end:
         mov     si, _bt
-        call    printplain
+        call    boot.print_string
         ret
 
   .show_0x13:

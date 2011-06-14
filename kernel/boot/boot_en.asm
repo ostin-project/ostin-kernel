@@ -17,8 +17,38 @@
 ;? Boot data (English)
 ;;======================================================================================================================
 
-d80x25_bottom_num   = 3
-num_remarks         = 3
+;d80x25_bottom_num   = 3
+;num_remarks         = 3
+
+boot.data:
+  .s_copyright_1             utf8 "(c) 2011 Ostin project", 0
+  .s_copyright_2             utf8 "(c) 2004-2011 KolibriOS team", 0
+  .s_copyright_3             utf8 "(c) 2000-2004 Ville Mikael Turjanmaa", 0
+  .s_version                 utf8 " version ", 0
+  .s_license                 utf8 ", under GNU GPL v2, with absolutely no warranty", 0
+
+  .s_video_mode              utf8 " (1) Videomode: ", 0
+  .s_use_bios_disks          utf8 " (2) Add disks visible by BIOS: ", 0
+  .s_use_vrr                 utf8 " (3) Use VRR: ", 0
+  .s_boot_source             utf8 " (4) Floppy image: ", 0
+
+  .s_on                      utf8 "on", 0
+  .s_off                     utf8 "off", 0
+
+  .s_boot_source_1           utf8 " (1) "
+  .s_boot_source_1.name      utf8 "real floppy", 0
+  .s_boot_source_2           utf8 " (2) "
+  .s_boot_source_2.name      utf8 "C:\kolibri.img (FAT32)", 0
+  .s_boot_source_3           utf8 " (3) "
+  .s_boot_source_3.name      utf8 "use already loaded image", 0
+  .s_boot_source_4           utf8 " (4) "
+  .s_boot_source_4.name      utf8 "create blank image", 0
+
+  .s_error                   utf8 "ERROR: ", 0
+  .s_bad_sector              utf8 "Bad sector. Replace floppy.", 0
+  .s_incompatible_cpu        utf8 "CPU 386+ required.", 0
+  .s_invalid_bootloader_data utf8 "Bootloader data is invalid.", 0
+  .s_mem_move_failed         utf8 "Int 0x15 move failed.", 0
 
 d80x25_bottom       utf8 "║ KolibriOS is based on MenuetOS and comes with ABSOLUTELY NO WARRANTY         ║", \
                          "║ See file COPYING for details                                                 ║"
@@ -47,12 +77,9 @@ probetext           utf8 13, 10, 13, 10, \
 ;memokz16           utf8 13, 10, "║ RAM 16 Mb", 0
 prnotfnd            utf8 "Fatal - Videomode not found.", 0
 ;modena             utf8 "Fatal - VBE 0x112+ required.", 0
-not386              utf8 "Fatal - CPU 386+ required.", 0
 btns                utf8 "Fatal - Can't determine color depth.", 0
 fatalsel            utf8 "Fatal - Graphics mode not supported by hardware.", 0
 pres_key            utf8 "Press any key to choose a new videomode.", 0
-badsect             utf8 13, 10, "║ Fatal - Bad sector. Replace floppy.", 0
-memmovefailed       utf8 13, 10, "║ Fatal - Int 0x15 move failed.", 0
 okt                 utf8 " ... OK"
 linef               utf8 13, 10, 0
 diskload            utf8 "Loading diskette: 00 %", 8, 8, 8, 8, 0
@@ -83,7 +110,6 @@ pdm3                utf8 "use already loaded image", 13, 10, 0
 pdm4                utf8 "create blank image", 13, 10, 0
 loading_msg         utf8 "Loading KolibriOS...", 0
 save_quest          utf8 "Remember current settings? [y/n]: ", 0
-loader_block_error  utf8 "Bootloader data invalid, I cannot continue. Stopped.", 0
 _st                 utf8 "║                   ┌───────────────────────────────┬─┐", 13, 10, 0
 _r1                 utf8 "║                   │  320x200  EGA/CGA 256 colors  │ │", 13, 10, 0
 _r2                 utf8 "║                   │  640x480  VGA 16 colors       │ │", 13, 10, 0
@@ -94,5 +120,5 @@ remark2             utf8 "If you have CRT-monitor, enable VRR in the item [c].",
 remark3             utf8 "If the system does not boot, try to disable the item [b].", 0
 
 ;modes_msg          dw mode4, mode1, mode2, mode3
-preboot_device_msgs dw 0, pdm1, pdm2, pdm3
-remarks             dw remark1, remark2, remark3
+;preboot_device_msgs dw 0, pdm1, pdm2, pdm3
+;remarks             dw remark1, remark2, remark3

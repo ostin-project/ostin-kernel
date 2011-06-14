@@ -44,11 +44,12 @@ charset16.utf8_char_to_ansi: ;//////////////////////////////////////////////////
 ;< al = 255 (error) or ANSI char code
 ;< ds:si = pointer to next UTF-8 char
 ;-----------------------------------------------------------------------------------------------------------------------
-        push    bx
         lodsb
 
         test    al, 0x80
         jz      .noop_exit
+
+        push    bx
 
 if KCONFIG_LANGUAGE eq ru
 
@@ -79,13 +80,15 @@ end if
         je      .error
         dec     si
         or      al, -1
-        jmp     .noop_exit
+        jmp     .error_exit
 
   .exit:
         add     bl, al
         adc     bh, 0
         mov     al, [bx]
 
-  .noop_exit:
+  .error_exit:
         pop     bx
+
+  .noop_exit:
         ret

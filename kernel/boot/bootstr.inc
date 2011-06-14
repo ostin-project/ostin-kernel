@@ -62,4 +62,4 @@
 ;///  db ' ║'
 ;///  line_half
 
-d80x25_top_num = 4
+; d80x25_top_num = 4
