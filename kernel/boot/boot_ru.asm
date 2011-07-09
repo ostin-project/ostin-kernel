@@ -15,82 +15,59 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 ;? Boot data (Russian)
-;=======================================================================================================================
+;;======================================================================================================================
 
-;d80x25_bottom_num   = 3
-;num_remarks         = 3
+boot.data.s_copyright_1             utf8 "(c) 2011 Проект Ostin", 0
+boot.data.s_copyright_2             utf8 "(c) 2004-2011 Команда KolibriOS", 0
+boot.data.s_copyright_3             utf8 "(c) 2000-2004 Вилле Микаэль Турьянмаа", 0
+boot.data.s_version                 utf8 "версия ", 0
+boot.data.s_license                 utf8 ", под GNU GPL v2, без каких-либо гарантий", 0
 
-boot.data:
-  .s_copyright_1             utf8 "(c) 2011 Проект Ostin", 0
-  .s_copyright_2             utf8 "(c) 2004-2011 Команда KolibriOS", 0
-  .s_copyright_3             utf8 "(c) 2000-2004 Вилле Микаэль Турьянмаа", 0
-  .s_version                 utf8 " версия ", 0
-  .s_license                 utf8 ", под GNU GPL v2, без каких-либо гарантий", 0
+boot.data.s_keys_notice             utf8 "Вверх/Вниз/Ввод/Esc - навигация, F10 - продолжить загрузку", 0
 
-  .s_video_mode              utf8 " (1) Видеорежим: ", 0
-  .s_use_bios_disks          utf8 " (2) Добавить диски, видимые через BIOS: ", 0
-  .s_use_vrr                 utf8 " (3) Использование VRR: ", 0
-  .s_boot_source             utf8 " (4) Образ дискеты: ", 0
+boot.data.s_your_choice             utf8 "Ваш выбор: ", 0
 
-  .s_on                      utf8 "вкл", 0
-  .s_off                     utf8 "выкл", 0
+boot.data.s_current_settings        utf8 "Текущие настройки", 0
+boot.data.s_video_mode              utf8 "Видеорежим", 0
+boot.data.s_use_bios_disks          utf8 "Добавить диски, видимые через BIOS", 0
+boot.data.s_use_vrr                 utf8 "Использование VRR", 0
+boot.data.s_boot_source             utf8 "Образ дискеты", 0
 
-  .s_boot_source_1           utf8 " (1) "
-  .s_boot_source_1.name      utf8 "настоящая дискета", 0
-  .s_boot_source_2           utf8 " (2) "
-  .s_boot_source_2.name      utf8 "C:\kolibri.img (FAT32)", 0
-  .s_boot_source_3           utf8 " (3) "
-  .s_boot_source_3.name      utf8 "использовать уже загруженный образ", 0
-  .s_boot_source_4           utf8 " (4) "
-  .s_boot_source_4.name      utf8 "создать чистый образ", 0
+boot.data.s_video_mode_0            utf8 "320x200, EGA/CGA 256 цветов", 0
+boot.data.s_video_mode_9            utf8 "640x480, VGA 16 цветов", 0
+boot.data.s_video_mode_vesa         utf8 "????x????@??, SVGA VESA", 0
 
-  .s_error                   utf8 "ОШИБКА: ", 0
-  .s_bad_sector              utf8 "Дискета повреждена. Попробуйте другую.", 0
-  .s_incompatible_cpu        utf8 "Требуется процессор 386+.", 0
-  .s_invalid_bootloader_data utf8 "Некорректные данные начального загрузчика.", 0
-  .s_mem_move_failed         utf8 "Int 0x15 move failed.", 0
+boot.data.s_on                      utf8 "вкл", 0
+boot.data.s_off                     utf8 "выкл", 0
 
-d80x25_bottom       utf8 "║ Kolibri OS основана на Menuet OS и не предоставляет никаких гарaнтий.        ║", \
-                         "║ Подробнее смотрите в файле COPYING.TXT                                       ║"
-;///                         line_full_bottom
+boot.data.s_boot_source_1           utf8 "настоящая дискета", 0
+boot.data.s_boot_source_2           utf8 "C:\kolibri.img (FAT32)", 0
+boot.data.s_boot_source_3           utf8 "использовать уже загруженный образ", 0
+boot.data.s_boot_source_4           utf8 "создать чистый образ", 0
+
+boot.data.s_error                   utf8 "ОШИБКА: ", 0
+boot.data.s_bad_sector              utf8 "Дискета повреждена. Попробуйте другую.", 0
+boot.data.s_incompatible_cpu        utf8 "Требуется процессор 386+.", 0
+boot.data.s_invalid_bootloader_data utf8 "Некорректные данные начального загрузчика.", 0
+boot.data.s_mem_move_failed         utf8 "Int 0x15 move failed.", 0
+
 msg_apm             utf8 " APM x.x ", 0
-novesa              utf8 "Видеокарта: EGA/CGA", 13, 10, 0
 s_vesa              utf8 "Версия VESA: "
   .ver              utf8 "?.?", 13, 10, 0
 gr_mode             utf8 "Выберите видеорежим: ", 13, 10, 0
 vrrmprint           utf8 "Использовать VRR? (частота кадров выше 60 Гц только для переходов:", 13, 10, \
                          "║ 1024*768>800*600 и 800*600>640*480) [1-да, 2-нет]: ", 0
-;ask_dma            utf8 "Использовать DMA для доступа к HDD? [1-да, 2-только чтение, 3-нет]: ", 0
 ask_bd              utf8 "Добавить диски, видимые через BIOS в режиме V86? [1-да, 2-нет]: ",0
 bdev                utf8 "Загрузить образ из [1-дискета; 2-C:\kolibri.img (FAT32);", 13, 10, \
                          "║                    3-использовать уже загруженный образ;", 13, 10, \
                          "║                    4-создать чистый образ]: ", 0
-prnotfnd            utf8 "Видеорежим не найден", 0
 fatalsel            utf8 "Выбранный видеорежим не поддерживается", 0
 pres_key            utf8 "Нажимите любую клавишу, для перехода в выбор режимов.", 0
-okt                 utf8 " ... OK"
-linef               utf8 13, 10, 0
+okt                 utf8 " ... OK", 13, 10, 0
 diskload            utf8 "Загрузка дискеты: 00 %", 8, 8, 8, 8, 0
 pros                utf8 "00"
 backspace2          utf8 8, 8, 0
 boot_dev            utf8 0
-start_msg           utf8 "Нажмите [abcd] для изменения настроек, [Enter] для продолжения загрузки", 13, 10, 0
-time_msg            utf8 "или подождите "
-time_str            utf8 "(5) до автоматического продолжения", 13, 10, 0
-current_cfg_msg     utf8 "Текущие настройки:", 13, 10, 0
-curvideo_msg        utf8 " [a] Видеорежим: ", 0
-mode0               utf8 "320x200, EGA/CGA 256 цветов", 13, 10, 0
-mode9               utf8 "640x480, VGA 16 цветов", 13, 10, 0
-usebd_msg           utf8 " [b] Добавить диски, видимые через BIOS:", 0
-on_msg              utf8 " вкл", 13, 10, 0
-off_msg             utf8 " выкл", 13, 10, 0
-readonly_msg        utf8 " только чтение", 13, 10, 0
-vrrm_msg            utf8 " [c] Использование VRR:", 0
-preboot_device_msg  utf8 " [d] Образ дискеты: ", 0
-pdm1                utf8 "настоящая дискета", 13, 10, 0
-pdm2                utf8 "C:\kolibri.img (FAT32)", 13, 10, 0
-pdm3                utf8 "использовать уже загруженный образ", 13, 10, 0
-pdm4                utf8 "создать чистый образ", 13, 10, 0
 loading_msg         utf8 "Идёт загрузка KolibriOS...", 0
 save_quest          utf8 "Запомнить текущие настройки? [y/n]: ", 0
 _st                 utf8 "║                   ┌───────────────────────────────┬─┐  ", 13, 10, 0
@@ -98,12 +75,6 @@ _r1                 utf8 "║                   │  320x200  EGA/CGA 256 цве
 _r2                 utf8 "║                   │  640x480  VGA 16 цветов       │ │  ", 13, 10, 0
 _rs                 utf8 "║                   │  ????x????@??  SVGA VESA      │ │  ", 13, 10, 0
 _bt                 utf8 "║                   └───────────────────────────────┴─┘  ", 13, 10, 0
-remark1             utf8 "Значения по умолчанию выбраны для удобства большинства, но не всех.", 0
-remark2             utf8 "Если у Вас ЭЛТ-монитор, включите VRR в пункте [c].", 0
-remark3             utf8 "Если у Вас не грузится система, попробуйте отключить пункт [b].", 0
-
-;preboot_device_msgs dw 0, pdm1, pdm2, pdm3, pdm4
-;remarks             dw remark1, remark2, remark3
 
 include "boot/ru.inc"
 

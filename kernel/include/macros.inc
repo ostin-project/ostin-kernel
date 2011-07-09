@@ -23,9 +23,9 @@ macro diff16 title, l1, l2
   s = l2 - l1
   display title, ': 0x'
   repeat 16
-    d = 48 + s shr ((16 - %) shl 2) and 0x0f
-    if d > 57
-      d = d + 65 - 57 - 1
+    d = '0' + s shr ((16 - %) shl 2) and 0x0f
+    if d > '9'
+      d = d + 'a' - '9' - 1
     end if
     display d
   end repeat
@@ -72,13 +72,13 @@ macro restore_ring3_context
 struc utf8 [string_data]
 {
 common
-  local size, i, length, x
+  local str_size, str_length, i, x
   if used .
     . db string_data
-    size = $ - .
-    length = 0
+    str_size = $ - .
+    str_length = 0
     i = 0
-    while i < size
+    while i < str_size
       load x byte from . + i
       if ~ x and 0x80
         i = i + 1
@@ -88,11 +88,39 @@ common
           i = i + 1
         end while
       end if
-      length = length + 1
+      if x
+        str_length = str_length + 1
+      end if
     end while
-    sizeof.#. = size
-    lengthof.#. = length
+    . # \.size = str_size
+    . # \.length = str_length
   else
     display 'unused string: ', `., 13, 10
   end if
+}
+
+struc max_of [value]
+{
+common
+  local max
+  max = -0x8000000000000000
+forward
+  if value > max
+    max = value
+  end if
+common
+  . = max
+}
+
+struc min_of [value]
+{
+common
+  local min
+  min = 0x7fffffffffffffff
+forward
+  if value < min
+    min = value
+  end if
+common
+  . = min
 }
