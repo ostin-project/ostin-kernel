@@ -96,11 +96,11 @@ boot.print_vmode_menu_item: ;///////////////////////////////////////////////////
         mov     si, boot.data.s_vmode_bpp
         call    boot.print_string
 
-        mov     si, boot.data.s_vmode_ega_suffix
+        mov     si, boot.data.s_vmode_vga_suffix
         cmp     cx, 0x12
         je      .print_suffix
 
-        mov     si, boot.data.s_vmode_vga_suffix
+        mov     si, boot.data.s_vmode_ega_suffix
         cmp     cx, 0x13
         je      .print_suffix
 

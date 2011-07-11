@@ -108,7 +108,7 @@ boot.data.s_logo:
   .width = 31
   .height = 3
 
-boot.data.s_version_number db "0.1", 0
+boot.data.s_version_number db "0.1pre", 0
 
 boot.data.s_inactive_item_prefix db '   ', 0
 boot.data.s_active_item_prefix   db ' > ', 0
