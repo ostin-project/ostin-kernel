@@ -1,5 +1,5 @@
 ;;======================================================================================================================
-;;///// boot_menu.asm ////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
+;;///// bootmenu.asm /////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
 ;;======================================================================================================================
 ;; (c) 2011 Ostin project <http://ostin.googlecode.com/>
 ;;======================================================================================================================
@@ -14,6 +14,11 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
+boot.MENU_SELECT   = 0
+boot.MENU_CANCEL   = 1
+boot.MENU_SAVEBOOT = 2
+boot.MENU_BOOT = 3
+
 ;-----------------------------------------------------------------------------------------------------------------------
 boot.print_simple_menu_item: ;//////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -22,9 +27,13 @@ boot.print_simple_menu_item: ;//////////////////////////////////////////////////
 ;> dx #= value index
 ;-----------------------------------------------------------------------------------------------------------------------
         lodsw
+        or      ax, ax
+        jz      .exit
+
         xchg    ax, si
         call    boot.print_string
-        xor     al, al
+
+  .exit:
         ret
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -47,7 +56,9 @@ boot.print_main_menu_item: ;////////////////////////////////////////////////////
         or      cx, cx
         jnz     @f
 
-        jmp     draw_current_vmode
+        mov     cx, dx
+        call    boot.print_vmode_menu_item
+        jmp     .exit
 
     @@: dec     cx
         jz      .print_on_off_value
@@ -67,7 +78,6 @@ boot.print_main_menu_item: ;////////////////////////////////////////////////////
         jmp     boot.print_string
 
   .exit:
-        xor     al, al
         ret
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -133,8 +143,7 @@ boot.set_int_handler: ;/////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cli
         push    es bx
-        push    0
-        pop     es
+        mov_s_  es, 0
         movzx   bx, cl
         shl     bx, 2
         push    dword[es:bx]
@@ -150,8 +159,7 @@ boot.print_timer_char: ;////////////////////////////////////////////////////////
 ;> al #= char to display
 ;-----------------------------------------------------------------------------------------------------------------------
         push    es
-        push    0xb800
-        pop     es
+        mov_s_  es, 0xb800
         mov     [es:80 * 25 * 2 - 4], al
         pop     es
         ret
@@ -160,8 +168,7 @@ boot.print_timer_char: ;////////////////////////////////////////////////////////
 boot.int8_handler: ;////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    ds
-        push    cs
-        pop     ds
+        mov_s_  ds, cs
         pushf
         call    [boot.data.old_int8_handler]
 
@@ -247,9 +254,8 @@ boot.run_menu: ;////////////////////////////////////////////////////////////////
         call    boot.print_crlf
 
         push    ds bx
-        push    [bx + boot_menu_data_t.items] \
-                [bx + boot_menu_data_t.print_callback]
-        pop     bx si
+        mov_s_  si, [bx + boot_menu_data_t.items]
+        mov_s_  bx, [bx + boot_menu_data_t.print_callback]
         xor     cx, cx
         mov     dx, bp
         lodsw
@@ -259,6 +265,27 @@ boot.run_menu: ;////////////////////////////////////////////////////////////////
   .wait_for_key:
         xor     ax, ax
         int     0x16
+
+if KCONFIG_DEBUG
+
+        pusha
+        shr     ax, 4
+        shr     al, 4
+        cmp     al, 10
+        jb      @f
+        add     al, 'a' - '9' - 1
+    @@: cmp     ah, 10
+        jb      @f
+        add     ah, 'a' - '9' - 1
+    @@: add     ax, '00'
+        push    es
+        mov_s_  es, 0xb800
+        mov     [es:0], ah
+        mov     [es:2], al
+        pop     es
+        popa
+
+end if
 
         pop     cx
         xchg    ax, cx
@@ -282,7 +309,7 @@ boot.run_menu: ;////////////////////////////////////////////////////////////////
         cmp     ch, 0x01 ; esc
         jne     .enter_key
 
-        mov     ax, 1
+        mov     ax, boot.MENU_CANCEL
         jmp     .exit
 
   .enter_key:
@@ -299,7 +326,7 @@ boot.run_menu: ;////////////////////////////////////////////////////////////////
         or      si, si
         jnz     .run_submenu
 
-    @@: xor     ax, ax
+    @@: xor     ax, ax ; boot.MENU_SELECT
         mov     cx, bp
         jmp     .exit
 
@@ -307,31 +334,59 @@ boot.run_menu: ;////////////////////////////////////////////////////////////////
         cmp     ch, 0x44 ; f10
         jne     .up_key
 
-        mov     ax, 2
+        mov     ax, boot.MENU_SAVEBOOT
         jmp     .exit
 
   .up_key:
         cmp     ch, 0x48 ; up
         jne     .down_key
 
+    @@: mov     si, [bx + boot_menu_data_t.items]
+        lodsw
+        dec     ax
         or      bp, bp
-        jz      .wait_for_key
+        xchg    ax, bp
+        jz      .print_menu
 
+        xchg    ax, bp
         dec     bp
+
+        add     si, bp
+        add     si, bp
+        lodsw
+        or      ax, ax
+        jz      @b
+
         jmp     .print_menu
 
   .down_key:
         cmp     ch, 0x50 ; down
-        jne     .wait_for_key
+        jne     .f11_key
 
-        mov     si, [bx + boot_menu_data_t.items]
+    @@: mov     si, [bx + boot_menu_data_t.items]
         lodsw
         dec     ax
-        cmp     bp, ax
-        je      .wait_for_key
+        sub     ax, bp
+        xchg    ax, bp
+        jz      .print_menu
 
+        xchg    ax, bp
         inc     bp
+
+        add     si, bp
+        add     si, bp
+        lodsw
+        or      ax, ax
+        jz      @b
+
         jmp     .print_menu
+
+  .f11_key:
+        cmp     ch, 0x85 ; f11
+        jne     .wait_for_key
+
+        mov     ax, boot.MENU_BOOT
+        jmp     .exit
 
   .run_submenu:
         push    bx bp si
@@ -340,15 +395,18 @@ boot.run_menu: ;////////////////////////////////////////////////////////////////
         call    boot.run_menu
         pop     si bp bx
 
-        cmp     al, 1
-        je      .print_menu
+        cmp     al, boot.MENU_CANCEL
+        je      .clear_screen
 
-        cmp     al, 2
+        cmp     al, boot.MENU_SAVEBOOT
+        je      .exit
+        cmp     al, boot.MENU_BOOT
         je      .exit
 
         mov     [si + boot_menu_data_t.current_index], cx
         jmp     .clear_screen
 
   .exit:
+        mov     cx, bp
         pop     bp bp
         ret

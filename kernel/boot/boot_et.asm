@@ -65,7 +65,6 @@ linef               db 13, 10, 0
 diskload            db "Loen disketti: 00 %", 8, 8, 8, 8, 0
 pros                db "00"
 backspace2          db 8, 8, 0
-boot_dev            db 0 ; 0 = floppy, 1 = hd
 start_msg           db "Vajuta [abcd] seadete muutmiseks, vajuta [Enter] laadimise jätkamiseks", 13, 10, 0
 time_msg            db " või oota "
 time_str            db " 5 sekundit automaatseks jätkamiseks", 13, 10, 0

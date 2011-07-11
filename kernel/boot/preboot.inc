@@ -1,6 +1,7 @@
 ;;======================================================================================================================
 ;;///// preboot.inc //////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
 ;;======================================================================================================================
+;; (c) 2011 Ostin project <http://ostin.googlecode.com/>
 ;; (c) 2004-2008 KolibriOS team <http://kolibrios.org/>
 ;;======================================================================================================================
 ;; This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
@@ -14,27 +15,20 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-display_modechg  db 0 ; display mode change for text, yes/no (0 or 2)
-                      ; Note: Must be set to 2, to avoid two screenmode changes within a very short period of time.
+; video mode
+boot.params.vmode          boot_vmode_t
+; use VRR_M (0 - no, 1 - yes)
+boot.params.use_vrr        db 0
+; use DMA for access to HDD (1 - always, 2 - only for read, 3 - never)
+boot.params.use_dma        db 1
+; use V86 to access disks through BIOS (0 - no, 1 - yes)
+boot.params.use_bios_disks db 1
+; boot device (-1 - autodetect, 0 - floppy, 1 - harddisk, 2 - kernel restart, 3 - format ram disk)
+boot.params.boot_source    db 0
 
-display_atboot   db 0 ; show boot screen messages ( 2-no )
+static_assert_ $ <= 0x200, "prebooting parameters must fit in first sector"
 
-preboot_graph    dw 0 ; graph mode
-x_save           dw 0 ; x
-y_save           dw 0 ; y
-number_vm        dw 0 ;
-;pixel_save      dw 0 ; per to pixel
-preboot_gprobe   db 0 ; probe vesa3 videomodes (1-no, 2-yes)
-preboot_vrrm     db 0 ; use VRR_M (1-yes, 2- no)
-preboot_dma      db 0 ; use DMA for access to HDD (1-always, 2-only for read, 3-never)
-preboot_device   db 0 ; boot device (0 - autodetect, 1 - floppy, 2 - harddisk, 3 - kernel restart, 4 - format ram disk)
-preboot_biosdisk db 0 ; use V86 to access disks through BIOS (1-yes, 2-no)
-
-if $ > 0x200
-
-ERROR: prebooting parameters must fit in first sector!!!
-
-end if
+store dword -1 at boot.params.vmode.resolution
 
 hdsysimage db 'KOLIBRI IMG' ; load from
 image_save db 'KOLIBRI IMG' ; save to

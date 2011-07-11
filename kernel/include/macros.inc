@@ -53,6 +53,28 @@ macro diff10 title, l1, l2
   display 13, 10
 }
 
+macro mov_s_ a, b
+{
+        push    b
+        pop     a
+}
+
+macro xchg_s_ a, b
+{
+        push    a b
+        pop     a b
+}
+
+macro static_assert_ cond, message
+{
+  if ~ (cond)
+    if ~ message eq
+      display "Assertion failed: ", message, 13, 10
+    end if
+    __assert_failed__
+  end if
+}
+
 macro Mov op1, op2, op3 ; op1 = op2 = op3
 {
         mov     op2, op3

@@ -16,16 +16,17 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-include "include/macros.inc"
-
 include "include/proc32.inc"
 include "include/struct.inc"
+include "include/macros.inc"
 
-include "include/kglobals.inc"
-include "include/kernel.inc"
 include "config.inc"
 
+include "include/kernel.inc"
+
+include "include/boot.inc"
 include "include/const.inc"
+include "include/kglobals.inc"
 
 max_processes   equ 255
 tss_step        equ (128 + 8192) ; tss & i/o - 65535 ports, * 256 = 557056 * 4
@@ -5325,8 +5326,8 @@ if 0
 
 else
 
-        cmp     [OS_BASE + BOOT_VRR], 2
-        jnz     no_acpi_power_off
+        cmp     [OS_BASE + BOOT_VRR], 1
+        je      no_acpi_power_off
 
         ; scan for RSDP
         ; 1) The first 1 Kb of the Extended BIOS Data Area (EBDA).

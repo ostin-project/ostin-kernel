@@ -20,7 +20,7 @@
         mov     es, cx
         mov     di, BOOT_BIOS_DISKS
         mov     byte[es:di - 1], cl
-        cmp     [preboot_biosdisk], 1
+        cmp     [boot.params.use_bios_disks], 1
         jnz     bdde
         mov     dl, 0x80
 

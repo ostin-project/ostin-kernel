@@ -26,35 +26,15 @@ ends
 
 ;-----------------------------------------------------------------------------------------------------------------------
 
-boot.MAIN_MENU.MAX_LENGTH max_of \
-  boot.data.s_video_mode.length, \
-  boot.data.s_use_bios_disks.length, \
-  boot.data.s_use_vrr.length, \
-  boot.data.s_boot_source.length
-
-boot.VIDEO_MODE_MENU.MAX_LENGTH max_of \
-  boot.data.s_video_mode_0.length, \
-  boot.data.s_video_mode_9.length;, \
-  ;boot.data.s_video_mode_vesa.length
-
-boot.BOOL_MENU.MAX_LENGTH max_of \
-  boot.data.s_on.length, \
-  boot.data.s_off.length
-
-boot.BOOT_SOURCE_MENU.MAX_LENGTH max_of \
-  boot.data.s_boot_source_1.length, \
-  boot.data.s_boot_source_2.length, \
-  boot.data.s_boot_source_3.length, \
-  boot.data.s_boot_source_4.length
-
-;-----------------------------------------------------------------------------------------------------------------------
-
 boot.data.main_menu_options dw \
-  4, \
+  7, \
   boot.data.s_video_mode, \
   boot.data.s_use_bios_disks, \
   boot.data.s_use_vrr, \
-  boot.data.s_boot_source
+  boot.data.s_boot_source, \
+  0, \
+  boot.data.s_save_and_boot, \
+  boot.data.s_just_boot
 
 boot.data.bool_menu_options dw \
   2, \
@@ -74,7 +54,10 @@ boot.data.main_menu_submenus dw \
   boot.data.video_mode_menu, \
   boot.data.use_bios_disks_menu, \
   boot.data.use_vrr_menu, \
-  boot.data.boot_source_menu
+  boot.data.boot_source_menu, \
+  0, \
+  0, \
+  0
 
 ;-----------------------------------------------------------------------------------------------------------------------
 
@@ -86,28 +69,28 @@ boot.data.main_menu: ; boot_menu_data_t
   dw boot.print_main_menu_item
 
 boot.data.video_mode_menu: ; boot_menu_data_t
-  dw boot.data.s_video_mode
+  dw boot.data.s_video_mode_title
+  dw boot.data.vmodes_count
   dw 0
   dw 0
-  dw 0
-  dw ?
+  dw boot.print_vmode_menu_item
 
 boot.data.use_bios_disks_menu: ; boot_menu_data_t
-  dw boot.data.s_use_bios_disks
+  dw boot.data.s_use_bios_disks_title
   dw boot.data.bool_menu_options
   dw 0
   dw 0
   dw boot.print_simple_menu_item
 
 boot.data.use_vrr_menu: ; boot_menu_data_t
-  dw boot.data.s_use_vrr
+  dw boot.data.s_use_vrr_title
   dw boot.data.bool_menu_options
   dw 0
   dw 0
   dw boot.print_simple_menu_item
 
 boot.data.boot_source_menu: ; boot_menu_data_t
-  dw boot.data.s_boot_source
+  dw boot.data.s_boot_source_title
   dw boot.data.boot_source_menu_options
   dw 0
   dw 0
@@ -132,8 +115,9 @@ boot.data.s_active_item_prefix   db ' > ', 0
 
 boot.data.old_int8_handler dd ?
 boot.data.timer_start_time dd ?
-boot.data.settings_changed db ?
 boot.data.loader_block     dd -1
+
+boot_dev        db 0 ; 0 = floppy, 1 = hd
 
 BPB_SecPerTrk   dw 0 ; sectors per track
 BPB_NumHeads    dw 0 ; number of heads
