@@ -132,10 +132,10 @@ align 4
         push    5
         jmp     .main
 
-;align 4
-; .irq_6:
-;       push    6
-;       jmp     .main
+align 4
+  .irq_6:
+        push    6
+        jmp     .main
 
 align 4
   .irq_7:
@@ -172,15 +172,15 @@ align 4
 ;       push    13
 ;       jmp     .main
 
-; align 4
-; .irq_14:
-;       push    14
-;       jmp     .main
+align 4
+  .irq_14:
+        push    14
+        jmp     .main
 
-;align 4
-; .irq_15:
-;       push    15
-;       jmp     .main
+align 4
+  .irq_15:
+        push    15
+        jmp     .main
 
 align 16
   .main:
@@ -193,7 +193,25 @@ align 16
         cmp     [v86_irqhooks + eax * 8], 0
         jnz     v86_irq
 
-        mov     ebx, [irq_tab + eax * 4]
+        cmp     al, 6
+        jnz     @f
+        push    eax
+        call    [fdc_irq_func]
+        pop     eax
+
+    @@: cmp     al, 14
+        jnz     @f
+        push    eax
+        call    [irq14_func]
+        pop     eax
+
+    @@: cmp     al, 15
+        jnz     @f
+        push    eax
+        call    [irq15_func]
+        pop     eax
+
+    @@: mov     ebx, [irq_tab + eax * 4]
         test    ebx, ebx
         jz      .exit
 
