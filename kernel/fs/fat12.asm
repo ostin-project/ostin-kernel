@@ -333,53 +333,14 @@ kproc read_flp_fat ;////////////////////////////////////////////////////////////
         cmp     [FDC_Status], 0
         jne     .unnecessary_flp_fat
         call    give_back_application_data_1
-        call    calculatefatchain_flp
+        mov     esi, FLOPPY_BUFF
+        mov     edi, FLOPPY_FAT
+        call    calculatefatchain
         mov     [root_read], 0
         mov     [flp_fat], 1
 
   .unnecessary_flp_fat:
         popa
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc calculatefatchain_flp ;///////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        pushad
-
-        mov     esi, FLOPPY_BUFF
-        mov     edi, FLOPPY_FAT
-
-  .fcnew_1:
-        mov     eax, dword[esi]
-        mov     ebx, dword[esi + 4]
-        mov     ecx, dword[esi + 8]
-        mov     edx, ecx
-        shr     edx, 4 ; 8 ok
-        shr     dx, 4 ; 7 ok
-        xor     ch, ch
-        shld    ecx, ebx, 20 ; 6 ok
-        shr     cx, 4 ; 5 ok
-        shld    ebx, eax, 12
-        and     ebx, 0x0fffffff ; 4 ok
-        shr     bx, 4 ; 3 ok
-        shl     eax, 4
-        and     eax, 0x0fffffff ; 2 ok
-        shr     ax, 4 ; 1 ok
-        mov     dword[edi], eax
-        add     edi, 4
-        mov     dword[edi], ebx
-        add     edi, 4
-        mov     dword[edi], ecx
-        add     edi, 4
-        mov     dword[edi], edx
-        add     edi, 4
-        add     esi, 12
-
-        cmp     edi, FLOPPY_FAT + 2856 * 2 ; 2849 clusters
-        jnz     .fcnew_1
-
-        popad
         ret
 kendp
 

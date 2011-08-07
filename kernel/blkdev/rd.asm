@@ -18,16 +18,20 @@
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc calculatefatchain ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
+;> esi = ...
+;> edi = ...
+;-----------------------------------------------------------------------------------------------------------------------
         pushad
 
-        mov     esi, RAMDISK + 512
-        mov     edi, RAMDISK_FAT
+        lea     ebp, [edi + 2856 * 2] ; 2849 clusters
 
   .fcnew:
         mov     eax, [esi]
         mov     ebx, [esi + 4]
         mov     ecx, [esi + 8]
         mov     edx, ecx
+        add     esi, 12
+
         shr     edx, 4 ; 8 ok
         shr     dx, 4 ; 7 ok
         xor     ch, ch
@@ -39,14 +43,16 @@ kproc calculatefatchain ;///////////////////////////////////////////////////////
         shl     eax, 4
         and     eax, 0x0fffffff ; 2 ok
         shr     ax, 4 ; 1 ok
-        mov     [edi], eax
-        mov     [edi + 4], ebx
-        mov     [edi + 8], ecx
-        mov     [edi + 12], edx
-        add     edi, 16
-        add     esi, 12
 
-        cmp     edi, RAMDISK_FAT + 2856 * 2 ; 2849 clusters
+        stosd
+        xchg    eax, ebx
+        stosd
+        xchg    eax, ecx
+        stosd
+        xchg    eax, edx
+        stosd
+
+        cmp     edi, ebp
         jnz     .fcnew
 
         popad

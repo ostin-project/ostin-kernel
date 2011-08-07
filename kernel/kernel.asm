@@ -571,6 +571,8 @@ include "boot/rdload.asm"
 ;       mov     [dma_hdd], 1
 
         ; CALCULATE FAT CHAIN FOR RAMDISK
+        mov     esi, RAMDISK + 512
+        mov     edi, RAMDISK_FAT
         call    calculatefatchain
 
 ; LOAD VMODE DRIVER
