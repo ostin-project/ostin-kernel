@@ -788,7 +788,7 @@ end if
         call    boot.run_menu
 
         ; cancelled by [Esc]? not possible with main menu
-        cmp     al, boot.MENU_CANCEL
+        cmp     al, boot.MENU_RESULT_CANCEL
         xchg    al, ah ; disable timeout
         je      .run_main_menu
 
@@ -804,9 +804,9 @@ end if
         pop     cx ax
 
         ; was it [F10]/[F11] keys which caused the exit?
-        cmp     ah, boot.MENU_SAVEBOOT
+        cmp     ah, boot.MENU_RESULT_SAVEBOOT
         je      .save_settings
-        cmp     ah, boot.MENU_BOOT
+        cmp     ah, boot.MENU_RESULT_BOOT
         je      .continue_boot_non_interactive
 
         ; some item has been selected by [Enter]

@@ -14,10 +14,10 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-boot.MENU_SELECT   = 0
-boot.MENU_CANCEL   = 1
-boot.MENU_SAVEBOOT = 2
-boot.MENU_BOOT = 3
+boot.MENU_RESULT_SELECT   = 0
+boot.MENU_RESULT_CANCEL   = 1
+boot.MENU_RESULT_SAVEBOOT = 2
+boot.MENU_RESULT_BOOT     = 3
 
 ;-----------------------------------------------------------------------------------------------------------------------
 boot.print_simple_menu_item: ;//////////////////////////////////////////////////////////////////////////////////////////
@@ -207,10 +207,7 @@ boot.run_menu: ;////////////////////////////////////////////////////////////////
 ;> ds:bx ^= boot_menu_data_t
 ;> al ~= use timeout
 ;-----------------------------------------------------------------------------------------------------------------------
-;< ax #= status code:
-;        0 - select
-;        1 - cancel
-;        2 - continue boot
+;< ax #= status code (one of boot.MENU_RESULT_*)
 ;< cx #= selected item index
 ;-----------------------------------------------------------------------------------------------------------------------
         or      al, al
@@ -309,7 +306,7 @@ end if
         cmp     ch, 0x01 ; esc
         jne     .enter_key
 
-        mov     ax, boot.MENU_CANCEL
+        mov     ax, boot.MENU_RESULT_CANCEL
         jmp     .exit
 
   .enter_key:
@@ -326,7 +323,7 @@ end if
         or      si, si
         jnz     .run_submenu
 
-    @@: xor     ax, ax ; boot.MENU_SELECT
+    @@: xor     ax, ax ; boot.MENU_RESULT_SELECT
         mov     cx, bp
         jmp     .exit
 
@@ -334,7 +331,7 @@ end if
         cmp     ch, 0x44 ; f10
         jne     .up_key
 
-        mov     ax, boot.MENU_SAVEBOOT
+        mov     ax, boot.MENU_RESULT_SAVEBOOT
         jmp     .exit
 
   .up_key:
@@ -385,7 +382,7 @@ end if
         cmp     ch, 0x85 ; f11
         jne     .wait_for_key
 
-        mov     ax, boot.MENU_BOOT
+        mov     ax, boot.MENU_RESULT_BOOT
         jmp     .exit
 
   .run_submenu:
@@ -395,12 +392,12 @@ end if
         call    boot.run_menu
         pop     si bp bx
 
-        cmp     al, boot.MENU_CANCEL
+        cmp     al, boot.MENU_RESULT_CANCEL
         je      .clear_screen
 
-        cmp     al, boot.MENU_SAVEBOOT
+        cmp     al, boot.MENU_RESULT_SAVEBOOT
         je      .exit
-        cmp     al, boot.MENU_BOOT
+        cmp     al, boot.MENU_RESULT_BOOT
         je      .exit
 
         mov     [si + boot_menu_data_t.current_index], cx
