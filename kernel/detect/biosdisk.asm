@@ -35,8 +35,7 @@ bdds:
         inc     cx
         mov     ah, 0x48
         push    ds
-        push    es
-        pop     ds
+        mov_s_  ds, es
         mov     si, 0xa000
         mov     word[si], 0x1e
         mov     ah, 0x48

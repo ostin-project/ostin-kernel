@@ -26,7 +26,7 @@ boot.params.use_bios_disks db 1
 ; boot device (-1 - autodetect, 0 - floppy, 1 - harddisk, 2 - kernel restart, 3 - format ram disk)
 boot.params.boot_source    db 0
 
-static_assert_ $ <= 0x200, "prebooting parameters must fit in first sector"
+static_assert $ <= 0x200, "prebooting parameters must fit in first sector"
 
 store dword -1 at boot.params.vmode.resolution
 

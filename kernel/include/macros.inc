@@ -65,7 +65,7 @@ macro xchg_s_ a, b
         pop     a b
 }
 
-macro static_assert_ cond, message
+macro static_assert cond, message
 {
   if ~ (cond)
     if ~ message eq
@@ -146,3 +146,14 @@ forward
 common
   . = min
 }
+
+macro kproc name
+{
+  if ~used name
+    display "unused proc: ", `name, 13, 10
+  end if
+  align 4
+  name:
+}
+
+kendp fix

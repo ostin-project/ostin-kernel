@@ -390,7 +390,7 @@ proc arp_table_manager stdcall uses ebx esi edi ecx edx, Opcode:DWORD, Index:DWO
 endp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-arp_handler: ;//////////////////////////////////////////////////////////////////////////////////////////////////////////
+kproc arp_handler ;/////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Called when an ARP packet is received on the ethernet
 ;? It looks to see if the packet is a request to resolve this Hosts IP address. If it is, send the ARP reply packet.
@@ -452,6 +452,7 @@ arp_handler: ;//////////////////////////////////////////////////////////////////
 
   .exit:
         ret
+kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 proc arp_request stdcall uses ebx esi edi, TargetIP:DWORD, SenderIP_ptr:DWORD, SenderMAC_ptr:DWORD ;////////////////////

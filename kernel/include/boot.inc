@@ -88,7 +88,7 @@ struct boot_vmode_t
   bits_per_pixel dw ?
 ends
 
-static_assert_ sizeof.boot_vmode_t mod 2 = 0
+static_assert sizeof.boot_vmode_t mod 2 = 0
 
 struct phoenix_smap_addr_range_t range64_t
   type   dd ?
