@@ -640,10 +640,10 @@ kproc fat_find_lfn ;////////////////////////////////////////////////////////////
         jc      .reterr
         sub     esp, 262 * 2 ; reserve place for LFN
         mov     ebp, esp
-        push    0 ; for fat_get_name: read ASCII name
+        push    0 ; for fs.fat.get_name: read ASCII name
 
   .l1:
-        call    fat_get_name
+        call    fs.fat.get_name
         jc      .l2
         call    fat_compare_name
         jz      .found
@@ -1083,7 +1083,7 @@ kproc fs_FloppyReadFolder ;/////////////////////////////////////////////////////
         push    ecx ebp
         sub     esp, 262 * 2 ; reserve space for LFN
         mov     ebp, esp
-        push    dword[ebx + 4] ; for fat_get_name: read ANSI/UNICODE names
+        push    dword[ebx + 4] ; for fs.fat.get_name: read ANSI/UNICODE names
         mov     ebx, [ebx]
         ; init header
         push    eax ecx
@@ -1105,7 +1105,7 @@ kproc fs_FloppyReadFolder ;/////////////////////////////////////////////////////
         push    eax
 
   .l1:
-        call    fat_get_name
+        call    fs.fat.get_name
         jc      .l2
         cmp     byte[edi + 11], 0x0f
         jnz     .do_bdfe
@@ -1140,7 +1140,7 @@ kproc fs_FloppyReadFolder ;/////////////////////////////////////////////////////
         dec     ecx
         js      .l2
         inc     dword[edx + 4] ; new file block copied
-        call    fat_entry_to_bdfe
+        call    fs.fat.fat_entry_to_bdfe
 
   .l2:
         add     edi, 0x20
@@ -1352,9 +1352,9 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
 
   .done1:
         pop     edi
-        call    get_time_for_file
+        call    fs.fat.get_time_for_file
         mov     [edi + 22], ax
-        call    get_date_for_file
+        call    fs.fat.get_date_for_file
         mov     [edi + 24], ax
         mov     [edi + 18], ax
         or      byte[edi + 11], 0x20 ; set 'archive' attribute
@@ -1362,7 +1362,7 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
 
   .notfound:
         ; file is not found; generate short name
-        call    fat_name_is_legal
+        call    fs.fat.name_is_legal
         jc      @f
         add     esp, 28
         popad
@@ -1372,7 +1372,7 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
 
     @@: sub     esp, 12
         mov     edi, esp
-        call    fat_gen_short_name
+        call    fs.fat.gen_short_name
 
   .test_short_name_loop:
         push    esi edi ecx
@@ -1399,7 +1399,7 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
 
   .short_name_found:
         pop     ecx edi esi
-        call    fat_next_short_name
+        call    fs.fat.next_short_name
         jnc     .test_short_name_loop
 
   .disk_full:
@@ -1555,10 +1555,10 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
         pop     esi ecx
         add     esp, 12
         mov     byte[edi + 13], 0 ; tenths of a second at file creation time
-        call    get_time_for_file
+        call    fs.fat.get_time_for_file
         mov     [edi + 14], ax ; creation time
         mov     [edi + 22], ax ; last write time
-        call    get_date_for_file
+        call    fs.fat.get_date_for_file
         mov     [edi + 16], ax ; creation date
         mov     [edi + 24], ax ; last write date
         mov     [edi + 18], ax ; last access date
@@ -1768,9 +1768,9 @@ kproc fs_FloppyWrite ;//////////////////////////////////////////////////////////
         push    eax ; save directory cluster
         push    0 ; return value=0
 
-        call    get_time_for_file
+        call    fs.fat.get_time_for_file
         mov     [edi + 22], ax ; last write time
-        call    get_date_for_file
+        call    fs.fat.get_date_for_file
         mov     [edi + 24], ax ; last write date
         mov     [edi + 18], ax ; last access date
 
@@ -2087,7 +2087,7 @@ kproc fs_FloppySetFileEnd ;/////////////////////////////////////////////////////
 
     @@: push    eax
         ; set file modification date/time to current
-        call    fat_update_datetime
+        call    fs.fat.update_datetime
         mov     eax, [ebx]
         cmp     eax, [edi + 28]
         jb      .truncate
@@ -2304,7 +2304,7 @@ kproc fs_FloppySetFileInfo ;////////////////////////////////////////////////////
         ret
 
     @@: push    eax
-        call    bdfe_to_fat_entry
+        call    fs.fat.bdfe_to_fat_entry
         pop     eax
         pusha
         call    save_chs_sector

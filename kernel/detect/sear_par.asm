@@ -144,6 +144,11 @@ end_search_partitions_bd:
         loop    start_search_partitions_bd
         jmp     end_search_partitions
 
+include  "fs/part_set.asm"
+
+uglobal
+  transfer_adress dd ?
+endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc partition_data_transfer ;/////////////////////////////////////////////////////////////////////////////////////////
@@ -154,10 +159,6 @@ kproc partition_data_transfer ;/////////////////////////////////////////////////
         rep     movsd
         ret
 kendp
-
-uglobal
-  transfer_adress dd ?
-endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc partition_data_transfer_1 ;///////////////////////////////////////////////////////////////////////////////////////

@@ -174,8 +174,6 @@ uglobal
   problem_partition db 0 ; used for partitions search
 endg
 
-include  'part_set.asm'
-
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc set_FAT ;/////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -602,75 +600,6 @@ kproc bcd2bin ;/////////////////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc get_date_for_file ;///////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;? Get date from CMOS and pack day,month,year in AX
-;-----------------------------------------------------------------------------------------------------------------------
-;< ax = date
-;-----------------------------------------------------------------------------------------------------------------------
-;# date format:
-;#   bits 0..4: day of month 0..31
-;#   bits 5..8: month of year 1..12
-;#   bits 9..15: count of years from 1980
-;-----------------------------------------------------------------------------------------------------------------------
-        mov     al, 0x7 ; day
-        out     0x70, al
-        in      al, 0x71
-        call    bcd2bin
-        ror     eax, 5
-
-        mov     al, 0x08 ; month
-        out     0x70, al
-        in      al, 0x71
-        call    bcd2bin
-        ror     eax, 4
-
-        mov     al, 0x09 ; year
-        out     0x70, al
-        in      al, 0x71
-        call    bcd2bin
-
-        ; because CMOS return only the two last digit (eg. 2000 -> 00 , 2001 -> 01) and we
-        ; need the difference with 1980 (eg. 2001-1980)
-        add     ax, 20
-
-        rol     eax, 9
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc get_time_for_file ;///////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;? Get time from CMOS and pack hour,minute,second in AX
-;-----------------------------------------------------------------------------------------------------------------------
-;< ax = time
-;-----------------------------------------------------------------------------------------------------------------------
-;# time format:
-;#   bits 0..4: second (the low bit is lost)
-;#   bits 5..10: minute 0..59
-;#   bits 11..15: hour 0..23
-;-----------------------------------------------------------------------------------------------------------------------
-        mov     al, 0x0 ; second
-        out     0x70, al
-        in      al, 0x71
-        call    bcd2bin
-        ror     eax, 6
-
-        mov     al, 0x2 ; minute
-        out     0x70, al
-        in      al, 0x71
-        call    bcd2bin
-        ror     eax, 6
-
-        mov     al, 0x4 ; hour
-        out     0x70, al
-        in      al, 0x71
-        call    bcd2bin
-        rol     eax, 11
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
 kproc set_current_time_for_entry ;//////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Set current time/date for file entry
@@ -678,9 +607,9 @@ kproc set_current_time_for_entry ;//////////////////////////////////////////////
 ;> ebx = file entry pointer
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax
-        call    get_time_for_file ; update files date/time
+        call    fs.fat.get_time_for_file ; update files date/time
         mov     [ebx + 22], ax
-        call    get_date_for_file
+        call    fs.fat.get_date_for_file
         mov     [ebx + 24], ax
         pop     eax
         ret
@@ -1302,7 +1231,7 @@ kproc fs_HdReadFolder ;/////////////////////////////////////////////////////////
         push    ebp
         sub     esp, 262 * 2 ; reserve space for LFN
         mov     ebp, esp
-        push    dword[ebx + 4] ; for fat_get_name: read ANSI/UNICODE name
+        push    dword[ebx + 4] ; for fs.fat.get_name: read ANSI/UNICODE name
         mov     ebx, [ebx]
         ; init header
         push    eax ecx
@@ -1342,7 +1271,7 @@ kproc fs_HdReadFolder ;/////////////////////////////////////////////////////////
         push    eax
 
   .l1:
-        call    fat_get_name
+        call    fs.fat.get_name
         jc      .l2
         cmp     byte[edi + 11], 0x0f
         jnz     .do_bdfe
@@ -1388,7 +1317,7 @@ kproc fs_HdReadFolder ;/////////////////////////////////////////////////////////
         dec     ecx
         js      .l2
         inc     dword[edx + 4] ; new file block copied
-        call    fat_entry_to_bdfe
+        call    fs.fat.fat_entry_to_bdfe
 
   .l2:
         add     edi, 0x20
@@ -1884,9 +1813,9 @@ kproc fs_HdRewrite ;////////////////////////////////////////////////////////////
 
   .done1:
         pop     edi
-        call    get_time_for_file
+        call    fs.fat.get_time_for_file
         mov     [edi + 22], ax
-        call    get_date_for_file
+        call    fs.fat.get_date_for_file
         mov     [edi + 24], ax
         mov     [edi + 18], ax
         or      byte[edi + 11], 0x20 ; set 'archive' attribute
@@ -1894,7 +1823,7 @@ kproc fs_HdRewrite ;////////////////////////////////////////////////////////////
 
   .notfound:
         ; file is not found; generate short name
-        call    fat_name_is_legal
+        call    fs.fat.name_is_legal
         jc      @f
         add     esp, 32
         popad
@@ -1904,7 +1833,7 @@ kproc fs_HdRewrite ;////////////////////////////////////////////////////////////
 
     @@: sub     esp, 12
         mov     edi, esp
-        call    fat_gen_short_name
+        call    fs.fat.gen_short_name
 
   .test_short_name_loop:
         push    esi edi ecx
@@ -1932,7 +1861,7 @@ kproc fs_HdRewrite ;////////////////////////////////////////////////////////////
 
   .short_name_found:
         pop     ecx edi esi
-        call    fat_next_short_name
+        call    fs.fat.next_short_name
         jnc     .test_short_name_loop
 
   .disk_full:
@@ -2093,10 +2022,10 @@ kproc fs_HdRewrite ;////////////////////////////////////////////////////////////
         pop     esi ecx
         add     esp, 12
         mov     byte[edi + 13], 0 ; tenths of a second at file creation time
-        call    get_time_for_file
+        call    fs.fat.get_time_for_file
         mov     [edi + 14], ax ; creation time
         mov     [edi + 22], ax ; last write time
-        call    get_date_for_file
+        call    fs.fat.get_date_for_file
         mov     [edi + 16], ax ; creation date
         mov     [edi + 24], ax ; last write date
         mov     [edi + 18], ax ; last access date
@@ -2359,9 +2288,9 @@ kproc fs_HdWrite ;//////////////////////////////////////////////////////////////
         push    eax ; save directory sector
         push    0 ; return value=0
 
-        call    get_time_for_file
+        call    fs.fat.get_time_for_file
         mov     [edi + 22], ax ; last write time
-        call    get_date_for_file
+        call    fs.fat.get_date_for_file
         mov     [edi + 24], ax ; last write date
         mov     [edi + 18], ax ; last access date
 
@@ -2734,7 +2663,7 @@ kproc fs_HdSetFileEnd ;/////////////////////////////////////////////////////////
 
     @@: push    eax ; save directory sector
         ; set file modification date/time to current
-        call    fat_update_datetime
+        call    fs.fat.update_datetime
         mov     eax, [ebx]
         cmp     eax, [edi + 28]
         jb      .truncate
@@ -3001,7 +2930,7 @@ kproc fs_HdSetFileInfo ;////////////////////////////////////////////////////////
         ret
 
     @@: push    eax
-        call    bdfe_to_fat_entry
+        call    fs.fat.bdfe_to_fat_entry
         pop     eax
         mov     ebx, buffer
         call    hd_write
