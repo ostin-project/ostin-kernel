@@ -1525,17 +1525,17 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
         add     esi, ecx
         stosb
         mov     cl, 5
-        call    fs_RamdiskRewrite.read_symbols
+        call    fs.fat.read_symbols
         mov     ax, 0x0f
         stosw
         mov     al, [esp + 4]
         stosb
         mov     cl, 6
-        call    fs_RamdiskRewrite.read_symbols
+        call    fs.fat.read_symbols
         xor     eax, eax
         stosw
         mov     cl, 2
-        call    fs_RamdiskRewrite.read_symbols
+        call    fs.fat.read_symbols
         pop     ecx
         lea     eax, [esp + 8 + 8 + 12 + 8]
         call    dword[eax + 8] ; next write

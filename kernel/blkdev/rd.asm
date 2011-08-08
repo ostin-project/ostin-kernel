@@ -1127,17 +1127,17 @@ kproc fs_RamdiskRewrite ;///////////////////////////////////////////////////////
         add     esi, ecx
         stosb
         mov     cl, 5
-        call    .read_symbols
+        call    fs.fat.read_symbols
         mov     ax, 0x0f
         stosw
         mov     al, [esp + 4]
         stosb
         mov     cl, 6
-        call    .read_symbols
+        call    fs.fat.read_symbols
         xor     eax, eax
         stosw
         mov     cl, 2
-        call    .read_symbols
+        call    fs.fat.read_symbols
         pop     ecx
         lea     eax, [esp + 8 + 8 + 12 + 8]
         call    dword[eax + 4] ; next write
@@ -1276,29 +1276,9 @@ kproc fs_RamdiskRewrite ;///////////////////////////////////////////////////////
         xor     eax, eax
         xor     ebx, ebx
         ret
-
-  .read_symbol:
-        or      ax, -1
-        test    esi, esi
-        jz      .retFFFF
-        lodsb
-        test    al, al
-        jnz     ansi2uni_char
-        xor     eax, eax
-        xor     esi, esi
-
-  .retFFFF:
-        ret
-
-
-  .read_symbols:
-        call    .read_symbol
-        stosw
-        loop    .read_symbols
-        ret
+kendp
 
     @@: push    ERROR_ACCESS_DENIED
-kendp
 
 fs_RamdiskWrite.ret0:
         pop     eax
