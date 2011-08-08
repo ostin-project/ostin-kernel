@@ -427,7 +427,9 @@ kproc save_flp_fat ;////////////////////////////////////////////////////////////
         jne     .unnecessary_flp_fat_save
         cmp     [flp_fat], 0
         je      .unnecessary_flp_fat_save
-        call    restorefatchain_flp
+        mov     esi, FLOPPY_FAT
+        mov     edi, FLOPPY_BUFF
+        call    restorefatchain
         mov     [FDD_Track], 0
         mov     [FDD_Head], 0
         mov     [FDD_Sector], 2
@@ -456,42 +458,6 @@ kproc save_flp_fat ;////////////////////////////////////////////////////////////
   .unnecessary_flp_fat_save:
         mov     [fdc_irq_func], fdc_null
         popa
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc restorefatchain_flp ;/////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        pushad
-
-        mov     esi, FLOPPY_FAT
-        mov     edi, FLOPPY_BUFF
-
-  .fcnew2_1:
-        mov     eax, dword[esi]
-        mov     ebx, dword[esi + 4]
-        shl     ax, 4
-        shl     eax, 4
-        shl     bx, 4
-        shr     ebx, 4
-        shrd    eax, ebx, 8
-        shr     ebx, 8
-        mov     dword[edi], eax
-        add     edi, 4
-        mov     word[edi], bx
-        add     edi, 2
-        add     esi, 8
-
-        cmp     edi, FLOPPY_BUFF + 0x1200 ; 4274 bytes - all used FAT
-        jb      .fcnew2_1
-
-        mov     esi, FLOPPY_BUFF ; duplicate fat chain
-        mov     edi, FLOPPY_BUFF + 0x1200
-        mov     ecx, 0x1200 / 4
-        cld
-        rep     movsd
-
-        popad
         ret
 kendp
 

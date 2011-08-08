@@ -536,6 +536,8 @@ kproc LBA_read_ramdisk ;////////////////////////////////////////////////////////
   .lbarrl2:
         pushad
 
+        mov     esi, RAMDISK_FAT
+        mov     edi, RAMDISK + 512
         call    restorefatchain
 
         mov     edi, ecx

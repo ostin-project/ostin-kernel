@@ -5380,6 +5380,8 @@ kproc system_shutdown ;/////////////////////////////////////////////////////////
         cld
         rep     movsd
 
+        mov     esi, RAMDISK_FAT
+        mov     edi, RAMDISK + 512
         call    restorefatchain
 
         mov     al, 0xff

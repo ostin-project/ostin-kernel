@@ -18,19 +18,22 @@
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc calculatefatchain ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> esi = ...
-;> edi = ...
+;> esi ^= ... (buffer)
+;> edi ^= ... (fat)
+;> eflags[df] ~= 0
 ;-----------------------------------------------------------------------------------------------------------------------
         pushad
 
         lea     ebp, [edi + 2856 * 2] ; 2849 clusters
 
   .fcnew:
-        mov     eax, [esi]
-        mov     ebx, [esi + 4]
-        mov     ecx, [esi + 8]
+        lodsd
+        xchg    eax, ecx
+        lodsd
+        xchg    eax, ebx
+        lodsd
+        xchg    eax, ecx
         mov     edx, ecx
-        add     esi, 12
 
         shr     edx, 4 ; 8 ok
         shr     dx, 4 ; 7 ok
@@ -53,7 +56,7 @@ kproc calculatefatchain ;///////////////////////////////////////////////////////
         stosd
 
         cmp     edi, ebp
-        jnz     .fcnew
+        jb      .fcnew
 
         popad
         ret
@@ -62,32 +65,39 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc restorefatchain ;/////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
+;> esi ^= ... (fat)
+;> edi ^= ... (buffer)
+;> eflags[df] ~= 0
+;-----------------------------------------------------------------------------------------------------------------------
         pushad
 
-        mov     esi, RAMDISK_FAT
-        mov     edi, RAMDISK + 512
+        lea     ebp, [edi + 0x1200] ; 4274 bytes - all used FAT
+        push    edi
 
-  .fcnew2:
-        mov     eax, [esi]
-        mov     ebx, [esi + 4]
+  .fcnew:
+        lodsd
+        xchg    eax, ebx
+        lodsw
+        xchg    eax, ebx
+
         shl     ax, 4
         shl     eax, 4
         shl     bx, 4
         shr     ebx, 4
         shrd    eax, ebx, 8
         shr     ebx, 8
-        mov     [edi], eax
-        mov     [edi + 4], bx
-        add     edi, 6
-        add     esi, 8
 
-        cmp     edi, RAMDISK + 512 + 4278 ; 4274 bytes - all used FAT
-        jb      .fcnew2
+        stosd
+        xchg    eax, ebx
+        stosw
 
-        mov     esi, RAMDISK + 512 ; duplicate fat chain
-        mov     edi, RAMDISK + 512 + 0x1200
-        mov     ecx, 1069 ; 4274/4
-        cld
+        cmp     edi, ebp
+        jb      .fcnew
+
+        ; duplicate fat chain
+        pop     esi
+        mov     edi, ebp
+        mov     ecx, 0x1200 / 4
         rep     movsd
 
         popad
