@@ -573,7 +573,7 @@ include "boot/rdload.asm"
         ; CALCULATE FAT CHAIN FOR RAMDISK
         mov     esi, RAMDISK + 512
         mov     edi, RAMDISK_FAT
-        call    calculatefatchain
+        call    fs.fat12.calculate_fat_chain
 
 ; LOAD VMODE DRIVER
 include "vmodeld.asm"
@@ -5382,7 +5382,7 @@ kproc system_shutdown ;/////////////////////////////////////////////////////////
 
         mov     esi, RAMDISK_FAT
         mov     edi, RAMDISK + 512
-        call    restorefatchain
+        call    fs.fat12.restore_fat_chain
 
         mov     al, 0xff
         out     0x21, al

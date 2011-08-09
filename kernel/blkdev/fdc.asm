@@ -53,7 +53,7 @@ kproc save_image ;//////////////////////////////////////////////////////////////
         call    reserve_flp
         mov     esi, RAMDISK_FAT
         mov     edi, RAMDISK + 512
-        call    restorefatchain
+        call    fs.fat12.restore_fat_chain
         pusha
         call    check_label
         cmp     [FDC_Status], 0

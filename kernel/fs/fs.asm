@@ -538,7 +538,7 @@ kproc LBA_read_ramdisk ;////////////////////////////////////////////////////////
 
         mov     esi, RAMDISK_FAT
         mov     edi, RAMDISK + 512
-        call    restorefatchain
+        call    fs.fat12.restore_fat_chain
 
         mov     edi, ecx
         mov     esi, eax

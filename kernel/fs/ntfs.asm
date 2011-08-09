@@ -1236,32 +1236,16 @@ kproc ntfs_HdRead ;/////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;# if ebx = 0, start from first byte
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     byte[esi], 0
-        jnz     @f
-        or      ebx, -1
-        push    ERROR_ACCESS_DENIED
-        pop     eax
-        ret
+        call    ntfs_find_lfn
+        jc      fs.error.file_not_found
 
-    @@: call    ntfs_find_lfn
-        jnc     .found
-        or      ebx, -1
-        push    ERROR_FILE_NOT_FOUND
-        pop     eax
-        ret
-
-  .found:
         mov     [ntfs_cur_attr], 0x80 ; $DATA
         and     [ntfs_cur_offs], 0
         and     [ntfs_cur_size], 0
         call    ntfs_read_attr
-        jnc     @f
-        or      ebx, -1
-        push    ERROR_ACCESS_DENIED
-        pop     eax
-        ret
+        jc      fs.error.access_denied
 
-    @@: pushad
+        pushad
         and     dword[esp + 0x10], 0
         xor     eax, eax
         test    ebx, ebx
@@ -1394,9 +1378,7 @@ kproc ntfs_HdReadFolder ;///////////////////////////////////////////////////////
         call    ntfs_find_lfn
         jnc     .doit2
 
-  .notfound:
-        or      ebx, -1
-        push    ERROR_FILE_NOT_FOUND
+        jmp     fs.error.file_not_found
 
   .pop_ret:
         pop     eax
@@ -1411,7 +1393,8 @@ kproc ntfs_HdReadFolder ;///////////////////////////////////////////////////////
         mov     [ntfs_cur_size], 1
         mov     [ntfs_cur_buf], ntfs_bitmap_buf
         call    ntfs_read_attr
-        jc      .notfound
+        jc      fs.error.file_not_found
+
         mov     [ntfs_cur_attr], 0x90 ; $INDEX_ROOT
         and     [ntfs_cur_offs], 0
         mov     eax, [ntfs_data.cur_index_size]
@@ -1421,9 +1404,9 @@ kproc ntfs_HdReadFolder ;///////////////////////////////////////////////////////
         call    ntfs_read_attr
         jnc     .ok
         cmp     [hd_error], 0
-        jz      .notfound
+        jz      fs.error.file_not_found
         or      ebx, -1
-        push    11
+        push    ERROR_DEVICE_FAIL
         jmp     .pop_ret
 
   .ok:
@@ -1464,7 +1447,7 @@ kproc ntfs_HdReadFolder ;///////////////////////////////////////////////////////
   .nomem:
         popad
         or      ebx, -1
-        push    12
+        push    ERROR_ALLOC
         pop     eax
         ret
 
@@ -1887,7 +1870,7 @@ kproc ntfs_HdRewrite ;//////////////////////////////////////////////////////////
         ;     eax = 0 ok read or other = errormsg
 
         xor     ebx, ebx
-        mov     eax, ERROR_UNSUPPORTED_FS
+        mov     eax, ERROR_NOT_IMPLEMENTED
         ret
 kendp
 
@@ -1907,7 +1890,7 @@ kproc ntfs_HdWrite ;////////////////////////////////////////////////////////////
 ;# if ebx = 0, start from first byte
 ;-----------------------------------------------------------------------------------------------------------------------
         xor     ebx, ebx
-        mov     eax, ERROR_UNSUPPORTED_FS
+        mov     eax, ERROR_NOT_IMPLEMENTED
         ret
 kendp
 
@@ -1933,7 +1916,7 @@ kproc ntfs_HdDelete ;///////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax = 0 (ok) or error code
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, ERROR_UNSUPPORTED_FS
+        mov     eax, ERROR_NOT_IMPLEMENTED
         ret
 kendp
 
@@ -1942,19 +1925,19 @@ kproc ntfs_HdGetFileInfo ;//////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     byte[esi], 0
         jnz     @f
-        push    2
+
+        push    ERROR_NOT_IMPLEMENTED
         pop     eax
         ret
 
     @@: call    ntfs_find_lfn
         jnc     .doit
-        push    ERROR_FILE_NOT_FOUND
-        pop     eax
         cmp     [hd_error], 0
-        jz      @f
-        mov     al, 11
+        jz      fs.error.file_not_found
 
-    @@: ret
+        push    ERROR_DEVICE_FAIL
+        pop     eax
+        ret
 
   .doit:
         push    esi edi

@@ -17,18 +17,6 @@
 
 cache_max equ 1919 ; max. is 1919*512+0x610000=0x6ffe00
 
-ERROR_SUCCESS        = 0
-ERROR_DISK_BASE      = 1
-ERROR_UNSUPPORTED_FS = 2
-ERROR_UNKNOWN_FS     = 3
-ERROR_PARTITION      = 4
-ERROR_FILE_NOT_FOUND = 5
-ERROR_END_OF_FILE    = 6
-ERROR_MEMORY_POINTER = 7
-ERROR_DISK_FULL      = 8
-ERROR_FAT_TABLE      = 9
-ERROR_ACCESS_DENIED  = 10
-
 PUSHAD_EAX equ [esp + 28]
 PUSHAD_ECX equ [esp + 24]
 PUSHAD_EDX equ [esp + 20]
@@ -1022,25 +1010,18 @@ kproc fat32_HdRead ;////////////////////////////////////////////////////////////
 ;# if ebx = 0, start from first byte
 ;-----------------------------------------------------------------------------------------------------------------------
         push    edi
-        cmp     byte[esi], 0
-        jnz     @f
+
+        call    hd_find_lfn
+        jnc     .found
+
+        pop     edi
+        cmp     [hd_error], 0
+        jne     fs.error.access_denied
+        jmp     fs.error.file_not_found
 
   .noaccess:
         pop     edi
-
-  .noaccess_2:
-        or      ebx, -1
-        mov     eax, ERROR_ACCESS_DENIED
-        ret
-
-    @@: call    hd_find_lfn
-        jnc     .found
-        pop     edi
-        cmp     [hd_error], 0
-        jne     .noaccess_2
-        or      ebx, -1
-        mov     eax, ERROR_FILE_NOT_FOUND
-        ret
+        jmp     fs.error.access_denied
 
   .found:
         test    byte[edi + 11], 0x10 ; do not allow read directories
@@ -1052,7 +1033,7 @@ kproc fat32_HdRead ;////////////////////////////////////////////////////////////
         xor     ebx, ebx
 
   .reteof:
-        mov     eax, 6
+        mov     eax, ERROR_END_OF_FILE
         pop     edi
         ret
 
@@ -1147,7 +1128,7 @@ kproc fat32_HdRead ;////////////////////////////////////////////////////////////
 
   .noaccess_1:
         pop     eax
-        push    11
+        push    ERROR_DEVICE_FAIL
 
   .done:
         mov     ebx, edx
@@ -1182,20 +1163,19 @@ kproc fat32_HdReadFolder ;//////////////////////////////////////////////////////
         push    edi
         cmp     byte[esi], 0
         jz      .doit
+
         call    hd_find_lfn
         jnc     .found
+
         pop     edi
-        or      ebx, -1
-        mov     eax, ERROR_FILE_NOT_FOUND
-        ret
+        jmp     fs.error.file_not_found
 
   .found:
         test    byte[edi + 11], 0x10 ; do not allow read files
         jnz     .found_dir
+
         pop     edi
-        or      ebx, -1
-        mov     eax, ERROR_ACCESS_DENIED
-        ret
+        jmp     fs.error.access_denied
 
   .found_dir:
         mov     eax, [edi + 20 - 2]
@@ -1326,9 +1306,7 @@ kproc fat32_HdReadFolder ;//////////////////////////////////////////////////////
   .notfound:
         add     esp, 262 * 2 + 4
         pop     ebp ecx esi edi
-        mov     eax, ERROR_FILE_NOT_FOUND
-        or      ebx, -1
-        ret
+        jmp     fs.error.file_not_found
 
   .done:
         add     esp, 262 * 2 + 4 + 8
@@ -1604,11 +1582,6 @@ kproc fat_get_sector ;//////////////////////////////////////////////////////////
         ret
 kendp
 
-fshrad:
-        mov     eax, ERROR_ACCESS_DENIED
-        xor     ebx, ebx
-        ret
-
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -1621,8 +1594,6 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
 ;< eax = 0 (ok) or error code
 ;< ebx = number of written bytes
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     byte[esi], 0
-        jz      fshrad
         pushad
         xor     edi, edi
         push    esi
@@ -1722,11 +1693,10 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         add     esp, 32
         popad
         test    al, al
-        mov     eax, ERROR_ACCESS_DENIED
-        jz      @f
-        mov     al, 0
+        jz      fs.error.access_denied
 
-    @@: xor     ebx, ebx
+        xor     eax, eax
+        xor     ebx, ebx
         ret
 
   .exists_file:
@@ -1736,9 +1706,7 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         jz      @f
         add     esp, 32
         popad
-        mov     eax, ERROR_ACCESS_DENIED
-        xor     ebx, ebx
-        ret
+        jmp     fs.error.access_denied
 
     @@: ; delete FAT chain
         push    edi
@@ -1778,9 +1746,7 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         jc      @f
         add     esp, 32
         popad
-        mov     eax, ERROR_FILE_NOT_FOUND
-        xor     ebx, ebx
-        ret
+        jmp     fs.error.file_not_found
 
     @@: sub     esp, 12
         mov     edi, esp
@@ -1818,9 +1784,7 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
   .disk_full:
         add     esp, 12 + 32
         popa
-        mov     eax, ERROR_DISK_FULL
-        xor     ebx, ebx
-        ret
+        jmp     fs.error.disk_full
 
   .found:
         pop     ecx edi esi
@@ -1893,9 +1857,7 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         jnc     .scan_dir
         add     esp, 12 + 8 + 12 + 32
         popad
-        mov     eax, ERROR_DISK_FULL
-        xor     ebx, ebx
-        ret
+        jmp     fs.error.disk_full
 
   .free:
         test    ecx, ecx
@@ -1912,16 +1874,8 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         jb      .scan_cont
         ; found!
         ; calculate name checksum
-        push    esi ecx
-        mov     esi, [esp + 8 + 12]
-        mov     ecx, 11
-        xor     eax, eax
-
-    @@: ror     al, 1
-        add     al, [esi]
-        inc     esi
-        loop    @b
-        pop     ecx esi
+        mov     eax, [esp + 8 + 12]
+        call    fs.fat.calculate_name_checksum
         pop     edi
         pop     dword[esp + 8 + 12 + 12]
         pop     dword[esp + 8 + 12 + 12]
@@ -2159,17 +2113,13 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         jmp     .writedircont
 kendp
 
-fat32_HdWrite.access_denied:
-        push    ERROR_ACCESS_DENIED
+fat32_HdWrite.ret11:
+        push    ERROR_DEVICE_FAIL
 
 fat32_HdWrite.ret0:
         pop     eax
         xor     ebx, ebx
         ret
-
-fat32_HdWrite.ret11:
-        push    11
-        jmp     fat32_HdWrite.ret0
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fat32_HdWrite ;///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2186,8 +2136,6 @@ kproc fat32_HdWrite ;///////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;# if ebx = 0, start from first byte
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     byte[esi], 0
-        jz      .access_denied
         pushad
         call    hd_find_lfn
         pushfd
@@ -2201,8 +2149,7 @@ kproc fat32_HdWrite ;///////////////////////////////////////////////////////////
     @@: popfd
         jnc     .found
         popad
-        push    ERROR_FILE_NOT_FOUND
-        jmp     .ret0
+        jmp     fs.error.file_not_found
 
   .found:
         ; FAT does not support files larger than 4GB
@@ -2291,7 +2238,7 @@ kproc fat32_HdWrite ;///////////////////////////////////////////////////////////
         jz      @f
 
   .device_err:
-        mov     byte[esp + 4], 11
+        mov     byte[esp + 4], ERROR_DEVICE_FAIL
         jmp     .ret
 
     @@: ; now ebx=start pos, ecx=end pos, both lie inside file
@@ -2449,7 +2396,7 @@ kproc hd_extend_file ;//////////////////////////////////////////////////////////
 
   .device_err2:
         pop     ebp
-        push    11
+        push    ERROR_DEVICE_FAIL
 
   .ret_err:
         pop     eax
@@ -2536,7 +2483,7 @@ kproc hd_extend_file ;//////////////////////////////////////////////////////////
         pop     eax
         cmp     [hd_error], 0
         jz      @f
-        mov     al, 11
+        mov     al, ERROR_DEVICE_FAIL
 
     @@: stc
         ret
@@ -2552,36 +2499,28 @@ kproc fat32_HdSetFileEnd ;//////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax = 0 (ok) or error code
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     byte[esi], 0
-        jnz     @f
-
-  .access_denied:
-        push    ERROR_ACCESS_DENIED
-
-  .ret:
-        pop     eax
-        ret
-
     @@: push    edi
         call    hd_find_lfn
         pushfd
         cmp     [hd_error], 0
         jz      @f
         popfd
-        push    11
-        jmp     .ret
+        push    ERROR_DEVICE_FAIL
+
+  .ret:
+        pop     eax
+        ret
 
     @@: popfd
         jnc     @f
         pop     edi
-        push    ERROR_FILE_NOT_FOUND
-        jmp     .ret
+        jmp     fs.error.file_not_found
 
     @@: ; must not be directory
         test    byte[edi + 11], 0x10
         jz      @f
         pop     edi
-        jmp     .access_denied
+        jmp     fs.error.access_denied
 
     @@: ; file size must not exceed 4 Gb
         cmp     dword[ebx + 4], 0
@@ -2637,7 +2576,7 @@ kproc fat32_HdSetFileEnd ;//////////////////////////////////////////////////////
         jz      @f
 
   .pop_ret11:
-        mov     byte[esp], 11
+        mov     byte[esp], ERROR_DEVICE_FAIL
         jmp     .pop_ret
 
     @@: ; now zero new data
@@ -2676,7 +2615,7 @@ kproc fat32_HdSetFileEnd ;//////////////////////////////////////////////////////
         jz      .next_cluster
 
   .err_next:
-        mov     byte[esp], 11
+        mov     byte[esp], ERROR_DEVICE_FAIL
 
   .next_cluster:
         sub     dword[esp + 20], 0x200
@@ -2714,7 +2653,7 @@ kproc fat32_HdSetFileEnd ;//////////////////////////////////////////////////////
 
   .device_err3:
         pop     eax ecx eax edi
-        push    11
+        push    ERROR_DEVICE_FAIL
         pop     eax
         ret
 
@@ -2785,7 +2724,7 @@ kproc fat32_HdSetFileEnd ;//////////////////////////////////////////////////////
         xor     eax, eax
         cmp     [hd_error], 0
         jz      @f
-        mov     al, 11
+        mov     al, ERROR_DEVICE_FAIL
 
     @@: ret
 kendp
@@ -2795,7 +2734,7 @@ kproc fat32_HdGetFileInfo ;/////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     byte[esi], 0
         jnz     @f
-        mov     eax, 2
+        mov     eax, ERROR_NOT_IMPLEMENTED
         ret
 
     @@: push    edi
@@ -2805,7 +2744,7 @@ kproc fat32_HdGetFileInfo ;/////////////////////////////////////////////////////
         jz      @f
         popfd
         pop     edi
-        mov     eax, 11
+        mov     eax, ERROR_DEVICE_FAIL
         ret
 
     @@: popfd
@@ -2817,7 +2756,7 @@ kproc fat32_HdSetFileInfo ;/////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     byte[esi], 0
         jnz     @f
-        mov     eax, 2
+        mov     eax, ERROR_NOT_IMPLEMENTED
         ret
 
     @@: push    edi
@@ -2827,14 +2766,13 @@ kproc fat32_HdSetFileInfo ;/////////////////////////////////////////////////////
         jz      @f
         popfd
         pop     edi
-        mov     eax, 11
+        mov     eax, ERROR_DEVICE_FAIL
         ret
 
     @@: popfd
         jnc     @f
         pop     edi
-        mov     eax, ERROR_FILE_NOT_FOUND
-        ret
+        jmp     fs.error.file_not_found
 
     @@: push    eax
         call    fs.fat.bdfe_to_fat_entry
@@ -2856,25 +2794,18 @@ kproc fat32_HdDelete ;//////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax = 0 (ok) or error code
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     byte[esi], 0
-        jnz     @f
-        ; cannot delete root!
-
-  .access_denied:
-        push    ERROR_ACCESS_DENIED
-
-  .pop_ret:
-        pop     eax
-        ret
-
-    @@: and     [longname_sec1], 0
+        and     [longname_sec1], 0
         and     [longname_sec2], 0
         push    edi
         call    hd_find_lfn
         jnc     .found
+
         pop     edi
-        push    ERROR_FILE_NOT_FOUND
-        jmp     .pop_ret
+        jmp     fs.error.file_not_found
+
+  .pop_ret:
+        pop     eax
+        ret
 
   .found:
         cmp     dword[edi], '.   '
@@ -2938,9 +2869,7 @@ kproc fat32_HdDelete ;//////////////////////////////////////////////////////////
 
   .access_denied2:
         pop     edi
-        push    ERROR_ACCESS_DENIED
-        pop     eax
-        ret
+        jmp     fs.error.access_denied
 
   .empty:
         popad

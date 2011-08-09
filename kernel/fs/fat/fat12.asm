@@ -30,6 +30,93 @@ uglobal
 endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12.calculate_fat_chain ;////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> esi ^= ... (buffer)
+;> edi ^= ... (fat)
+;> eflags[df] ~= 0
+;-----------------------------------------------------------------------------------------------------------------------
+        pushad
+        lea     ebp, [edi + 2856 * 2] ; 2849 clusters
+
+  .next:
+        lodsd
+        xchg    eax, ecx
+        lodsd
+        xchg    eax, ebx
+        lodsd
+        xchg    eax, ecx
+        mov     edx, ecx
+
+        shr     edx, 4 ; 8 ok
+        shr     dx, 4 ; 7 ok
+        xor     ch, ch
+        shld    ecx, ebx, 20 ; 6 ok
+        shr     cx, 4 ; 5 ok
+        shld    ebx, eax, 12
+        and     ebx, 0x0fffffff ; 4 ok
+        shr     bx, 4 ; 3 ok
+        shl     eax, 4
+        and     eax, 0x0fffffff ; 2 ok
+        shr     ax, 4 ; 1 ok
+
+        stosd
+        xchg    eax, ebx
+        stosd
+        xchg    eax, ecx
+        stosd
+        xchg    eax, edx
+        stosd
+
+        cmp     edi, ebp
+        jb      .next
+
+        popad
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12.restore_fat_chain ;//////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> esi ^= ... (fat)
+;> edi ^= ... (buffer)
+;> eflags[df] ~= 0
+;-----------------------------------------------------------------------------------------------------------------------
+        pushad
+        lea     ebp, [edi + 0x1200] ; 4274 bytes - all used FAT
+        push    edi
+
+  .next:
+        lodsd
+        xchg    eax, ebx
+        lodsw
+        xchg    eax, ebx
+
+        shl     ax, 4
+        shl     eax, 4
+        shl     bx, 4
+        shr     ebx, 4
+        shrd    eax, ebx, 8
+        shr     ebx, 8
+
+        stosd
+        xchg    eax, ebx
+        stosw
+
+        cmp     edi, ebp
+        jb      .next
+
+        ; duplicate fat chain
+        pop     esi
+        mov     edi, ebp
+        mov     ecx, 0x1200 / 4
+        rep     movsd
+
+        popad
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
 kproc reserve_flp ;/////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cli
@@ -335,7 +422,7 @@ kproc read_flp_fat ;////////////////////////////////////////////////////////////
         call    give_back_application_data_1
         mov     esi, FLOPPY_BUFF
         mov     edi, FLOPPY_FAT
-        call    calculatefatchain
+        call    fs.fat12.calculate_fat_chain
         mov     [root_read], 0
         mov     [flp_fat], 1
 
@@ -429,7 +516,7 @@ kproc save_flp_fat ;////////////////////////////////////////////////////////////
         je      .unnecessary_flp_fat_save
         mov     esi, FLOPPY_FAT
         mov     edi, FLOPPY_BUFF
-        call    restorefatchain
+        call    fs.fat12.restore_fat_chain
         mov     [FDD_Track], 0
         mov     [FDD_Head], 0
         mov     [FDD_Sector], 2
@@ -618,6 +705,55 @@ kproc analyze_directory_flp ;///////////////////////////////////////////////////
         pop     ecx
         add     esp, 4
         clc     ; file found
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fat_compare_name ;////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? compares ASCIIZ-names, case-insensitive (cp866 encoding)
+;-----------------------------------------------------------------------------------------------------------------------
+;> esi = name
+;> ebp = name
+;-----------------------------------------------------------------------------------------------------------------------
+;; if names match:
+;<   ZF = 1
+;<   esi = next component of name
+;; else:
+;<   ZF = 0
+;<   esi = not changed
+;-----------------------------------------------------------------------------------------------------------------------
+;# destroys eax
+;-----------------------------------------------------------------------------------------------------------------------
+        push    ebp esi
+
+  .loop:
+        mov     al, [ebp]
+        inc     ebp
+        call    char_toupper
+        push    eax
+        lodsb
+        call    char_toupper
+        cmp     al, [esp]
+        jnz     .done
+        pop     eax
+        test    al, al
+        jnz     .loop
+        dec     esi
+        pop     eax
+        pop     ebp
+        xor     eax, eax ; set ZF flag
+        ret
+
+  .done:
+        cmp     al, '/'
+        jnz     @f
+        cmp     byte[esp], 0
+        jnz     @f
+        mov     [esp + 4], esi
+
+    @@: pop     eax
+        pop     esi ebp
         ret
 kendp
 
@@ -1495,16 +1631,8 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
         jb      .scan_cont
         ; found!
         ; calculate name checksum
-        push    esi ecx
-        mov     esi, [esp + 8 + 8]
-        mov     ecx, 11
-        xor     eax, eax
-
-    @@: ror     al, 1
-        add     al, [esi]
-        inc     esi
-        loop    @b
-        pop     ecx esi
+        mov     eax, [esp + 8 + 8]
+        call    fs.fat.calculate_name_checksum
         pop     edi
         pop     dword[esp + 8 + 12 + 8]
         ; edi points to first entry in free chunk

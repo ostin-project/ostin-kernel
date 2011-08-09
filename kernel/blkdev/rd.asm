@@ -16,95 +16,6 @@
 ;;======================================================================================================================
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc calculatefatchain ;///////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;> esi ^= ... (buffer)
-;> edi ^= ... (fat)
-;> eflags[df] ~= 0
-;-----------------------------------------------------------------------------------------------------------------------
-        pushad
-
-        lea     ebp, [edi + 2856 * 2] ; 2849 clusters
-
-  .fcnew:
-        lodsd
-        xchg    eax, ecx
-        lodsd
-        xchg    eax, ebx
-        lodsd
-        xchg    eax, ecx
-        mov     edx, ecx
-
-        shr     edx, 4 ; 8 ok
-        shr     dx, 4 ; 7 ok
-        xor     ch, ch
-        shld    ecx, ebx, 20 ; 6 ok
-        shr     cx, 4 ; 5 ok
-        shld    ebx, eax, 12
-        and     ebx, 0x0fffffff ; 4 ok
-        shr     bx, 4 ; 3 ok
-        shl     eax, 4
-        and     eax, 0x0fffffff ; 2 ok
-        shr     ax, 4 ; 1 ok
-
-        stosd
-        xchg    eax, ebx
-        stosd
-        xchg    eax, ecx
-        stosd
-        xchg    eax, edx
-        stosd
-
-        cmp     edi, ebp
-        jb      .fcnew
-
-        popad
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc restorefatchain ;/////////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;> esi ^= ... (fat)
-;> edi ^= ... (buffer)
-;> eflags[df] ~= 0
-;-----------------------------------------------------------------------------------------------------------------------
-        pushad
-
-        lea     ebp, [edi + 0x1200] ; 4274 bytes - all used FAT
-        push    edi
-
-  .fcnew:
-        lodsd
-        xchg    eax, ebx
-        lodsw
-        xchg    eax, ebx
-
-        shl     ax, 4
-        shl     eax, 4
-        shl     bx, 4
-        shr     ebx, 4
-        shrd    eax, ebx, 8
-        shr     ebx, 8
-
-        stosd
-        xchg    eax, ebx
-        stosw
-
-        cmp     edi, ebp
-        jb      .fcnew
-
-        ; duplicate fat chain
-        pop     esi
-        mov     edi, ebp
-        mov     ecx, 0x1200 / 4
-        rep     movsd
-
-        popad
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
 kproc ramdisk_free_space ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< edi = free space
@@ -204,16 +115,9 @@ kproc fileread ;////////////////////////////////////////////////////////////////
         test    esi, esi ; return ramdisk root
         jnz     .fr_noroot ; if not root
         cmp     ebx, 14 ; 14 clusters=root dir
-        ja      .oorr
+        ja      fs.error.file_not_found
         cmp     ecx, 14
-        ja      .oorr
-        jmp     .fr_do
-
-  .oorr:
-        mov     eax, 5 ; out of root range (fnf)
-        xor     ebx, ebx
-        dec     ebx ; 0xffffffff
-        ret
+        ja      fs.error.file_not_found
 
   .fr_do:
         ; reading rootdir
@@ -307,7 +211,7 @@ kproc fileread ;////////////////////////////////////////////////////////////////
         add     esp, 4
         pop     ebx ; ebx <- eax : size of file
         add     esp, 36
-        mov     eax, 6 ; end of file
+        mov     eax, ERROR_END_OF_FILE ; end of file
         ret
 
   .frnoread:
@@ -341,60 +245,11 @@ kproc rd_findfile ;/////////////////////////////////////////////////////////////
         add     edi, ecx
         cmp     edi, RAMDISK + 512 * 33
         jb      .rd_newsearch
-        mov     eax, 5 ; if file not found - eax=5
+        mov     eax, ERROR_FILE_NOT_FOUND ; if file not found - eax=5
         xor     ebx, ebx
         dec     ebx ; ebx=0xffffffff and zf=0
 
   .rd_ff:
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc fat_compare_name ;////////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;? compares ASCIIZ-names, case-insensitive (cp866 encoding)
-;-----------------------------------------------------------------------------------------------------------------------
-;> esi = name
-;> ebp = name
-;-----------------------------------------------------------------------------------------------------------------------
-;; if names match:
-;<   ZF = 1
-;<   esi = next component of name
-;; else:
-;<   ZF = 0
-;<   esi = not changed
-;-----------------------------------------------------------------------------------------------------------------------
-;# destroys eax
-;-----------------------------------------------------------------------------------------------------------------------
-        push    ebp esi
-
-  .loop:
-        mov     al, [ebp]
-        inc     ebp
-        call    char_toupper
-        push    eax
-        lodsb
-        call    char_toupper
-        cmp     al, [esp]
-        jnz     .done
-        pop     eax
-        test    al, al
-        jnz     .loop
-        dec     esi
-        pop     eax
-        pop     ebp
-        xor     eax, eax ; set ZF flag
-        ret
-
-  .done:
-        cmp     al, '/'
-        jnz     @f
-        cmp     byte[esp], 0
-        jnz     @f
-        mov     [esp + 4], esi
-
-    @@: pop     eax
-        pop     esi ebp
         ret
 kendp
 
@@ -594,18 +449,13 @@ kproc fs_RamdiskRead ;//////////////////////////////////////////////////////////
 ;# if ebx = NULL, start from first byte
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     byte[esi], 0
-        jnz     @f
-        or      ebx, -1
-        mov     eax, 10 ; access denied
-        ret
+        jz      fs.error.access_denied
 
     @@: push    edi
         call    rd_find_lfn
         jnc     .found
         pop     edi
-        or      ebx, -1
-        mov     eax, 5 ; file not found
-        ret
+        jmp     fs.error.file_not_found
 
   .found:
         test    ebx, ebx
@@ -615,7 +465,7 @@ kproc fs_RamdiskRead ;//////////////////////////////////////////////////////////
         xor     ebx, ebx
 
   .reteof:
-        mov     eax, 6 ; EOF
+        mov     eax, ERROR_END_OF_FILE ; EOF
         pop     edi
         ret
 
@@ -702,17 +552,13 @@ kproc fs_RamdiskReadFolder ;////////////////////////////////////////////////////
         call    rd_find_lfn
         jnc     .found
         pop     edi
-        or      ebx, -1
-        mov     eax, ERROR_FILE_NOT_FOUND
-        ret
+        jmp     fs.error.file_not_found
 
   .found:
         test    byte[edi + 11], 0x10
         jnz     .found_dir
         pop     edi
-        or      ebx, -1
-        mov     eax, ERROR_ACCESS_DENIED
-        ret
+        jmp     fs.error.access_denied
 
   .found_dir:
         movzx   eax, word[edi + 26]
@@ -1099,16 +945,8 @@ kproc fs_RamdiskRewrite ;///////////////////////////////////////////////////////
         jb      .scan_cont
         ; found!
         ; calculate name checksum
-        push    esi ecx
-        mov     esi, [esp + 8 + 8]
-        mov     ecx, 11
-        xor     eax, eax
-
-    @@: ror     al, 1
-        add     al, [esi]
-        inc     esi
-        loop    @b
-        pop     ecx esi
+        mov     eax, [esp + 8 + 8]
+        call    fs.fat.calculate_name_checksum
         pop     edi
         pop     dword[esp + 8 + 12 + 8]
         ; edi points to last entry in free chunk
@@ -1278,13 +1116,6 @@ kproc fs_RamdiskRewrite ;///////////////////////////////////////////////////////
         ret
 kendp
 
-    @@: push    ERROR_ACCESS_DENIED
-
-fs_RamdiskWrite.ret0:
-        pop     eax
-        xor     ebx, ebx
-        ret
-
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs_RamdiskWrite ;/////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -1301,13 +1132,17 @@ kproc fs_RamdiskWrite ;/////////////////////////////////////////////////////////
 ;# if ebx = 0, start from first byte
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     byte[esi], 0
-        jz      @b
+        jz      fs.error.access_denied
         pushad
         call    rd_find_lfn
         jnc     .found
         popad
         push    ERROR_FILE_NOT_FOUND
-        jmp     .ret0
+
+  .ret0:
+        pop     eax
+        xor     ebx, ebx
+        ret
 
   .found:
         ; must not be directory
@@ -1403,10 +1238,6 @@ kproc fs_RamdiskWrite ;/////////////////////////////////////////////////////////
         jmp     .write_loop
 kendp
 
-ramdisk_extend_file.zero_size:
-        xor     eax, eax
-        jmp     ramdisk_extend_file.start_extend
-
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc ramdisk_extend_file ;/////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -1438,6 +1269,10 @@ kproc ramdisk_extend_file ;/////////////////////////////////////////////////////
         pop     eax
         stc
         ret
+
+  .zero_size:
+        xor     eax, eax
+        jmp     .start_extend
 
     @@: push    eax
         mov     eax, [eax * 2 + RAMDISK_FAT]
@@ -1533,13 +1368,9 @@ kproc fs_RamdiskSetFileEnd ;////////////////////////////////////////////////////
 ;< eax = 0 (ok) or error code
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     byte[esi], 0
-        jnz     @f
+        jz      fs.error.access_denied
 
-  .access_denied:
-        push    ERROR_ACCESS_DENIED
-        jmp     .ret
-
-    @@: push    edi
+        push    edi
         call    rd_find_lfn
         jnc     @f
         pop     edi
@@ -1553,7 +1384,7 @@ kproc fs_RamdiskSetFileEnd ;////////////////////////////////////////////////////
         test    byte[edi + 11], 0x10
         jz      @f
         pop     edi
-        jmp     .access_denied
+        jmp     fs.error.access_denied
 
     @@: ; file size must not exceed 4Gb
         cmp     dword[ebx + 4], 0
@@ -1638,7 +1469,7 @@ kproc fs_RamdiskGetFileInfo ;///////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     byte[esi], 0
         jnz     @f
-        mov     eax, 2 ; unsupported
+        mov     eax, ERROR_NOT_IMPLEMENTED ; unsupported
         ret
 
     @@: push    edi
@@ -1666,7 +1497,7 @@ kproc fs_RamdiskSetFileInfo ;///////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     byte[esi], 0
         jnz     @f
-        mov     eax, 2 ; unsupported
+        mov     eax, ERROR_NOT_IMPLEMENTED ; unsupported
         ret
 
     @@: push    edi
@@ -1692,24 +1523,19 @@ kproc fs_RamdiskDelete ;////////////////////////////////////////////////////////
 ;< eax = 0 (ok) or error code
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     byte[esi], 0
-        jnz     @f
-        ; cannot delete root!
+        jz      fs.error.access_denied ; cannot delete root!
 
-  .access_denied:
-        push    ERROR_ACCESS_DENIED
-
-  .pop_ret:
-        pop     eax
-        ret
-
-    @@: and     [rd_prev_sector], 0
+        and     [rd_prev_sector], 0
         and     [rd_prev_prev_sector], 0
         push    edi
         call    rd_find_lfn
         jnc     .found
         pop     edi
         push    ERROR_FILE_NOT_FOUND
-        jmp     .pop_ret
+
+  .pop_ret:
+        pop     eax
+        ret
 
   .found:
         cmp     dword[edi], '.   '
@@ -1746,7 +1572,7 @@ kproc fs_RamdiskDelete ;////////////////////////////////////////////////////////
 
   .access_denied2:
         pop     edi
-        jmp     .access_denied
+        jmp     fs.error.access_denied
 
   .empty:
         pop     ebx

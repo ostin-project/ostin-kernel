@@ -495,9 +495,7 @@ kproc ext2_HdReadFolder ;///////////////////////////////////////////////////////
 
   .not_found:
         pop     ecx
-        or      ebx, -1
-        mov     eax, ERROR_FILE_NOT_FOUND
-        ret
+        jmp     fs.error.file_not_found
 
   .doit:
         mov     ebp, [ext2_data.root_inode]
@@ -703,27 +701,13 @@ kproc ext2_HdRead ;/////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;# if ebx = 0, start from first byte
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     byte[esi], 0
-        jnz     @f
-
-  .this_is_nofile:
-        or      ebx, -1
-        mov     eax, ERROR_ACCESS_DENIED
-        ret
-
-    @@: push    ecx ebx
+        push    ecx ebx
         call    ext2_find_lfn
         pop     ebx ecx
-        jnc     .doit
+        jc      fs.error.file_not_found
 
-; .not_found:
-        or      ebx, -1
-        mov     eax, ERROR_FILE_NOT_FOUND
-        ret
-
-  .doit:
         test    [ebp + ext2_inode_t.i_mode], EXT2_S_IFREG
-        jz      .this_is_nofile
+        jz      fs.error.access_denied
 
         ;-----------------------------------------------------------------------------final step
         mov     edi, edx ; edi = pointer to return mem
@@ -920,9 +904,7 @@ kproc ext2_HdGetFileInfo ;//////////////////////////////////////////////////////
         call    ext2_find_lfn
         jnc     .doit2
 
-; .not_found:
-        mov     eax, ERROR_FILE_NOT_FOUND
-        ret
+        jmp     fs.error.file_not_found
 
   .doit:
         mov     ebp, [ext2_data.root_inode]
@@ -997,8 +979,10 @@ kproc ext2_HdCreateFolder ;/////////////////////////////////////////////////////
 ;< eax = 0 ok read or other = errormsg
 ;-----------------------------------------------------------------------------------------------------------------------
         xor     ebx, ebx
-        mov     eax, ERROR_UNSUPPORTED_FS
+        mov     eax, ERROR_NOT_IMPLEMENTED
         ret
+
+if defined DEAD_CODE_UNTIL_EXT2_WRITE_SUPPORT_IS_IMPLEMENTED
 
         cmp     byte[esi], 0
         jz      .not_found
@@ -1185,13 +1169,16 @@ kproc ext2_HdCreateFolder ;/////////////////////////////////////////////////////
 
   .test_last_dword:
         xor     ebx, ebx
-        mov     eax, ERROR_UNSUPPORTED_FS
+        mov     eax, ERROR_NOT_IMPLEMENTED
         ret
 
   .no_space:
         or      ebx, -1
         mov     eax, ERROR_DISK_FULL
         ret
+
+end if ; DEAD_CODE_UNTIL_EXT2_WRITE_SUPPORT_IS_IMPLEMENTED
+
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -1293,7 +1280,7 @@ kproc ext2_balloc ;/////////////////////////////////////////////////////////////
   .test_last_dword:
         lodsd
         mov     ecx, [ext2_data.blocks_per_group]
-        and     ecx, not (32 - 1) ; zeroing all but 5 least significant bits
+        and     ecx, not 011111b ; zeroing all but 5 least significant bits
         mov     edx, ecx
         mov     ebx, 1
 
