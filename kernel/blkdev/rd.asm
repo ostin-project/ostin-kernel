@@ -945,7 +945,7 @@ kproc fs_RamdiskRewrite ;///////////////////////////////////////////////////////
         jb      .scan_cont
         ; found!
         ; calculate name checksum
-        mov     eax, [esp + 8 + 8]
+        mov     eax, [esp + 8]
         call    fs.fat.calculate_name_checksum
         pop     edi
         pop     dword[esp + 8 + 12 + 8]

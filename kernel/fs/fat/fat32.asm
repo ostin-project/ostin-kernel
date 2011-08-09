@@ -1874,7 +1874,7 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         jb      .scan_cont
         ; found!
         ; calculate name checksum
-        mov     eax, [esp + 8 + 12]
+        mov     eax, [esp + 12]
         call    fs.fat.calculate_name_checksum
         pop     edi
         pop     dword[esp + 8 + 12 + 12]
