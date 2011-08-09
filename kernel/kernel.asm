@@ -4985,7 +4985,6 @@ kproc syscall_cdaudio ;/////////////////////////////////////////////////////////
         mov     eax, ecx
         shr     eax, 1
         and     eax, 1
-        inc     eax
         mov     [ChannelNumber], ax
         mov     eax, ecx
         and     eax, 1

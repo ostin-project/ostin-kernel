@@ -24,6 +24,81 @@ BSYWaitTime    equ 1000     ; maximum wait time for busy -> ready transition (in
 NoTickWaitTime equ 0x000fffff
 CDBlockSize    equ 2048
 
+uglobal
+  IDE_Channel_1 db 0
+  IDE_Channel_2 db 0
+  cd_status     dd 0
+endg
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc reserve_cd ;//////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        cli
+        cmp     [cd_status], 0
+        je      reserve_ok2
+
+        sti
+        call    change_task
+        jmp     reserve_cd
+
+reserve_ok2:
+        push    eax
+        mov     eax, [CURRENT_TASK]
+        shl     eax, 5
+        mov     eax, [eax + CURRENT_TASK + task_data_t.pid]
+        mov     [cd_status], eax
+        pop     eax
+        sti
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc reserve_cd_channel ;//////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        cmp     [ChannelNumber], 0
+        jne     .secondary_ide
+
+  .primary_ide:
+        cli
+        cmp     [IDE_Channel_1], 0
+        je      @f
+        sti
+        call    change_task
+        jmp     .primary_ide
+
+    @@: mov     [IDE_Channel_1], 1
+        jmp     .exit
+
+  .secondary_ide:
+        cli
+        cmp     [IDE_Channel_2], 0
+        je      @f
+        sti
+        call    change_task
+        jmp     .secondary_ide
+
+    @@: mov     [IDE_Channel_2], 1
+
+  .exit:
+        sti
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc free_cd_channel ;/////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        cmp     [ChannelNumber], 0
+        jne     .secondary_ide
+
+  .primary_ide:
+        and     [IDE_Channel_1], 0
+        ret
+
+  .secondary_ide:
+        and     [IDE_Channel_2], 0
+        ret
+kendp
+
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc ReadCDWRetr ;/////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -444,7 +519,7 @@ kproc SendCommandToHDD_1 ;//////////////////////////////////////////////////////
 ;? Send command to specified drive
 ;-----------------------------------------------------------------------------------------------------------------------
 ;; Arguments are in global variables:
-;> ChannelNumber = channel number (1 or 2)
+;> ChannelNumber = channel number
 ;> DiskNumber = drive number (0 or 1)
 ;> ATAFeatures = "capabilities"
 ;> ATASectorCount = sectors count
@@ -464,12 +539,9 @@ kproc SendCommandToHDD_1 ;//////////////////////////////////////////////////////
         ja      .Err2_4
         ; check if channel number is valid
         mov     bx, [ChannelNumber]
-        cmp     bx, 1
-        jb      .Err3_4
         cmp     bx, 2
-        ja      .Err3_4
+        jae     .Err3_4
         ; set base address
-        dec     bx
         shl     bx, 1
         movzx   ebx, bx
         mov     ax, [ebx + StandardATABases]
@@ -788,7 +860,7 @@ kproc check_ATAPI_device_event ;////////////////////////////////////////////////
         jne     .end
         mov     [IDE_Channel_2], 1
         call    reserve_ok2
-        mov     [ChannelNumber], 2
+        mov     [ChannelNumber], 1
         mov     [DiskNumber], 1
         mov     [cdpos], 4
         call    GetEvent_StatusNotification
@@ -812,7 +884,7 @@ kproc check_ATAPI_device_event ;////////////////////////////////////////////////
         jne     .end
         mov     [IDE_Channel_2], 1
         call     reserve_ok2
-        mov     [ChannelNumber], 2
+        mov     [ChannelNumber], 1
         mov     [DiskNumber], 0
         mov     [cdpos], 3
         call    GetEvent_StatusNotification
@@ -836,7 +908,7 @@ kproc check_ATAPI_device_event ;////////////////////////////////////////////////
         jne     .end
         mov     [IDE_Channel_1], 1
         call    reserve_ok2
-        mov     [ChannelNumber], 1
+        mov     [ChannelNumber], 0
         mov     [DiskNumber], 1
         mov     [cdpos], 2
         call    GetEvent_StatusNotification
@@ -860,7 +932,7 @@ kproc check_ATAPI_device_event ;////////////////////////////////////////////////
         jne     .end
         mov     [IDE_Channel_1], 1
         call    reserve_ok2
-        mov     [ChannelNumber], 1
+        mov     [ChannelNumber], 0
         mov     [DiskNumber], 0
         mov     [cdpos], 1
         call    GetEvent_StatusNotification

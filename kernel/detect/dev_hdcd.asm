@@ -24,7 +24,7 @@ FindHDD: ;//////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Find HDDs and CDs
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     [ChannelNumber], 1
+        mov     [ChannelNumber], 0
         mov     [DiskNumber], 0
         call    .FindHDD_3
 ;       mov     ax, [Sector512 + 176]
@@ -92,7 +92,7 @@ kproc ReadHDD_ID ;//////////////////////////////////////////////////////////////
 ;? Read HDD device identifier
 ;-----------------------------------------------------------------------------------------------------------------------
 ;; Arguments are in global variables:
-;> [ChannelNumber] = channel number (1 or 2)
+;> [ChannelNumber] = channel number
 ;> [DiskNumber] = drive number on channel (0 or 1)
 ;-----------------------------------------------------------------------------------------------------------------------
 ;; Identification data block is read into Sector512.
@@ -173,7 +173,7 @@ kproc SendCommandToHDD ;////////////////////////////////////////////////////////
 ;? Send command to specified drive
 ;-----------------------------------------------------------------------------------------------------------------------
 ;; Arguments are in global variables:
-;> [ChannelNumber] = channel number (1 or 2)
+;> [ChannelNumber] = channel number
 ;> [DiskNumber] = drive number (0 or 1)
 ;> [ATAFeatures] = "capabilities"
 ;> [ATASectorCount] = sectors count
@@ -191,12 +191,9 @@ kproc SendCommandToHDD ;////////////////////////////////////////////////////////
         ja      .Err2
         ; check if channel number is valid
         mov     bx, [ChannelNumber]
-        cmp     bx, 1
-        jb      .Err3
         cmp     bx, 2
-        ja      .Err3
+        jae     .Err3
         ; set base address
-        dec     bx
         shl     bx, 1
         movzx   ebx, bx
         mov     ax, [ebx + StandardATABases]
@@ -365,12 +362,9 @@ kproc DeviceReset ;/////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         ; check if channel number is valid
         mov     bx, [ChannelNumber]
-        cmp     bx, 1
-        jb      .Err3_2
         cmp     bx, 2
-        ja      .Err3_2
+        jae     .Err3_2
         ; set base address
-        dec     bx
         shl     bx, 1
         movzx   ebx, bx
         mov     dx, [ebx + StandardATABases]
