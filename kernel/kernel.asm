@@ -16,6 +16,8 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
+format binary as "mnt"
+
 include "include/proc32.inc"
 include "include/struct.inc"
 include "include/macros.inc"
