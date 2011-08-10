@@ -461,8 +461,7 @@ kproc fs.fat.gen_short_name ;///////////////////////////////////////////////////
         stosd
         pop     edi
         xor     eax, eax
-        push    8
-        pop     ebx
+        mov_s_  ebx, 8
         lea     ecx, [edi + 8]
 
   .loop:
@@ -583,19 +582,19 @@ kproc fs.fat.get_date_for_file ;////////////////////////////////////////////////
         mov     al, 0x7 ; day
         out     0x70, al
         in      al, 0x71
-        call    bcd2bin
+        call    fs.fat._.bcd2bin
         ror     eax, 5
 
         mov     al, 0x08 ; month
         out     0x70, al
         in      al, 0x71
-        call    bcd2bin
+        call    fs.fat._.bcd2bin
         ror     eax, 4
 
         mov     al, 0x09 ; year
         out     0x70, al
         in      al, 0x71
-        call    bcd2bin
+        call    fs.fat._.bcd2bin
 
         ; because CMOS return only the two last digit (eg. 2000 -> 00 , 2001 -> 01) and we
         ; need the difference with 1980 (eg. 2001-1980)
@@ -615,19 +614,19 @@ kproc fs.fat.get_time_for_file ;////////////////////////////////////////////////
         mov     al, 0x0 ; second
         out     0x70, al
         in      al, 0x71
-        call    bcd2bin
+        call    fs.fat._.bcd2bin
         ror     eax, 6
 
         mov     al, 0x2 ; minute
         out     0x70, al
         in      al, 0x71
-        call    bcd2bin
+        call    fs.fat._.bcd2bin
         ror     eax, 6
 
         mov     al, 0x4 ; hour
         out     0x70, al
         in      al, 0x71
-        call    bcd2bin
+        call    fs.fat._.bcd2bin
         rol     eax, 11
         ret
 kendp
@@ -650,6 +649,60 @@ kproc fs.fat.calculate_name_checksum ;//////////////////////////////////////////
         loop    @b
 
         pop     ecx esi
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat.find_long_name ;///////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> esi ^= name
+;> [esp + 4] ^= next entry callback
+;> [esp + 8] ^= first entry callback
+;> [esp + c]... = possibly parameters for first and next
+;-----------------------------------------------------------------------------------------------------------------------
+;< CF = 1 - file not found
+;< CF = 0,
+;<   esi = pointer to next name component
+;<   edi pointer to direntry
+;-----------------------------------------------------------------------------------------------------------------------
+        pusha
+        lea     eax, [esp + 0x0c + 0x20]
+        call    dword[eax - 4]
+        jc      .reterr
+        sub     esp, 262 * 2 ; reserve place for LFN
+        mov     ebp, esp
+        push    0 ; for fs.fat.get_name: read ASCII name
+
+  .l1:
+        call    fs.fat.get_name
+        jc      .l2
+        call    fs.fat._.compare_name
+        jz      .found
+
+  .l2:
+        lea     eax, [esp + 0x0c + 0x20 + 262 * 2 + 4]
+        call    dword[eax - 8]
+        jnc     .l1
+        add     esp, 262 * 2 + 4
+
+  .reterr:
+        stc
+        popa
+        ret
+
+  .found:
+        add     esp, 262 * 2 + 4
+        ; if this is LFN entry, advance to true entry
+        cmp     byte[edi + 11], 0x0f
+        jnz     @f
+        lea     eax, [esp + 0x0c + 0x20]
+        call    dword[eax - 8]
+        jc      .reterr
+
+    @@: add     esp, 8 ; CF=0
+        push    esi
+        push    edi
+        popa
         ret
 kendp
 
@@ -676,6 +729,21 @@ iglobal
     ;  p  q  r  s  t  u  v  w  x  y  z  {  |  }  ~
     db 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 0, 3, 3, 0
 endg
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat._.bcd2bin ;////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> al = BCD number (eg. 0x11)
+;-----------------------------------------------------------------------------------------------------------------------
+;< ah = 0
+;< al = decimal number (eg. 11)
+;-----------------------------------------------------------------------------------------------------------------------
+        xor     ah, ah
+        shl     ax, 4
+        shr     al, 4
+        aad
+        ret
+kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs.fat._.fat_time_to_bdfe_time ;//////////////////////////////////////////////////////////////////////////////////
@@ -748,5 +816,54 @@ kproc fs.fat._.bdfe_date_to_fat_date ;//////////////////////////////////////////
         shl     eax, 5
         or      al, dl
         pop     edx
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat._.compare_name ;///////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? compares ASCIIZ-names, case-insensitive (cp866 encoding)
+;-----------------------------------------------------------------------------------------------------------------------
+;> esi = name
+;> ebp = name
+;-----------------------------------------------------------------------------------------------------------------------
+;; if names match:
+;<   ZF = 1
+;<   esi = next component of name
+;; else:
+;<   ZF = 0
+;<   esi = not changed
+;-----------------------------------------------------------------------------------------------------------------------
+;# destroys eax
+;-----------------------------------------------------------------------------------------------------------------------
+        push    ebp esi
+
+  .loop:
+        mov     al, [ebp]
+        inc     ebp
+        call    char_toupper
+        push    eax
+        lodsb
+        call    char_toupper
+        cmp     al, [esp]
+        jnz     .done
+        pop     eax
+        test    al, al
+        jnz     .loop
+        dec     esi
+        pop     eax
+        pop     ebp
+        xor     eax, eax ; set ZF flag
+        ret
+
+  .done:
+        cmp     al, '/'
+        jnz     @f
+        cmp     byte[esp], 0
+        jnz     @f
+        mov     [esp + 4], esi
+
+    @@: pop     eax
+        pop     esi ebp
         ret
 kendp

@@ -45,50 +45,6 @@ kproc ramdisk_free_space ;//////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc expand_filename ;/////////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;? exapand filename with '.' to 11 character
-;-----------------------------------------------------------------------------------------------------------------------
-;> eax - pointer to filename
-;-----------------------------------------------------------------------------------------------------------------------
-        push    esi edi ebx
-
-        mov     edi, esp ; check for '.' in the name
-        add     edi, 12 + 8
-
-        mov     esi, eax
-
-        mov     eax, edi
-        mov     dword[eax + 0], '    '
-        mov     dword[eax + 4], '    '
-        mov     dword[eax + 8], '    '
-
-  .flr1:
-        cmp     byte[esi], '.'
-        jne     .flr2
-        mov     edi, eax
-        add     edi, 7
-        jmp     .flr3
-
-  .flr2:
-        mov     bl, [esi]
-        mov     [edi], bl
-
-  .flr3:
-        inc     esi
-        inc     edi
-
-        mov     ebx, eax
-        add     ebx, 11
-
-        cmp     edi, ebx
-        jbe     .flr1
-
-        pop     ebx edi esi
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
 kproc fileread ;////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? fileread - sys floppy
@@ -147,13 +103,13 @@ kproc fileread ;////////////////////////////////////////////////////////////////
         ret
 
   .fr_do2: ; if last cluster
-        mov     eax, 6 ; end of file
+        mov     eax, ERROR_END_OF_FILE ; end of file
         xor     ebx, ebx
         ret
 
   .fr_noroot:
         sub     esp, 32
-        call    expand_filename
+        call    fs.fat12.expand_filename
 
         dec     ebx
 
@@ -392,7 +348,7 @@ kproc rd_find_lfn ;/////////////////////////////////////////////////////////////
         push    ramdisk_root_next
 
   .loop:
-        call    fat_find_lfn
+        call    fs.fat.find_long_name
         jc      .notfound
         cmp     byte[esi], 0
         jz      .found
@@ -480,7 +436,7 @@ kproc fs_RamdiskRead ;//////////////////////////////////////////////////////////
         cmp     eax, ecx
         jae     @f
         mov     ecx, eax
-        mov     byte[esp], 6 ; EOF
+        mov     byte[esp], ERROR_END_OF_FILE ; EOF
 
     @@: movzx   edi, word[edi + 26] ; cluster
 
@@ -767,7 +723,7 @@ kproc fs_RamdiskRewrite ;///////////////////////////////////////////////////////
         push    ramdisk_notroot_next
 
   .common1:
-        call    fat_find_lfn
+        call    fs.fat.find_long_name
         jc      .notfound
         ; found
         test    byte[edi + 11], 0x10
@@ -779,7 +735,7 @@ kproc fs_RamdiskRewrite ;///////////////////////////////////////////////////////
         test    al, al
         mov     eax, ERROR_ACCESS_DENIED
         jz      @f
-        mov     al, 0
+        mov     al, ERROR_SUCCESS
 
     @@: xor     ebx, ebx
         ret
@@ -1173,7 +1129,7 @@ kproc fs_RamdiskWrite ;/////////////////////////////////////////////////////////
         ; extend file if needed
         add     ecx, ebx
         jc      .eof ; FAT does not support files larger than 4GB
-        push    0 ; return value=0
+        push    ERROR_SUCCESS ; return value=0
         cmp     ecx, [edi + 28]
         jbe     .length_ok
         cmp     ecx, ebx

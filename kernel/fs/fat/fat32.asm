@@ -15,8 +15,6 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-cache_max equ 1919 ; max. is 1919*512+0x610000=0x6ffe00
-
 PUSHAD_EAX equ [esp + 28]
 PUSHAD_ECX equ [esp + 24]
 PUSHAD_EDX equ [esp + 20]
@@ -27,23 +25,12 @@ PUSHAD_EDI equ [esp + 0]
 
 uglobal
   align 4
-  partition_count      dd 0   ; partitions found by set_FAT32_variables
   longname_sec1        dd 0   ; used by analyze_directory to save 2 previous
   longname_sec2        dd 0   ; directory sectors for delete long filename
-
-  hd_error             dd 0   ; set by wait_for_sector_buffer
-  hd_setup             dd 0
-  hd_wait_timeout      dd 0
 
   cluster_tmp          dd 0   ; used by analyze_directory and analyze_directory_to_write
 
   file_size            dd 0   ; used by file_read
-
-  cache_search_start   dd 0   ; used by find_empty_slot
-endg
-
-iglobal
-  fat_in_cache         dd -1
 endg
 
 uglobal
@@ -57,10 +44,6 @@ endg
 uglobal
   fat16_root           db 0   ; flag for fat16 rootdir
   fat_change           db 0   ; 1=fat has changed
-endg
-
-uglobal
-  problem_partition db 0 ; used for partitions search
 endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -474,21 +457,6 @@ kproc get_cluster_of_a_path ;///////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc bcd2bin ;/////////////////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;> al = BCD number (eg. 0x11)
-;-----------------------------------------------------------------------------------------------------------------------
-;< ah = 0
-;< al = decimal number (eg. 11)
-;-----------------------------------------------------------------------------------------------------------------------
-        xor     ah, ah
-        shl     ax, 4
-        shr     al, 4
-        aad
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
 kproc set_current_time_for_entry ;//////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Set current time/date for file entry
@@ -848,7 +816,7 @@ kproc hd_find_lfn ;/////////////////////////////////////////////////////////////
         jz      .fat32
 
   .loop:
-        call    fat_find_lfn
+        call    fs.fat.find_long_name
         jc      .notfound
         cmp     byte[esi], 0
         jz      .found
@@ -1584,7 +1552,7 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         push    fat_notroot_next
 
   .common1:
-        call    fat_find_lfn
+        call    fs.fat.find_long_name
         jc      .notfound
         ; found
         test    byte[edi + 11], 0x10
@@ -1732,7 +1700,7 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
   .fsfrfe3:
         add     esp, 12 + 8 + 12 + 32
         popad
-        mov     eax, 11
+        mov     eax, ERROR_DEVICE_FAIL
         xor     ebx, ebx
         ret
 
@@ -1944,7 +1912,7 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
   .writeerr:
         pop     eax
         sub     esi, ecx
-        mov     eax, 11
+        mov     eax, ERROR_DEVICE_FAIL
         jmp     .ret
 
   .writedone:
@@ -2044,7 +2012,7 @@ kproc fat32_HdWrite ;///////////////////////////////////////////////////////////
         jz      @f
         popfd
         popad
-        push    11
+        push    ERROR_DEVICE_FAIL
         jmp     .ret0
 
     @@: popfd
@@ -2112,7 +2080,7 @@ kproc fat32_HdWrite ;///////////////////////////////////////////////////////////
         call    update_disk
         cmp     [hd_error], 0
         jz      @f
-        mov     byte[esp + 4], 11
+        mov     byte[esp + 4], ERROR_DEVICE_FAIL
 
     @@: pop     eax
         pop     eax
@@ -2761,7 +2729,7 @@ kproc fat32_HdDelete ;//////////////////////////////////////////////////////////
 
   .err2:
         pop     edi
-        push    11
+        push    ERROR_DEVICE_FAIL
         pop     eax
         ret
 
@@ -2829,7 +2797,7 @@ kproc fat32_HdDelete ;//////////////////////////////////////////////////////////
         xor     eax, eax
         cmp     [hd_error], 0
         jz      @f
-        mov     al, 11
+        mov     al, ERROR_DEVICE_FAIL
 
     @@: ret
 kendp

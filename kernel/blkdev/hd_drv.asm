@@ -17,7 +17,11 @@
 ;;======================================================================================================================
 
 uglobal
-  hd_in_cache db ?
+  align 4
+  hd_error        dd 0 ; set by wait_for_sector_buffer
+  hd_wait_timeout dd 0
+
+  hd_in_cache     db ?
 endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -51,28 +55,28 @@ kproc reserve_hd_channel ;//////////////////////////////////////////////////////
         cmp     [hdpos], 0x80
         jae     .exit
         cmp     [hdbase], 0x1f0
-        jne     .secondary_ide
+        jne     .secondary_channel
 
-  .primary_ide:
+  .primary_channel:
         cli
         cmp     [IDE_Channel_1], 0
         je      @f
         sti
         call    change_task
-        jmp     .primary_ide
+        jmp     .primary_channel
 
     @@: mov     [IDE_Channel_1], 1
         push    eax
         mov     al, 1
         jmp     .clear_cache
 
-  .secondary_ide:
+  .secondary_channel:
         cli
         cmp     [IDE_Channel_2], 0
         je      @f
         sti
         call    change_task
-        jmp     .secondary_ide
+        jmp     .secondary_channel
 
     @@: mov     [IDE_Channel_2], 1
         push    eax
@@ -101,13 +105,13 @@ kproc free_hd_channel ;/////////////////////////////////////////////////////////
         cmp     [hdpos], 0x80
         jae     .exit
         cmp     [hdbase], 0x1f0
-        jne     .secondary_ide
+        jne     .secondary_channel
 
-  .primary_ide:
+  .primary_channel:
         and     [IDE_Channel_1], 0
         ret
 
-  .secondary_ide:
+  .secondary_channel:
         and     [IDE_Channel_2], 0
 
   .exit:

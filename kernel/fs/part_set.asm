@@ -21,9 +21,16 @@ uglobal
   ; Please do not change this place - variables in text
   ;******************************************************
   align 4
-  PARTITION_START dd 0x3f
-  PARTITION_END   dd 0
-  fs_type         db 0    ; 1=NTFS, 2=EXT2/3, 16=FAT16, 32=FAT32
+  PARTITION_START   dd 0x3f
+  PARTITION_END     dd 0
+
+  partition_count   dd 0 ; partitions found by set_FAT32_variables
+
+  hd_setup          dd 0
+
+  fs_type           db 0 ; 1=NTFS, 2=EXT2/3, 16=FAT16, 32=FAT32
+
+  problem_partition db 0 ; used for partitions search
 
   align 4
   fs_dependent_data_start:

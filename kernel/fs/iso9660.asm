@@ -435,7 +435,7 @@ kproc fs_CdGetFileInfo ;////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     byte[esi], 0
         jnz     @f
-        mov     eax, 2
+        mov     eax, ERROR_NOT_IMPLEMENTED
         ret
 
     @@: push    edi
@@ -445,7 +445,7 @@ kproc fs_CdGetFileInfo ;////////////////////////////////////////////////////////
         jz      @f
         popfd
         pop     edi
-        mov     eax, 11
+        mov     eax, ERROR_DEVICE_FAIL
         ret
 
     @@: popfd

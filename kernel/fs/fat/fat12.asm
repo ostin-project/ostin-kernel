@@ -16,11 +16,10 @@
 
 uglobal
   n_sector              dd 0  ; temporary save for sector value
-  flp_status            dd 0
   clust_tmp_flp         dd 0  ; used by analyze_directory and analyze_directory_to_write
   path_pointer_flp      dd 0
   pointer_file_name_flp dd 0
-  save_root_flag        db 0
+; save_root_flag        db 0
   save_flag             db 0
   root_read             db 0  ; 0-necessary to load root, 1-not to load root
   flp_fat               db 0  ; 0-necessary to load fat, 1-not to load fat
@@ -117,24 +116,46 @@ kproc fs.fat12.restore_fat_chain ;//////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc reserve_flp ;/////////////////////////////////////////////////////////////////////////////////////////////////////
+kproc fs.fat12.expand_filename ;////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        cli
-        cmp     [flp_status], 0
-        je      .reserve_flp_ok
+;? exapand filename with '.' to 11 character
+;-----------------------------------------------------------------------------------------------------------------------
+;> eax - pointer to filename
+;-----------------------------------------------------------------------------------------------------------------------
+        push    esi edi ebx
 
-        sti
-        call    change_task
-        jmp     reserve_flp
+        mov     edi, esp ; check for '.' in the name
+        add     edi, 12 + 8
 
-  .reserve_flp_ok:
-        push    eax
-        mov     eax, [CURRENT_TASK]
-        shl     eax, 5
-        mov     eax, [eax + CURRENT_TASK + task_data_t.pid]
-        mov     [flp_status], eax
-        pop     eax
-        sti
+        mov     esi, eax
+
+        mov     eax, edi
+        mov     dword[eax + 0], '    '
+        mov     dword[eax + 4], '    '
+        mov     dword[eax + 8], '    '
+
+  .flr1:
+        cmp     byte[esi], '.'
+        jne     .flr2
+        mov     edi, eax
+        add     edi, 7
+        jmp     .flr3
+
+  .flr2:
+        mov     bl, [esi]
+        mov     [edi], bl
+
+  .flr3:
+        inc     esi
+        inc     edi
+
+        mov     ebx, eax
+        add     ebx, 11
+
+        cmp     edi, ebx
+        jbe     .flr1
+
+        pop     ebx edi esi
         ret
 kendp
 
@@ -160,7 +181,7 @@ kproc floppy_fileread ;/////////////////////////////////////////////////////////
         jnz     .fr_noroot_1
         cmp     ebx, 224 / 16
         jbe     .fr_do_1
-        mov     eax, 5
+        mov     eax, ERROR_FILE_NOT_FOUND
         xor     ebx, ebx
         mov     [flp_status], ebx
         ret
@@ -189,13 +210,13 @@ kproc floppy_fileread ;/////////////////////////////////////////////////////////
   .fdc_status_error_1:
         xor     eax, eax
         mov     [flp_status], eax
-        mov     eax, 10
+        mov     eax, ERROR_ACCESS_DENIED
         or      ebx, -1
         ret
 
   .fr_noroot_1:
         sub     esp, 32
-        call    expand_filename
+        call    fs.fat12.expand_filename
 
   .frfloppy_1:
         test    ebx, ebx
@@ -244,7 +265,7 @@ kproc floppy_fileread ;/////////////////////////////////////////////////////////
         jnz     .l.20_1
 
   .fdc_status_error_3:
-        mov     eax, 5 ; file not found ?
+        mov     eax, ERROR_FILE_NOT_FOUND ; file not found ?
         or      ebx, -1
         add     esp, 32 + 28
         mov     [flp_status], 0
@@ -326,7 +347,7 @@ kproc floppy_fileread ;/////////////////////////////////////////////////////////
         add     esp, 4
         pop     ebx ; ebx <- eax : size of file
         add     esp, 36
-        mov     eax, 6 ; end of file
+        mov     eax, ERROR_END_OF_FILE ; end of file
         mov     [flp_status], 0
         ret
 
@@ -708,109 +729,6 @@ kproc analyze_directory_flp ;///////////////////////////////////////////////////
         ret
 kendp
 
-;-----------------------------------------------------------------------------------------------------------------------
-kproc fat_compare_name ;////////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;? compares ASCIIZ-names, case-insensitive (cp866 encoding)
-;-----------------------------------------------------------------------------------------------------------------------
-;> esi = name
-;> ebp = name
-;-----------------------------------------------------------------------------------------------------------------------
-;; if names match:
-;<   ZF = 1
-;<   esi = next component of name
-;; else:
-;<   ZF = 0
-;<   esi = not changed
-;-----------------------------------------------------------------------------------------------------------------------
-;# destroys eax
-;-----------------------------------------------------------------------------------------------------------------------
-        push    ebp esi
-
-  .loop:
-        mov     al, [ebp]
-        inc     ebp
-        call    char_toupper
-        push    eax
-        lodsb
-        call    char_toupper
-        cmp     al, [esp]
-        jnz     .done
-        pop     eax
-        test    al, al
-        jnz     .loop
-        dec     esi
-        pop     eax
-        pop     ebp
-        xor     eax, eax ; set ZF flag
-        ret
-
-  .done:
-        cmp     al, '/'
-        jnz     @f
-        cmp     byte[esp], 0
-        jnz     @f
-        mov     [esp + 4], esi
-
-    @@: pop     eax
-        pop     esi ebp
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc fat_find_lfn ;////////////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;> esi = pointer to name
-;> [esp + 4] = next
-;> [esp + 8] = first
-;> [esp + c]... = possibly parameters for first and next
-;-----------------------------------------------------------------------------------------------------------------------
-;< CF = 1 - file not found
-;< CF = 0,
-;<   esi = pointer to next name component
-;<   edi pointer to direntry
-;-----------------------------------------------------------------------------------------------------------------------
-        pusha
-        lea     eax, [esp + 0x0c + 0x20]
-        call    dword[eax - 4]
-        jc      .reterr
-        sub     esp, 262 * 2 ; reserve place for LFN
-        mov     ebp, esp
-        push    0 ; for fs.fat.get_name: read ASCII name
-
-  .l1:
-        call    fs.fat.get_name
-        jc      .l2
-        call    fat_compare_name
-        jz      .found
-
-  .l2:
-        lea     eax, [esp + 0x0c + 0x20 + 262 * 2 + 4]
-        call    dword[eax - 8]
-        jnc     .l1
-        add     esp, 262 * 2 + 4
-
-  .reterr:
-        stc
-        popa
-        ret
-
-  .found:
-        add     esp, 262 * 2 + 4
-; if this is LFN entry, advance to true entry
-        cmp     byte[edi + 11], 0x0f
-        jnz     @f
-        lea     eax, [esp + 0x0c + 0x20]
-        call    dword[eax - 8]
-        jc      .reterr
-
-    @@: add     esp, 8 ; CF=0
-        push    esi
-        push    edi
-        popa
-        ret
-kendp
-
 uglobal
   ; this is for delete support
   fd_prev_sector      dd ?
@@ -1024,7 +942,7 @@ kproc fd_find_lfn ;/////////////////////////////////////////////////////////////
         push    flp_root_next
 
   .loop:
-        call    fat_find_lfn
+        call    fs.fat.find_long_name
         jc      .notfound
         cmp     byte[esi], 0
         jz      .found
@@ -1081,7 +999,7 @@ kproc fs_FloppyRead ;///////////////////////////////////////////////////////////
         cmp     byte[esi], 0
         jnz     @f
         or      ebx, -1
-        mov     eax, 10 ; access denied
+        mov     eax, ERROR_ACCESS_DENIED ; access denied
         ret
 
     @@: push    edi
@@ -1089,7 +1007,7 @@ kproc fs_FloppyRead ;///////////////////////////////////////////////////////////
         jnc     .found
         pop     edi
         or      ebx, -1
-        mov     eax, 5 ; file not found
+        mov     eax, ERROR_FILE_NOT_FOUND ; file not found
         ret
 
   .found:
@@ -1100,7 +1018,7 @@ kproc fs_FloppyRead ;///////////////////////////////////////////////////////////
         xor     ebx, ebx
 
   .reteof:
-        mov     eax, 6 ; EOF
+        mov     eax, ERROR_END_OF_FILE ; EOF
         pop     edi
         ret
 
@@ -1115,7 +1033,7 @@ kproc fs_FloppyRead ;///////////////////////////////////////////////////////////
         cmp     eax, ecx
         jae     @f
         mov     ecx, eax
-        mov     byte[esp], 6 ; EOF
+        mov     byte[esp], ERROR_END_OF_FILE ; EOF
 
     @@: movzx   edi, word[edi + 26]
 
@@ -1166,7 +1084,7 @@ kproc fs_FloppyRead ;///////////////////////////////////////////////////////////
         mov     ebx, edx
         pop     eax edx ecx edi
         sub     ebx, edx
-        mov     al, 11
+        mov     al, ERROR_DEVICE_FAIL
         ret
 kendp
 
@@ -1319,15 +1237,15 @@ kproc fs_FloppyReadFolder ;/////////////////////////////////////////////////////
     @@: mov     eax, ERROR_ACCESS_DENIED
         xor     ebx, ebx
         ret
+kendp
 
 fsfrfe2:
         popad
 
 fsfrfe:
-        mov     eax, 11
+        mov     eax, ERROR_DEVICE_FAIL
         xor     ebx, ebx
         ret
-kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs_FloppyCreateFolder ;///////////////////////////////////////////////////////////////////////////////////////////
@@ -1443,7 +1361,7 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
         push    flp_notroot_next
 
   .common1:
-        call    fat_find_lfn
+        call    fs.fat.find_long_name
         jc      .notfound
         ; found
         test    byte[edi + 11], 0x10
@@ -1455,7 +1373,7 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
         test    al, al
         mov     eax, ERROR_ACCESS_DENIED
         jz      @f
-        mov     al, 0
+        mov     al, ERROR_SUCCESS
 
     @@: xor     ebx, ebx
         ret
@@ -1588,7 +1506,7 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
   .fsfrfe3:
         add     esp, 8 + 8 + 12 + 28
         popad
-        mov     eax, 11
+        mov     eax, ERROR_DEVICE_FAIL
         xor     ebx, ebx
         ret
 
@@ -1800,13 +1718,13 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
 
   .err3:
         popa
-        mov     al, 11
+        mov     al, ERROR_DEVICE_FAIL
         xor     ebx, ebx
         ret
 
   .diskerr:
         sub     esi, ecx
-        mov     eax, 11
+        mov     eax, ERROR_DEVICE_FAIL
         pop     edi ecx
         jmp     .ret
 
@@ -1842,7 +1760,7 @@ fs_FloppyWrite.ret0:
         ret
 
 fs_FloppyWrite.ret11:
-        push    11
+        push    ERROR_DEVICE_FAIL
         jmp     fs_FloppyWrite.ret0
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -1954,7 +1872,7 @@ kproc fs_FloppyWrite ;//////////////////////////////////////////////////////////
         jz      @f
 
   .device_err:
-        mov     byte[esp + 4], 11
+        mov     byte[esp + 4], ERROR_DEVICE_FAIL
         jmp     .ret
 
     @@: ; now ebx=start pos, ecx=end pos, both lie inside file
@@ -2228,7 +2146,7 @@ kproc fs_FloppySetFileEnd ;/////////////////////////////////////////////////////
         xor     eax, eax
         cmp     [FDC_Status], 0
         jz      @f
-        mov     al, 11
+        mov     al, ERROR_DEVICE_FAIL
 
     @@:
 
@@ -2253,7 +2171,7 @@ kproc fs_FloppySetFileEnd ;/////////////////////////////////////////////////////
 
   .device_err2:
         pop     ecx ecx eax edi
-        push    11
+        push    ERROR_DEVICE_FAIL
         jmp     .ret
 
   .disk_full:
@@ -2304,7 +2222,7 @@ kproc fs_FloppySetFileEnd ;/////////////////////////////////////////////////////
         jz      .next_cluster
 
   .err_next:
-        mov     byte[esp], 11
+        mov     byte[esp], ERROR_DEVICE_FAIL
 
   .next_cluster:
         sub     dword[esp + 12], 0x200
@@ -2401,7 +2319,7 @@ kproc fs_FloppyGetFileInfo ;////////////////////////////////////////////////////
         jnz     ret11
         cmp     byte[esi], 0
         jnz     @f
-        mov     eax, 2 ; unsupported
+        mov     eax, ERROR_NOT_IMPLEMENTED ; unsupported
         ret
 
     @@: push    edi
@@ -2410,7 +2328,7 @@ kproc fs_FloppyGetFileInfo ;////////////////////////////////////////////////////
 kendp
 
 ret11:
-        mov     eax, 11
+        mov     eax, ERROR_DEVICE_FAIL
         ret
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -2421,7 +2339,7 @@ kproc fs_FloppySetFileInfo ;////////////////////////////////////////////////////
         jnz     ret11
         cmp     byte[esi], 0
         jnz     @f
-        mov     eax, 2 ; unsupported
+        mov     eax, ERROR_NOT_IMPLEMENTED ; unsupported
         ret
 
     @@: push    edi
@@ -2441,7 +2359,7 @@ kproc fs_FloppySetFileInfo ;////////////////////////////////////////////////////
         xor     eax, eax
         cmp     [FDC_Status], al
         jz      @f
-        mov     al, 11
+        mov     al, ERROR_DEVICE_FAIL
 
     @@: ret
 kendp
@@ -2458,7 +2376,7 @@ kproc fs_FloppyDelete ;/////////////////////////////////////////////////////////
         call    read_flp_fat
         cmp     [FDC_Status], 0
         jz      @f
-        push    11
+        push    ERROR_DEVICE_FAIL
         jmp     .pop_ret
 
     @@: cmp     byte[esi], 0

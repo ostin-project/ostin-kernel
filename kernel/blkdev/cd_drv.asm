@@ -56,26 +56,26 @@ kendp
 kproc reserve_cd_channel ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     [ChannelNumber], 0
-        jne     .secondary_ide
+        jne     .secondary_channel
 
-  .primary_ide:
+  .primary_channel:
         cli
         cmp     [IDE_Channel_1], 0
         je      @f
         sti
         call    change_task
-        jmp     .primary_ide
+        jmp     .primary_channel
 
     @@: mov     [IDE_Channel_1], 1
         jmp     .exit
 
-  .secondary_ide:
+  .secondary_channel:
         cli
         cmp     [IDE_Channel_2], 0
         je      @f
         sti
         call    change_task
-        jmp     .secondary_ide
+        jmp     .secondary_channel
 
     @@: mov     [IDE_Channel_2], 1
 
@@ -88,13 +88,13 @@ kendp
 kproc free_cd_channel ;/////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     [ChannelNumber], 0
-        jne     .secondary_ide
+        jne     .secondary_channel
 
-  .primary_ide:
+  .primary_channel:
         and     [IDE_Channel_1], 0
         ret
 
-  .secondary_ide:
+  .secondary_channel:
         and     [IDE_Channel_2], 0
         ret
 kendp

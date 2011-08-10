@@ -276,7 +276,7 @@ kproc file_system_lfn ;/////////////////////////////////////////////////////////
         jz      .readroot
 
   .access_denied:
-        mov     dword[image_of_eax], 10 ; access denied
+        mov     dword[image_of_eax], ERROR_ACCESS_DENIED ; access denied
         ret
 
   .readroot:
@@ -494,14 +494,7 @@ kproc fs_OnRamdisk ;////////////////////////////////////////////////////////////
         ret
 
   .not_impl:
-        mov     dword[image_of_eax], 2 ; not implemented
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc fs_NotImplemented ;///////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, 2
+        mov     dword[image_of_eax], ERROR_NOT_IMPLEMENTED ; not implemented
         ret
 kendp
 
@@ -610,7 +603,7 @@ kproc fs_OnHdAndBd
   .nf:
         call    free_hd_channel
         and     [hd1_status], 0
-        mov     dword[image_of_eax], 5 ; not found
+        mov     dword[image_of_eax], ERROR_FILE_NOT_FOUND ; not found
         ret
 
 ;   @@: mov     [fat32part], ecx
@@ -635,7 +628,7 @@ kproc fs_OnHdAndBd
   .not_impl:
         call    free_hd_channel
         and     [hd1_status], 0
-        mov     dword[image_of_eax], 2 ; not implemented
+        mov     dword[image_of_eax], ERROR_NOT_IMPLEMENTED ; not implemented
         ret
 kendp
 
@@ -655,9 +648,17 @@ iglobal
 endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.error.not_implemented ;////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        mov_s_  eax, ERROR_NOT_IMPLEMENTED
+        or      ebx, -1
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
 kproc fs.error.unknown_filesystem ;/////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, ERROR_UNKNOWN_FS
+        mov_s_  eax, ERROR_UNKNOWN_FS
         or      ebx, -1
         ret
 kendp
@@ -665,7 +666,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs.error.file_not_found ;/////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, ERROR_FILE_NOT_FOUND
+        mov_s_  eax, ERROR_FILE_NOT_FOUND
         or      ebx, -1
         ret
 kendp
@@ -673,7 +674,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs.error.disk_full ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, ERROR_DISK_FULL
+        mov_s_  eax, ERROR_DISK_FULL
         xor     ebx, ebx
         ret
 kendp
@@ -681,7 +682,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs.error.access_denied ;//////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, ERROR_ACCESS_DENIED
+        mov_s_  eax, ERROR_ACCESS_DENIED
         or      ebx, -1
         ret
 kendp
@@ -893,7 +894,7 @@ kproc fs_OnCd
   .nf:
         call    free_cd_channel
         and     [cd_status], 0
-        mov     dword[image_of_eax], 5 ; not found
+        mov     dword[image_of_eax], ERROR_FILE_NOT_FOUND ; not found
         ret
 
     @@: mov     ecx, [ebx + 12]
@@ -913,7 +914,7 @@ kproc fs_OnCd
   .not_impl:
         call    free_cd_channel
         and     [cd_status], 0
-        mov     dword[image_of_eax], 2 ; not implemented
+        mov     dword[image_of_eax], ERROR_NOT_IMPLEMENTED ; not implemented
         ret
 kendp
 
@@ -921,14 +922,14 @@ iglobal
   fs_CdServices:
     dd fs_CdRead
     dd fs_CdReadFolder
-    dd fs_NotImplemented
-    dd fs_NotImplemented
-    dd fs_NotImplemented
+    dd fs.error.not_implemented
+    dd fs.error.not_implemented
+    dd fs.error.not_implemented
     dd fs_CdGetFileInfo
-    dd fs_NotImplemented
+    dd fs.error.not_implemented
     dd 0
-    dd fs_NotImplemented
-    dd fs_NotImplemented
+    dd fs.error.not_implemented
+    dd fs.error.not_implemented
   fs_NumCdServices = ($ - fs_CdServices) / 4
 endg
 
