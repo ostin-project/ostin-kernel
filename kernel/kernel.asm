@@ -76,7 +76,6 @@ org 0x0
         jmp   boot.start
 
 include "boot/preboot.inc"
-include "boot/bootstr.inc"
 
 include "boot/bootcode.asm"
 include "bus/pci/pci16.asm"
