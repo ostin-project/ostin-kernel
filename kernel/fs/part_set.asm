@@ -54,29 +54,26 @@ uglobal
   fs_dependent_data_end:
   file_system_data_size = $ - PARTITION_START
 
-  if file_system_data_size > 96
-    ERROR: sizeof(file system data) too big!
-  end if
+  static_assert file_system_data_size <= 96, "sizeof(file system data) too big!"
 
   virtual at fs_dependent_data_start
     ; NTFS data
     ntfs_data:
-      .sectors_per_cluster dd      ?
-      .mft_cluster         dd      ?
-      .mftmirr_cluster     dd      ?
-      .frs_size            dd      ? ; FRS size in bytes
-      .iab_size            dd      ? ; IndexAllocationBuffer size in bytes
-      .frs_buffer          dd      ?
-      .iab_buffer          dd      ?
-      .mft_retrieval       dd      ?
-      .mft_retrieval_size  dd      ?
-      .mft_retrieval_alloc dd      ?
-      .mft_retrieval_end   dd      ?
-      .cur_index_size      dd      ?
-      .cur_index_buf       dd      ?
-    if $ > fs_dependent_data_end
-      ERROR: increase sizeof(fs_dependent_data)!
-    end if
+      .sectors_per_cluster dd ?
+      .mft_cluster         dd ?
+      .mftmirr_cluster     dd ?
+      .frs_size            dd ? ; FRS size in bytes
+      .iab_size            dd ? ; IndexAllocationBuffer size in bytes
+      .frs_buffer          dd ?
+      .iab_buffer          dd ?
+      .mft_retrieval       dd ?
+      .mft_retrieval_size  dd ?
+      .mft_retrieval_alloc dd ?
+      .mft_retrieval_end   dd ?
+      .cur_index_size      dd ?
+      .cur_index_buf       dd ?
+
+    static_assert $ <= fs_dependent_data_end, "increase sizeof(fs_dependent_data)!"
   end virtual
 
   virtual at fs_dependent_data_start
@@ -98,9 +95,8 @@ uglobal
       .ext2_temp_inode               dd ? ; inode for small procedures
       .sb                            dd ? ; superblock
       .groups_count                  dd ?
-    if $ > fs_dependent_data_end
-      ERROR: increase sizeof(fs_dependent_data)!
-    end if
+
+    static_assert $ <= fs_dependent_data_end, "increase sizeof(fs_dependent_data)!"
   end virtual
 endg
 

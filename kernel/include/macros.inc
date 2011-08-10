@@ -55,6 +55,9 @@ macro diff10 title, l1, l2
 
 macro mov_s_ a, b
 {
+  if (b eqtype 0) & (b > 255) & ~(a in <cs, ds, es, fs, gs, ss>)
+    display "note: using `mov_s_` with `", `b, "` (which is >255) doesn't make much sense", 13, 10
+  end if
         push    b
         pop     a
 }
