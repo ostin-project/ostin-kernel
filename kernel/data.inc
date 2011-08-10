@@ -398,10 +398,11 @@ img_background    rd 1
 mem_BACKGROUND    rd 1
 static_background_data rd 1
 
-cache_ide0        drive_cache_t
-cache_ide1        drive_cache_t
-cache_ide2        drive_cache_t
-cache_ide3        drive_cache_t
+ide_drives_cache:
+  .0 drive_cache_t
+  .1 drive_cache_t
+  .2 drive_cache_t
+  .3 drive_cache_t
 
 debug_step_pointer rd 1
 hdd_appl_data      rb 1 ; 0 = system cache, 1 - application cache

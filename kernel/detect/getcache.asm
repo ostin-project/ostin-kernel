@@ -38,10 +38,10 @@
     @@:
 
   .continue:
-        mov     [cache_ide0.size], eax
-        mov     [cache_ide1.size], eax
-        mov     [cache_ide2.size], eax
-        mov     [cache_ide3.size], eax
+        mov     [ide_drives_cache.0.size], eax
+        mov     [ide_drives_cache.1.size], eax
+        mov     [ide_drives_cache.2.size], eax
+        mov     [ide_drives_cache.3.size], eax
         xor     eax, eax
         mov     [hdd_appl_data], 1 ; al
         mov     [cd_appl_data], 1
@@ -50,7 +50,7 @@
         mov     cl, ch
         and     cl, 011b
         je      .ide2
-        mov     esi, cache_ide3
+        mov     esi, ide_drives_cache.3
         call    get_cache_ide
 
   .ide2:
@@ -58,7 +58,7 @@
         shr     cl, 2
         and     cl, 011b
         je      .ide1
-        mov     esi, cache_ide2
+        mov     esi, ide_drives_cache.2
         call    get_cache_ide
 
   .ide1:
@@ -66,7 +66,7 @@
         shr     cl, 4
         and     cl, 011b
         je      .ide0
-        mov     esi, cache_ide1
+        mov     esi, ide_drives_cache.1
         call    get_cache_ide
 
   .ide0:
@@ -74,7 +74,7 @@
         shr     cl, 6
         and     cl, 011b
         je      @f
-        mov     esi, cache_ide0
+        mov     esi, ide_drives_cache.0
         call    get_cache_ide
 
     @@: xor     ecx, ecx
@@ -98,7 +98,7 @@
         push    ecx
 
   .getbd:
-        mov     eax, [cache_ide0.size]
+        mov     eax, [ide_drives_cache.0.size]
         mov     [esi + drive_cache_t.size], eax
         mov     cl, 1
         call    get_cache_ide

@@ -177,68 +177,27 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc calculate_cache ;/////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;       mov     ecx, cache_max ; entries in cache
-;       mov     esi, HD_CACHE+8
+        mov     esi, [hdpos]
+        dec     esi
+        cmp     esi, 4
+        jae     .not_ide
 
-        ; 1 - IDE0 ... 4 - IDE3
+        imul    esi, sizeof.drive_cache_t
+        add     esi, ide_drives_cache
 
-  .ide0:
-        cmp     [hdpos], 1
-        jne     .ide1
         cmp     [hdd_appl_data], 0
-        jne     .ide0_appl_data
-        mov     ecx, [cache_ide0.sys_sad_size]
-        mov     esi, [cache_ide0.ptr]
+        jne     .ide_app_data
+
+        mov     ecx, [esi + drive_cache_t.sys_sad_size]
+        mov     esi, [esi + drive_cache_t.ptr]
         ret
 
-  .ide0_appl_data:
-        mov     ecx, [cache_ide0.app_sad_size]
-        mov     esi, [cache_ide0.data_ptr]
+  .ide_app_data:
+        mov     ecx, [esi + drive_cache_t.app_sad_size]
+        mov     esi, [esi + drive_cache_t.data_ptr]
         ret
 
-  .ide1:
-        cmp     [hdpos], 2
-        jne     .ide2
-        cmp     [hdd_appl_data], 0
-        jne     .ide1_appl_data
-        mov     ecx, [cache_ide1.sys_sad_size]
-        mov     esi, [cache_ide1.ptr]
-        ret
-
-  .ide1_appl_data:
-        mov     ecx, [cache_ide1.app_sad_size]
-        mov     esi, [cache_ide1.data_ptr]
-        ret
-
-  .ide2:
-        cmp     [hdpos], 3
-        jne     .ide3
-        cmp     [hdd_appl_data], 0
-        jne     .ide2_appl_data
-        mov     ecx, [cache_ide2.sys_sad_size]
-        mov     esi, [cache_ide2.ptr]
-        ret
-
-  .ide2_appl_data:
-        mov     ecx, [cache_ide2.app_sad_size]
-        mov     esi, [cache_ide2.data_ptr]
-        ret
-
-  .ide3:
-        cmp     [hdpos], 4
-        jne     .noide
-        cmp     [hdd_appl_data], 0
-        jne     .ide3_appl_data
-        mov     ecx, [cache_ide3.sys_sad_size]
-        mov     esi, [cache_ide3.ptr]
-        ret
-
-  .ide3_appl_data:
-        mov     ecx, [cache_ide3.app_sad_size]
-        mov     esi, [cache_ide3.data_ptr]
-        ret
-
-  .noide:
+  .not_ide:
         push    eax
         mov     eax, [hdpos]
         sub     eax, 0x80
@@ -246,7 +205,7 @@ kproc calculate_cache ;/////////////////////////////////////////////////////////
         jz      @f
         movzx   eax, byte[BiosDisksData + eax * 4 + 2]
         imul    eax, sizeof.drive_cache_t
-        add     eax, cache_ide0
+        add     eax, ide_drives_cache
         jmp     .get
 
     @@: imul    eax, sizeof.drive_cache_t
@@ -270,59 +229,25 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc calculate_cache_1 ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;       lea     esi, [edi * 8 + HD_CACHE]
+        mov     esi, [hdpos]
+        dec     esi
+        cmp     esi, 4
+        jae     .not_ide
 
-        ; 1 - IDE0 ... 4 - IDE3
+        imul    esi, sizeof.drive_cache_t
+        add     esi, ide_drives_cache
 
-  .ide0:
-        cmp     [hdpos], 1
-        jne     .ide1
         cmp     [hdd_appl_data], 0
-        jne     .ide0_appl_data
-        mov     esi, [cache_ide0.ptr]
+        jne     .ide_app_data
+
+        mov     esi, [esi + drive_cache_t.ptr]
         ret
 
-  .ide0_appl_data:
-        mov     esi, [cache_ide0.data_ptr]
+  .ide_app_data:
+        mov     esi, [esi + drive_cache_t.data_ptr]
         ret
 
-  .ide1:
-        cmp     [hdpos], 2
-        jne     .ide2
-        cmp     [hdd_appl_data], 0
-        jne     .ide1_appl_data
-        mov     esi, [cache_ide1.ptr]
-        ret
-
-  .ide1_appl_data:
-        mov     esi, [cache_ide1.data_ptr]
-        ret
-
-  .ide2:
-        cmp     [hdpos], 3
-        jne     .ide3
-        cmp     [hdd_appl_data], 0
-        jne     .ide2_appl_data
-        mov     esi, [cache_ide2.ptr]
-        ret
-
-  .ide2_appl_data:
-        mov     esi, [cache_ide2.data_ptr]
-        ret
-
-  .ide3:
-        cmp     [hdpos], 4
-        jne     .noide
-        cmp     [hdd_appl_data], 0
-        jne     .ide3_appl_data
-        mov     esi, [cache_ide3.ptr]
-        ret
-
-  .ide3_appl_data:
-        mov     esi, [cache_ide3.data_ptr]
-        ret
-
-  .noide:
+  .not_ide:
         push    eax
         mov     eax, [hdpos]
         sub     eax, 0x80
@@ -330,7 +255,7 @@ kproc calculate_cache_1 ;///////////////////////////////////////////////////////
         jz      @f
         movzx   eax, byte[BiosDisksData + eax * 4 + 2]
         imul    eax, sizeof.drive_cache_t
-        add     eax, cache_ide0
+        add     eax, ide_drives_cache
         jmp     .get
 
     @@: imul    eax, sizeof.drive_cache_t
@@ -352,66 +277,32 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc calculate_cache_2 ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;       add     esi, HD_CACHE + 65536
+        mov     eax, [hdpos]
+        dec     eax
+        cmp     eax, 4
+        jae     .not_ide
 
-        ; 1 - IDE0 ... 4 - IDE3
+        imul    eax, sizeof.drive_cache_t
+        add     eax, ide_drives_cache
 
-  .ide0:
-        cmp     [hdpos], 1
-        jne     .ide1
         cmp     [hdd_appl_data], 0
-        jne     .ide0_appl_data
-        mov     eax, [cache_ide0.sys_data]
+        jne     .ide_app_data
+
+        mov     eax, [eax + drive_cache_t.sys_data]
         ret
 
-  .ide0_appl_data:
-        mov     eax, [cache_ide0.app_data]
+  .ide_app_data:
+        mov     eax, [eax + drive_cache_t.app_data]
         ret
 
-  .ide1:
-        cmp     [hdpos], 2
-        jne     .ide2
-        cmp     [hdd_appl_data], 0
-        jne     .ide1_appl_data
-        mov     eax, [cache_ide1.sys_data]
-        ret
-
-  .ide1_appl_data:
-        mov     eax, [cache_ide1.app_data]
-        ret
-
-  .ide2:
-        cmp     [hdpos], 3
-        jne     .ide3
-        cmp     [hdd_appl_data], 0
-        jne     .ide2_appl_data
-        mov     eax, [cache_ide2.sys_data]
-        ret
-
-  .ide2_appl_data:
-        mov     eax, [cache_ide2.app_data]
-        ret
-
-  .ide3:
-        cmp     [hdpos], 4
-        jne     .noide
-        cmp     [hdd_appl_data], 0
-        jne     .ide3_appl_data
-        mov     eax, [cache_ide3.sys_data]
-        ret
-
-  .ide3_appl_data:
-        mov     eax, [cache_ide3.app_data]
-        ret
-
-  .noide:
+  .not_ide:
         mov     eax, [hdpos]
         sub     eax, 0x80
         cmp     byte[BiosDisksData + eax * 4 + 2], -1
         jz      @f
         movzx   eax, byte[BiosDisksData + eax * 4 + 2]
         imul    eax, sizeof.drive_cache_t
-        add     eax, cache_ide0
+        add     eax, ide_drives_cache
         jmp     .get
 
     @@: imul    eax, sizeof.drive_cache_t
@@ -431,68 +322,27 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc calculate_cache_3 ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;       mov     ecx, cache_max * 10 / 100
-;       mov     edi, [cache_search_start]
+        mov     edi, [hdpos]
+        dec     edi
+        cmp     edi, 4
+        jae     .not_ide
 
-        ; 1 - IDE0 ... 4 - IDE3
+        imul    edi, sizeof.drive_cache_t
+        add     edi, ide_drives_cache
 
-  .ide0:
-        cmp     [hdpos], 1
-        jne     .ide1
         cmp     [hdd_appl_data], 0
-        jne     .ide0_appl_data
-        mov     ecx, [cache_ide0.sys_sad_size]
-        mov     edi, [cache_ide0.sys_search_start]
+        jne     .ide_app_data
+
+        mov     ecx, [edi + drive_cache_t.sys_sad_size]
+        mov     edi, [edi + drive_cache_t.sys_search_start]
         ret
 
-  .ide0_appl_data:
-        mov     ecx, [cache_ide0.app_sad_size]
-        mov     edi, [cache_ide0.app_search_start]
+  .ide_app_data:
+        mov     ecx, [edi + drive_cache_t.app_sad_size]
+        mov     edi, [edi + drive_cache_t.app_search_start]
         ret
 
-  .ide1:
-        cmp     [hdpos], 2
-        jne     .ide2
-        cmp     [hdd_appl_data], 0
-        jne     .ide1_appl_data
-        mov     ecx, [cache_ide1.sys_sad_size]
-        mov     edi, [cache_ide1.sys_search_start]
-        ret
-
-  .ide1_appl_data:
-        mov     ecx, [cache_ide1.app_sad_size]
-        mov     edi, [cache_ide1.app_search_start]
-        ret
-
-  .ide2:
-        cmp     [hdpos], 3
-        jne     .ide3
-        cmp     [hdd_appl_data], 0
-        jne     .ide2_appl_data
-        mov     ecx, [cache_ide2.sys_sad_size]
-        mov     edi, [cache_ide2.sys_search_start]
-        ret
-
-  .ide2_appl_data:
-        mov     ecx, [cache_ide2.app_sad_size]
-        mov     edi, [cache_ide2.app_search_start]
-        ret
-
-  .ide3:
-        cmp     [hdpos], 4
-        jne     .noide
-        cmp     [hdd_appl_data], 0
-        jne     .ide3_appl_data
-        mov     ecx, [cache_ide3.sys_sad_size]
-        mov     edi, [cache_ide3.sys_search_start]
-        ret
-
-  .ide3_appl_data:
-        mov     ecx, [cache_ide3.app_sad_size]
-        mov     edi, [cache_ide3.app_search_start]
-        ret
-
-  .noide:
+  .not_ide:
         push    eax
         mov     eax, [hdpos]
         sub     eax, 0x80
@@ -500,7 +350,7 @@ kproc calculate_cache_3 ;///////////////////////////////////////////////////////
         jz      @f
         movzx   eax, byte[BiosDisksData + eax * 4 + 2]
         imul    eax, sizeof.drive_cache_t
-        add     eax, cache_ide0
+        add     eax, ide_drives_cache
         jmp     .get
 
     @@: imul    eax, sizeof.drive_cache_t
@@ -524,59 +374,25 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc calculate_cache_4 ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;       cmp     edi, cache_max
+        mov     edi, [hdpos]
+        dec     edi
+        cmp     edi, 4
+        jae     .not_ide
 
-        ; 1 - IDE0 ... 4 - IDE3
+        imul    edi, sizeof.drive_cache_t
+        add     edi, ide_drives_cache
 
-  .ide0:
-        cmp     [hdpos], 1
-        jne     .ide1
         cmp     [hdd_appl_data], 0
-        jne     .ide0_appl_data
-        cmp     edi, [cache_ide0.sys_sad_size]
+        jne     .ide_app_data
+
+        cmp     edi, [edi + drive_cache_t.sys_sad_size]
         ret
 
-  .ide0_appl_data:
-        cmp     edi, [cache_ide0.app_sad_size]
+  .ide_app_data:
+        cmp     edi, [edi + drive_cache_t.app_sad_size]
         ret
 
-  .ide1:
-        cmp     [hdpos], 2
-        jne     .ide2
-        cmp     [hdd_appl_data], 0
-        jne     .ide1_appl_data
-        cmp     edi, [cache_ide1.sys_sad_size]
-        ret
-
-  .ide1_appl_data:
-        cmp     edi, [cache_ide1.app_sad_size]
-        ret
-
-  .ide2:
-        cmp     [hdpos], 3
-        jne     .ide3
-        cmp     [hdd_appl_data], 0
-        jne     .ide2_appl_data
-        cmp     edi, [cache_ide2.sys_sad_size]
-        ret
-
-  .ide2_appl_data:
-        cmp     edi, [cache_ide2.app_sad_size]
-        ret
-
-  .ide3:
-        cmp     [hdpos], 4
-        jne     .noide
-        cmp     [hdd_appl_data], 0
-        jne     .ide3_appl_data
-        cmp     edi, [cache_ide3.sys_sad_size]
-        ret
-
-  .ide3_appl_data:
-        cmp     edi, [cache_ide3.app_sad_size]
-        ret
-
-  .noide:
+  .not_ide:
         push    eax
         mov     eax, [hdpos]
         sub     eax, 0x80
@@ -584,7 +400,7 @@ kproc calculate_cache_4 ;///////////////////////////////////////////////////////
         jz      @f
         movzx   eax, byte[BiosDisksData + eax * 4 + 2]
         imul    eax, sizeof.drive_cache_t
-        add     eax, cache_ide0
+        add     eax, ide_drives_cache
         jmp     .get
 
     @@: imul    eax, sizeof.drive_cache_t
@@ -606,67 +422,36 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc calculate_cache_5 ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;       mov     [cache_search_start], edi
-
-        ; 1 - IDE0 ... 4 - IDE3
-
-  .ide0:
-        cmp     [hdpos], 1
-        jne     .ide1
-        cmp     [hdd_appl_data], 0
-        jne     .ide0_appl_data
-        mov     [cache_ide0.sys_search_start], edi
-        ret
-
-  .ide0_appl_data:
-        mov     [cache_ide0.app_search_start], edi
-        ret
-
-  .ide1:
-        cmp     [hdpos], 2
-        jne     .ide2
-        cmp     [hdd_appl_data], 0
-        jne     .ide1_appl_data
-        mov     [cache_ide1.sys_search_start], edi
-        ret
-
-  .ide1_appl_data:
-        mov     [cache_ide1.app_search_start], edi
-        ret
-
-  .ide2:
-        cmp     [hdpos], 3
-        jne     .ide3
-        cmp     [hdd_appl_data], 0
-        jne     .ide2_appl_data
-        mov     [cache_ide2.sys_search_start], edi
-        ret
-
-  .ide2_appl_data:
-        mov     [cache_ide2.app_search_start], edi
-        ret
-
-  .ide3:
-        cmp     [hdpos], 4
-        jne     .noide
-        cmp     [hdd_appl_data], 0
-        jne     .ide3_appl_data
-        mov     [cache_ide3.sys_search_start], edi
-        ret
-
-  .ide3_appl_data:
-        mov     [cache_ide3.app_search_start], edi
-        ret
-
-  .noide:
         push    eax
+
+        mov     eax, [hdpos]
+        dec     eax
+        cmp     eax, 4
+        jae     .not_ide
+
+        imul    eax, sizeof.drive_cache_t
+        add     eax, ide_drives_cache
+
+        cmp     [hdd_appl_data], 0
+        jne     .ide_app_data
+
+        mov     [eax + drive_cache_t.sys_search_start], edi
+        pop     eax
+        ret
+
+  .ide_app_data:
+        mov     [eax + drive_cache_t.app_search_start], edi
+        pop     eax
+        ret
+
+  .not_ide:
         mov     eax, [hdpos]
         sub     eax, 0x80
         cmp     byte[BiosDisksData + eax * 4 + 2], -1
         jz      @f
         movzx   eax, byte[BiosDisksData + eax * 4 + 2]
         imul    eax, sizeof.drive_cache_t
-        add     eax, cache_ide0
+        add     eax, ide_drives_cache
         jmp     .get
 
     @@: imul    eax, sizeof.drive_cache_t
@@ -711,58 +496,32 @@ kproc clear_CD_cache ;//////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         pusha
 
-  .ide0:
+        mov     esi, [cdpos]
+        dec     esi
+        cmp     esi, 4
+        jae     .exit
+
+        imul    esi, sizeof.drive_cache_t
+        add     esi, ide_drives_cache
         xor     eax, eax
-        cmp     [cdpos], 1
-        jne     .ide1
-        mov     [cache_ide0.sys_search_start], eax
-        mov     ecx, [cache_ide0.sys_sad_size]
-        mov     edi, [cache_ide0.ptr]
-        call    .clear
-        mov     [cache_ide0.app_search_start], eax
-        mov     ecx, [cache_ide0.app_sad_size]
-        mov     edi, [cache_ide0.data_ptr]
-        jmp     .continue
 
-  .ide1:
-        cmp     [cdpos], 2
-        jne     .ide2
-        mov     [cache_ide1.sys_search_start], eax
-        mov     ecx, [cache_ide1.sys_sad_size]
-        mov     edi, [cache_ide1.ptr]
+        mov     [esi + drive_cache_t.sys_search_start], eax
+        mov     ecx, [esi + drive_cache_t.sys_sad_size]
+        mov     edi, [esi + drive_cache_t.ptr]
         call    .clear
-        mov     [cache_ide1.app_search_start], eax
-        mov     ecx, [cache_ide1.app_sad_size]
-        mov     edi, [cache_ide1.data_ptr]
-        jmp     .continue
 
-  .ide2:
-        cmp     [cdpos], 3
-        jne     .ide3
-        mov     [cache_ide2.sys_search_start], eax
-        mov     ecx, [cache_ide2.sys_sad_size]
-        mov     edi, [cache_ide2.ptr]
+        mov     [esi + drive_cache_t.app_search_start], eax
+        mov     ecx, [esi + drive_cache_t.app_sad_size]
+        mov     edi, [esi + drive_cache_t.data_ptr]
         call    .clear
-        mov     [cache_ide2.app_search_start], eax
-        mov     ecx, [cache_ide2.app_sad_size]
-        mov     edi, [cache_ide2.data_ptr]
-        jmp     .continue
 
-  .ide3:
-        mov     [cache_ide3.sys_search_start], eax
-        mov     ecx, [cache_ide3.sys_sad_size]
-        mov     edi, [cache_ide3.ptr]
-        call    .clear
-        mov     [cache_ide3.app_search_start], eax
-        mov     ecx, [cache_ide3.app_sad_size]
-        mov     edi, [cache_ide3.data_ptr]
-
-  .continue:
-        call    .clear
+  .exit:
         popa
         ret
 
-  .clear:
+;-----------------------------------------------------------------------------------------------------------------------
+  .clear: ;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+;-----------------------------------------------------------------------------------------------------------------------
         shl     ecx, 1
         cld
         rep     stosd
@@ -772,334 +531,150 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc cd_calculate_cache ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;       mov     ecx, cache_max ; entries in cache
-;       mov     esi, HD_CACHE + 8
+        mov     esi, [cdpos]
+        dec     esi
+        cmp     esi, 4
+        jae     .exit
 
-        ; 1 - IDE0 ... 4 - IDE3
+        imul    esi, sizeof.drive_cache_t
+        add     esi, ide_drives_cache
 
-  .ide0:
-        cmp     [cdpos], 1
-        jne     .ide1
         cmp     [cd_appl_data], 0
-        jne     .ide0_appl_data
-        mov     ecx, [cache_ide0.sys_sad_size]
-        mov     esi, [cache_ide0.ptr]
+        jne     .ide_app_data
+
+        mov     ecx, [esi + drive_cache_t.sys_sad_size]
+        mov     esi, [esi + drive_cache_t.ptr]
         ret
 
-  .ide0_appl_data:
-        mov     ecx, [cache_ide0.app_sad_size]
-        mov     esi, [cache_ide0.data_ptr]
-        ret
+  .ide_app_data:
+        mov     ecx, [esi + drive_cache_t.app_sad_size]
+        mov     esi, [esi + drive_cache_t.data_ptr]
 
-  .ide1:
-        cmp     [cdpos], 2
-        jne     .ide2
-        cmp     [cd_appl_data], 0
-        jne     .ide1_appl_data
-        mov     ecx, [cache_ide1.sys_sad_size]
-        mov     esi, [cache_ide1.ptr]
-        ret
-
-  .ide1_appl_data:
-        mov     ecx, [cache_ide1.app_sad_size]
-        mov     esi, [cache_ide1.data_ptr]
-        ret
-
-  .ide2:
-        cmp     [cdpos], 3
-        jne     .ide3
-        cmp     [cd_appl_data], 0
-        jne     .ide2_appl_data
-        mov     ecx, [cache_ide2.sys_sad_size]
-        mov     esi, [cache_ide2.ptr]
-        ret
-
-  .ide2_appl_data:
-        mov     ecx, [cache_ide2.app_sad_size]
-        mov     esi, [cache_ide2.data_ptr]
-        ret
-
-  .ide3:
-        cmp     [cd_appl_data], 0
-        jne     .ide3_appl_data
-        mov     ecx, [cache_ide3.sys_sad_size]
-        mov     esi, [cache_ide3.ptr]
-        ret
-
-  .ide3_appl_data:
-        mov     ecx, [cache_ide3.app_sad_size]
-        mov     esi, [cache_ide3.data_ptr]
+  .exit:
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc cd_calculate_cache_1 ;////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;       lea     esi, [edi * 8 + HD_CACHE]
+        mov     esi, [cdpos]
+        dec     esi
+        cmp     esi, 4
+        jae     .exit
 
-        ; 1 - IDE0 ... 4 - IDE3
+        imul    esi, sizeof.drive_cache_t
+        add     esi, ide_drives_cache
 
-  .ide0:
-        cmp     [cdpos], 1
-        jne     .ide1
         cmp     [cd_appl_data], 0
-        jne     .ide0_appl_data
-        mov     esi, [cache_ide0.ptr]
+        jne     .ide_app_data
+
+        mov     esi, [esi + drive_cache_t.ptr]
         ret
 
-  .ide0_appl_data:
-        mov     esi, [cache_ide0.data_ptr]
-        ret
+  .ide_app_data:
+        mov     esi, [esi + drive_cache_t.data_ptr]
 
-  .ide1:
-        cmp     [cdpos], 2
-        jne     .ide2
-        cmp     [cd_appl_data], 0
-        jne     .ide1_appl_data
-        mov     esi, [cache_ide1.ptr]
-        ret
-
-  .ide1_appl_data:
-        mov     esi, [cache_ide1.data_ptr]
-        ret
-
-  .ide2:
-        cmp     [cdpos], 3
-        jne     .ide3
-        cmp     [cd_appl_data], 0
-        jne     .ide2_appl_data
-        mov     esi, [cache_ide2.ptr]
-        ret
-
-  .ide2_appl_data:
-        mov     esi, [cache_ide2.data_ptr]
-        ret
-
-  .ide3:
-        cmp     [cd_appl_data], 0
-        jne     .ide3_appl_data
-        mov     esi, [cache_ide3.ptr]
-        ret
-
-  .ide3_appl_data:
-        mov     esi, [cache_ide3.data_ptr]
+  .exit:
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc cd_calculate_cache_2 ;////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;       add     esi, HD_CACHE + 65536
+        mov     eax, [cdpos]
+        dec     eax
+        cmp     eax, 4
+        jae     .exit
 
-        ; 1 - IDE0 ... 4 - IDE3
+        imul    eax, sizeof.drive_cache_t
+        add     eax, ide_drives_cache
 
-  .ide0:
-        cmp     [cdpos], 1
-        jne     .ide1
         cmp     [cd_appl_data], 0
-        jne     .ide0_appl_data
-        mov     eax, [cache_ide0.sys_data]
+        jne     .ide_app_data
+
+        mov     eax, [eax + drive_cache_t.sys_data]
         ret
 
-  .ide0_appl_data:
-        mov     eax, [cache_ide0.app_data]
-        ret
+  .ide_app_data:
+        mov     eax, [eax + drive_cache_t.app_data]
 
-  .ide1:
-        cmp     [cdpos], 2
-        jne     .ide2
-        cmp     [cd_appl_data], 0
-        jne     .ide1_appl_data
-        mov     eax, [cache_ide1.sys_data]
-        ret
-
-  .ide1_appl_data:
-        mov     eax, [cache_ide1.app_data]
-        ret
-
-  .ide2:
-        cmp     [cdpos], 3
-        jne     .ide3
-        cmp     [cd_appl_data], 0
-        jne     .ide2_appl_data
-        mov     eax, [cache_ide2.sys_data]
-        ret
-
-  .ide2_appl_data:
-        mov     eax, [cache_ide2.app_data]
-        ret
-
-  .ide3:
-        cmp     [cd_appl_data], 0
-        jne     .ide3_appl_data
-        mov     eax, [cache_ide3.sys_data]
-        ret
-
-  .ide3_appl_data:
-        mov     eax, [cache_ide3.app_data]
+  .exit:
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc cd_calculate_cache_3 ;////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;       mov     ecx, cache_max * 10 / 100
-;       mov     edi, [cache_search_start]
+        mov     edi, [cdpos]
+        dec     edi
+        cmp     edi, 4
+        jae     .exit
 
-        ; 1 - IDE0 ... 4 - IDE3
+        imul    edi, sizeof.drive_cache_t
+        add     edi, ide_drives_cache
 
-  .ide0:
-        cmp     [cdpos], 1
-        jne     .ide1
         cmp     [cd_appl_data], 0
-        jne     .ide0_appl_data
-        mov     edi, [cache_ide0.sys_search_start]
+        jne     .ide_app_data
+
+        mov     edi, [edi + drive_cache_t.sys_search_start]
         ret
 
-  .ide0_appl_data:
-        mov     edi, [cache_ide0.app_search_start]
-        ret
+  .ide_app_data:
+        mov     edi, [edi + drive_cache_t.app_search_start]
 
-  .ide1:
-        cmp     [cdpos], 2
-        jne     .ide2
-        cmp     [cd_appl_data], 0
-        jne     .ide1_appl_data
-        mov     edi, [cache_ide1.sys_search_start]
-        ret
-
-  .ide1_appl_data:
-        mov     edi, [cache_ide1.app_search_start]
-        ret
-
-  .ide2:
-        cmp     [cdpos], 3
-        jne     .ide3
-        cmp     [cd_appl_data], 0
-        jne     .ide2_appl_data
-        mov     edi, [cache_ide2.sys_search_start]
-        ret
-
-  .ide2_appl_data:
-        mov     edi, [cache_ide2.app_search_start]
-        ret
-
-  .ide3:
-        cmp     [cd_appl_data], 0
-        jne     .ide3_appl_data
-        mov     edi, [cache_ide3.sys_search_start]
-        ret
-
-  .ide3_appl_data:
-        mov     edi, [cache_ide3.app_search_start]
+  .exit:
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc cd_calculate_cache_4 ;////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;       cmp     edi, cache_max
+        mov     edi, [cdpos]
+        dec     edi
+        cmp     edi, 4
+        jae     .exit
 
-        ; 1 - IDE0 ... 4 - IDE3
+        imul    edi, sizeof.drive_cache_t
+        add     edi, ide_drives_cache
 
-  .ide0:
-        cmp     [cdpos], 1
-        jne     .ide1
         cmp     [cd_appl_data], 0
-        jne     .ide0_appl_data
-        cmp     edi, [cache_ide0.sys_sad_size]
+        jne     .ide_app_data
+
+        cmp     edi, [edi + drive_cache_t.sys_sad_size]
         ret
 
-  .ide0_appl_data:
-        cmp     edi, [cache_ide0.app_sad_size]
-        ret
+  .ide_app_data:
+        cmp     edi, [edi + drive_cache_t.app_sad_size]
 
-  .ide1:
-        cmp     [cdpos], 2
-        jne     .ide2
-        cmp     [cd_appl_data], 0
-        jne     .ide1_appl_data
-        cmp     edi, [cache_ide1.sys_sad_size]
-        ret
-
-  .ide1_appl_data:
-        cmp     edi, [cache_ide1.app_sad_size]
-        ret
-
-  .ide2:
-        cmp     [cdpos], 3
-        jne     .ide3
-        cmp     [cd_appl_data], 0
-        jne     .ide2_appl_data
-        cmp     edi, [cache_ide2.sys_sad_size]
-        ret
-
-  .ide2_appl_data:
-        cmp     edi, [cache_ide2.app_sad_size]
-        ret
-
-  .ide3:
-        cmp     [cd_appl_data], 0
-        jne     .ide3_appl_data
-        cmp     edi, [cache_ide3.sys_sad_size]
-        ret
-
-  .ide3_appl_data:
-        cmp     edi, [cache_ide3.app_sad_size]
+  .exit:
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc cd_calculate_cache_5 ;////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;       mov     [cache_search_start], edi
+        push    eax
 
-        ; 1 - IDE0 ... 4 - IDE3
+        mov     eax, [cdpos]
+        dec     eax
+        cmp     eax, 4
+        jae     .exit
 
-  .ide0:
-        cmp     [cdpos], 1
-        jne     .ide1
+        imul    eax, sizeof.drive_cache_t
+        add     eax, ide_drives_cache
+
         cmp     [cd_appl_data], 0
-        jne     .ide0_appl_data
-        mov     [cache_ide0.sys_search_start], edi
+        jne     .ide_app_data
+
+        mov     [eax + drive_cache_t.sys_search_start], edi
+        pop     eax
         ret
 
-  .ide0_appl_data:
-        mov     [cache_ide0.app_search_start], edi
-        ret
+  .ide_app_data:
+        mov     [eax + drive_cache_t.app_search_start], edi
 
-  .ide1:
-        cmp     [cdpos], 2
-        jne     .ide2
-        cmp     [cd_appl_data], 0
-        jne     .ide1_appl_data
-        mov     [cache_ide1.sys_search_start], edi
-        ret
-
-  .ide1_appl_data:
-        mov     [cache_ide1.app_search_start], edi
-        ret
-
-  .ide2:
-        cmp     [cdpos], 3
-        jne     .ide3
-        cmp     [cd_appl_data], 0
-        jne     .ide2_appl_data
-        mov     [cache_ide2.sys_search_start], edi
-        ret
-
-  .ide2_appl_data:
-        mov     [cache_ide2.app_search_start], edi
-        ret
-
-  .ide3:
-        cmp     [cd_appl_data], 0
-        jne     .ide3_appl_data
-        mov     [cache_ide3.sys_search_start], edi
-        ret
-
-  .ide3_appl_data:
-        mov     [cache_ide3.app_search_start], edi
+  .exit:
+        pop     eax
         ret
 kendp
 

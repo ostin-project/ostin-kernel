@@ -93,22 +93,32 @@ include "detect/biosdisk.asm"
 
         cli     ; disable all irqs
         cld
+
         mov     al, 255 ; mask all irqs
         out     0xa1, al
         out     0x21, al
-   l.5: in      al, 0x64 ; Enable A20
+
+l.5:
+        in      al, 0x64 ; Enable A20
         test    al, 2
         jnz     l.5
+
         mov     al, 0xd1
         out     0x64, al
-   l.6: in      al, 0x64
+
+l.6:
+        in      al, 0x64
         test    al, 2
         jnz     l.6
+
         mov     al, 0xdf
         out     0x60, al
-   l.7: in      al, 0x64
+
+l.7:
+        in      al, 0x64
         test    al, 2
         jnz     l.7
+
         mov     al, 0xff
         out     0x64, al
 
