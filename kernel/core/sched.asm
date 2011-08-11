@@ -160,7 +160,7 @@ kproc find_next_task ;//////////////////////////////////////////////////////////
         ; state == 5
         pushad  ; more freedom for [app_data_t.wait_test]
         call    [ebx + app_data_t.wait_test]
-        mov     [esp + 28], eax
+        mov     [esp + regs_context32_t.eax], eax
         popad
         or      eax, eax
         jnz     @f

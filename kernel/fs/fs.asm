@@ -37,7 +37,7 @@ iglobal
 endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc file_system ;/////////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.file_system ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax = 0 - read file          /RamDisk/First  6
 ;>       8 - lba read
@@ -97,7 +97,7 @@ kproc file_system ;/////////////////////////////////////////////////////////////
         mov     esi, buffer_failed
         call    sys_msg_board_str
 ;       mov     eax, 7
-        mov     dword[esp + 36], 7
+        mov     [esp + 8 + regs_context32_t.eax], ERROR_MEMORY_POINTER
         ret
 
 iglobal
@@ -135,7 +135,7 @@ endg
         ; (execute operation returns eax=-10)
         cmp    dword[eax], 0
         jz    .read_root
-        mov    dword[esp + 36], 10
+        mov    [esp + 8 + regs_context32_t.eax], ERROR_ACCESS_DENIED
         ret
 
   .read_root:
@@ -152,8 +152,8 @@ endg
         pop     ecx
         rep     movsb
         stosb
-        and     dword[esp + 36], 0 ; ok read
-        mov     dword[esp + 24], 32 * 2 ; size of root
+        and     [esp + 8 + regs_context32_t.eax], 0 ; ok read
+        mov     [esp + 8 + regs_context32_t.ebx], 32 * 2 ; size of root
         ret
 
   fs_info:
@@ -186,9 +186,9 @@ endg
 
   fs_info1:
         pop     edi
-        mov     [esp + 36], eax
-        mov     [esp + 24], ebx ; total clusters on disk
-        mov     [esp + 32], ecx ; free clusters on disk
+        mov     [esp + 8 + regs_context32_t.eax], eax
+        mov     [esp + 8 + regs_context32_t.ebx], ebx ; total clusters on disk
+        mov     [esp + 8 + regs_context32_t.ecx], ecx ; free clusters on disk
         mov     [edi], edx ; cluster size in bytes
         ret
 
@@ -429,7 +429,7 @@ kproc old_path_harddisk ;///////////////////////////////////////////////////////
 
   fs_yesharddisk_all:
         mov     eax, 1
-        mov     ebx, [esp + 24 + 24]
+        mov     ebx, [esp + 24 + 8 + regs_context32_t.ebx]
         cmp     [hdpos], 0 ; is hd base set?
         jz      hd_err_return
         cmp     [fat32part], 0 ; is partition set?
@@ -471,13 +471,13 @@ kproc old_path_harddisk ;///////////////////////////////////////////////////////
   fs_noharddisk:
         mov     eax, 5 ; file not found
         ; should it be some other error code?
-        mov     ebx, [esp + 24 + 24] ; do not change ebx in application
+        mov     ebx, [esp + 24 + 8 + regs_context32_t.ebx] ; do not change ebx in application
 
   file_system_return:
         add     esp, 24
 
-        mov     [esp + 36], eax
-        mov     [esp + 24], ebx
+        mov     [esp + 8 + regs_context32_t.eax], eax
+        mov     [esp + 8 + regs_context32_t.ebx], ebx
         ret
 kendp
 
@@ -491,7 +491,7 @@ kproc fs_give_dir1 ;////////////////////////////////////////////////////////////
         jz      .read
         add     esp, 20
         pop     ecx
-        mov     dword[esp + 36], 10
+        mov     [esp + 8 + regs_context32_t.eax], ERROR_ACCESS_DENIED
         ret
 
   .read:
@@ -511,8 +511,8 @@ kproc fs_give_dir1 ;////////////////////////////////////////////////////////////
 
         add     esp, 24
 
-        and     dword[esp + 36], 0 ; ok read
-        mov     dword[esp + 24], 32 * 1 ; dir/data size
+        and     [esp + 8 + regs_context32_t.eax], 0 ; ok read
+        mov     [esp + 8 + regs_context32_t.ebx], 32 * 1 ; dir/data size
         ret
 kendp
 

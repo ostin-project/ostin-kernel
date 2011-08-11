@@ -565,7 +565,7 @@ kproc forcedeth_reset ;/////////////////////////////////////////////////////////
         ; Get a random number
         ; i = random()
         push    edi
-        stdcall sys_clock ; eax = 0x00SSMMHH (current system time)
+        stdcall sysfn.get_time ; eax = 0x00SSMMHH (current system time)
         pop     edi
 
         ; writel(NVREG_RNDSEED_FORCE | (i & NVREG_RNDSEED_MASK), base + NvRegRandomSeed)

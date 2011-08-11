@@ -624,7 +624,7 @@ end if
         xor     edi, edi
         mov     eax, 0x00040000
         inc     edi
-        call    display_number.force
+        call    sysfn.draw_number.force
 
         ; BUILD SCHEDULER
         call    build_scheduler ; sys.inc
@@ -741,7 +741,7 @@ end if
         xor     edi, edi
         mov     eax, 0x00040000
         inc     edi
-        call    display_number.force
+        call    sysfn.draw_number.force
 
         ; SET VARIABLES
         call    set_variables
@@ -1132,7 +1132,7 @@ kproc set_variables ;///////////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc sys_outport ;/////////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.write_to_port ;/////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax = 43
 ;> bl = byte of output
@@ -1145,7 +1145,7 @@ kproc sys_outport ;/////////////////////////////////////////////////////////////
         test    eax, eax
         jnz     .sopl8
         inc     eax
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .sopl8:
@@ -1172,27 +1172,27 @@ kproc sys_outport ;/////////////////////////////////////////////////////////////
         mov     eax, ebx
         mov     dx, cx ; write
         out     dx, al
-        and     dword[esp + 32], 0
+        and     [esp + 4 + regs_context32_t.eax], 0
         ret
 
   .sopl2:
         dec     eax
         jnz     .sopl1
         inc     eax
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .sopl4:
         mov     dx, cx ; read
         in      al, dx
         and     eax, 0x00ff
-        and     dword[esp + 32], 0
-        mov     [esp + 20], eax
+        and     [esp + 4 + regs_context32_t.eax], 0
+        mov     [esp + 4 + regs_context32_t.ebx], eax
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc display_number ;//////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.draw_number ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax = pack[10(reserved), 6(number of digits to display), 8(number base), 8(number type)]
 ;>   al = 0 -> ebx is number
@@ -1409,7 +1409,7 @@ kproc draw_num_text ;///////////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc sys_setup ;///////////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.set_config ;////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ; 1=roland mpu midi base , base io address
 ; 2=keyboard   1, base kaybap 2, shift keymap, 9 country 1eng 2fi 3ger 4rus
@@ -1422,7 +1422,7 @@ kproc sys_setup ;///////////////////////////////////////////////////////////////
 ; 11 = enable lba read
 ; 12 = enable pci access
 ;-----------------------------------------------------------------------------------------------------------------------
-        and     dword[esp + 32], 0
+        and     [esp + 4 + regs_context32_t.eax], 0
 
         dec     ebx ; MIDI
         jnz     .nsyse1
@@ -1483,7 +1483,7 @@ endg
         ret
 
   .kbnocountry:
-        mov     dword[esp + 32], 1
+        mov     [esp + 4 + regs_context32_t.eax], 1
         ret
 
   .nsyse2:
@@ -1627,12 +1627,12 @@ endg
 include "vmodeint.asm"
 
   .sys_setup_err:
-        or      dword[esp + 32], -1
+        or      [esp + 4 + regs_context32_t.eax], -1
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc sys_getsetup ;////////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.get_config ;////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ; 1=roland mpu midi base , base io address
 ; 2=keyboard   1, base kaybap 2, shift keymap, 9 country 1eng 2fi 3ger 4rus
@@ -1647,7 +1647,7 @@ kproc sys_getsetup ;////////////////////////////////////////////////////////////
         jnz     .ngsyse1
 
         movzx   eax, [midi_base]
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .ngsyse1:
@@ -1694,7 +1694,7 @@ kproc sys_getsetup ;////////////////////////////////////////////////////////////
         jnz     .ngsyse2
 
         movzx   eax, word[keyboard]
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .ngsyse2:
@@ -1703,7 +1703,7 @@ kproc sys_getsetup ;////////////////////////////////////////////////////////////
         jnz     .ngsyse3
 
         movzx   eax, [cd_base]
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .ngsyse3:
@@ -1712,7 +1712,7 @@ kproc sys_getsetup ;////////////////////////////////////////////////////////////
         jnz     .ngsyse5
 
         mov     eax, [syslang]
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .ngsyse5:
@@ -1721,7 +1721,7 @@ kproc sys_getsetup ;////////////////////////////////////////////////////////////
         jnz     .ngsyse7
 
         movzx   eax, [hd_base]
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .ngsyse7:
@@ -1730,7 +1730,7 @@ kproc sys_getsetup ;////////////////////////////////////////////////////////////
         jnz     .ngsyse8
 
         mov     eax, [fat32part]
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .ngsyse8:
@@ -1739,7 +1739,7 @@ kproc sys_getsetup ;////////////////////////////////////////////////////////////
         jnz     .ngsyse9
 
         mov     eax, [timer_ticks] ; [0xfdf0]
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .ngsyse9:
@@ -1748,7 +1748,7 @@ kproc sys_getsetup ;////////////////////////////////////////////////////////////
         jnz     .ngsyse11
 
         mov     eax, [lba_read_enabled]
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .ngsyse11:
@@ -1757,11 +1757,11 @@ kproc sys_getsetup ;////////////////////////////////////////////////////////////
         jnz     .ngsyse12
 
         mov     eax, [pci_access_enabled]
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .ngsyse12:
-        mov     dword[esp + 32], 1
+        mov     [esp + 4 + regs_context32_t.eax], 1
         ret
 kendp
 
@@ -1771,7 +1771,7 @@ kproc get_timer_ticks
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc readmousepos ;////////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.mouse_cursor_ctl ;//////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ; eax=0 screen relative
 ; eax=1 window relative
@@ -1789,21 +1789,21 @@ kproc readmousepos ;////////////////////////////////////////////////////////////
 iglobal
   align 4
   mousefn dd \
-    readmousepos.msscreen, \
-    readmousepos.mswin, \
-    readmousepos.msbutton, \
-    readmousepos.msset, \
-    readmousepos.app_load_cursor, \
-    readmousepos.app_set_cursor, \
-    readmousepos.app_delete_cursor, \
-    readmousepos.msz
+    sysfn.mouse_cursor_ctl.msscreen, \
+    sysfn.mouse_cursor_ctl.mswin, \
+    sysfn.mouse_cursor_ctl.msbutton, \
+    sysfn.mouse_cursor_ctl.msset, \
+    sysfn.mouse_cursor_ctl.app_load_cursor, \
+    sysfn.mouse_cursor_ctl.app_set_cursor, \
+    sysfn.mouse_cursor_ctl.app_delete_cursor, \
+    sysfn.mouse_cursor_ctl.msz
 endg
 
   .msscreen:
         mov     eax, [MOUSE_X]
         shl     eax, 16
         mov     ax, [MOUSE_Y]
-        mov     [esp + 36 - 4], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .mswin:
@@ -1822,12 +1822,12 @@ endg
         rol     eax, 16
         sub     ax, word[edi + SLOT_BASE + app_data_t.wnd_clientbox.left]
         rol     eax, 16
-        mov     [esp + 36 - 4], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .msbutton:
         movzx   eax, byte[BTN_DOWN]
-        mov     [esp + 36 - 4], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .msz:
@@ -1838,12 +1838,12 @@ endg
         mov     ax, [MOUSE_SCROLL_H]
         shl     eax, 16
         mov     ax, [MOUSE_SCROLL_V]
-        mov     [esp + 36 - 4], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         and     word[MOUSE_SCROLL_H], 0
         and     word[MOUSE_SCROLL_V], 0
         ret
 
-    @@: and     dword[esp + 36 - 4], 0
+    @@: and     [esp + 4 + regs_context32_t.eax], 0
 ;       ret
 
   .msset:
@@ -1854,17 +1854,17 @@ endg
         jae     .msset
 
         stdcall load_cursor, ecx, edx
-        mov     [esp + 36 - 4], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .app_set_cursor:
         stdcall set_cursor, ecx
-        mov     [esp + 36 - 4], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .app_delete_cursor:
         stdcall delete_cursor, ecx
-        mov     [esp + 36 - 4], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
 
@@ -1911,15 +1911,15 @@ kproc put_mpu_out ;/////////////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc sys_midi ;////////////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.midi_ctl ;//////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     [mididp], 0
         jnz     .sm0
-        mov     dword[esp + 36], 1
+        mov     [esp + 4 + regs_context32_t.eax], 1
         ret
 
   .sm0:
-        and     dword[esp + 36], 0
+        and     [esp + 4 + regs_context32_t.eax], 0
         dec     ebx
         jnz     .smn1
 ;       call    setuart
@@ -1980,7 +1980,7 @@ kproc detect_devices ;//////////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc sys_end ;/////////////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.exit_process ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     ecx, [current_slot]
         mov     eax, [ecx + app_data_t.tls_base]
@@ -1995,12 +1995,12 @@ kproc sys_end ;/////////////////////////////////////////////////////////////////
   .waitterm:
         ; wait here for termination
         mov     ebx, 100
-        call    delay_hs
+        call    sysfn.delay_hs
         jmp     .waitterm
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc sys_system ;//////////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.system_ctl ;////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         dec     ebx
         cmp     ebx, sysfn_num
@@ -2053,7 +2053,7 @@ kproc sysfn_shutdown ;//////////////////////////////////////////////////////////
         mov     eax, [TASK_COUNT]
         mov     [SYS_SHUTDOWN], al
         mov     [shutdown_processes], eax
-        and     dword[esp + 32], 0
+        and     [esp + 4 + regs_context32_t.eax], 0
 
 exit_for_anyone:
         ret
@@ -2064,7 +2064,7 @@ uglobal
 endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc sysfn_terminate ;//////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn_terminate ;/////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? 18.2 = TERMINATE
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -2116,12 +2116,12 @@ kproc sysfn_terminate2 ;////////////////////////////////////////////////////////
         call    sysfn_terminate
         and     [application_table_status], 0
         sti
-        and     dword[esp + 32], 0
+        and     [esp + 4 + regs_context32_t.eax], 0
         ret
 
   .not_found:
         mov     [application_table_status], 0
-        or      dword[esp + 32], -1
+        or      [esp + 4 + regs_context32_t.eax], -1
         ret
 kendp
 
@@ -2158,7 +2158,7 @@ kproc sysfn_getidletime ;///////////////////////////////////////////////////////
 ;? 18.4 = GET IDLETIME
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, [idleusesec]
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
 
@@ -2168,7 +2168,7 @@ kproc sysfn_getcpuclock ;///////////////////////////////////////////////////////
 ;? 18.5 = GET TSC/SEC
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, [CPU_FREQ]
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
 
@@ -2182,7 +2182,7 @@ kproc sysfn_getactive ;/////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, [TASK_COUNT]
         movzx   eax, word[WIN_POS + eax * 2]
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
 
@@ -2195,7 +2195,7 @@ kproc sysfn_sound_flag ;////////////////////////////////////////////////////////
         dec     ecx
         jnz     .nogetsoundflag
         movzx   eax, byte[sound_flag] ; get sound_flag
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .nogetsoundflag:
@@ -2254,7 +2254,7 @@ kproc sysfn_lastkey ;///////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? 18.12 = return 0 (backward compatibility)
 ;-----------------------------------------------------------------------------------------------------------------------
-        and     dword[esp + 32], 0
+        and     [esp + 4 + regs_context32_t.eax], 0
         ret
 kendp
 
@@ -2283,7 +2283,7 @@ kproc sysfn_waitretrace ;///////////////////////////////////////////////////////
         test    al, 01000b
         jz      .WaitRetrace_loop
 
-        and     dword[esp + 32], 0
+        and     [esp + 4 + regs_context32_t.eax], 0
         ret
 kendp
 
@@ -2300,7 +2300,7 @@ kproc sysfn_centermouse ;///////////////////////////////////////////////////////
         shr     eax, 1
         mov     [MOUSE_Y], ax
         xor     eax, eax
-        and     [esp + 32], eax
+        and     [esp + 4 + regs_context32_t.eax], eax
 ;       pop     eax
         ret
 kendp
@@ -2315,7 +2315,7 @@ kproc sysfn_mouse_acceleration ;////////////////////////////////////////////////
 
         xor     eax, eax
         mov     ax, [mouse_speed_factor]
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .set_mouse_acceleration:
@@ -2332,7 +2332,7 @@ kproc sysfn_mouse_acceleration ;////////////////////////////////////////////////
         jnz     .set_mouse_delay
 
         mov     eax, [mouse_delay]
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .set_mouse_delay:
@@ -2372,7 +2372,7 @@ kproc sysfn_getfreemem ;////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, [pg_data.pages_free]
         shl     eax, 2
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
 
@@ -2381,7 +2381,7 @@ kproc sysfn_getallmem ;/////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, [MEM_AMOUNT]
         shr     eax, 10
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
 
@@ -2390,7 +2390,7 @@ kproc sysfn_pid_to_slot ;///////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, ecx
         call    pid_to_slot
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
 
@@ -2420,14 +2420,14 @@ kproc sysfn_min_rest_window ;///////////////////////////////////////////////////
   .exit:
         popad
         xor     eax, eax
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .error:
         popad
         xor     eax, eax
         dec     eax
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
 
@@ -2446,7 +2446,7 @@ iglobal
 endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc sys_cachetodiskette ;/////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.flush_floppy_cache ;////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     ebx, 1
         jne     .no_floppy_a_save
@@ -2460,12 +2460,12 @@ kproc sys_cachetodiskette ;/////////////////////////////////////////////////////
 
   .save_image_on_floppy:
         call    save_image
-        mov     dword[esp + 32],  0
+        mov     [esp + 4 + regs_context32_t.eax],  0
         cmp     [FDC_Status], 0
         je      .yes_floppy_save
 
   .no_floppy_b_save:
-        mov     dword[esp + 32], 1
+        mov     [esp + 4 + regs_context32_t.eax], 1
 
   .yes_floppy_save:
         ret
@@ -2478,7 +2478,7 @@ uglobal
 endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc sys_background ;//////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.set_background_ctl ;////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     ebx, 1 ; BACKGROUND SIZE
         jnz     .nosb1
@@ -2633,7 +2633,7 @@ kproc sys_background ;//////////////////////////////////////////////////////////
         cmp     [img_background], static_background_data
         jz      .nomem
         stdcall user_alloc, [mem_BACKGROUND]
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         test    eax, eax
         jz      .nomem
         mov     ebx, eax
@@ -2697,13 +2697,13 @@ kproc sys_background ;//////////////////////////////////////////////////////////
         pop     eax
         and     dword[page_tabs + (eax - 1) * 4], not DONT_FREE_BLOCK
         stdcall user_free, ebx
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         and     [bgrlockpid], 0
         mov     [bgrlock], 0
         ret
 
   .err:
-        and     dword[esp + 32], 0
+        and     [esp + 4 + regs_context32_t.eax], 0
         ret
 
   .nosb7:
@@ -2726,7 +2726,7 @@ kproc force_redraw_background ;/////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc sys_getbackground ;///////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.get_background_ctl ;////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;       cmp     eax, 1 ; SIZE
         dec     ebx
@@ -2735,7 +2735,7 @@ kproc sys_getbackground ;///////////////////////////////////////////////////////
         mov     eax, [BgrDataWidth]
         shl     eax, 16
         mov     ax, [BgrDataHeight]
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .nogb1:
@@ -2759,7 +2759,7 @@ kproc sys_getbackground ;///////////////////////////////////////////////////////
         mov     eax, [ecx + eax]
 
         and     eax, 0x00ffffff
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
 
   .ret:
         ret
@@ -2772,14 +2772,14 @@ kproc sys_getbackground ;///////////////////////////////////////////////////////
         mov     eax, [BgrDrawMode]
 
   .nogb4:
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc sys_getkey ;//////////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.get_key ;///////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     dword[esp + 32], 1
+        mov     [esp + 4 + regs_context32_t.eax], 1
         ; test main buffer
         mov     ebx, [CURRENT_TASK] ; TOP OF WINDOW STACK
         movzx   ecx, word[WIN_STACK + ebx * 2]
@@ -2801,7 +2801,7 @@ kproc sys_getkey ;//////////////////////////////////////////////////////////////
         pop     eax
 
   .ret_eax:
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .finish:
@@ -2826,10 +2826,10 @@ kproc sys_getkey ;//////////////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc sys_getbutton ;///////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.get_clicked_button_id ;/////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     ebx, [CURRENT_TASK] ; TOP OF WINDOW STACK
-        mov     dword[esp + 32], 1
+        mov     [esp + 4 + regs_context32_t.eax], 1
         movzx   ecx, word[WIN_STACK + ebx * 2]
         mov     edx, [TASK_COUNT] ; less than 256 processes
         cmp     ecx, edx
@@ -2840,14 +2840,14 @@ kproc sys_getbutton ;///////////////////////////////////////////////////////////
         mov     eax, [BTN_BUFF]
         and     al, 0xfe ; delete left button bit
         mov     byte[BTN_COUNT], 0
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
 
   .exit:
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc sys_cpuusage ;////////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.get_process_info ;//////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ; RETURN:
 ;   +00 dword     process cpu usage
@@ -2940,12 +2940,12 @@ kproc sys_cpuusage ;////////////////////////////////////////////////////////////
   .nofillbuf:
         ; return number of processes
         mov     eax, [TASK_COUNT]
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc sys_clock ;///////////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.get_time ;//////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cli
 
@@ -2975,12 +2975,12 @@ kproc sys_clock ;///////////////////////////////////////////////////////////////
         movzx   edx, al
         add     ecx, edx
         sti
-        mov     [esp + 32], ecx
+        mov     [esp + 4 + regs_context32_t.eax], ecx
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc sys_date ;////////////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.get_date ;//////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cli
 
@@ -3008,12 +3008,12 @@ kproc sys_date ;////////////////////////////////////////////////////////////////
         in      al, 0x71
         mov     cl, al
         sti
-        mov     [esp + 32], ecx
+        mov     [esp + 4 + regs_context32_t.eax], ecx
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc sys_redrawstat ;//////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.set_draw_state ;////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? redraw status
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -3101,7 +3101,7 @@ endg
 
   .00:
         mov     eax, [context_counter]
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .02:
@@ -3129,8 +3129,8 @@ endg
         mov     eax, esi
         mov     ecx, edx
         rdmsr
-        mov     [esp + 32], eax
-        mov     [esp + 20], edx ; ret in ebx?
+        mov     [esp + 4 + regs_context32_t.eax], eax
+        mov     [esp + 4 + regs_context32_t.ebx], edx ; ret in ebx?
         ret
 
   .04:
@@ -3151,8 +3151,8 @@ endg
         mov     eax, esi
         mov     ecx, edx
         wrmsr
-;       mov     [esp + 32], eax
-;       mov     [esp + 20], edx ; ret in ebx?
+;       mov     [esp + 4 + regs_context32_t.eax], eax
+;       mov     [esp + 4 + regs_context32_t.ebx], edx ; ret in ebx?
 
     @@: ret
 kendp
@@ -3183,10 +3183,10 @@ kproc is_cache_enabled ;////////////////////////////////////////////////////////
         mov     ebx, eax
         and     eax, 01100000000000000000000000000000b
         jz      .cache_disabled
-        mov     [esp + 32], ebx
+        mov     [esp + 4 + regs_context32_t.eax], ebx
 
   .cache_disabled:
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
 
@@ -3199,7 +3199,7 @@ kproc modify_pce ;//////////////////////////////////////////////////////////////
 ;       xor     eax, ebx ; invert pce
         bts     eax, 8 ; pce=cr4[8]
         mov     cr4, eax
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
 
@@ -3345,7 +3345,7 @@ kproc redrawscreen ;////////////////////////////////////////////////////////////
         push    eax
 
 ;;;     mov     ebx, 2
-;;;     call    delay_hs
+;;;     call    sysfn.delay_hs
 
 ;       mov     ecx, 0 ; redraw flags for apps
         xor     ecx, ecx
@@ -3524,17 +3524,17 @@ kproc delay_ms ;////////////////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc set_app_param ;///////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.set_process_event_mask ;////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     edi, [TASK_BASE]
         mov     eax, [edi + task_data_t.event_mask]
         mov     [edi + task_data_t.event_mask], ebx
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc delay_hs ;////////////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.delay_hs ;//////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? delay in 1/100 secs
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -3600,7 +3600,7 @@ kproc memmove ;/////////////////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc sys_programirq ;//////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.program_irq ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, [TASK_BASE]
         add     ebx, [eax + task_data_t.mem_start]
@@ -3627,12 +3627,12 @@ kproc sys_programirq ;//////////////////////////////////////////////////////////
         rep     movsd
 
   .end:
-        mov     [esp + 32], ecx
+        mov     [esp + 4 + regs_context32_t.eax], ecx
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc get_irq_data ;////////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.get_irq_data ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         movzx   esi, bh ; save number of subfunction, if bh = 1, return data size, otherwise, read data
         xor     bh, bh
@@ -3692,7 +3692,7 @@ kproc get_irq_data ;////////////////////////////////////////////////////////////
         mov     [eax + 0x4], ebx ; set data offset
 
   .gid1:
-        mov     [esp + 32], edx
+        mov     [esp + 4 + regs_context32_t.eax], edx
         ret
 kendp
 
@@ -3887,7 +3887,7 @@ kproc r_f_port_area ;///////////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc reserve_free_irq ;////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.reserve_irq ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         xor     esi, esi
         inc     esi
@@ -3923,7 +3923,7 @@ kproc reserve_free_irq ;////////////////////////////////////////////////////////
         dec     esi
 
   .ril1:
-        mov     [esp + 32], esi ; return in eax
+        mov     [esp + 4 + regs_context32_t.eax], esi ; return in eax
         ret
 kendp
 
@@ -3980,7 +3980,7 @@ kproc drawbackground ;//////////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc syscall_putimage ;////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.put_image ;/////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         test    ecx, 0x80008000
         jnz     .exit
@@ -4026,7 +4026,7 @@ kproc sys_putimage_bpp
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc sys_putimage_palette ;////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.put_image_with_palette ;////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> ebx = pointer to image
 ;> ecx = pack[16(xsize), 16(ysize)]
@@ -4582,7 +4582,7 @@ kproc sys_msg_board_str ;///////////////////////////////////////////////////////
         je      @f
         mov     eax, 1
         movzx   ebx, byte[esi]
-        call    sys_msg_board
+        call    sysfn.debug_board
         inc     esi
         jmp     @b
 
@@ -4633,7 +4633,7 @@ kproc sys_msg_board_dword ;/////////////////////////////////////////////////////
         mov     bl, al
         xor     eax, eax
         inc     eax
-        call    sys_msg_board
+        call    sysfn.debug_board
         pop     eax
         pop     ecx
         loop    @b
@@ -4647,7 +4647,7 @@ uglobal
 endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc sys_msg_board ;///////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.debug_board ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         ; eax=1 : write :  bl byte to write
         ; eax=2 :  read :  ebx=0 -> no data, ebx=1 -> data in al
@@ -4690,13 +4690,13 @@ end if
         movzx   edx, byte[ebx]
         call    memmove
         dec     [msg_board_count]
-        mov     [esp + 36], edx
-        mov     dword[esp + 24], 1
+        mov     [esp + 8 + regs_context32_t.eax], edx
+        mov     [esp + 8 + regs_context32_t.ebx], 1
         ret
 
   .smbl21:
-        mov     [esp + 36], ecx
-        mov     [esp + 24], ecx
+        mov     [esp + 8 + regs_context32_t.eax], ecx
+        mov     [esp + 8 + regs_context32_t.ebx], ecx
 
   .smbl2:
         ret
@@ -4705,15 +4705,15 @@ kendp
 iglobal
   align 4
   f66call dd \
-    sys_process_def.1, \ ; 1 = set keyboard mode
-    sys_process_def.2, \ ; 2 = get keyboard mode
-    sys_process_def.3, \ ; 3 = get keyboard ctrl, alt, shift
-    sys_process_def.4, \
-    sys_process_def.5
+    sysfn.keyboard_ctl.1, \ ; 1 = set keyboard mode
+    sysfn.keyboard_ctl.2, \ ; 2 = get keyboard mode
+    sysfn.keyboard_ctl.3, \ ; 3 = get keyboard ctrl, alt, shift
+    sysfn.keyboard_ctl.4, \
+    sysfn.keyboard_ctl.5
 endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc sys_process_def ;/////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.keyboard_ctl ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? 66 sys function.
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -4743,7 +4743,7 @@ kproc sys_process_def ;/////////////////////////////////////////////////////////
   .2: ; 2 = get keyboard mode
         shl     edi, 8
         movzx   eax, [SLOT_BASE + edi + app_data_t.keyboard_mode]
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .3: ; 3 = get keyboard ctrl, alt, shift
@@ -4756,7 +4756,7 @@ kproc sys_process_def ;/////////////////////////////////////////////////////////
 ;       shl     ebx, 3
 ;       add     eax, ebx
         mov     eax, [kb_state]
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .4:
@@ -4767,7 +4767,7 @@ kproc sys_process_def ;/////////////////////////////////////////////////////////
         add     eax, 16
         cmp     eax, hotkey_list + 16 * 256
         jb      @b
-        mov     dword[esp + 32], 1
+        mov     [esp + 4 + regs_context32_t.eax], 1
         ret
 
   .found_free:
@@ -4782,7 +4782,7 @@ kproc sys_process_def ;/////////////////////////////////////////////////////////
         jecxz   @f
         mov     [edx + 12], eax
 
-    @@: and     dword[esp + 32], 0
+    @@: and     [esp + 4 + regs_context32_t.eax], 0
         ret
 
   .5:
@@ -4803,7 +4803,7 @@ kproc sys_process_def ;/////////////////////////////////////////////////////////
         jmp     .scan
 
   .notfound:
-        mov     dword[esp + 32], 1
+        mov     [esp + 4 + regs_context32_t.eax], 1
         ret
 
   .found:
@@ -4820,7 +4820,7 @@ kproc sys_process_def ;/////////////////////////////////////////////////////////
         mov     [eax + 8], edx
         mov     [eax + 12], edx
         mov     [eax], edx
-        mov     [esp + 32], edx
+        mov     [esp + 4 + regs_context32_t.eax], edx
         ret
 kendp
 
@@ -4832,13 +4832,13 @@ kendp
 iglobal
   align 4
   f61call dd \
-    sys_gs.1, \ ; resolution
-    sys_gs.2, \ ; bits per pixel
-    sys_gs.3    ; bytes per scanline
+    sysfs.direct_screen_access.1, \ ; resolution
+    sysfs.direct_screen_access.2, \ ; bits per pixel
+    sysfs.direct_screen_access.3    ; bytes per scanline
 endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc sys_gs ;//////////////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfs.direct_screen_access ;//////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? direct screen access
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -4849,7 +4849,7 @@ kproc sys_gs ;//////////////////////////////////////////////////////////////////
         jmp     [f61call + ebx * 4]
 
   .not_support:
-        or      dword[esp + 32], -1
+        or      [esp + 4 + regs_context32_t.eax], -1
         ret
 
   .1: ; resolution
@@ -4857,22 +4857,22 @@ kproc sys_gs ;//////////////////////////////////////////////////////////////////
         shl     eax, 16
         mov     ax, [Screen_Max_Y]
         add     eax, 0x00010001
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .2: ; bits per pixel
         movzx   eax, byte[ScreenBPP]
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .3: ; bytes per scanline
         mov     eax, [BytesPerScanLine]
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc syscall_setpixel ;////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.set_pixel ;/////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, ebx
         mov     ebx, ecx
@@ -4890,7 +4890,7 @@ kproc syscall_setpixel ;////////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc syscall_writetext ;///////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.draw_text ;/////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, [TASK_BASE]
         mov     ebp, [eax - twdw + window_data_t.box.left]
@@ -4908,7 +4908,7 @@ kproc syscall_writetext ;///////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc syscall_openramdiskfile ;/////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.read_rd_file ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, ebx
         mov     ebx, ecx
@@ -4916,12 +4916,12 @@ kproc syscall_openramdiskfile ;/////////////////////////////////////////////////
         mov     edx, esi
         mov     esi, 12
         call    fileread
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc syscall_drawrect ;////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.draw_rect ;/////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     edi, edx ; color + gradient
         and     edi, 0x80ffffff
@@ -4950,17 +4950,17 @@ kproc syscall_drawrect ;////////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc syscall_getscreensize ;///////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.get_screen_size ;///////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     ax, [Screen_Max_X]
         shl     eax, 16
         mov     ax, [Screen_Max_Y]
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc syscall_cdaudio ;/////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.cd_audio_ctl ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     ebx, 4
         jb      .audio
@@ -4986,7 +4986,7 @@ kproc syscall_cdaudio ;/////////////////////////////////////////////////////////
 
   .audio:
         call    sys_cd_audio
-        mov     [esp + 36 - 4], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
 
   .ret:
         ret
@@ -5024,7 +5024,7 @@ kproc syscall_cdaudio ;/////////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc syscall_getpixel ;////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.get_pixel ;/////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     ecx, [Screen_Max_X]
         inc     ecx
@@ -5034,12 +5034,12 @@ kproc syscall_getpixel ;////////////////////////////////////////////////////////
         mov     ebx, edx
         xchg    eax, ebx
         call    dword[GETPIXEL] ; eax - x, ebx - y
-        mov     [esp + 32], ecx
+        mov     [esp + 4 + regs_context32_t.eax], ecx
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc syscall_getarea ;/////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.grab_screen_area ;//////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         ; eax = 36
         ; ebx = pointer to bufer for img BBGGRRBBGGRR...
@@ -5125,7 +5125,7 @@ kproc syscall_getarea ;/////////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc syscall_drawline ;////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.draw_line ;/////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     edi, [TASK_BASE]
         movzx   eax, word[edi - twdw + window_data_t.box.left]
@@ -5149,7 +5149,7 @@ kproc syscall_drawline ;////////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc syscall_getirqowner ;/////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.get_irq_owner ;/////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     ebx, 16
         jae     .err
@@ -5158,24 +5158,24 @@ kproc syscall_getirqowner ;/////////////////////////////////////////////////////
         je      .err
 
         mov     eax, [irq_owner + ebx * 4]
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .err:
-        or      dword[esp + 32], -1
+        or      [esp + 4 + regs_context32_t.eax], -1
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc syscall_reserveportarea ;/////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.reserve_port_area ;/////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         call    r_f_port_area
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc syscall_threads ;/////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.thread_ctl ;////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax = 1 - create thread
 ;>   ebx = thread start
@@ -5184,12 +5184,12 @@ kproc syscall_threads ;/////////////////////////////////////////////////////////
 ;< eax = pid
 ;-----------------------------------------------------------------------------------------------------------------------
         call    new_sys_threads
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc stack_driver_stat ;///////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.get_network_driver_status ;/////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         call    app_stack_handler ; Stack status
 
@@ -5197,12 +5197,12 @@ kproc stack_driver_stat ;///////////////////////////////////////////////////////
 ;       mov     [check_idle_semaphore], 5
 ;       call    change_task
 
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc socket ;//////////////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.socket ;////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         call    app_socket_handler
 
@@ -5210,8 +5210,8 @@ kproc socket ;//////////////////////////////////////////////////////////////////
 ;       mov     [check_idle_semaphore], 5
 ;       call    change_task
 
-        mov     [esp + 36], eax
-        mov     [esp + 24], ebx
+        mov     [esp + 8 + regs_context32_t.eax], eax
+        mov     [esp + 8 + regs_context32_t.ebx], ebx
         ret
 kendp
 
@@ -5225,11 +5225,8 @@ kproc read_from_hd ;////////////////////////////////////////////////////////////
         add     edx, [edi]
         call    file_read
 
-        mov     [esp + 36], eax
-        mov     [esp + 24], ebx
-        ret
-
-paleholder:
+        mov     [esp + 8 + regs_context32_t.eax], eax
+        mov     [esp + 8 + regs_context32_t.ebx], ebx
         ret
 kendp
 
@@ -5298,7 +5295,7 @@ uglobal
 endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc sys_apm ;/////////////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.apm_ctl ;///////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         xor     eax, eax
         cmp     word[apm_vf], ax ; Check APM BIOS enable
@@ -5306,7 +5303,7 @@ kproc sys_apm ;/////////////////////////////////////////////////////////////////
         inc     eax
         or      dword[esp + 44], eax ; error
         add     eax, 7
-        mov     dword[esp + 32], eax ; 32-bit protected-mode interface not supported
+        mov     dword[esp + 4 + regs_context32_t.eax], eax ; 32-bit protected-mode interface not supported
         ret
 
     @@:
@@ -5317,9 +5314,9 @@ kproc sys_apm ;/////////////////////////////////////////////////////////////////
         ja      @f
         and     byte[esp + 44], 0xfe ; emulate func 0..3 as func 0
         mov     eax, [apm_vf]
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         shr     eax, 16
-        mov     [esp + 28], eax
+        mov     [esp + 4 + regs_context32_t.ecx], eax
         ret
 
     @@: mov     esi, [master_tab + (OS_BASE shr 20)]
@@ -5336,12 +5333,12 @@ kproc sys_apm ;/////////////////////////////////////////////////////////////////
         mov     cr3, eax
         pop     eax
 
-        mov     [esp + 4], edi
-        mov     [esp + 8], esi
-        mov     [esp + 20], ebx
-        mov     [esp + 24], edx
-        mov     [esp + 28], ecx
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.edi], edi
+        mov     [esp + 4 + regs_context32_t.esi], esi
+        mov     [esp + 4 + regs_context32_t.ebx], ebx
+        mov     [esp + 4 + regs_context32_t.edx], edx
+        mov     [esp + 4 + regs_context32_t.ecx], ecx
+        mov     [esp + 4 + regs_context32_t.eax], eax
         setc    al
         and     byte[esp + 44], 0xfe
         or      [esp + 44], al
@@ -5349,12 +5346,6 @@ kproc sys_apm ;/////////////////////////////////////////////////////////////////
 kendp
 
         ; -----------------------------------------
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc undefined_syscall ;///////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        mov     dword[esp + 32], -1
-        ret
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc system_shutdown ;/////////////////////////////////////////////////////////////////////////////////////////////////

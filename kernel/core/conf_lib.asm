@@ -170,7 +170,7 @@ proc strtoint stdcall, strs ;///////////////////////////////////////////////////
         stdcall strtoint_dec, eax
 
   .exit:
-        mov     [esp + 28], eax
+        mov     [esp + regs_context32_t.eax], eax
         popad
         ret
 endp
@@ -220,7 +220,7 @@ proc strtoint_dec stdcall, strs ;///////////////////////////////////////////////
         jmp     @b
 
   .eend:
-        mov     [esp + 28], ecx
+        mov     [esp + regs_context32_t.eax], ecx
         popad
         ret
 endp
@@ -275,7 +275,7 @@ proc strtoint_hex stdcall, strs ;///////////////////////////////////////////////
         jmp     @b
 
   .eend:
-        mov     [esp + 28], ecx
+        mov     [esp + regs_context32_t.eax], ecx
         popad
         ret
 endp
@@ -312,7 +312,7 @@ proc do_inet_adr stdcall, strs ;////////////////////////////////////////////////
         jz      @f
         jmp     .next
 
-    @@: mov     [esp + 28], ebx
+    @@: mov     [esp + regs_context32_t.eax], ebx
         popad
         ret
 endp

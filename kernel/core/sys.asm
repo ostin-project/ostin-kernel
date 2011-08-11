@@ -126,15 +126,6 @@ reg_esp3   equ esp + 0x2c
 reg_eflags equ esp + 0x28
 reg_cs3    equ esp + 0x24
 reg_eip    equ esp + 0x20
-; this is a pushad frame
-reg_eax    equ esp + 0x1c
-reg_ecx    equ esp + 0x18
-reg_edx    equ esp + 0x14
-reg_ebx    equ esp + 0x10
-reg_esp0   equ esp + 0x0c
-reg_ebp    equ esp + 0x08
-reg_esi    equ esp + 0x04
-reg_edi    equ esp + 0x00
 ;-----------------------------------------------------------------------------------------------------------------------
         Mov     ds, ax, app_data ; load correct values
         mov     es, ax ; into segment registers
@@ -240,11 +231,13 @@ kproc show_error_parameters ;///////////////////////////////////////////////////
         cmp     eax, app_code
         je      @f
         mov     edi, msg_sel_ker
-        mov     ebx, [reg_esp0 + 4]
+        mov     ebx, [esp + 4 + regs_context32_t.esp]
 
-    @@: DEBUGF  1, "K : EAX : %x EBX : %x ECX : %x\n", [reg_eax + 4], [reg_ebx + 4], [reg_ecx + 4]
-        DEBUGF  1, "K : EDX : %x ESI : %x EDI : %x\n", [reg_edx + 4], [reg_esi + 4], [reg_edi + 4]
-        DEBUGF  1, "K : EBP : %x EIP : %x ESP : %x\n", [reg_ebp + 4], [reg_eip + 4], ebx
+    @@: DEBUGF  1, "K : EAX : %x EBX : %x ECX : %x\n", [esp + 4 + regs_context32_t.eax], \
+                [esp + 4 + regs_context32_t.ebx], [esp + 4 + regs_context32_t.ecx]
+        DEBUGF  1, "K : EDX : %x ESI : %x EDI : %x\n", [esp + 4 + regs_context32_t.edx], \
+                [esp + 4 + regs_context32_t.esi], [esp + 4 + regs_context32_t.edi]
+        DEBUGF  1, "K : EBP : %x EIP : %x ESP : %x\n", [esp + 4 + regs_context32_t.ebp], [reg_eip + 4], ebx
         DEBUGF  1, "K : Flags : %x CS : %x (%s)\n", [reg_eflags + 4], eax, edi
         ret
 kendp
@@ -254,14 +247,6 @@ restore reg_esp3
 restore reg_eflags
 restore reg_cs
 restore reg_eip
-restore reg_eax
-restore reg_ecx
-restore reg_edx
-restore reg_ebx
-restore reg_esp0
-restore reg_ebp
-restore reg_esi
-restore reg_edi
 
 ; irq1  ->  hid/keyboard.inc
 macro irqh [num]
@@ -416,7 +401,7 @@ kproc clear_application_table_status ;//////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc sys_resize_app_memory ;///////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.resize_app_memory ;/////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax = 64 - function number
 ;> ebx = 1 - single subfunction
@@ -429,7 +414,7 @@ kproc sys_resize_app_memory ;///////////////////////////////////////////////////
         dec     ebx
         jnz     .no_application_mem_resize
         stdcall new_mem_resize, ecx
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
 
   .no_application_mem_resize:
         ret
@@ -803,7 +788,7 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         pushad
         xchg    eax, ecx
         mov     ebx, 2
-        call    sys_system
+        call    sysfn.system_ctl
         popad
 
     @@: inc     eax

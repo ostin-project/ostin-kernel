@@ -28,9 +28,6 @@ ERROR_ACCESS_DENIED   = 10
 ERROR_DEVICE_FAIL     = 11
 ERROR_ALLOC           = 12
 
-image_of_eax EQU esp + 32
-image_of_ebx EQU esp + 20
-
 ; System function 70 - files with long names (LFN)
 ; diamond, 2006
 
@@ -105,7 +102,7 @@ iglobal
 endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc file_system_lfn ;/////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> ebx = pointer to fileinfo block
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -152,7 +149,7 @@ kproc file_system_lfn ;/////////////////////////////////////////////////////////
         mov     edx, [ebx + 4]
         mov     ebx, [ebx + 8]
         call    fs_execute ; esi+ebp, ebx, edx
-        mov     [image_of_eax], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
     @@: mov     edi, rootdirs - 8
@@ -266,8 +263,8 @@ kproc file_system_lfn ;/////////////////////////////////////////////////////////
         js      @f
         mov     al, ERROR_END_OF_FILE
 
-    @@: mov     [image_of_eax], eax
-        mov     [image_of_ebx], ebx
+    @@: mov     [esp + 4 + regs_context32_t.eax], eax
+        mov     [esp + 4 + regs_context32_t.ebx], ebx
         ret
 
   .rootdir:
@@ -276,7 +273,7 @@ kproc file_system_lfn ;/////////////////////////////////////////////////////////
         jz      .readroot
 
   .access_denied:
-        mov     dword[image_of_eax], ERROR_ACCESS_DENIED ; access denied
+        mov     [esp + 4 + regs_context32_t.eax], ERROR_ACCESS_DENIED ; access denied
         ret
 
   .readroot:
@@ -399,8 +396,8 @@ kproc file_system_lfn ;/////////////////////////////////////////////////////////
         js      @f
         mov     al, ERROR_END_OF_FILE
 
-    @@: mov     [image_of_eax], eax
-        mov     [image_of_ebx], ebx
+    @@: mov     [esp + 4 + regs_context32_t.eax], eax
+        mov     [esp + 4 + regs_context32_t.ebx], ebx
         ret
 
   .notfound_try:
@@ -414,8 +411,8 @@ kproc file_system_lfn ;/////////////////////////////////////////////////////////
         jmp     @b
 
   .notfound:
-        mov     dword[image_of_eax], ERROR_FILE_NOT_FOUND
-        and     dword[image_of_ebx], 0
+        mov     [esp + 4 + regs_context32_t.eax], ERROR_FILE_NOT_FOUND
+        and     [esp + 4 + regs_context32_t.ebx], 0
         ret
 
   .notfounda:
@@ -480,7 +477,7 @@ kendp
 kproc fs_OnRamdisk ;////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     ecx, 1
-        jnz     file_system_lfn.notfound
+        jnz     sysfn.file_system_lfn.notfound
         mov     eax, [ebx]
         cmp     eax, fs_NumRamdiskServices
         jae     .not_impl
@@ -489,12 +486,12 @@ kproc fs_OnRamdisk ;////////////////////////////////////////////////////////////
 ;       add     edx, std_application_base_address
         add     ebx, 4
         call    dword[fs_RamdiskServices + eax * 4]
-        mov     [image_of_eax], eax
-        mov     [image_of_ebx], ebx
+        mov     [esp + 4 + regs_context32_t.eax], eax
+        mov     [esp + 4 + regs_context32_t.ebx], ebx
         ret
 
   .not_impl:
-        mov     dword[image_of_eax], ERROR_NOT_IMPLEMENTED ; not implemented
+        mov     [esp + 4 + regs_context32_t.eax], ERROR_NOT_IMPLEMENTED ; not implemented
         ret
 kendp
 
@@ -517,7 +514,7 @@ endg
 kproc fs_OnFloppy ;/////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     ecx, 2
-        ja      file_system_lfn.notfound
+        ja      sysfn.file_system_lfn.notfound
         mov     eax, [ebx]
         cmp     eax, fs_NumFloppyServices
         jae     fs_OnRamdisk.not_impl
@@ -529,8 +526,8 @@ kproc fs_OnFloppy ;/////////////////////////////////////////////////////////////
         add     ebx, 4
         call    dword[fs_FloppyServices + eax * 4]
         and     [flp_status], 0
-        mov     [image_of_eax], eax
-        mov     [image_of_ebx], ebx
+        mov     [esp + 4 + regs_context32_t.eax], eax
+        mov     [esp + 4 + regs_context32_t.ebx], ebx
         ret
 kendp
 
@@ -603,7 +600,7 @@ kproc fs_OnHdAndBd
   .nf:
         call    free_hd_channel
         and     [hd1_status], 0
-        mov     dword[image_of_eax], ERROR_FILE_NOT_FOUND ; not found
+        mov     [esp + 4 + regs_context32_t.eax], ERROR_FILE_NOT_FOUND ; not found
         ret
 
 ;   @@: mov     [fat32part], ecx
@@ -621,14 +618,14 @@ kproc fs_OnHdAndBd
         call    dword[fs_HdServices + eax * 4]
         call    free_hd_channel
         and     [hd1_status], 0
-        mov     [image_of_eax], eax
-        mov     [image_of_ebx], ebx
+        mov     [esp + 4 + regs_context32_t.eax], eax
+        mov     [esp + 4 + regs_context32_t.ebx], ebx
         ret
 
   .not_impl:
         call    free_hd_channel
         and     [hd1_status], 0
-        mov     dword[image_of_eax], ERROR_NOT_IMPLEMENTED ; not implemented
+        mov     [esp + 4 + regs_context32_t.eax], ERROR_NOT_IMPLEMENTED ; not implemented
         ret
 kendp
 
@@ -894,7 +891,7 @@ kproc fs_OnCd
   .nf:
         call    free_cd_channel
         and     [cd_status], 0
-        mov     dword[image_of_eax], ERROR_FILE_NOT_FOUND ; not found
+        mov     [esp + 4 + regs_context32_t.eax], ERROR_FILE_NOT_FOUND ; not found
         ret
 
     @@: mov     ecx, [ebx + 12]
@@ -907,14 +904,14 @@ kproc fs_OnCd
         call    dword[fs_CdServices + eax * 4]
         call    free_cd_channel
         and     [cd_status], 0
-        mov     [image_of_eax], eax
-        mov     [image_of_ebx], ebx
+        mov     [esp + 4 + regs_context32_t.eax], eax
+        mov     [esp + 4 + regs_context32_t.ebx], ebx
         ret
 
   .not_impl:
         call    free_cd_channel
         and     [cd_status], 0
-        mov     dword[image_of_eax], ERROR_NOT_IMPLEMENTED ; not implemented
+        mov     [esp + 4 + regs_context32_t.eax], ERROR_NOT_IMPLEMENTED ; not implemented
         ret
 kendp
 
@@ -1134,7 +1131,7 @@ kendp
 ;> esi = pointer to name
 ;> ebp = 0 or rest of name relative to esi
 ;-----------------------------------------------------------------------------------------------------------------------
-;# if the handler processes path, he must not return in file_system_lfn, but instead pop return address and return
+;# if the handler processes path, he must not return in sysfn.file_system_lfn, but instead pop return address and return
 ;# directly to the caller; otherwise simply return
 ;-----------------------------------------------------------------------------------------------------------------------
 
@@ -1200,13 +1197,13 @@ kproc biosdisk_handler ;////////////////////////////////////////////////////////
         test    al, al
         jnz     @f
         mov     esi, fs_BdNext
-        jmp     file_system_lfn.maindir_noesi
+        jmp     sysfn.file_system_lfn.maindir_noesi
 
   @@:
         push    ecx
         push    fs_OnBd
         mov     edi, esp
-        jmp     file_system_lfn.found2
+        jmp     sysfn.file_system_lfn.found2
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -1346,7 +1343,7 @@ kproc process_replace_file_name ;///////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc sys_current_directory ;///////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.current_directory_ctl ;/////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;       mov     esi, [current_slot]
 ;       mov     esi, [esi + app_data_t.cur_dir]
@@ -1381,7 +1378,7 @@ max_cur_dir equ 0x1000
 
         sub     edi, ebx ; lenght for copy
         inc     edi
-        mov     [esp + 32 + 8], edi ; return in eax
+        mov     [esp + 4 + 8 + regs_context32_t.eax], edi ; return in eax
 
         cmp     edx, edi
         jbe     @f
@@ -1404,7 +1401,7 @@ max_cur_dir equ 0x1000
 
   .error:
         add     esp, 8
-        or      dword[esp + 32], -1 ; error not found zerro at string ->[eax+app_data_t.cur_dir]
+        or      [esp + 4 + regs_context32_t.eax], -1 ; error not found zerro at string ->[eax+app_data_t.cur_dir]
         ret
 
   .set:

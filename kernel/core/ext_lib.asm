@@ -200,7 +200,7 @@ proc dll.Load, import_table:dword ;/////////////////////////////////////////////
 
         pushad
         stdcall load_k_library, s_libname
-        mov     [esp + 28], eax
+        mov     [esp + regs_context32_t.eax], eax
         popad
         or      eax, eax
         jz      .fail

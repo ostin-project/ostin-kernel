@@ -364,7 +364,7 @@ kproc VGA_putpixel ;////////////////////////////////////////////////////////////
         ; ebx = y
 
         mov     ecx, eax
-        mov     eax, [esp + 32 - 8 + 4] ; color
+        mov     eax, [esp + 4 + regs_context32_t.ecx] ; color
         shl     ebx, 9
         lea     ebx, [ebx + ebx * 4] ; * 5
         lea     edx, [ebx + ecx * 4] ; + x*BytesPerPixel (Vesa2.0 32)

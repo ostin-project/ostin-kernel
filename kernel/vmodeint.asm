@@ -29,9 +29,9 @@ endg
         popd    [old_screen_height] [old_screen_width]
         or      eax, -1 ; If driver is absent then eax does not change
         call    (VMODE_BASE + 0x100) ; Entry point of video driver
-        mov     [esp + 36 - 4], eax
-        mov     [esp + 24 - 4], ebx
-        mov     [esp + 32 - 4], ecx
+        mov     [esp + 4 + regs_context32_t.eax], eax
+        mov     [esp + 4 + regs_context32_t.ebx], ebx
+        mov     [esp + 4 + regs_context32_t.ecx], ecx
 ;       mov     [esp + 28], edx
         mov     eax, [old_screen_width]
         mov     ebx, [old_screen_height]

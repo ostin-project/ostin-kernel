@@ -1000,7 +1000,7 @@ proc safe_map_page stdcall, slot:dword, req_access:dword, ofs:dword ;///////////
 endp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc sys_IPC ;/////////////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.ipc_ctl ;///////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;; set ipc buffer area:
 ;>   ebx = 1
@@ -1032,7 +1032,7 @@ kproc sys_IPC ;/////////////////////////////////////////////////////////////////
         jb      .touch
 
         popf
-        mov     [esp + 32], ebx ; ebx=0
+        mov     [esp + 4 + regs_context32_t.eax], ebx ; ebx=0
         ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1042,11 +1042,11 @@ kproc sys_IPC ;/////////////////////////////////////////////////////////////////
         jnz     @f
 
         stdcall sys_ipc_send, ecx, edx, esi
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
     @@: or      eax, -1
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
 
@@ -1215,7 +1215,7 @@ kproc sysfn_meminfo ;///////////////////////////////////////////////////////////
         mov     eax, [pg_data.pages_count]
         mov     [ecx], eax
         shl     eax, 12
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         mov     eax, [pg_data.pages_free]
         mov     [ecx + 4], eax
         mov     eax, [pg_data.pages_faults]
@@ -1231,12 +1231,12 @@ kproc sysfn_meminfo ;///////////////////////////////////////////////////////////
         ret
 
   .fail:
-        or      dword[esp + 32], -1
+        or      [esp + 4 + regs_context32_t.eax], -1
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc f68 ;/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.system_service ;////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     ebx, 4
         jbe     sys_sheduler
@@ -1252,36 +1252,36 @@ kproc f68 ;/////////////////////////////////////////////////////////////////////
 iglobal
   align 4
   f68call dd \ ; keep this table closer to main code
-    f68.11, \   ; init_heap
-    f68.12, \   ; user_alloc
-    f68.13, \   ; user_free
-    f68.14, \   ; get_event_ex
-    f68.fail, \ ; moved to f68.24
-    f68.16, \   ; get_service
-    f68.17, \   ; call_service
-    f68.fail, \ ; moved to f68.25
-    f68.19, \   ; load_dll
-    f68.20, \   ; user_realloc
-    f68.21, \   ; load_driver
-    f68.22, \   ; shmem_open
-    f68.23, \   ; shmem_close
-    f68.24, \
-    f68.25
+    sysfn.system_service.11, \   ; init_heap
+    sysfn.system_service.12, \   ; user_alloc
+    sysfn.system_service.13, \   ; user_free
+    sysfn.system_service.14, \   ; get_event_ex
+    sysfn.system_service.fail, \ ; moved to f68.24
+    sysfn.system_service.16, \   ; get_service
+    sysfn.system_service.17, \   ; call_service
+    sysfn.system_service.fail, \ ; moved to f68.25
+    sysfn.system_service.19, \   ; load_dll
+    sysfn.system_service.20, \   ; user_realloc
+    sysfn.system_service.21, \   ; load_driver
+    sysfn.system_service.22, \   ; shmem_open
+    sysfn.system_service.23, \   ; shmem_close
+    sysfn.system_service.24, \
+    sysfn.system_service.25
 endg
 
   .11:
         call    init_heap
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .12:
         stdcall user_alloc, ecx
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .13:
         stdcall user_free, ecx
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .14:
@@ -1289,7 +1289,7 @@ endg
         jae     .fail
         mov     edi, ecx
         call    get_event_ex
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .16:
@@ -1298,26 +1298,26 @@ endg
         cmp     ecx, OS_BASE
         jae     .fail
         stdcall get_service, ecx
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .17:
         call    srv_handlerEx ; ecx
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .19:
         cmp     ecx, OS_BASE
         jae     .fail
         stdcall load_library, ecx
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .20:
         mov     eax, edx
         mov     ebx, ecx
         call    user_realloc ; in: eax = pointer, ebx = new size
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .21:
@@ -1342,7 +1342,7 @@ endg
 
         mov     [eax + service_t.entry], esi
 
-    @@: mov     [esp + 32], eax
+    @@: mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .22:
@@ -1350,8 +1350,8 @@ endg
         jae     .fail
 
         stdcall shmem_open, ecx, edx, esi
-        mov     [esp + 24], edx
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.edx], edx
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .23:
@@ -1359,15 +1359,15 @@ endg
         jae     .fail
 
         stdcall shmem_close, ecx
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
   .24:
         mov     eax, [current_slot]
         xchg    ecx, [eax + app_data_t.exc_handler]
         xchg    edx, [eax + app_data_t.except_mask]
-        mov     [esp + 32], ecx ; reg_eax+8
-        mov     [esp + 20], edx ; reg_ebx+8
+        mov     [esp + 4 + regs_context32_t.eax], ecx ; reg_eax+8
+        mov     [esp + 4 + regs_context32_t.ebx], edx ; reg_ebx+8
         ret
 
   .25:
@@ -1375,7 +1375,7 @@ endg
         jae     .fail
         mov     eax, [current_slot]
         btr     [eax + app_data_t.except_mask], ecx
-        setc    byte[esp + 32]
+        setc    [esp + 4 + regs_context32_t.al]
         jecxz   @f
         bts     [eax + app_data_t.except_mask], ecx
 
@@ -1383,7 +1383,7 @@ endg
 
   .fail:
         xor     eax, eax
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
 

@@ -233,7 +233,7 @@ kproc sys_putimage_with_check ;/////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         or      ebx, ebx
         jz      @f
-        call    syscall_putimage.forced
+        call    sysfn.put_image.forced
 
     @@: ret
 kendp

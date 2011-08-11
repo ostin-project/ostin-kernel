@@ -866,12 +866,12 @@ kproc check_ATAPI_device_event ;////////////////////////////////////////////////
         call    GetEvent_StatusNotification
         cmp     byte[CDDataBuf + 4], 1
         je      .eject_ide3
-        call    syscall_cdaudio.free
+        call    sysfn.cd_audio_ctl.free
         jmp     .ide2_1
 
   .eject_ide3:
         call    .eject
-        call    syscall_cdaudio.free
+        call    sysfn.cd_audio_ctl.free
         jmp     .ide2_1
 
   .ide2:
@@ -890,12 +890,12 @@ kproc check_ATAPI_device_event ;////////////////////////////////////////////////
         call    GetEvent_StatusNotification
         cmp     byte[CDDataBuf + 4], 1
         je      .eject_ide2
-        call    syscall_cdaudio.free
+        call    sysfn.cd_audio_ctl.free
         jmp     .ide1_1
 
   .eject_ide2:
         call    .eject
-        call    syscall_cdaudio.free
+        call    sysfn.cd_audio_ctl.free
         jmp     .ide1_1
 
   .ide1:
@@ -914,12 +914,12 @@ kproc check_ATAPI_device_event ;////////////////////////////////////////////////
         call    GetEvent_StatusNotification
         cmp     byte[CDDataBuf + 4], 1
         je      .eject_ide1
-        call    syscall_cdaudio.free
+        call    sysfn.cd_audio_ctl.free
         jmp     .ide0_1
 
   .eject_ide1:
         call    .eject
-        call    syscall_cdaudio.free
+        call    sysfn.cd_audio_ctl.free
         jmp     .ide0_1
 
   .ide0:
@@ -938,12 +938,12 @@ kproc check_ATAPI_device_event ;////////////////////////////////////////////////
         call    GetEvent_StatusNotification
         cmp     byte[CDDataBuf + 4], 1
         je      .eject_ide0
-        call    syscall_cdaudio.free
+        call    sysfn.cd_audio_ctl.free
         jmp     .end
 
   .eject_ide0:
         call    .eject
-        call    syscall_cdaudio.free
+        call    sysfn.cd_audio_ctl.free
         jmp     .end
 
   .eject:

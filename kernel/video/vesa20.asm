@@ -336,7 +336,7 @@ kproc __sys_putpixel ;//////////////////////////////////////////////////////////
         jz      .noneg
         call    getpixel
         not     ecx
-        mov     [esp + 32 - 8], ecx
+        mov     [esp + regs_context32_t.ecx], ecx
 
   .noneg:
         ; OK to set pixel
@@ -355,7 +355,7 @@ kproc Vesa20_putpixel24 ;///////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         imul    ebx, [BytesPerScanLine] ; ebx = y * y multiplier
         lea     edi, [eax + eax * 2] ; edi = x*3
-        mov     eax, [esp + 32 - 8 + 4]
+        mov     eax, [esp + 4 + regs_context32_t.ecx]
         mov     [LFB_BASE + ebx + edi], ax
         shr     eax, 16
         mov     [LFB_BASE + ebx + edi + 2], al
@@ -370,7 +370,7 @@ kproc Vesa20_putpixel32 ;///////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         imul    ebx, [BytesPerScanLine] ; ebx = y * y multiplier
         lea     edi, [ebx + eax * 4] ; edi = x*4+(y*y multiplier)
-        mov     eax, [esp + 32 - 8 + 4] ; eax = color
+        mov     eax, [esp + 4 + regs_context32_t.ecx] ; eax = color
         mov     [LFB_BASE + edi], eax
         ret
 kendp

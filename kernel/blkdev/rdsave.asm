@@ -36,8 +36,8 @@ kproc sysfn_saveramdisk ;///////////////////////////////////////////////////////
         mov     ebx, saverd_fileinfo
         mov     [saverd_fileinfo.name], ecx
         pushad
-        call    file_system_lfn ; in ebx
+        call    sysfn.file_system_lfn ; in ebx
         popad
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp

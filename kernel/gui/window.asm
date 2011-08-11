@@ -38,7 +38,7 @@ uglobal
 endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc syscall_draw_window ;/////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.draw_window ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? system function 0
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -93,7 +93,7 @@ kproc syscall_draw_window ;/////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc syscall_display_settings ;////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.display_settings_ctl ;//////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? system function 48
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -146,20 +146,20 @@ kproc syscall_display_settings ;////////////////////////////////////////////////
 
 
 align 4
-syscall_display_settings.00:
+sysfn.display_settings_ctl.00:
         xor     eax, eax
         inc     ebx
         cmp     [windowtypechanged], ebx
         jne     .exit
         mov     [windowtypechanged], eax
 
-        jmp     syscall_display_settings._.redraw_whole_screen
+        jmp     sysfn.display_settings_ctl._.redraw_whole_screen
 
   .exit:
         ret
 
 align 4
-syscall_display_settings.01:
+sysfn.display_settings_ctl.01:
         and     ecx, 1
         cmp     ecx, [buttontype]
         je      .exit
@@ -170,7 +170,7 @@ syscall_display_settings.01:
         ret
 
 align 4
-syscall_display_settings.02:
+sysfn.display_settings_ctl.02:
         dec     ebx
         mov     esi, ecx
         and     edx, 127
@@ -181,7 +181,7 @@ syscall_display_settings.02:
         ret
 
 align 4
-syscall_display_settings.03:
+sysfn.display_settings_ctl.03:
         mov     edi, ecx
         and     edx, 127
         mov     esi, common_colours
@@ -190,23 +190,23 @@ syscall_display_settings.03:
         ret
 
 align 4
-syscall_display_settings.04:
+sysfn.display_settings_ctl.04:
         mov     eax, [_skinh]
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
 align 4
-syscall_display_settings.05:
+sysfn.display_settings_ctl.05:
         mov     eax, [screen_workarea.left - 2]
         mov     ax, word[screen_workarea.right]
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         mov     eax, [screen_workarea.top - 2]
         mov     ax, word[screen_workarea.bottom]
-        mov     [esp + 20], eax
+        mov     [esp + 4 + regs_context32_t.ebx], eax
         ret
 
 align 4
-syscall_display_settings.06:
+sysfn.display_settings_ctl.06:
         xor     esi, esi
 
         mov     edi, [Screen_Max_X]
@@ -251,41 +251,41 @@ syscall_display_settings.06:
         jz      .exit
 
         call    repos_windows
-        jmp     syscall_display_settings._.calculate_whole_screen
+        jmp     sysfn.display_settings_ctl._.calculate_whole_screen
 
   .exit:
         ret
 
 align 4
-syscall_display_settings.07:
+sysfn.display_settings_ctl.07:
         mov     eax, [_skinmargins + 0]
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         mov     eax, [_skinmargins + 4]
-        mov     [esp + 20], eax
+        mov     [esp + 4 + regs_context32_t.ebx], eax
         ret
 
 align 4
-syscall_display_settings.08:
+sysfn.display_settings_ctl.08:
         mov     ebx, ecx
         call    read_skin_file
-        mov     [esp + 32], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         test    eax, eax
         jnz     .exit
 
-        call    syscall_display_settings._.calculate_whole_screen
-        jmp     syscall_display_settings._.redraw_whole_screen
+        call    sysfn.display_settings_ctl._.calculate_whole_screen
+        jmp     sysfn.display_settings_ctl._.redraw_whole_screen
 
   .exit:
         ret
 
-syscall_display_settings._.calculate_whole_screen:
+sysfn.display_settings_ctl._.calculate_whole_screen:
         xor     eax, eax
         xor     ebx, ebx
         mov     ecx, [Screen_Max_X]
         mov     edx, [Screen_Max_Y]
         jmp     calculatescreen
 
-syscall_display_settings._.redraw_whole_screen:
+sysfn.display_settings_ctl._.redraw_whole_screen:
         xor     eax, eax
         mov     [draw_limits.left], eax
         mov     [draw_limits.top], eax
@@ -298,7 +298,7 @@ syscall_display_settings._.redraw_whole_screen:
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc syscall_set_window_shape ;////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.set_window_shape ;//////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? system function 50
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -326,7 +326,7 @@ kproc syscall_set_window_shape ;////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc syscall_move_window ;/////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.move_window ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? system function 67
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -375,7 +375,7 @@ kproc syscall_move_window ;/////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc syscall_window_settings ;/////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.window_settings ;///////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? system function 71
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -1224,7 +1224,7 @@ kendp
 ;;======================================================================================================================
 
 iglobal
-  FuncTable syscall_display_settings, ftable, \
+  FuncTable sysfn.display_settings_ctl, ftable, \
     00, 01, 02, 03, 04, 05, 06, 07, 08
 
   align 4

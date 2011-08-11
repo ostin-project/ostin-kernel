@@ -14,24 +14,6 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-align 16
-;-----------------------------------------------------------------------------------------------------------------------
-kproc cross_order ;/////////////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;? Old style system call converter
-;-----------------------------------------------------------------------------------------------------------------------
-        ; load all registers in crossed order
-        mov     eax, ebx
-        mov     ebx, ecx
-        mov     ecx, edx
-        mov     edx, esi
-        mov     esi, edi
-        movzx   edi, byte[esp + 28 + 4]
-        sub     edi, 53
-        call    dword[servetable + edi * 4]
-        ret
-kendp
-
 align 32
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc sysenter_entry ;//////////////////////////////////////////////////////////////////////////////////////////////////
@@ -48,7 +30,7 @@ kproc sysenter_entry ;//////////////////////////////////////////////////////////
         cld
 
         movzx   eax, al
-        call    dword[servetable2 + eax * 4]
+        call    [sysfn._.serve_table + eax * 4]
 
         popad
         ;------------------
@@ -71,7 +53,7 @@ kproc i40 ;/////////////////////////////////////////////////////////////////////
         pushad
         cld
         movzx   eax, al
-        call    dword[servetable2 + eax * 4]
+        call    [sysfn._.serve_table + eax * 4]
         popad
         iretd
 kendp
@@ -95,7 +77,7 @@ kproc syscall_entry ;///////////////////////////////////////////////////////////
         cld
 
         movzx   eax, al
-        call    dword[servetable2 + eax * 4]
+        call    [sysfn._.serve_table + eax * 4]
 
         popad
         ;------------------
@@ -105,102 +87,119 @@ kproc syscall_entry ;///////////////////////////////////////////////////////////
 kendp
 
 iglobal
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  ;; SYSTEM FUNCTIONS TABLE ;;
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   align 4
-  servetable:
-    dd socket                   ; 53 - Socket interface
-    dd 0
-    dd 0
-    dd 0
-    dd 0
-    dd file_system              ; 58 - Common file system interface
-    dd 0
-    dd 0
-    dd 0
-    dd 0
-    dd sys_msg_board            ; 63 - System message board
+  sysfn._.serve_table label dword
+    dd sysfn.draw_window ; 0
+    dd sysfn.set_pixel ; 1
+    dd sysfn.get_key ; 2
+    dd sysfn.get_time ; 3
+    dd sysfn.draw_text ; 4
+    dd sysfn.delay_hs ; 5
+    dd sysfn.read_rd_file ; 6
+    dd sysfn.put_image ; 7
+    dd sysfn.define_button ; 8
+    dd sysfn.get_process_info ; 9
+    dd sysfn.wait_for_event ; 10
+    dd sysfn.check_for_event ; 11
+    dd sysfn.set_draw_state ; 12
+    dd sysfn.draw_rect ; 13
+    dd sysfn.get_screen_size ; 14
+    dd sysfn.set_background_ctl ; 15
+    dd sysfn.flush_floppy_cache ; 16
+    dd sysfn.get_clicked_button_id ; 17
+    dd sysfn.system_ctl ; 18
+    dd sysfn._.not_implemented ; 19
+    dd sysfn.midi_ctl ; 20
+    dd sysfn.set_config ; 21
+    dd sysfn.set_time ; 22
+    dd sysfn.wait_for_event_with_timeout ; 23
+    dd sysfn.cd_audio_ctl ; 24
+    dd sysfn._.not_implemented ; 25
+    dd sysfn.get_config ; 26
+    dd sysfn._.not_implemented ; 27
+    dd sysfn._.not_implemented ; 28
+    dd sysfn.get_date ; 29
+    dd sysfn.current_directory_ctl ; 30
+    dd sysfn._.not_implemented ; 31
+    dd sysfn._.not_implemented ; 32
+    dd sysfn._.not_implemented ; 33
+    dd sysfn._.not_implemented ; 34
+    dd sysfn.get_pixel ; 35
+    dd sysfn.grab_screen_area ; 36
+    dd sysfn.mouse_cursor_ctl ; 37
+    dd sysfn.draw_line ; 38
+    dd sysfn.get_background_ctl ; 39
+    dd sysfn.set_process_event_mask ; 40
+    dd sysfn.get_irq_owner ; 41
+    dd sysfn.get_irq_data ; 42
+    dd sysfn.write_to_port ; 43
+    dd sysfn.program_irq ; 44
+    dd sysfn.reserve_irq ; 45
+    dd sysfn.reserve_port_area ; 46
+    dd sysfn.draw_number ; 47
+    dd sysfn.display_settings_ctl ; 48
+    dd sysfn.apm_ctl ; 49
+    dd sysfn.set_window_shape ; 50
+    dd sysfn.thread_ctl ; 51
+    dd sysfn.get_network_driver_status ; 52
+    dd sysfn._.cross_order ; 53
+    dd sysfn._.not_implemented ; 54
+    dd sysfn.sound_ctl ; 55
+    dd sysfn._.not_implemented ; 56
+    dd sysfn.pci_bios32_ctl ; 57
+    dd sysfn._.cross_order ; 58
+    dd sysfn._.not_implemented ; 59
+    dd sysfn.ipc_ctl ; 60
+    dd sysfs.direct_screen_access ; 61
+    dd sysfn.pci_ctl ; 62
+    dd sysfn._.cross_order ; 63
+    dd sysfn.resize_app_memory ; 64
+    dd sysfn.put_image_with_palette ; 65
+    dd sysfn.keyboard_ctl ; 66
+    dd sysfn.move_window ; 67
+    dd sysfn.system_service ; 68
+    dd sysfn.debug_ctl ; 69
+    dd sysfn.file_system_lfn ; 70
+    dd sysfn.window_settings ; 71
+    dd sysfn.send_window_message ; 72
+    dd sysfn.blit_32 ; 73
+    times 255 - ($ - sysfn._.serve_table) / 4 dd sysfn._.not_implemented
+    dd sysfn.exit_process ; -1 (255)
 
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  ;; NEW SYSTEM FUNCTIONS TABLE ;;
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   align 4
-  servetable2:
-    dd syscall_draw_window      ; 0 - DrawWindow
-    dd syscall_setpixel         ; 1 - SetPixel
-    dd sys_getkey               ; 2 - GetKey
-    dd sys_clock                ; 3 - GetTime
-    dd syscall_writetext        ; 4 - WriteText
-    dd delay_hs                 ; 5 - DelayHs
-    dd syscall_openramdiskfile  ; 6 - OpenRamdiskFile
-    dd syscall_putimage         ; 7 - PutImage
-    dd syscall_button           ; 8 - DefineButton
-    dd sys_cpuusage             ; 9 - GetProcessInfo
-    dd sys_waitforevent         ; 10 - WaitForEvent
-    dd sys_getevent             ; 11 - CheckForEvent
-    dd sys_redrawstat           ; 12 - BeginDraw and EndDraw
-    dd syscall_drawrect         ; 13 - DrawRect
-    dd syscall_getscreensize    ; 14 - GetScreenSize
-    dd sys_background           ; 15 - bgr
-    dd sys_cachetodiskette      ; 16 - FlushFloppyCache
-    dd sys_getbutton            ; 17 - GetButton
-    dd sys_system               ; 18 - System Services
-    dd paleholder               ; 19 - reserved
-    dd sys_midi                 ; 20 - ResetMidi and OutputMidi
-    dd sys_setup                ; 21 - SetMidiBase,SetKeymap,SetShiftKeymap,.
-    dd sys_settime              ; 22 - setting date,time,clock and alarm-clock
-    dd sys_wait_event_timeout   ; 23 - TimeOutWaitForEvent
-    dd syscall_cdaudio          ; 24 - PlayCdTrack,StopCd and GetCdPlaylist
-    dd undefined_syscall        ; 25 - reserved
-    dd sys_getsetup             ; 26 - GetMidiBase,GetKeymap,GetShiftKeymap,.
-    dd undefined_syscall        ; 27 - reserved
-    dd undefined_syscall        ; 28 - reserved
-    dd sys_date                 ; 29 - GetDate
-    dd sys_current_directory    ; 30 - Get/SetCurrentDirectory
-    dd undefined_syscall        ; 31 - reserved
-    dd undefined_syscall        ; 32 - reserved
-    dd undefined_syscall        ; 33 - reserved
-    dd undefined_syscall        ; 34 - reserved
-    dd syscall_getpixel         ; 35 - GetPixel
-    dd syscall_getarea          ; 36 - GetArea
-    dd readmousepos             ; 37 - GetMousePosition_ScreenRelative,.
-    dd syscall_drawline         ; 38 - DrawLine
-    dd sys_getbackground        ; 39 - GetBackgroundSize,ReadBgrData,.
-    dd set_app_param            ; 40 - WantEvents
-    dd syscall_getirqowner      ; 41 - GetIrqOwner
-    dd get_irq_data             ; 42 - ReadIrqData
-    dd sys_outport              ; 43 - SendDeviceData
-    dd sys_programirq           ; 44 - ProgramIrqs
-    dd reserve_free_irq         ; 45 - ReserveIrq and FreeIrq
-    dd syscall_reserveportarea  ; 46 - ReservePortArea and FreePortArea
-    dd display_number           ; 47 - WriteNum
-    dd syscall_display_settings ; 48 - SetRedrawType and SetButtonType
-    dd sys_apm                  ; 49 - Advanced Power Management (APM)
-    dd syscall_set_window_shape ; 50 - Window shape & scale
-    dd syscall_threads          ; 51 - Threads
-    dd stack_driver_stat        ; 52 - Stack driver status
-    dd cross_order              ; 53 - Socket interface
-    dd undefined_syscall        ; 54 - reserved
-    dd sound_interface          ; 55 - Sound interface
-    dd undefined_syscall        ; 56 - reserved
-    dd sys_pcibios              ; 57 - PCI BIOS32
-    dd cross_order              ; 58 - Common file system interface
-    dd undefined_syscall        ; 59 - reserved
-    dd sys_IPC                  ; 60 - Inter Process Communication
-    dd sys_gs                   ; 61 - Direct graphics access
-    dd pci_api                  ; 62 - PCI functions
-    dd cross_order              ; 63 - System message board
-    dd sys_resize_app_memory    ; 64 - Resize application memory usage
-    dd sys_putimage_palette     ; 65 - PutImagePalette
-    dd sys_process_def          ; 66 - Process definitions - keyboard
-    dd syscall_move_window      ; 67 - Window move or resize
-    dd f68                      ; 68 - Some internal services
-    dd sys_debug_services       ; 69 - Debug
-    dd file_system_lfn          ; 70 - Common file system interface, version 2
-    dd syscall_window_settings  ; 71 - Window settings
-    dd sys_sendwindowmsg        ; 72 - Send window message
-    dd blit_32                  ; 73 - blitter
-    times 255 - ($ - servetable2) / 4 dd undefined_syscall
-    dd sys_end                  ; -1 - end application
+  sysfn._.cross_order_serve_table label dword
+    dd sysfn.socket ; 53
+    dd 0
+    dd 0
+    dd 0
+    dd 0
+    dd sysfn.file_system ; 58
+    dd 0
+    dd 0
+    dd 0
+    dd 0
+    dd sysfn.debug_board ; 63
 endg
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc sysfn._.cross_order ;/////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Old style system call converter
+;-----------------------------------------------------------------------------------------------------------------------
+        ; load all registers in crossed order
+        mov     eax, ebx
+        mov     ebx, ecx
+        mov     ecx, edx
+        mov     edx, esi
+        mov     esi, edi
+        movzx   edi, [esp + 4 + regs_context32_t.al]
+        call    [sysfn._.cross_order_serve_table + (edi - 53) * 4]
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc sysfn._.not_implemented ;/////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        or      [esp + 4 + regs_context32_t.eax], -1
+        ret
+kendp

@@ -61,7 +61,7 @@ kproc dtext ;///////////////////////////////////////////////////////////////////
   .test_asciiz:
         cmp     byte[edx], 0
         jz      .end
-        cmp     byte[esp + 28], 1
+        cmp     [esp + regs_context32_t.al], 1
         jne     @f
         dec     esi
         js      .end
@@ -142,7 +142,7 @@ kproc dtext ;///////////////////////////////////////////////////////////////////
         dec     dword[esp]
         jnz     .symloop2
         pop     eax
-        add     dword[esp + 28], esi
+        add     [esp + regs_context32_t.eax], esi
         popad
         jmp     .loop
 

@@ -251,8 +251,8 @@ debug_beginf
         pushad
         movzx   ebx, al
         mov     eax, 1
-        mov     ecx, sys_msg_board
-        call    ecx ; sys_msg_board
+        mov     ecx, sysfn.debug_board
+        call    ecx ; sysfn.debug_board
         popad
         ret
 debug_endf
@@ -267,8 +267,8 @@ debug_beginf
         movzx   ebx, byte[edx]
         or      bl, bl
         jz      .l2
-        mov     ecx, sys_msg_board
-        call    ecx ; sys_msg_board
+        mov     ecx, sysfn.debug_board
+        call    ecx ; sysfn.debug_board
         inc     edx
         jmp     .l1
 

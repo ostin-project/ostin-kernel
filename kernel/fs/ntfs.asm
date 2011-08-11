@@ -296,7 +296,7 @@ kproc ntfs_setup ;//////////////////////////////////////////////////////////////
   .ok:
         shl     eax, 3
         add     eax, [ntfs_data.mft_retrieval]
-        mov     [esp + 28], eax
+        mov     [esp + regs_context32_t.eax], eax
         popad
         ret
 kendp
@@ -1206,8 +1206,8 @@ kproc ntfs_find_lfn ;///////////////////////////////////////////////////////////
         pop     esi
         mov     eax, [esi]
         mov     [ntfs_cur_iRecord], eax
-        mov     [esp + 0x1c], esi
-        mov     [esp + 4], edi
+        mov     [esp + regs_context32_t.eax], esi
+        mov     [esp + regs_context32_t.esi], edi
         popad
         inc     esi
         cmp     byte[esi - 1], 0
@@ -1246,7 +1246,7 @@ kproc ntfs_HdRead ;/////////////////////////////////////////////////////////////
         jc      fs.error.access_denied
 
         pushad
-        and     dword[esp + 0x10], 0
+        and     [esp + regs_context32_t.ebx], 0
         xor     eax, eax
         test    ebx, ebx
         jz      .zero1
@@ -1284,12 +1284,12 @@ kproc ntfs_HdRead ;/////////////////////////////////////////////////////////////
         jb      @f
         mov     ecx, eax
 
-    @@: mov     [esp + 0x10 + 4], ecx
+    @@: mov     [esp + 4 + regs_context32_t.ebx], ecx
         mov     edi, edx
         rep     movsb
         mov     edx, edi
         pop     ecx
-        sub     ecx, [esp + 0x10]
+        sub     ecx, [esp + regs_context32_t.ebx]
         jnz     @f
 
   .retok:
@@ -1324,7 +1324,7 @@ kproc ntfs_HdRead ;/////////////////////////////////////////////////////////////
         call    ntfs_read_attr.continue
         pop     [ntfs_cur_offs]
         mov     eax, [ntfs_cur_read]
-        add     [esp + 0x10], eax
+        add     [esp + regs_context32_t.ebx], eax
         mov     eax, ecx
         and     eax, not 0x1ff
         cmp     [ntfs_cur_read], eax
@@ -1343,7 +1343,7 @@ kproc ntfs_HdRead ;/////////////////////////////////////////////////////////////
         push    ecx
         mov     edi, edx
         mov     esi, ntfs_bitmap_buf
-        add     [esp + 0x10 + 4], ecx
+        add     [esp + 4 + regs_context32_t.ebx], ecx
         rep     movsb
         pop     ecx
         xor     eax, eax
@@ -1351,7 +1351,7 @@ kproc ntfs_HdRead ;/////////////////////////////////////////////////////////////
         jz      @f
         mov     al, ERROR_END_OF_FILE
 
-    @@: mov     [esp + 0x1c], eax
+    @@: mov     [esp + regs_context32_t.eax], eax
         popad
         ret
 kendp
@@ -1480,8 +1480,8 @@ kproc ntfs_HdReadFolder ;///////////////////////////////////////////////////////
 
   .ok2:
         add     esi, 0x10
-        mov     ebx, [esp + 0x10]
-        mov     edx, [esp + 0x14]
+        mov     ebx, [esp + regs_context32_t.ebx]
+        mov     edx, [esp + regs_context32_t.edx]
         push    dword[ebx + 4] ; read ANSI/UNICODE name
         mov     ebx, [ebx]
         ; init header
@@ -1490,7 +1490,7 @@ kproc ntfs_HdReadFolder ;///////////////////////////////////////////////////////
         xor     eax, eax
         rep     stosd
         mov     byte[edx], 1 ; version
-        mov     ecx, [esp + 4 + 0x18]
+        mov     ecx, [esp + 4 + regs_context32_t.ecx]
         push    edx
         mov     edx, esp
         ; edi -> BDFE, esi -> current index data, ebp = subnode size, ebx = first wanted block,
@@ -1608,8 +1608,8 @@ kproc ntfs_HdReadFolder ;///////////////////////////////////////////////////////
         js      @f
         mov     al, ERROR_END_OF_FILE
 
-    @@: mov     [esp + 0x1c], eax
-        mov     [esp + 0x10], ebx
+    @@: mov     [esp + regs_context32_t.eax], eax
+        mov     [esp + regs_context32_t.ebx], ebx
         popad
         ret
 

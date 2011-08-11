@@ -335,3 +335,89 @@ struct app_data_t
   wnd_caption     dd ?
   wnd_clientbox   box32_t
 ends
+
+struct regs_context16_t
+  di dw ?
+  si dw ?
+  bp dw ?
+  sp dw ?
+  union
+    bx  dw ?
+    struct
+      bl db ?
+      bh db ?
+    ends
+  ends
+  union
+    dx  dw ?
+    struct
+      dl db ?
+      dh db ?
+    ends
+  ends
+  union
+    cx  dw ?
+    struct
+      cl db ?
+      ch db ?
+    ends
+  ends
+  union
+    ax  dw ?
+    struct
+      al db ?
+      ah db ?
+    ends
+  ends
+ends
+
+struct regs_context32_t
+  union
+    edi dd ?
+    di  dw ?
+  ends
+  union
+    esi dd ?
+    si  dw ?
+  ends
+  union
+    ebp dd ?
+    bp  dw ?
+  ends
+  union
+    esp dd ?
+    sp  dw ?
+  ends
+  union
+    ebx dd ?
+    bx  dw ?
+    struct
+      bl db ?
+      bh db ?
+    ends
+  ends
+  union
+    edx dd ?
+    dx  dw ?
+    struct
+      dl db ?
+      dh db ?
+    ends
+  ends
+  union
+    ecx dd ?
+    cx  dw ?
+    struct
+      cl db ?
+      ch db ?
+    ends
+  ends
+  union
+    eax dd ?
+    ax  dw ?
+    struct
+      al db ?
+      ah db ?
+    ends
+  ends
+ends

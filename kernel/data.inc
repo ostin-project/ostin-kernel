@@ -133,7 +133,7 @@ MIN_DEFAULT_DLL_ADDR = 0x10000000
 dll_cur_addr dd MIN_DEFAULT_DLL_ADDR
 
 db 0
-dd servetable - 0x10000
+dd 0 ; servetable - 0x10000
 draw_line       dd __sys_draw_line
 draw_pointer    dd __sys_draw_pointer
 drawbar         dd __sys_drawbar.forced ; __sys_drawbar

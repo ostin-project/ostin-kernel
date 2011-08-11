@@ -311,7 +311,7 @@ kproc ramdisk_notroot_extend_dir ;//////////////////////////////////////////////
         sub     edi, RAMDISK_FAT
         shr     edi, 1
         dec     edi
-        mov     eax, [esp + 28]
+        mov     eax, [esp + regs_context32_t.eax]
         mov     ecx, [eax]
         mov     [RAMDISK_FAT + ecx * 2], di
         mov     [eax], edi
@@ -743,7 +743,7 @@ kproc fs_RamdiskRewrite ;///////////////////////////////////////////////////////
   .exists_file:
         ; found file; if we are creating directory, return "access denied",
         ;             if we are creating file, delete existing file and continue
-        cmp     byte[esp + 20 + 28], 0
+        cmp     byte[esp + 20 + regs_context32_t.eax], 0
         jz      @f
         add     esp, 20
         popad
@@ -959,7 +959,7 @@ kproc fs_RamdiskRewrite ;///////////////////////////////////////////////////////
         and     word[edi + 20], 0 ; high word of cluster
         and     word[edi + 26], 0 ; low word of cluster - to be filled
         and     dword[edi + 28], 0 ; file size - to be filled
-        cmp     byte[esp + 20 + 28], 0
+        cmp     [esp + 20 + regs_context32_t.al], 0
         jz      .doit
         ; create directory
         mov     byte[edi + 11], 0x10 ; attributes: folder
@@ -996,7 +996,7 @@ kproc fs_RamdiskRewrite ;///////////////////////////////////////////////////////
         push    edi
         inc     ecx
         ; write data
-        cmp     byte[esp + 16 + 20 + 28], 0
+        cmp     [esp + 16 + 20 + regs_context32_t.al], 0
         jnz     .writedir
         shl     eax, 9
         add     eax, RAMDISK + 31 * 512
@@ -1022,7 +1022,7 @@ kproc fs_RamdiskRewrite ;///////////////////////////////////////////////////////
         sub     ebx, edx
         mov     [edi + 28], ebx
         add     esp, 20
-        mov     [esp + 16], ebx
+        mov     [esp + regs_context32_t.ebx], ebx
         popad
         xor     eax, eax
         ret
@@ -1033,7 +1033,7 @@ kproc fs_RamdiskRewrite ;///////////////////////////////////////////////////////
         sub     ebx, edx
         mov     [edi + 28], ebx
         add     esp, 20
-        mov     [esp + 16], ebx
+        mov     [esp + regs_context32_t.ebx], ebx
         popad
         push    ERROR_DISK_FULL
         pop     eax
@@ -1142,7 +1142,7 @@ kproc fs_RamdiskWrite ;/////////////////////////////////////////////////////////
         cmp     al, ERROR_DISK_FULL
         jz      .disk_full
         pop     eax
-        mov     [esp + 28], eax
+        mov     [esp + regs_context32_t.eax], eax
         popad
         xor     ebx, ebx
         ret
@@ -1155,9 +1155,9 @@ kproc fs_RamdiskWrite ;/////////////////////////////////////////////////////////
 
   .ret:
         pop     eax
-        mov     [esp + 28], eax ; eax=return value
-        sub     edx, [esp + 20]
-        mov     [esp + 16], edx ; ebx=number of written bytes
+        mov     [esp + regs_context32_t.eax], eax ; eax=return value
+        sub     edx, [esp + regs_context32_t.edx]
+        mov     [esp + regs_context32_t.ebx], edx ; ebx=number of written bytes
         popad
         ret
 

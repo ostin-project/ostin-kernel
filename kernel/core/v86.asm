@@ -774,7 +774,7 @@ if KCONFIG_DEBUG_SHOW_IO
 
         mov     edx, ebx
         mov     ebx, 200
-        call    delay_hs
+        call    sysfn.delay_hs
         mov     esi, [esp + sizeof.v86_regs_t + 0x10 + 4]
         mov     eax, [esi + v86_machine_t.iopm]
 

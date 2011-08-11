@@ -604,7 +604,7 @@ endl
 
         pushad
         lea     ebx, [cmd]
-        call    file_system_lfn
+        call    sysfn.file_system_lfn
         popad
         ret
 endp
@@ -1783,10 +1783,10 @@ kproc irq ;/////////////////////////////////////////////////////////////////////
         mov     ax, app_data
         mov     ds, eax
         mov     es, eax
-        mov     ebx, [esp + 4] ; IRQ_xx
+        mov     ebx, [esp + 4 + regs_context32_t.edi] ; IRQ_xx
         mov     eax, [irq_handlers + ebx + 4]
         call    intr_handler
-        mov     ecx, [esp + 4]
+        mov     ecx, [esp + 4 + regs_context32_t.edi]
         cmp     [irq_actids + ecx * 4], 0
         je      @f
         in      al, 0x21
@@ -1800,10 +1800,10 @@ kproc irq ;/////////////////////////////////////////////////////////////////////
         mov     ax, app_data
         mov     ds, eax
         mov     es, eax
-        mov     ebx, [esp + 4] ; IRQ_xx
+        mov     ebx, [esp + 4 + regs_context32_t.edi] ; IRQ_xx
         mov     eax, [irq_handlers + ebx + 4]
         call    intr_handler
-        mov     ecx, [esp + 4]
+        mov     ecx, [esp + 4 + regs_context32_t.edi]
         sub     ecx, 8
         cmp     [irq_actids + ecx * 4], 0
         je      @f
