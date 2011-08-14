@@ -1438,8 +1438,11 @@ endg
         cmp     ebx, .countof.subfn
         jae     sysfn.not_implemented
 
-        and     [esp + 4 + regs_context32_t.eax], 0
         jmp     [.subfn + ebx * 4]
+
+  .exit:
+        and     [esp + 4 + regs_context32_t.eax], 0
+        ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -1457,7 +1460,7 @@ kproc sysfn.set_config.midi_base_port ;/////////////////////////////////////////
         mov     word[mididp], cx
         inc     cx
         mov     word[midisp], cx
-        ret
+        jmp     sysfn.set_config.exit
 
   .error:
         or      [esp + 4 + regs_context32_t.eax], -1
@@ -1484,7 +1487,7 @@ kproc sysfn.set_config.keyboard_layout ;////////////////////////////////////////
         mov     ebx, keymap
         mov     ecx, 128
         call    memmove
-        ret
+        jmp     sysfn.set_config.exit
 
   .kbnobase:
         dec     ecx
@@ -1493,7 +1496,7 @@ kproc sysfn.set_config.keyboard_layout ;////////////////////////////////////////
         mov     ebx, keymap_shift
         mov     ecx, 128
         call    memmove
-        ret
+        jmp     sysfn.set_config.exit
 
   .kbnoshift:
         dec     ecx
@@ -1502,14 +1505,14 @@ kproc sysfn.set_config.keyboard_layout ;////////////////////////////////////////
         mov     ebx, keymap_alt
         mov     ecx, 128
         call    memmove
-        ret
+        jmp     sysfn.set_config.exit
 
   .kbnoalt:
         sub     ecx, 6
         jnz     .kbnocountry
 
         mov     word[keyboard], dx
-        ret
+        jmp     sysfn.set_config.exit
 
   .kbnocountry:
         mov     [esp + 4 + regs_context32_t.eax], 1
@@ -1558,7 +1561,7 @@ kproc sysfn.set_config.cd_base ;////////////////////////////////////////////////
         mov     [cdid], 0xb0
 
   .nosesl:
-        ret
+        jmp     sysfn.set_config.exit
 kendp
 
 iglobal
@@ -1572,7 +1575,7 @@ kproc sysfn.set_config.system_language ;////////////////////////////////////////
 ;? 1eng 2fi 3ger 4rus
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     [syslang], ecx
-        ret
+        jmp     sysfn.set_config.exit
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -1631,7 +1634,7 @@ kproc sysfn.set_config.hd_base ;////////////////////////////////////////////////
         and     [hd1_status], 0 ; free
 
   .nosethd:
-        ret
+        jmp     sysfn.set_config.exit
 kendp
 
 iglobal
@@ -1653,7 +1656,7 @@ kproc sysfn.set_config.hd_partition ;///////////////////////////////////////////
         call    choice_necessity_partition_1
 ;       popa
         and     [hd1_status], 0 ; free
-        ret
+        jmp     sysfn.set_config.exit
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -1663,7 +1666,7 @@ kproc sysfn.set_config.low_level_hd_access ;////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         and     ecx, 1
         mov     [lba_read_enabled], ecx
-        ret
+        jmp     sysfn.set_config.exit
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -1673,7 +1676,7 @@ kproc sysfn.set_config.low_level_pci_access ;///////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         and     ecx, 1
         mov     [pci_access_enabled], ecx
-        ret
+        jmp     sysfn.set_config.exit
 kendp
 
 include "vmodeint.asm"
@@ -2032,7 +2035,6 @@ endg
         cmp     [mididp], 0
         je      .error
 
-        and     [esp + 4 + regs_context32_t.eax], 0
         jmp     [.subfn + ebx * 4]
 
   .error:
@@ -2070,6 +2072,8 @@ kproc sysfn.midi_ctl.reset ;////////////////////////////////////////////////////
         mov     dx, word[midisp]
         mov     al, 0x3f
         out     dx, al
+
+        and     [esp + 4 + regs_context32_t.eax], 0
         ret
 kendp
 
@@ -2083,8 +2087,10 @@ kproc sysfn.midi_ctl.output_byte ;//////////////////////////////////////////////
         test    al, al
         jnz     @b
 
-        mov     al, bl
+        mov     al, cl
         call    put_mpu_out
+
+        and     [esp + 4 + regs_context32_t.eax], 0
         ret
 kendp
 
@@ -2903,7 +2909,7 @@ iglobal
   jump_table sysfn.get_background_ctl, subfn, sysfn.not_implemented, \
     get_size, \ ; 1
     get_pixel, \ ; 2
-    -, \ ; 3
+    -, \
     get_mode ; 4
 endg
 ;-----------------------------------------------------------------------------------------------------------------------

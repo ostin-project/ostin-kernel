@@ -852,6 +852,8 @@ end if
         ; ASK GRAPHICS MODE
         call    boot.set_vmode_boot_vars
 
+        mov_s_  es, 0
+
         ; GRAPHICS ACCELERATION
         ; force yes
         mov     [es:BOOT_MTRR], 1

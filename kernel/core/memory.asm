@@ -1393,21 +1393,21 @@ kproc sysfn.system_service.load_driver ;////////////////////////////////////////
         cmp     ecx, OS_BASE
         jae     sysfn.system_service.error
 
-        cmp     ebx, OS_BASE
+        cmp     edx, OS_BASE
         jae     sysfn.system_service.error
 
         mov     edi, edx
         stdcall load_PE, ecx
         mov     esi, eax
         test    eax, eax
-        jz      @f
+        jz      .exit
 
         push    edi
         push    DRV_ENTRY
         call    eax
         add     esp, 8
         test    eax, eax
-        jz      @f
+        jz      .exit
 
         mov     [eax + service_t.entry], esi
 
@@ -1467,7 +1467,7 @@ kproc sysfn.system_service.set_fpu_exception_handler ;//////////////////////////
         mov     eax, [current_slot]
         btr     [eax + app_data_t.except_mask], ecx
         setc    [esp + 4 + regs_context32_t.al]
-        jecxz   @f
+        jecxz   .exit
         bts     [eax + app_data_t.except_mask], ecx
 
   .exit:

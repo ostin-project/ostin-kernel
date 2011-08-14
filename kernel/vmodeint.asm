@@ -36,7 +36,7 @@ kproc sysfn.set_config.video_ctl ;//////////////////////////////////////////////
         mov     [esp + 4 + regs_context32_t.eax], eax
         mov     [esp + 4 + regs_context32_t.ebx], ebx
         mov     [esp + 4 + regs_context32_t.ecx], ecx
-;       mov     [esp + 4 + regs_context32_t.eDx], edx
+;       mov     [esp + 4 + regs_context32_t.edx], edx
 
         mov     eax, [old_screen_width]
         mov     ebx, [old_screen_height]
