@@ -160,3 +160,51 @@ macro kproc name
 }
 
 kendp fix
+
+macro jump_table_element name, element, dash_element
+{
+  local is_dash
+  is_dash equ 0
+  match =-, element
+  \{
+    dd dash_element
+    is_dash equ 1
+  \}
+  match =0, is_dash
+  \{
+    dd name#.#element
+  \}
+}
+
+macro jump_table name, table_name, dash_element, [element]
+{
+  common
+    local is_expr
+    align 4
+    \label name#.#table_name dword
+  forward
+    is_expr equ 0
+    match a =? b =: c, element
+    \{
+      if (a)
+        jump_table_element name, b, dash_element
+      else
+        jump_table_element name, c, dash_element
+      end if
+      is_expr equ 1
+    \}
+    match =0 a =? b, is_expr element
+    \{
+      if (a)
+        jump_table_element name, b, dash_element
+      end if
+      is_expr equ 1
+    \}
+    match =0 a, is_expr element
+    \{
+      jump_table_element name, a, dash_element
+    \}
+  common
+    name#.sizeof.#table_name = $ - name#.#table_name
+    name#.countof.#table_name = ($ - name#.#table_name) / 4
+}

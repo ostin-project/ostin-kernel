@@ -14,7 +14,6 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 ;? Call of videomode driver's functions
-;? (Add in System function 21 (and/or 26) as a subfunction 13)
 ;;======================================================================================================================
 
 uglobal
@@ -22,17 +21,23 @@ uglobal
   old_screen_height dd ?
 endg
 
-;       cmp     eax, 13 ; CALL VIDEOMODE DRIVER FUNCTIONS
-        dec     ebx
-        jnz     .no_vmode_drv_access
-        pushd   [Screen_Max_X] [Screen_Max_Y]
-        popd    [old_screen_height] [old_screen_width]
+;-----------------------------------------------------------------------------------------------------------------------
+kproc sysfn.set_config.video_ctl ;//////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? System function 21.13: call videomode driver functions
+;-----------------------------------------------------------------------------------------------------------------------
+        mov_s_  [old_screen_height], dword[Screen_Max_Y]
+        mov_s_  [old_screen_width], dword[Screen_Max_X]
+
         or      eax, -1 ; If driver is absent then eax does not change
+
         call    (VMODE_BASE + 0x100) ; Entry point of video driver
+
         mov     [esp + 4 + regs_context32_t.eax], eax
         mov     [esp + 4 + regs_context32_t.ebx], ebx
         mov     [esp + 4 + regs_context32_t.ecx], ecx
-;       mov     [esp + 28], edx
+;       mov     [esp + 4 + regs_context32_t.eDx], edx
+
         mov     eax, [old_screen_width]
         mov     ebx, [old_screen_height]
         sub     eax, [Screen_Max_X]
@@ -56,5 +61,4 @@ endg
 
   .resolution_wasnt_changed:
         ret
-
-  .no_vmode_drv_access:
+kendp

@@ -15,92 +15,90 @@
 ;;======================================================================================================================
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc sysfn.set_time ;//////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.dtc_ctl ;///////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;? 22 - SETTING DATE TIME, CLOCK AND ALARM-CLOCK
+;? System function 22
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx = 0 - set time ecx (00SSMMHH)
-;>       1 - set date ecx (00DDMMYY)
-;>       2 - set day of week ecx (1-7)
-;>       3 - set alarm-clock ecx (00SSMMHH)
+;< [esp + 4 + regs_context32_t.eax] = 0 (ok),  1 (wrong format) or 2 (battery low)
 ;-----------------------------------------------------------------------------------------------------------------------
-;< [esp + 32] = 0 (ok),  1 (wrong format) or 2 (battery low)
+iglobal
+  jump_table sysfn.dtc_ctl, subfn, sysfn.not_implemented, \
+    set_time, \ ; 0
+    set_date, \ ; 1
+    set_day_of_week, \ ; 2
+    set_alarm_clock ; 3
+endg
 ;-----------------------------------------------------------------------------------------------------------------------
+        cmp     ebx, .countof.subfn
+        jae     sysfn.not_implemented
+
         cli
         mov     al, 0x0d
         out     0x70, al
         in      al, 0x71
         bt      ax, 7
-        jnc     .bat_low
-        cmp     ebx, 2 ; day of week
-        jne     .nosetweek
+        jnc     .error_battery_low
+
+        jmp     [.subfn + ebx * 4]
+
+  .error_battery_low:
+        sti
+        mov     [esp + 4 + regs_context32_t.eax], 2
+        ret
+
+  .error_wrong_format:
+        sti
+        mov     [esp + 4 + regs_context32_t.eax], 1
+        ret
+
+  .exit:
+        dec     edx
+        call    sysfn.dtc_ctl._.start_stop_clock
+        sti
+        and     [esp + 4 + regs_context32_t.eax], 0
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc sysfn.dtc_ctl.set_day_of_week ;///////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? System function 22.2
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx = 2
+;> ecx = day of week, [1..7]
+;-----------------------------------------------------------------------------------------------------------------------
         test    ecx, ecx ; test day of week
-        je      .wrongtime
+        jz      sysfn.dtc_ctl.error_wrong_format
         cmp     ecx, 7
-        ja      .wrongtime
+        ja      sysfn.dtc_ctl.error_wrong_format
+
         mov     edx, 0x70
-        call    startstopclk
+        call    sysfn.dtc_ctl._.start_stop_clock
+
         dec     edx
         mov     al, 6
         out     dx, al
         inc     edx
         mov     al, cl
         out     dx, al
-        jmp     .endsettime
 
-  .nosetweek:
-        ; set date
-        cmp     ebx, 1
-        jne     .nosetdate
-        cmp     cl, 0x99 ; test year
-        ja      .wrongtime
-        shl     ecx, 4
-        cmp     cl, 0x90
-        ja      .wrongtime
-        cmp     ch, 0x99 ; test month
-        ja      .wrongtime
-        shr     ecx, 4
-        test    ch, ch
-        je      .wrongtime
-        cmp     ch, 0x12
-        ja      .wrongtime
-        shl     ecx, 8
-        bswap   ecx ; ebx=00YYMMDD
-        test    cl, cl ; test day
-        je      .wrongtime
-        shl     ecx, 4
-        cmp     cl, 0x90
-        ja      .wrongtime
-        shr     ecx, 4
-        cmp     ch, 2 ; February
-        jne     .testday
-        cmp     cl, 0x29
-        ja      .wrongtime
-        jmp     .setdate
+        jmp     sysfn.dtc_ctl.exit
+kendp
 
-  .testday:
-        cmp     ch, 8
-        jb      .testday1 ; Aug-Dec
-        bt      cx, 8
-        jnc     .days31
-        jmp     .days30
+;-----------------------------------------------------------------------------------------------------------------------
+kproc sysfn.dtc_ctl.set_date ;//////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? System function 22.1
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx = 1
+;> ecx = date in BCD format, pack[8(0), 8(day), 8(month), 8(year)]
+;-----------------------------------------------------------------------------------------------------------------------
+        call    sysfn.dtc_ctl._.validate_and_convert_date
+        jc      sysfn.dtc_ctl.error_wrong_format
 
-  .testday1:
-        bt      cx, 8 ; Jan-Jul ex.Feb
-        jnc     .days30
-
-  .days31:
-        cmp     cl, 0x31
-        ja      .wrongtime
-        jmp     .setdate
-
-  .days30:
-        cmp     cl, 0x30
-        ja      .wrongtime
-
-  .setdate:
         mov     edx, 0x70
-        call    startstopclk
+        call    sysfn.dtc_ctl._.start_stop_clock
+
         dec     edx
         mov     al, 7 ; set days
         out     dx, al
@@ -120,36 +118,25 @@ kproc sysfn.set_time ;//////////////////////////////////////////////////////////
         shr     ecx, 8
         mov     al, ch
         out     dx, al
-        jmp     .endsettime
 
-  .nosetdate:
-        ; set time or alarm-clock
-        cmp     ebx, 3
-        ja      .wrongtime
-        cmp     cl, 0x23
-        ja      .wrongtime
-        cmp     ch, 0x59
-        ja      .wrongtime
-        shl     ecx, 4
-        cmp     cl, 0x90
-        ja      .wrongtime
-        cmp     ch, 0x92
-        ja      .wrongtime
-        shl     ecx, 4
-        bswap   ecx ; 00HHMMSS
-        cmp     cl, 0x59
-        ja      .wrongtime
-        shl     ecx, 4
-        cmp     cl, 0x90
-        ja      .wrongtime
-        shr     ecx, 4
+        jmp     sysfn.dtc_ctl.exit
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc sysfn.dtc_ctl.set_time ;//////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? System function 22.0
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx = 0
+;> ecx = time in BCD format, pack[8(0), 8(seconds), 8(minutes), 8(hours)]
+;-----------------------------------------------------------------------------------------------------------------------
+        call    sysfn.dtc_ctl._.validate_and_convert_time
+        jc      sysfn.dtc_ctl.error_wrong_format
 
         mov     edx, 0x70
-        call    startstopclk
-        dec     edx
-        cmp     ebx, 3
+        call    sysfn.dtc_ctl._.start_stop_clock
 
-        je      .setalarm
+        dec     edx
         xor     eax, eax ; al=0-set seconds
         out     dx, al
         inc     edx
@@ -168,9 +155,25 @@ kproc sysfn.set_time ;//////////////////////////////////////////////////////////
         shr     ecx, 8
         mov     al, ch
         out     dx, al
-        jmp     .endsettime
 
-  .setalarm:
+        jmp     sysfn.dtc_ctl.exit
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc sysfn.dtc_ctl.set_alarm_clock ;///////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? System function 22.3
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx = 3
+;> ecx = time in BCD format, pack[8(0), 8(seconds), 8(minutes), 8(hours)]
+;-----------------------------------------------------------------------------------------------------------------------
+        call    sysfn.dtc_ctl._.validate_and_convert_time
+        jc      sysfn.dtc_ctl.error_wrong_format
+
+        mov     edx, 0x70
+        call    sysfn.dtc_ctl._.start_stop_clock
+
+        dec     edx
         mov     al, 1 ; set seconds for al.
         out     dx, al
         inc     edx
@@ -197,26 +200,98 @@ kproc sysfn.set_time ;//////////////////////////////////////////////////////////
         bts     ax, 5 ; set bit 5
         out     dx, al
 
-  .endsettime:
-        dec     edx
-        call    startstopclk
-        sti
-        and     [esp + 4 + regs_context32_t.eax], 0
+        jmp     sysfn.dtc_ctl.exit
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc sysfn.dtc_ctl._.validate_and_convert_date ;///////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        cmp     cl, 0x99 ; test year
+        ja      .error
+        shl     ecx, 4
+        cmp     cl, 0x90
+        ja      .error
+        cmp     ch, 0x99 ; test month
+        ja      .error
+        shr     ecx, 4
+        test    ch, ch
+        je      .error
+        cmp     ch, 0x12
+        ja      .error
+        shl     ecx, 8
+        bswap   ecx ; 00YYMMDD
+        test    cl, cl ; test day
+        je      .error
+        shl     ecx, 4
+        cmp     cl, 0x90
+        ja      .error
+        shr     ecx, 4
+        cmp     ch, 2 ; February
+        jne     .testday
+        cmp     cl, 0x29
+        ja      .error
+        jmp     .exit
+
+  .testday:
+        cmp     ch, 8
+        jb      .testday1 ; Aug-Dec
+        bt      cx, 8
+        jnc     .days31
+        jmp     .days30
+
+  .testday1:
+        bt      cx, 8 ; Jan-Jul ex.Feb
+        jnc     .days30
+
+  .days31:
+        cmp     cl, 0x31
+        ja      .error
+        jmp     .exit
+
+  .days30:
+        cmp     cl, 0x30
+        ja      .error
+
+  .exit:
+        clc
         ret
 
-  .bat_low:
-        sti
-        mov     [esp + 4 + regs_context32_t.eax], 2
-        ret
-
-  .wrongtime:
-        sti
-        mov     [esp + 4 + regs_context32_t.eax], 1
+  .error:
+        stc
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc startstopclk ;////////////////////////////////////////////////////////////////////////////////////////////////////
+kproc sysfn.dtc_ctl._.validate_and_convert_time ;///////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        cmp     cl, 0x23
+        ja      .error
+        cmp     ch, 0x59
+        ja      .error
+        shl     ecx, 4
+        cmp     cl, 0x90
+        ja      .error
+        cmp     ch, 0x92
+        ja      .error
+        shl     ecx, 4
+        bswap   ecx ; 00HHMMSS
+        cmp     cl, 0x59
+        ja      .error
+        shl     ecx, 4
+        cmp     cl, 0x90
+        ja      .error
+        shr     ecx, 4
+
+        clc
+        ret
+
+  .error:
+        stc
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc sysfn.dtc_ctl._.start_stop_clock ;////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     al, 0x0b
         out     dx, al

@@ -86,6 +86,14 @@ kproc syscall_entry ;///////////////////////////////////////////////////////////
         sysret
 kendp
 
+;-----------------------------------------------------------------------------------------------------------------------
+kproc sysfn.not_implemented ;///////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        ; TODO: kill offensive process
+        or      [esp + 4 + regs_context32_t.eax], -1
+        ret
+kendp
+
 iglobal
   align 4
   sysfn._.serve_table label dword
@@ -108,25 +116,25 @@ iglobal
     dd sysfn.flush_floppy_cache ; 16
     dd sysfn.get_clicked_button_id ; 17
     dd sysfn.system_ctl ; 18
-    dd sysfn._.not_implemented ; 19
+    dd sysfn.not_implemented ; 19
     dd sysfn.midi_ctl ; 20
     dd sysfn.set_config ; 21
-    dd sysfn.set_time ; 22
+    dd sysfn.dtc_ctl ; 22
     dd sysfn.wait_for_event_with_timeout ; 23
     dd sysfn.cd_audio_ctl ; 24
-    dd sysfn._.not_implemented ; 25
+    dd sysfn.not_implemented ; 25
     dd sysfn.get_config ; 26
-    dd sysfn._.not_implemented ; 27
-    dd sysfn._.not_implemented ; 28
+    dd sysfn.not_implemented ; 27
+    dd sysfn.not_implemented ; 28
     dd sysfn.get_date ; 29
     dd sysfn.current_directory_ctl ; 30
-    dd sysfn._.not_implemented ; 31
-    dd sysfn._.not_implemented ; 32
-    dd sysfn._.not_implemented ; 33
-    dd sysfn._.not_implemented ; 34
+    dd sysfn.not_implemented ; 31
+    dd sysfn.not_implemented ; 32
+    dd sysfn.not_implemented ; 33
+    dd sysfn.not_implemented ; 34
     dd sysfn.get_pixel ; 35
     dd sysfn.grab_screen_area ; 36
-    dd sysfn.mouse_cursor_ctl ; 37
+    dd sysfn.mouse_ctl ; 37
     dd sysfn.draw_line ; 38
     dd sysfn.get_background_ctl ; 39
     dd sysfn.set_process_event_mask ; 40
@@ -143,12 +151,12 @@ iglobal
     dd sysfn.thread_ctl ; 51
     dd sysfn.get_network_driver_status ; 52
     dd sysfn._.cross_order ; 53
-    dd sysfn._.not_implemented ; 54
+    dd sysfn.not_implemented ; 54
     dd sysfn.sound_ctl ; 55
-    dd sysfn._.not_implemented ; 56
+    dd sysfn.not_implemented ; 56
     dd sysfn.pci_bios32_ctl ; 57
     dd sysfn._.cross_order ; 58
-    dd sysfn._.not_implemented ; 59
+    dd sysfn.not_implemented ; 59
     dd sysfn.ipc_ctl ; 60
     dd sysfs.direct_screen_access ; 61
     dd sysfn.pci_ctl ; 62
@@ -163,7 +171,7 @@ iglobal
     dd sysfn.window_settings ; 71
     dd sysfn.send_window_message ; 72
     dd sysfn.blit_32 ; 73
-    times 255 - ($ - sysfn._.serve_table) / 4 dd sysfn._.not_implemented
+    times 255 - ($ - sysfn._.serve_table) / 4 dd sysfn.not_implemented
     dd sysfn.exit_process ; -1 (255)
 
   align 4
@@ -194,12 +202,5 @@ kproc sysfn._.cross_order ;/////////////////////////////////////////////////////
         mov     esi, edi
         movzx   edi, [esp + 4 + regs_context32_t.al]
         call    [sysfn._.cross_order_serve_table + (edi - 53) * 4]
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc sysfn._.not_implemented ;/////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        or      [esp + 4 + regs_context32_t.eax], -1
         ret
 kendp
