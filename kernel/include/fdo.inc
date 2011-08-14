@@ -249,9 +249,8 @@ esp equ _esp
 debug_func fdo_debug_outchar
 debug_beginf
         pushad
-        movzx   ebx, al
-        mov     eax, 1
-        mov     ecx, sysfn.debug_board
+        mov     bl, al
+        mov     ecx, sysfn.debug_board.push_back
         call    ecx ; sysfn.debug_board
         popad
         ret
@@ -259,15 +258,13 @@ debug_endf
 
 debug_func fdo_debug_outstr
 debug_beginf
-        mov     eax, 1
-
   .l1:
         dec     esi
         js      .l2
-        movzx   ebx, byte[edx]
+        mov     bl, [edx]
         or      bl, bl
         jz      .l2
-        mov     ecx, sysfn.debug_board
+        mov     ecx, sysfn.debug_board.push_back
         call    ecx ; sysfn.debug_board
         inc     edx
         jmp     .l1

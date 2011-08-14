@@ -147,7 +147,7 @@ iglobal
     dd szLoadCursor      , load_cursor           ; stdcall
 
     dd szSysMsgBoardStr  , sys_msg_board_str
-    dd szSysMsgBoardChar , sysfn.debug_board
+    dd szSysMsgBoardChar , sysfn.debug_board.push_back
     dd szGetCurrentTask  , get_curr_task
     dd szLoadFile        , load_file             ; retval eax, ebx
     dd szSendEvent       , send_event            ; see event_t.inc for specification

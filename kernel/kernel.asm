@@ -2645,7 +2645,7 @@ endg
         cmp     ebx, .countof.subfn
         jae     sysfn.not_implemented
 
-        jmp     [.subfn + ebx + 4]
+        jmp     [.subfn + ebx * 4]
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -4821,11 +4821,10 @@ kproc sys_msg_board_str ;///////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         pushad
 
-    @@: cmp     byte[esi], 0
-        je      @f
-        mov     eax, 1
-        movzx   ebx, byte[esi]
-        call    sysfn.debug_board
+    @@: mov     bl, [esi]
+        or      bl, bl
+        jz      @f
+        call    sysfn.debug_board.push_back
         inc     esi
         jmp     @b
 
@@ -4874,9 +4873,7 @@ kproc sys_msg_board_dword ;/////////////////////////////////////////////////////
         sbb     al, 0x69
         das
         mov     bl, al
-        xor     eax, eax
-        inc     eax
-        call    sysfn.debug_board
+        call    sysfn.debug_board.push_back
         pop     eax
         pop     ecx
         loop    @b
@@ -4895,16 +4892,15 @@ kproc sysfn.debug_board ;///////////////////////////////////////////////////////
 ;? System function 63
 ;-----------------------------------------------------------------------------------------------------------------------
 iglobal
-  jump_table sysfn.debug_board, subfn, sysfn.not_implemented, \
+  jump_table sysfn.debug_board, subfn, sysfn.not_implemented_cross_order, \
     push_back, \ ; 1
     pop_front ; 2
 endg
 ;-----------------------------------------------------------------------------------------------------------------------
         dec     eax
         cmp     eax, .countof.subfn
-        jae     sysfn.not_implemented
+        jae     sysfn.not_implemented_cross_order
 
-        mov     ecx, [msg_board_count]
         jmp     [.subfn + eax * 4]
 kendp
 
@@ -4918,7 +4914,7 @@ kproc sysfn.debug_board.push_back ;/////////////////////////////////////////////
 
 if KCONFIG_DEBUG_COM_BASE
 
-        push    edx
+        push    eax edx
 
     @@: ; Wait for empty transmit register  (yes, this slows down system)
         mov     dx, KCONFIG_DEBUG_COM_BASE + 5
@@ -4930,10 +4926,11 @@ if KCONFIG_DEBUG_COM_BASE
         mov     al, bl
         out     dx, al
 
-        pop     edx
+        pop     edx eax
 
 end if
 
+        mov     ecx, [msg_board_count]
         mov     [msg_board_data + ecx], bl
         inc     ecx
         and     ecx, 4095
@@ -4949,6 +4946,7 @@ kproc sysfn.debug_board.pop_front ;/////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ; eax=2 :  read :  ebx=0 -> no data, ebx=1 -> data in al
 ;-----------------------------------------------------------------------------------------------------------------------
+        mov     ecx, [msg_board_count]
         test    ecx, ecx
         jz      .smbl21
 
@@ -4957,7 +4955,8 @@ kproc sysfn.debug_board.pop_front ;/////////////////////////////////////////////
         movzx   edx, byte[ebx]
         call    memmove
 
-        dec     [msg_board_count]
+        dec     ecx
+        mov     [msg_board_count], ecx
         mov     [esp + 8 + regs_context32_t.eax], edx
         mov     [esp + 8 + regs_context32_t.ebx], 1
         ret
