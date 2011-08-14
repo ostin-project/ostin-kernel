@@ -26,7 +26,7 @@ KCONFIG_USE_COM_IRQ fix 1
 
 ; enable serial output console
 ; 0x3f8 is com1, 0x2f8 is com2, 0x3e8 is com3, 0x2e8 is com4, no irq's are used
-KCONFIG_DEBUG_COM_BASE fix 0x3f8
+KCONFIG_DEBUG_COM_BASE fix 0
 
 KCONFIG_GREEDY_KERNEL fix 0
 
