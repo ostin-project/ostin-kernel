@@ -659,7 +659,7 @@ proc signal_network_event ;/////////////////////////////////////////////////////
         cmp     [esi], eax
         je      .found_pid
         inc     ecx
-        add     esi, 0x20
+        add     esi, sizeof.task_data_t
         cmp     ecx, [TASK_COUNT]
         jbe     .next_pid
 

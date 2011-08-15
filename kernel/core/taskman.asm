@@ -1212,11 +1212,11 @@ endl
         shl     ebx, 5
         mov     [ebx * 8 + SLOT_BASE + app_data_t.saved_esp], ecx
 
-        xor     ecx, ecx ; process state - running
+        xor     ecx, ecx ; TSTATE_RUNNING, process state - running
         ; set if debuggee
         test    byte[flags], 1
         jz      .no_debug
-        inc     ecx ; process state - suspended
+        inc     ecx ; TSTATE_RUN_SUSPENDED, process state - suspended
         mov     eax, [CURRENT_TASK]
         mov     [SLOT_BASE + ebx * 8 + app_data_t.debugger_slot], eax
 

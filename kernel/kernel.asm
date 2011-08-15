@@ -2119,7 +2119,7 @@ kproc sysfn.exit_process ;//////////////////////////////////////////////////////
         stdcall user_free, eax
 
     @@: mov     eax, [TASK_BASE]
-        mov     [eax + task_data_t.state], 3 ; terminate this program
+        mov     [eax + task_data_t.state], TSTATE_ZOMBIE ; terminate this program
 
   .waitterm:
         ; wait here for termination
@@ -2204,11 +2204,11 @@ kproc sysfn.system_ctl.kill_process_by_slot ;///////////////////////////////////
         shl     ecx, 5
         mov     edx, [ecx + CURRENT_TASK + task_data_t.pid]
         add     ecx, CURRENT_TASK + task_data_t.state
-        cmp     byte[ecx], 9
+        cmp     byte[ecx], TSTATE_FREE
         jz      noprocessterminate
 
 ;       call    MEM_Heap_Lock ; guarantee that process isn't working with heap
-        mov     byte[ecx], 3 ; clear possible i40's
+        mov     byte[ecx], TSTATE_ZOMBIE ; clear possible i40's
 ;       call    MEM_Heap_UnLock
 
         cmp     edx, [application_table_status] ; clear app table stat
@@ -3544,8 +3544,8 @@ kproc checkmisc ;///////////////////////////////////////////////////////////////
         jecxz   @f
 
   .markz:
-        mov     byte[edx + task_data_t.state], 3
-        add     edx, 0x20
+        mov     byte[edx + task_data_t.state], TSTATE_ZOMBIE
+        add     edx, sizeof.task_data_t
         loop    .markz
 
   .no_mark_system_shutdown:
@@ -3562,12 +3562,12 @@ kproc checkmisc ;///////////////////////////////////////////////////////////////
 
   .newct:
         mov     cl, [ebx]
-        cmp     cl, 3
+        cmp     cl, TSTATE_ZOMBIE
         jz      terminate
-        cmp     cl, 4
+        cmp     cl, TSTATE_TERMINATING
         jz      terminate
 
-        add     ebx, 0x20
+        add     ebx, sizeof.task_data_t
         inc     esi
         dec     eax
         jnz     .newct

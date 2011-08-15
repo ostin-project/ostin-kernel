@@ -153,7 +153,7 @@ reg_eip    equ esp + 0x20
         ; not debuggee => say error and terminate
         call    show_error_parameters ;; only ONE using, inline ???
 ;       mov     edx, [TASK_BASE]
-        mov     [edx + task_data_t.state], 4 ; terminate
+        mov     [edx + task_data_t.state], TSTATE_TERMINATING ; terminate
         jmp     change_task ; stack - here it does not matter at all, SEE: core/shed.inc
 
   .debug:
@@ -186,7 +186,7 @@ reg_eip    equ esp + 0x20
         call    debugger_notify ;; only ONE using, inline ??? SEE: core/debug.inc
         add     esp, 12
         mov     edx, [TASK_BASE]
-        mov     [edx + task_data_t.state], 1 ; suspended
+        mov     [edx + task_data_t.state], TSTATE_RUN_SUSPENDED ; suspended
         call    change_task ; SEE: core/shed.inc
         restore_ring3_context
         iretd
@@ -445,7 +445,7 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         jne     @f
         pop     esi
         shl     esi, 5
-        mov     [CURRENT_TASK + esi + task_data_t.state], 9
+        mov     [CURRENT_TASK + esi + task_data_t.state], TSTATE_FREE
         ret
 
 ;   @@: mov     esi, process_terminating
@@ -675,7 +675,7 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         lea     esi, [WIN_POS + eax * 2]
         movzx   edi, word[esi] ; edi = process
         shl     edi, 5
-        cmp     [CURRENT_TASK + edi + task_data_t.state], 9 ; skip dead slots
+        cmp     [CURRENT_TASK + edi + task_data_t.state], TSTATE_FREE ; skip dead slots
         je      .check_next_window
         add     edi, window_data
 
@@ -776,7 +776,7 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         popa
         mov     edi, esi ; do not run this process slot
         shl     edi, 5
-        mov     [edi + CURRENT_TASK + task_data_t.state], 9
+        mov     [edi + CURRENT_TASK + task_data_t.state], TSTATE_FREE
         ; debugger test - terminate all debuggees
         mov     eax, 2
         mov     ecx, SLOT_BASE + 2 * 0x100 + app_data_t.debugger_slot

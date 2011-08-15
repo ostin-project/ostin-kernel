@@ -314,7 +314,7 @@ kproc Wait_events_ex ;//////////////////////////////////////////////////////////
         mov     [esi + app_data_t.wait_timeout], ebx
         Mov     [esi + app_data_t.wait_begin], eax, [timer_ticks]
         mov     eax, [TASK_BASE]
-        mov     [eax + task_data_t.state], 5
+        mov     [eax + task_data_t.state], TSTATE_WAITING
         call    change_task
         mov     eax, [esi + app_data_t.wait_param]
 

@@ -132,11 +132,11 @@ kproc sysfn.debug_ctl.suspend ;/////////////////////////////////////////////////
         shl     eax, 5
         jz      .ret
         mov     cl, [CURRENT_TASK + eax + task_data_t.state] ; process state
-        test    cl, cl
+        test    cl, cl ; TSTATE_RUNNING
         jz      .1
-        cmp     cl, 5
+        cmp     cl, TSTATE_WAITING
         jnz     .ret
-        mov     cl, 2
+        mov     cl, TSTATE_WAIT_SUSPENDED
 
   .2:
         mov     [CURRENT_TASK + eax + task_data_t.state], cl
@@ -154,11 +154,11 @@ kendp
 kproc do_resume ;///////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     cl, [CURRENT_TASK + eax + task_data_t.state]
-        cmp     cl, 1
+        cmp     cl, TSTATE_RUN_SUSPENDED
         jz      .1
-        cmp     cl, 2
+        cmp     cl, TSTATE_WAIT_SUSPENDED
         jnz     .ret
-        mov     cl, 5
+        mov     cl, TSTATE_WAITING
 
   .2:
         mov     [CURRENT_TASK + eax + task_data_t.state], cl

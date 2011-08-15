@@ -66,7 +66,7 @@ kproc mutex_lock ;//////////////////////////////////////////////////////////////
         dec     eax
         jz      @f
 
-        mov     [edx + task_data_t.state], 1
+        mov     [edx + task_data_t.state], TSTATE_RUN_SUSPENDED
         call    change_task
         jmp     .forever
 
@@ -103,7 +103,7 @@ kproc mutex_unlock ;////////////////////////////////////////////////////////////
         je      @f
 
         mov     eax, [eax + mutex_waiter_t.task]
-        mov     [eax + task_data_t.state], 0
+        mov     [eax + task_data_t.state], TSTATE_RUNNING
 
     @@: popfd
         ret
