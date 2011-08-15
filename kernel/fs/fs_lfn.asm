@@ -14,20 +14,6 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-ERROR_SUCCESS         = 0
-ERROR_DISK_BASE       = 1
-ERROR_NOT_IMPLEMENTED = 2
-ERROR_UNKNOWN_FS      = 3
-;ERROR_PARTITION      = 4
-ERROR_FILE_NOT_FOUND  = 5
-ERROR_END_OF_FILE     = 6
-ERROR_MEMORY_POINTER  = 7
-ERROR_DISK_FULL       = 8
-ERROR_FAT_TABLE       = 9
-ERROR_ACCESS_DENIED   = 10
-ERROR_DEVICE_FAIL     = 11
-ERROR_ALLOC           = 12
-
 ; System function 70 - files with long names (LFN)
 ; diamond, 2006
 
@@ -172,8 +158,11 @@ kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////
 ;#   8 - delete file
 ;#   9 - create directory
 ;-----------------------------------------------------------------------------------------------------------------------
+        cmp     [ebx + fs.query_t.function], fs_NumRamdiskServices
+        jae     sysfn.not_implemented
+
         ; parse file name
-        lea     esi, [ebx + 20]
+        lea     esi, [ebx + fs.query_t.file_path]
         lodsb
         test    al, al
         jnz     @f
@@ -200,8 +189,8 @@ kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////
   .parse_normal:
         cmp     dword[ebx], 7
         jne     @f
-        mov     edx, [ebx + 4]
-        mov     ebx, [ebx + 8]
+        mov     edx, [ebx + fs.query_t.start_program.flags]
+        mov     ebx, [ebx + fs.query_t.start_program.arguments_ptr]
         call    fs_execute ; esi+ebp, ebx, edx
         mov     [esp + 4 + regs_context32_t.eax], eax
         ret
@@ -241,11 +230,11 @@ kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////
         cmp     dword[ebx], 1
         jnz     .access_denied
         xor     eax, eax
-        mov     ebp, [ebx + 12] ; blocks to read
-        mov     edx, [ebx + 16] ; result buffer ptr
+        mov     ebp, [ebx + fs.query_t.read_directory.count] ; blocks to read
+        mov     edx, [ebx + fs.query_t.read_directory.buffer_ptr] ; result buffer ptr
 ;       add     edx, std_application_base_address
-        push    dword[ebx + 4] ; first block
-        mov     ebx, [ebx + 8] ; flags
+        push    [ebx + fs.query_t.read_directory.start_block] ; first block
+        mov     ebx, [ebx + fs.query_t.read_directory.flags] ; flags
         ; ebx=flags, [esp]=first block, ebp=number of blocks, edx=return area, esi='Next' handler
         mov     edi, edx
         push    ecx
@@ -333,11 +322,11 @@ kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////
   .readroot:
         ; virtual root folder - special handler
         mov     esi, virtual_root_query
-        mov     ebp, [ebx + 12]
-        mov     edx, [ebx + 16]
+        mov     ebp, [ebx + fs.query_t.read_directory.count]
+        mov     edx, [ebx + fs.query_t.read_directory.buffer_ptr]
 ;       add     edx, std_application_base_address
-        push    dword[ebx + 4] ; first block
-        mov     ebx, [ebx + 8] ; flags
+        push    [ebx + fs.query_t.read_directory.start_block] ; first block
+        mov     ebx, [ebx + fs.query_t.read_directory.flags] ; flags
         xor     eax, eax
         ; eax=0, [esp]=first block, ebx=flags, ebp=number of blocks, edx=return area
         mov     edi, edx
@@ -532,20 +521,16 @@ kproc fs_OnRamdisk ;////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     ecx, 1
         jnz     sysfn.file_system_lfn.notfound
-        mov     eax, [ebx]
-        cmp     eax, fs_NumRamdiskServices
-        jae     .not_impl
-        mov     ecx, [ebx + 12]
-        mov     edx, [ebx + 16]
-;       add     edx, std_application_base_address
-        add     ebx, 4
+
+        mov     eax, [ebx + fs.query_t.function]
+        mov     ecx, [ebx + fs.query_t.generic.count]
+        mov     edx, [ebx + fs.query_t.generic.buffer_ptr]
+        add     ebx, fs.query_t.generic
+
         call    dword[fs_RamdiskServices + eax * 4]
+
         mov     [esp + 4 + regs_context32_t.eax], eax
         mov     [esp + 4 + regs_context32_t.ebx], ebx
-        ret
-
-  .not_impl:
-        mov     [esp + 4 + regs_context32_t.eax], ERROR_NOT_IMPLEMENTED ; not implemented
         ret
 kendp
 
@@ -554,19 +539,21 @@ kproc fs_OnFloppy ;/////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     ecx, 2
         ja      sysfn.file_system_lfn.notfound
-        mov     eax, [ebx]
-        cmp     eax, fs_NumFloppyServices
-        jae     fs_OnRamdisk.not_impl
+
         call    reserve_flp
         mov     [flp_number], cl
-        mov     ecx, [ebx + 12]
-        mov     edx, [ebx + 16]
-;       add     edx, std_application_base_address
-        add     ebx, 4
+
+        mov     eax, [ebx + fs.query_t.function]
+        mov     ecx, [ebx + fs.query_t.generic.count]
+        mov     edx, [ebx + fs.query_t.generic.buffer_ptr]
+        add     ebx, fs.query_t.generic
+
         call    dword[fs_FloppyServices + eax * 4]
-        and     [flp_status], 0
+
         mov     [esp + 4 + regs_context32_t.eax], eax
         mov     [esp + 4 + regs_context32_t.ebx], ebx
+
+        and     [flp_status], 0
         ret
 kendp
 
@@ -622,34 +609,27 @@ kproc fs_OnHdAndBd
         jbe     @f
 
   .nf:
-        call    free_hd_channel
-        and     [hd1_status], 0
         mov     [esp + 4 + regs_context32_t.eax], ERROR_FILE_NOT_FOUND ; not found
-        ret
+        jmp     .free
 
-;   @@: mov     [fat32part], ecx
     @@: mov     [known_part], ecx
         push    ebx esi
         call    choice_necessity_partition_1
         pop     esi ebx
-        mov     ecx, [ebx + 12]
-        mov     edx, [ebx + 16]
-;       add     edx, std_application_base_address
-        mov     eax, [ebx]
-        cmp     eax, fs_NumHdServices
-        jae     .not_impl
-        add     ebx, 4
+
+        mov     eax, [ebx + fs.query_t.function]
+        mov     ecx, [ebx + fs.query_t.generic.count]
+        mov     edx, [ebx + fs.query_t.generic.buffer_ptr]
+        add     ebx, fs.query_t.generic
+
         call    dword[fs_HdServices + eax * 4]
-        call    free_hd_channel
-        and     [hd1_status], 0
+
         mov     [esp + 4 + regs_context32_t.eax], eax
         mov     [esp + 4 + regs_context32_t.ebx], ebx
-        ret
 
-  .not_impl:
+  .free:
         call    free_hd_channel
         and     [hd1_status], 0
-        mov     [esp + 4 + regs_context32_t.eax], ERROR_NOT_IMPLEMENTED ; not implemented
         ret
 kendp
 
@@ -898,29 +878,22 @@ kproc fs_OnCd
         jnz     @f
 
   .nf:
-        call    free_cd_channel
-        and     [cd_status], 0
         mov     [esp + 4 + regs_context32_t.eax], ERROR_FILE_NOT_FOUND ; not found
-        ret
+        jmp     .free
 
-    @@: mov     ecx, [ebx + 12]
-        mov     edx, [ebx + 16]
-;       add     edx, std_application_base_address
-        mov     eax, [ebx]
-        cmp     eax, fs_NumCdServices
-        jae     .not_impl
-        add     ebx, 4
+    @@: mov     eax, [ebx + fs.query_t.function]
+        mov     ecx, [ebx + fs.query_t.generic.count]
+        mov     edx, [ebx + fs.query_t.generic.buffer_ptr]
+        add     ebx, fs.query_t.generic
+
         call    dword[fs_CdServices + eax * 4]
-        call    free_cd_channel
-        and     [cd_status], 0
+
         mov     [esp + 4 + regs_context32_t.eax], eax
         mov     [esp + 4 + regs_context32_t.ebx], ebx
-        ret
 
-  .not_impl:
+  .free:
         call    free_cd_channel
         and     [cd_status], 0
-        mov     [esp + 4 + regs_context32_t.eax], ERROR_NOT_IMPLEMENTED ; not implemented
         ret
 kendp
 

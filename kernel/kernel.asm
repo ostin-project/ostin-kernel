@@ -29,6 +29,7 @@ include "include/kernel.inc"
 include "include/boot.inc"
 include "include/const.inc"
 include "include/kglobals.inc"
+include "include/fs.inc"
 
 max_processes   equ 255
 tss_step        equ (128 + 8192) ; tss & i/o - 65535 ports, * 256 = 557056 * 4
