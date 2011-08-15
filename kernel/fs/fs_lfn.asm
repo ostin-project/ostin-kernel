@@ -99,6 +99,58 @@ iglobal
     dd biosdisk_handler, biosdisk_enum_root
     ; add new handlers here
     dd 0
+
+  fs_RamdiskServices:
+    dd fs_RamdiskRead
+    dd fs_RamdiskReadFolder
+    dd fs_RamdiskRewrite
+    dd fs_RamdiskWrite
+    dd fs_RamdiskSetFileEnd
+    dd fs_RamdiskGetFileInfo
+    dd fs_RamdiskSetFileInfo
+    dd 0
+    dd fs_RamdiskDelete
+    dd fs_RamdiskCreateFolder
+  fs_NumRamdiskServices = ($ - fs_RamdiskServices) / 4
+
+  fs_FloppyServices:
+    dd fs_FloppyRead
+    dd fs_FloppyReadFolder
+    dd fs_FloppyRewrite
+    dd fs_FloppyWrite
+    dd fs_FloppySetFileEnd
+    dd fs_FloppyGetFileInfo
+    dd fs_FloppySetFileInfo
+    dd 0
+    dd fs_FloppyDelete
+    dd fs_FloppyCreateFolder
+  fs_NumFloppyServices = ($ - fs_FloppyServices) / 4
+
+  fs_HdServices:
+    dd fs_HdRead
+    dd fs_HdReadFolder
+    dd fs_HdRewrite
+    dd fs_HdWrite
+    dd fs_HdSetFileEnd
+    dd fs_HdGetFileInfo
+    dd fs_HdSetFileInfo
+    dd 0
+    dd fs_HdDelete
+    dd fs_HdCreateFolder
+  fs_NumHdServices = ($ - fs_HdServices) / 4
+
+  fs_CdServices:
+    dd fs_CdRead
+    dd fs_CdReadFolder
+    dd fs.error.not_implemented
+    dd fs.error.not_implemented
+    dd fs.error.not_implemented
+    dd fs_CdGetFileInfo
+    dd fs.error.not_implemented
+    dd 0
+    dd fs.error.not_implemented
+    dd fs.error.not_implemented
+  fs_NumCdServices = ($ - fs_CdServices) / 4
 endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -497,21 +549,6 @@ kproc fs_OnRamdisk ;////////////////////////////////////////////////////////////
         ret
 kendp
 
-iglobal
-  fs_RamdiskServices:
-    dd fs_RamdiskRead
-    dd fs_RamdiskReadFolder
-    dd fs_RamdiskRewrite
-    dd fs_RamdiskWrite
-    dd fs_RamdiskSetFileEnd
-    dd fs_RamdiskGetFileInfo
-    dd fs_RamdiskSetFileInfo
-    dd 0
-    dd fs_RamdiskDelete
-    dd fs_RamdiskCreateFolder
-  fs_NumRamdiskServices = ($ - fs_RamdiskServices) / 4
-endg
-
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs_OnFloppy ;/////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -532,21 +569,6 @@ kproc fs_OnFloppy ;/////////////////////////////////////////////////////////////
         mov     [esp + 4 + regs_context32_t.ebx], ebx
         ret
 kendp
-
-iglobal
-  fs_FloppyServices:
-    dd fs_FloppyRead
-    dd fs_FloppyReadFolder
-    dd fs_FloppyRewrite
-    dd fs_FloppyWrite
-    dd fs_FloppySetFileEnd
-    dd fs_FloppyGetFileInfo
-    dd fs_FloppySetFileInfo
-    dd 0
-    dd fs_FloppyDelete
-    dd fs_FloppyCreateFolder
-  fs_NumFloppyServices = ($ - fs_FloppyServices) / 4
-endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs_OnHd0 ;////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -631,21 +653,6 @@ kproc fs_OnHdAndBd
         ret
 kendp
 
-iglobal
-  fs_HdServices:
-    dd fs_HdRead
-    dd fs_HdReadFolder
-    dd fs_HdRewrite
-    dd fs_HdWrite
-    dd fs_HdSetFileEnd
-    dd fs_HdGetFileInfo
-    dd fs_HdSetFileInfo
-    dd 0
-    dd fs_HdDelete
-    dd fs_HdCreateFolder
-  fs_NumHdServices = ($ - fs_HdServices) / 4
-endg
-
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs.error.not_implemented ;////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -728,10 +735,10 @@ kproc fs_HdRewrite ;////////////////////////////////////////////////////////////
         cmp     byte[esi], 0
         je      fs.error.access_denied
 
-        cmp     [fs_type], 1
-        je      ntfs_HdRewrite
-        cmp     [fs_type], 2
-        je      ext2_HdRewrite
+;       cmp     [fs_type], 1
+;       je      ntfs_HdRewrite
+;       cmp     [fs_type], 2
+;       je      ext2_HdRewrite
         cmp     [fs_type], 16
         je      fat32_HdRewrite
         cmp     [fs_type], 32
@@ -746,10 +753,10 @@ kproc fs_HdWrite ;//////////////////////////////////////////////////////////////
         cmp     byte[esi], 0
         je      fs.error.access_denied
 
-        cmp     [fs_type], 1
-        je      ntfs_HdWrite
-        cmp     [fs_type], 2
-        je      ext2_HdWrite
+;       cmp     [fs_type], 1
+;       je      ntfs_HdWrite
+;       cmp     [fs_type], 2
+;       je      ext2_HdWrite
         cmp     [fs_type], 16
         je      fat32_HdWrite
         cmp     [fs_type], 32
@@ -764,10 +771,10 @@ kproc fs_HdSetFileEnd ;/////////////////////////////////////////////////////////
         cmp     byte[esi], 0
         je      fs.error.access_denied
 
-        cmp     [fs_type], 1
-        je      ntfs_HdSetFileEnd
-        cmp     [fs_type], 2
-        je      ext2_HdSetFileEnd
+;       cmp     [fs_type], 1
+;       je      ntfs_HdSetFileEnd
+;       cmp     [fs_type], 2
+;       je      ext2_HdSetFileEnd
         cmp     [fs_type], 16
         je      fat32_HdSetFileEnd
         cmp     [fs_type], 32
@@ -794,10 +801,10 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs_HdSetFileInfo ;////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     [fs_type], 1
-        je      ntfs_HdSetFileInfo
-        cmp     [fs_type], 2
-        je      ext2_HdSetFileInfo
+;       cmp     [fs_type], 1
+;       je      ntfs_HdSetFileInfo
+;       cmp     [fs_type], 2
+;       je      ext2_HdSetFileInfo
         cmp     [fs_type], 16
         je      fat32_HdSetFileInfo
         cmp     [fs_type], 32
@@ -812,10 +819,10 @@ kproc fs_HdDelete ;/////////////////////////////////////////////////////////////
         cmp     byte[esi], 0
         je      fs.error.access_denied
 
-        cmp     [fs_type], 1
-        je      ntfs_HdDelete
-        cmp     [fs_type], 2
-        je      ext2_HdDelete
+;       cmp     [fs_type], 1
+;       je      ntfs_HdDelete
+;       cmp     [fs_type], 2
+;       je      ext2_HdDelete
         cmp     [fs_type], 16
         je      fat32_HdDelete
         cmp     [fs_type], 32
@@ -916,21 +923,6 @@ kproc fs_OnCd
         mov     [esp + 4 + regs_context32_t.eax], ERROR_NOT_IMPLEMENTED ; not implemented
         ret
 kendp
-
-iglobal
-  fs_CdServices:
-    dd fs_CdRead
-    dd fs_CdReadFolder
-    dd fs.error.not_implemented
-    dd fs.error.not_implemented
-    dd fs.error.not_implemented
-    dd fs_CdGetFileInfo
-    dd fs.error.not_implemented
-    dd 0
-    dd fs.error.not_implemented
-    dd fs.error.not_implemented
-  fs_NumCdServices = ($ - fs_CdServices) / 4
-endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs_HasRamdisk ;///////////////////////////////////////////////////////////////////////////////////////////////////
