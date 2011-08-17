@@ -1547,14 +1547,14 @@ kproc init_dlls_in_thread ;/////////////////////////////////////////////////////
         mov     [eax], eax
         mov     [eax + 4], eax
         mov     ecx, [TASK_COUNT]
-        mov     ebx, SLOT_BASE + 256
+        mov     ebx, SLOT_BASE + sizeof.app_data_t
 
   .set:
         cmp     [ebx + app_data_t.dir_table], edx
         jnz     @f
         mov     [ebx + app_data_t.dlls_list_ptr], eax
 
-    @@: add     ebx, 256
+    @@: add     ebx, sizeof.app_data_t
         dec     ecx
         jnz     .set
 

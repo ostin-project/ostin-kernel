@@ -425,11 +425,11 @@ high_code:
         stdcall map_page, tss - 0x0f80, eax, PG_SW
         stdcall alloc_page
         inc     eax
-        mov     [SLOT_BASE + 256 + app_data_t.io_map], eax
+        mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.io_map], eax
         stdcall map_page, tss + 0x080, eax, PG_SW
         stdcall alloc_page
         inc     eax
-        mov     [SLOT_BASE + 256 + app_data_t.io_map + 4], eax
+        mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.io_map + 4], eax
         stdcall map_page, tss + 0x1080, eax, PG_SW
 
         ; LOAD IDT
@@ -525,7 +525,7 @@ high_code:
         mov     [CURRENT_TASK], eax ; 1
         mov     [TASK_COUNT], eax ; 1
         mov     dword[TASK_BASE], TASK_DATA
-        mov     [current_slot], SLOT_BASE + 256
+        mov     [current_slot], SLOT_BASE + sizeof.app_data_t
 
         ; set background
         mov     [BgrDrawMode], eax
@@ -534,7 +534,7 @@ high_code:
         mov     [mem_BACKGROUND], 4
         mov     [img_background], static_background_data
 
-        mov     [SLOT_BASE + 256 + app_data_t.dir_table], sys_pgdir - OS_BASE
+        mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.dir_table], sys_pgdir - OS_BASE
 
         stdcall kernel_alloc, 0x10000 / 8
         mov     edi, eax
@@ -666,37 +666,37 @@ end if
         mov     [SLOT_BASE + app_data_t.except_mask], eax
 
         ; name for OS/IDLE process
-        mov     dword[SLOT_BASE + 256 + app_data_t.app_name], 'OS/I'
-        mov     dword[SLOT_BASE + 256 + app_data_t.app_name + 4], 'DLE '
+        mov     dword[SLOT_BASE + sizeof.app_data_t + app_data_t.app_name], 'OS/I'
+        mov     dword[SLOT_BASE + sizeof.app_data_t + app_data_t.app_name + 4], 'DLE '
 
         mov     edi, [os_stack_seg]
-        mov     [SLOT_BASE + 256 + app_data_t.pl0_stack], edi
+        mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.pl0_stack], edi
         add     edi, 0x2000 - 512
-        mov     [SLOT_BASE + 256 + app_data_t.fpu_state], edi
-        mov     [SLOT_BASE + 256 + app_data_t.saved_esp0], edi ; just in case
-        ; [SLOT_BASE + 256 + app_data_t.io_map] was set earlier
+        mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.fpu_state], edi
+        mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.saved_esp0], edi ; just in case
+        ; [SLOT_BASE + sizeof.app_data_t + app_data_t.io_map] was set earlier
 
         mov     esi, fpu_data
         mov     ecx, 512 / 4
         cld
         rep     movsd
 
-        mov     [SLOT_BASE + 256 + app_data_t.exc_handler], eax
-        mov     [SLOT_BASE + 256 + app_data_t.except_mask], eax
+        mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.exc_handler], eax
+        mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.except_mask], eax
 
-        mov     ebx, SLOT_BASE + 256 + APP_OBJ_OFFSET
-        mov     [SLOT_BASE + 256 + app_data_t.obj.next_ptr], ebx
-        mov     [SLOT_BASE + 256 + app_data_t.obj.prev_ptr], ebx
+        mov     ebx, SLOT_BASE + sizeof.app_data_t + APP_OBJ_OFFSET
+        mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.obj.next_ptr], ebx
+        mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.obj.prev_ptr], ebx
 
-        mov     [SLOT_BASE + 256 + app_data_t.cur_dir], sysdir_path
-        mov     [SLOT_BASE + 256 + app_data_t.tls_base], eax
+        mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.cur_dir], sysdir_path
+        mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.tls_base], eax
 
         ; task list
         mov     [TASK_DATA + task_data_t.mem_start], eax ; process base address
         inc     eax
         mov     dword[CURRENT_TASK], eax
         mov     dword[TASK_COUNT], eax
-        mov     [current_slot], SLOT_BASE + 256
+        mov     [current_slot], SLOT_BASE + sizeof.app_data_t
         mov     dword[TASK_BASE], TASK_DATA
         mov     [TASK_DATA + task_data_t.wnd_number], al ; on screen number
         mov     [TASK_DATA + task_data_t.pid], eax ; process id number
@@ -704,7 +704,7 @@ end if
         call    init_display
         mov     eax, [def_cursor]
         mov     [SLOT_BASE + app_data_t.cursor], eax
-        mov     [SLOT_BASE + 256 + app_data_t.cursor], eax
+        mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.cursor], eax
 
         ; READ TSC / SECOND
         mov     esi, boot_tsc
@@ -782,12 +782,12 @@ no_pal_ega:
 
         ; protect io permission map
         mov     esi, [default_io_map]
-        stdcall map_page, esi, [SLOT_BASE + 256 + app_data_t.io_map], PG_MAP
+        stdcall map_page, esi, [SLOT_BASE + sizeof.app_data_t + app_data_t.io_map], PG_MAP
         add     esi, 0x1000
-        stdcall map_page, esi, [SLOT_BASE + 256 + app_data_t.io_map + 4], PG_MAP
+        stdcall map_page, esi, [SLOT_BASE + sizeof.app_data_t + app_data_t.io_map + 4], PG_MAP
 
-        stdcall map_page, tss.io_map_0, [SLOT_BASE + 256 + app_data_t.io_map], PG_MAP
-        stdcall map_page, tss.io_map_1, [SLOT_BASE + 256 + app_data_t.io_map + 4], PG_MAP
+        stdcall map_page, tss.io_map_0, [SLOT_BASE + sizeof.app_data_t + app_data_t.io_map], PG_MAP
+        stdcall map_page, tss.io_map_1, [SLOT_BASE + sizeof.app_data_t + app_data_t.io_map + 4], PG_MAP
 
         mov     ax, [OS_BASE + 0x10000 + bx_from_load]
         cmp     ax, 'r1' ; if not rused ram disk - load network configuration from files
@@ -3490,7 +3490,7 @@ kproc checkmisc ;///////////////////////////////////////////////////////////////
         mov     ecx, [TASK_COUNT]
 
   .set_mouse_event:
-        add     edi, 256
+        add     edi, sizeof.app_data_t
         or      dword[edi + SLOT_BASE + app_data_t.event_mask], 0100000b
         loop    .set_mouse_event
 
@@ -3501,7 +3501,7 @@ kproc checkmisc ;///////////////////////////////////////////////////////////////
         mov     ecx, [TASK_COUNT]
 
   .set_bgr_event:
-        add     edi, 256
+        add     edi, sizeof.app_data_t
         or      [edi + SLOT_BASE + app_data_t.event_mask], 16
         loop    .set_bgr_event
         mov     byte[BACKGROUND_CHANGED], 0

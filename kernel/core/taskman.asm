@@ -176,7 +176,7 @@ endl
         add     eax, SLOT_BASE
         mov     [slot_base], eax
         mov     edi, eax
-        _clear_ 256 ; clean extended information about process
+        _clear_ sizeof.app_data_t ; clean extended information about process
 
         ; write application name
         lea     eax, [filename]
@@ -958,7 +958,7 @@ endl
         shl     edi, 8
         add     edi, SLOT_BASE
         mov     edx, edi ; edx=edi - pointer to extended infomation about new thread
-        mov     ecx, 256 / 4
+        mov     ecx, sizeof.app_data_t / 4
         xor     eax, eax
         cld
         rep     stosd ; clean extended information about new thread
@@ -1078,9 +1078,9 @@ endl
         mov     [eax + SLOT_BASE + app_data_t.except_mask], 0
 
         ; set default io permission map
-        mov     ecx, [SLOT_BASE + 256 + app_data_t.io_map]
+        mov     ecx, [SLOT_BASE + sizeof.app_data_t + app_data_t.io_map]
         mov     [eax + SLOT_BASE + app_data_t.io_map], ecx
-        mov     ecx, [SLOT_BASE + 256 + app_data_t.io_map + 4]
+        mov     ecx, [SLOT_BASE + sizeof.app_data_t + app_data_t.io_map + 4]
         mov     [eax + SLOT_BASE + app_data_t.io_map + 4], ecx
 
         mov     esi, fpu_data

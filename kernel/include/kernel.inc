@@ -76,14 +76,29 @@ struct range16_t
   length dw ?
 ends
 
+struct range16x8_t
+  offset dw ?
+  length db ?
+ends
+
 struct range32_t
   offset dd ?
   length dd ?
 ends
 
+struct range32x16_t
+  offset dd ?
+  length dw ?
+ends
+
 struct range64_t
   offset dq ?
   length dq ?
+ends
+
+struct range64x32_t
+  offset dq ?
+  length dd ?
 ends
 
 ;;----------------------------------------------------------------------------------------------------------------------
@@ -334,7 +349,10 @@ struct app_data_t
   dbg_regs        app_data_debug_regs_t
   wnd_caption     dd ?
   wnd_clientbox   box32_t
+                  rb 24
 ends
+
+static_assert sizeof.app_data_t = 256
 
 struct regs_context16_t
   di dw ?

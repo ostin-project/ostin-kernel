@@ -505,7 +505,7 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         jne     @f
 
         mov     [fpu_owner], 1
-        mov     eax, [256 + SLOT_BASE + app_data_t.fpu_state]
+        mov     eax, [SLOT_BASE + sizeof.app_data_t + app_data_t.fpu_state]
         clts
         bt      [cpu_caps], CAPS_SSE
         jnc     .no_SSE
@@ -645,12 +645,12 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         add     edi, SLOT_BASE
 
         mov     eax, [edi + app_data_t.io_map]
-        cmp     eax, [SLOT_BASE + 256 + app_data_t.io_map]
+        cmp     eax, [SLOT_BASE + sizeof.app_data_t + app_data_t.io_map]
         je      @f
         call    free_page
 
     @@: mov     eax, [edi + app_data_t.io_map + 4]
-        cmp     eax, [SLOT_BASE + 256 + app_data_t.io_map + 4]
+        cmp     eax, [SLOT_BASE + sizeof.app_data_t + app_data_t.io_map + 4]
         je      @f
         call    free_page
 
@@ -658,7 +658,7 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         stosd
         stosd
         stosd
-        mov     ecx, 244 / 4
+        mov     ecx, (sizeof.app_data_t - 12) / 4
         xor     eax, eax
         rep     stosd
 

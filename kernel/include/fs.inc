@@ -38,14 +38,12 @@ FA_ARCHIVED = 00100000b
 FA_ANY	    = 00111111b
 
 struct fs.generic_query_params_t
-  position   dq ?
-  count      dd ?
+  range      range64x32_t
   buffer_ptr dd ?
 ends
 
 struct fs.read_file_query_params_t
-  position   dq ?
-  count      dd ?
+  range      range64x32_t
   buffer_ptr dd ?
 ends
 
@@ -59,13 +57,12 @@ ends
 struct fs.create_file_query_params_t
              dd ?
              dd ?
-  count      dd ?
+  length     dd ?
   buffer_ptr dd ?
 ends
 
 struct fs.write_file_query_params_t
-  position   dq ?
-  count      dd ?
+  range      range64x32_t
   buffer_ptr dd ?
 ends
 

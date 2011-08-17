@@ -523,7 +523,7 @@ kproc fs_OnRamdisk ;////////////////////////////////////////////////////////////
         jnz     sysfn.file_system_lfn.notfound
 
         mov     eax, [ebx + fs.query_t.function]
-        mov     ecx, [ebx + fs.query_t.generic.count]
+        mov     ecx, [ebx + fs.query_t.generic.range.length]
         mov     edx, [ebx + fs.query_t.generic.buffer_ptr]
         add     ebx, fs.query_t.generic
 
@@ -544,7 +544,7 @@ kproc fs_OnFloppy ;/////////////////////////////////////////////////////////////
         mov     [flp_number], cl
 
         mov     eax, [ebx + fs.query_t.function]
-        mov     ecx, [ebx + fs.query_t.generic.count]
+        mov     ecx, [ebx + fs.query_t.generic.range.length]
         mov     edx, [ebx + fs.query_t.generic.buffer_ptr]
         add     ebx, fs.query_t.generic
 
@@ -618,7 +618,7 @@ kproc fs_OnHdAndBd
         pop     esi ebx
 
         mov     eax, [ebx + fs.query_t.function]
-        mov     ecx, [ebx + fs.query_t.generic.count]
+        mov     ecx, [ebx + fs.query_t.generic.range.length]
         mov     edx, [ebx + fs.query_t.generic.buffer_ptr]
         add     ebx, fs.query_t.generic
 
@@ -882,7 +882,7 @@ kproc fs_OnCd
         jmp     .free
 
     @@: mov     eax, [ebx + fs.query_t.function]
-        mov     ecx, [ebx + fs.query_t.generic.count]
+        mov     ecx, [ebx + fs.query_t.generic.range.length]
         mov     edx, [ebx + fs.query_t.generic.buffer_ptr]
         add     ebx, fs.query_t.generic
 
