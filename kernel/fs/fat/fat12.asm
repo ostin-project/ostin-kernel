@@ -995,20 +995,16 @@ kproc fs_FloppyRead ;///////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;# if ebx = 0, start from first byte
 ;-----------------------------------------------------------------------------------------------------------------------
-        call    read_flp_fat
         cmp     byte[esi], 0
-        jnz     @f
-        or      ebx, -1
-        mov     eax, ERROR_ACCESS_DENIED ; access denied
-        ret
+        je      fs.error.access_denied
 
-    @@: push    edi
+        call    read_flp_fat
+
+        push    edi
         call    fd_find_lfn
         jnc     .found
         pop     edi
-        or      ebx, -1
-        mov     eax, ERROR_FILE_NOT_FOUND ; file not found
-        ret
+        jmp     fs.error.file_not_found
 
   .found:
         test    ebx, ebx
@@ -1043,14 +1039,17 @@ kproc fs_FloppyRead ;///////////////////////////////////////////////////////////
         jz      .eof
         cmp     edi, 0x0ff8
         jae     .eof
+
         sub     ebx, 512
         jae     .skip
+
         lea     eax, [edi + 31]
         pusha
         call    read_chs_sector
         popa
         cmp     [FDC_Status], 0
         jnz     .err
+
         lea     eax, [FDD_BUFF + ebx + 512]
         neg     ebx
         push    ecx
@@ -1104,24 +1103,22 @@ kproc fs_FloppyReadFolder ;/////////////////////////////////////////////////////
 ;# flags:
 ;#   bit 0 = 0 (ANSI names) or 1 (UNICODE names)
 ;-----------------------------------------------------------------------------------------------------------------------
-        call    read_flp_fat
         push    edi
         cmp     byte[esi], 0
-        jz      .root
+        je      .root
+
+        call    read_flp_fat
+
         call    fd_find_lfn
         jnc     .found
         pop     edi
-        or      ebx, -1
-        mov     eax, ERROR_FILE_NOT_FOUND
-        ret
+        jmp     fs.error.file_not_found
 
   .found:
         test    byte[edi + 11], 0x10 ; do not allow read files
         jnz     .found_dir
         pop     edi
-        or      ebx, -1
-        mov     eax, ERROR_ACCESS_DENIED
-        ret
+        jmp     fs.error.access_denied
 
   .found_dir:
         movzx   eax, word[edi + 26]
@@ -1233,19 +1230,7 @@ kproc fs_FloppyReadFolder ;/////////////////////////////////////////////////////
 
     @@: pop     ecx edi edi
         ret
-
-    @@: mov     eax, ERROR_ACCESS_DENIED
-        xor     ebx, ebx
-        ret
 kendp
-
-fsfrfe2:
-        popad
-
-fsfrfe:
-        mov     eax, ERROR_DEVICE_FAIL
-        xor     ebx, ebx
-        ret
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs_FloppyCreateFolder ;///////////////////////////////////////////////////////////////////////////////////////////
@@ -1271,10 +1256,12 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
 
   .common:
         cmp     byte[esi], 0
-        jz      @b
+        je      fs.error.access_denied
+
         call    read_flp_fat
         cmp     [FDC_Status], 0
-        jnz     fsfrfe
+        jnz     .fsfrfe
+
         pushad
         xor     edi, edi
         push    esi
@@ -1295,9 +1282,11 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
         jnz     .noroot
         test    ebp, ebp
         jnz     .hasebp
+
         call    read_flp_root
         cmp     [FDC_Status], 0
-        jnz     fsfrfe2
+        jnz     .fsfrfe2
+
         push    flp_rootmem_extend_dir
         push    flp_rootmem_end_write
         push    flp_rootmem_next_write
@@ -1352,6 +1341,7 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
         jb      .ret1
         cmp     ebp, 2849
         jae     .ret1
+
         push    flp_notroot_extend_dir
         push    flp_notroot_end_write
         push    flp_notroot_next_write
@@ -1381,7 +1371,7 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
   .exists_file:
         ; found file; if we are creating directory, return "access denied",
         ;             if we are creating file, delete existing file and continue
-        cmp     byte[esp + 28 + 28], 0
+        cmp     [esp + 28 + regs_context32_t.al], 0
         jz      @f
         add     esp, 28
         popad
@@ -1510,6 +1500,14 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
         xor     ebx, ebx
         ret
 
+  .fsfrfe2:
+        popad
+
+  .fsfrfe:
+        mov     eax, ERROR_DEVICE_FAIL
+        xor     ebx, ebx
+        ret
+
   .scan_dir:
         cmp     byte[edi], 0
         jz      .free
@@ -1523,8 +1521,10 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
         call    dword[eax - 8]
         pop     eax
         jnc     .scan_dir
+
         cmp     [FDC_Status], 0
         jnz     .fsfrfe3
+
         push    eax
         lea     eax, [esp + 12 + 8 + 12 + 8]
         call    dword[eax + 16] ; extend directory
@@ -1558,8 +1558,10 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
         jz      .nolfn
         push    esi
         push    eax
+
         lea     eax, [esp + 8 + 8 + 12 + 8]
         call    dword[eax + 4] ; begin write
+
         mov     al, 0x40
 
   .writelfn:
@@ -1611,7 +1613,7 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
         and     word[edi + 20], 0 ; high word of cluster
         and     word[edi + 26], 0 ; low word of cluster - to be filled
         and     dword[edi + 28], 0 ; file size - to be filled
-        cmp     byte[esp + 28 + 28], 0
+        cmp     [esp + 28 + regs_context32_t.al], 0
         jz      .doit
         ; create directory
         mov     byte[edi + 11], 0x10 ; attributes: folder
@@ -1627,6 +1629,7 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
         mov     esi, edx
         test    ecx, ecx
         jz      .done
+
         mov     ecx, 2849
         mov     edi, FLOPPY_FAT
         push    0  ; first cluster
@@ -1664,7 +1667,7 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
         mov     ecx, [esp + 20]
 
     @@: mov     edi, FDD_BUFF
-        cmp     byte[esp + 24 + 28 + 28], 0
+        cmp     [esp + 24 + 28 + regs_context32_t.al], 0
         jnz     .writedir
         push    ecx
         rep     movsb
@@ -1734,34 +1737,27 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
         push    ecx esi
         rep     movsd
         pop     esi ecx
+
         mov     dword[edi - 32], '.   '
         mov     dword[edi - 32 + 4], '    '
         mov     dword[edi - 32 + 8], '    '
         mov     byte[edi - 32 + 11], 0x10
         mov     word[edi - 32 + 26], ax
+
         push    esi
         rep     movsd
         pop     esi
+
         mov     dword[edi - 32], '..  '
         mov     dword[edi - 32 + 4], '    '
         mov     dword[edi - 32 + 8], '    '
         mov     byte[edi - 32 + 11], 0x10
         mov     ecx, [esp + 28 + 8]
         mov     word[edi - 32 + 26], cx
+
         pop     ecx
         jmp     .writedircont
-
-    @@: push    ERROR_ACCESS_DENIED
 kendp
-
-fs_FloppyWrite.ret0:
-        pop     eax
-        xor     ebx, ebx
-        ret
-
-fs_FloppyWrite.ret11:
-        push    ERROR_DEVICE_FAIL
-        jmp     fs_FloppyWrite.ret0
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs_FloppyWrite ;//////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1779,15 +1775,25 @@ kproc fs_FloppyWrite ;//////////////////////////////////////////////////////////
 ;# if ebx = 0, start from first byte
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     byte[esi], 0
-        jz      @b
+        je      fs.error.access_denied
+
         call    read_flp_fat
         cmp     [FDC_Status], 0
         jnz     .ret11
+
         pushad
         call    fd_find_lfn
         jnc     .found
         popad
         push    ERROR_FILE_NOT_FOUND
+
+  .ret0:
+        pop     eax
+        xor     ebx, ebx
+        ret
+
+  .ret11:
+        push    ERROR_DEVICE_FAIL
         jmp     .ret0
 
   .found:
@@ -1811,8 +1817,9 @@ kproc fs_FloppyWrite ;//////////////////////////////////////////////////////////
         ; extend file if needed
         add     ecx, ebx
         jc      .eof ; FAT does not support files larger than 4GB
+
         push    eax ; save directory cluster
-        push    0 ; return value=0
+        push    ERROR_SUCCESS ; return value=0
 
         call    fs.fat.get_time_for_file
         mov     [edi + 22], ax ; last write time
@@ -1821,20 +1828,22 @@ kproc fs_FloppyWrite ;//////////////////////////////////////////////////////////
         mov     [edi + 18], ax ; last access date
 
         push    dword[edi + 28] ; save current file size
+
         cmp     ecx, [edi + 28]
         jbe     .length_ok
         cmp     ecx, ebx
         jz      .length_ok
         call    floppy_extend_file
         jnc     .length_ok
-        mov     [esp + 4], eax
+
         ; floppy_extend_file can return two error codes: FAT table error or disk full.
         ; First case is fatal error, in second case we may write some data
+        mov     [esp + 4], eax
         cmp     al, ERROR_DISK_FULL
         jz      .disk_full
         pop     eax
         pop     eax
-        mov     [esp + 4 + 28], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         pop     eax
         popad
         xor     ebx, ebx
@@ -1849,10 +1858,10 @@ kproc fs_FloppyWrite ;//////////////////////////////////////////////////////////
   .ret:
         pop     eax
         pop     eax
-        mov     [esp + 4 + 28], eax ; eax=return value
+        mov     [esp + 4 + regs_context32_t.eax], eax ; eax=return value
         pop     eax
-        sub     edx, [esp + 20]
-        mov     [esp + 16], edx ; ebx=number of written bytes
+        sub     edx, [esp + regs_context32_t.edx]
+        mov     [esp + regs_context32_t.ebx], edx ; ebx=number of written bytes
         popad
         ret
 
@@ -1981,10 +1990,6 @@ kproc fs_FloppyWrite ;//////////////////////////////////////////////////////////
         jmp     .ret
 kendp
 
-floppy_extend_file.zero_size:
-        xor     eax, eax
-        jmp     floppy_extend_file.start_extend
-
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc floppy_extend_file ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -2016,6 +2021,10 @@ kproc floppy_extend_file ;//////////////////////////////////////////////////////
         pop     eax
         stc
         ret
+
+  .zero_size:
+        xor     eax, eax
+        jmp     .start_extend
 
     @@: push    eax
         mov     eax, [eax * 2 + FLOPPY_FAT]
@@ -2098,17 +2107,14 @@ kproc fs_FloppySetFileEnd ;/////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax = 0 (ok) or error code
 ;-----------------------------------------------------------------------------------------------------------------------
+        cmp     byte[esi], 0
+        je      fs.error.access_denied
+
         call    read_flp_fat
         cmp     [FDC_Status], 0
         jnz     ret11
-        cmp     byte[esi], 0
-        jnz     @f
 
-  .access_denied:
-        push    ERROR_ACCESS_DENIED
-        jmp     .ret
-
-    @@: push    edi
+        push    edi
         call    fd_find_lfn
         jnc     @f
         pop     edi
@@ -2122,7 +2128,7 @@ kproc fs_FloppySetFileEnd ;/////////////////////////////////////////////////////
         test    byte[edi + 11], 0x10
         jz      @f
         pop     edi
-        jmp     .access_denied
+        jmp     fs.error.access_denied
 
     @@: ; file size must not exceed 4 Gb
         cmp     dword[ebx + 4], 0
@@ -2249,8 +2255,9 @@ kproc fs_FloppySetFileEnd ;/////////////////////////////////////////////////////
 
     @@: ; we will zero data at the end of last sector - remember it
         push    ecx
+
         ; terminate FAT chain
-        lea     ecx, [FLOPPY_FAT + ecx + ecx]
+        lea     ecx, [FLOPPY_FAT + ecx * 2]
         push    dword[ecx]
         mov     word[ecx], 0x0fff
         pop     ecx
@@ -2314,15 +2321,16 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs_FloppyGetFileInfo ;////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        call    read_flp_fat
-        cmp     [FDC_Status], 0
-        jnz     ret11
         cmp     byte[esi], 0
-        jnz     @f
+        jne     @f
         mov     eax, ERROR_NOT_IMPLEMENTED ; unsupported
         ret
 
-    @@: push    edi
+    @@: call    read_flp_fat
+        cmp     [FDC_Status], 0
+        jnz     ret11
+
+        push    edi
         call    fd_find_lfn
         jmp     fs_RamdiskGetFileInfo.finish
 kendp
@@ -2334,15 +2342,16 @@ ret11:
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs_FloppySetFileInfo ;////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        call    read_flp_fat
-        cmp     [FDC_Status], 0
-        jnz     ret11
         cmp     byte[esi], 0
-        jnz     @f
+        jne     @f
         mov     eax, ERROR_NOT_IMPLEMENTED ; unsupported
         ret
 
-    @@: push    edi
+    @@: call    read_flp_fat
+        cmp     [FDC_Status], 0
+        jnz     ret11
+
+        push    edi
         call    fd_find_lfn
         jnc     @f
         pop     edi
@@ -2352,6 +2361,7 @@ kproc fs_FloppySetFileInfo ;////////////////////////////////////////////////////
     @@: push    eax
         call    fs.fat.bdfe_to_fat_entry
         pop     eax
+
         pusha
         call    save_chs_sector
         popa
@@ -2373,23 +2383,14 @@ kproc fs_FloppyDelete ;/////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax = 0 (ok) or error code
 ;-----------------------------------------------------------------------------------------------------------------------
+        cmp     byte[esi], 0
+        je      fs.error.access_denied ; cannot delete root!
+
         call    read_flp_fat
         cmp     [FDC_Status], 0
         jz      @f
         push    ERROR_DEVICE_FAIL
         jmp     .pop_ret
-
-    @@: cmp     byte[esi], 0
-        jnz     @f
-
-        ; cannot delete root!
-
-  .access_denied:
-        push    ERROR_ACCESS_DENIED
-
-  .pop_ret:
-        pop     eax
-        ret
 
     @@: and     [fd_prev_sector], 0
         and     [fd_prev_prev_sector], 0
@@ -2398,7 +2399,10 @@ kproc fs_FloppyDelete ;/////////////////////////////////////////////////////////
         jnc     .found
         pop     edi
         push    ERROR_FILE_NOT_FOUND
-        jmp     .pop_ret
+
+  .pop_ret:
+        pop     eax
+        ret
 
   .found:
         cmp     dword[edi], '.   '
@@ -2439,7 +2443,7 @@ kproc fs_FloppyDelete ;/////////////////////////////////////////////////////////
 
   .access_denied2:
         pop     edi
-        jmp     .access_denied
+        jmp     fs.error.access_denied
 
   .empty:
         pop     ebx

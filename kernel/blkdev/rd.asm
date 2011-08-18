@@ -405,9 +405,9 @@ kproc fs_RamdiskRead ;//////////////////////////////////////////////////////////
 ;# if ebx = NULL, start from first byte
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     byte[esi], 0
-        jz      fs.error.access_denied
+        je      fs.error.access_denied
 
-    @@: push    edi
+        push    edi
         call    rd_find_lfn
         jnc     .found
         pop     edi
@@ -446,12 +446,15 @@ kproc fs_RamdiskRead ;//////////////////////////////////////////////////////////
         jz      .eof
         cmp     edi, 0x0ff8
         jae     .eof
+
+        sub     ebx, 512
+        jae     .skip
+
         lea     eax, [edi + 31] ; bootsector+2*fat+filenames
         shl     eax, 9 ; *512
         add     eax, RAMDISK ; image base
+
         ; now eax points to data of cluster
-        sub     ebx, 512
-        jae     .skip
         lea     eax, [eax + ebx + 512]
         neg     ebx
         push    ecx
@@ -504,7 +507,8 @@ kproc fs_RamdiskReadFolder ;////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    edi
         cmp     byte[esi], 0
-        jz      .root
+        je      .root
+
         call    rd_find_lfn
         jnc     .found
         pop     edi
@@ -538,8 +542,8 @@ kproc fs_RamdiskReadFolder ;////////////////////////////////////////////////////
         mov     ecx, 32 / 4
         xor     eax, eax
         rep     stosd
-        mov     byte[edx], 1 ; version
         pop     ecx eax
+        mov     byte[edx], 1 ; version
         mov     esi, edi ; esi points to block of data of folder entry (BDFE)
 
   .main_loop:
@@ -644,7 +648,8 @@ kproc fs_RamdiskRewrite ;///////////////////////////////////////////////////////
 
   .common:
         cmp     byte[esi], 0
-        jz      @b
+        je      fs.error.access_denied
+
         pushad
         xor     edi, edi
         push    esi
@@ -665,6 +670,7 @@ kproc fs_RamdiskRewrite ;///////////////////////////////////////////////////////
         jnz     .noroot
         test    ebp, ebp
         jnz     .hasebp
+
         push    ramdisk_root_extend_dir
         push    ramdisk_root_next_write
         push    edi
@@ -716,6 +722,7 @@ kproc fs_RamdiskRewrite ;///////////////////////////////////////////////////////
         jb      .ret1
         cmp     ebp, 2849
         jae     .ret1
+
         push    ramdisk_notroot_extend_dir
         push    ramdisk_notroot_next_write
         push    ebp
@@ -743,7 +750,7 @@ kproc fs_RamdiskRewrite ;///////////////////////////////////////////////////////
   .exists_file:
         ; found file; if we are creating directory, return "access denied",
         ;             if we are creating file, delete existing file and continue
-        cmp     byte[esp + 20 + regs_context32_t.eax], 0
+        cmp     [esp + 20 + regs_context32_t.al], 0
         jz      @f
         add     esp, 20
         popad
@@ -877,6 +884,7 @@ kproc fs_RamdiskRewrite ;///////////////////////////////////////////////////////
         call    dword[eax - 8]
         pop     eax
         jnc     .scan_dir
+
         push    eax
         lea     eax, [esp + 12 + 8 + 12 + 8]
         call    dword[eax + 8] ; extend directory
@@ -910,6 +918,7 @@ kproc fs_RamdiskRewrite ;///////////////////////////////////////////////////////
         jz      .nolfn
         push    esi
         push    eax
+
         mov     al, 0x40
 
   .writelfn:
@@ -973,6 +982,7 @@ kproc fs_RamdiskRewrite ;///////////////////////////////////////////////////////
         add     edi, 26 ; edi points to low word of cluster
         push    edi
         jecxz   .done
+
         mov     ecx, 2849
         mov     edi, RAMDISK_FAT
 
@@ -1047,20 +1057,24 @@ kproc fs_RamdiskRewrite ;///////////////////////////////////////////////////////
         mov     ecx, 32 / 4
         push    ecx
         rep     movsd
+
         mov     dword[edi - 32], '.   '
         mov     dword[edi - 32 + 4], '    '
         mov     dword[edi - 32 + 8], '    '
         mov     byte[edi - 32 + 11], 0x10
         mov     word[edi - 32 + 26], ax
+
         mov     esi, edx
         pop     ecx
         rep     movsd
+
         mov     dword[edi - 32], '..  '
         mov     dword[edi - 32 + 4], '    '
         mov     dword[edi - 32 + 8], '    '
         mov     byte[edi - 32 + 11], 0x10
         mov     eax, [esp + 16 + 8]
         mov     word[edi - 32 + 26], ax
+
         xor     eax, eax
         mov     ecx, (512 - 32 * 2) / 4
         rep     stosd
@@ -1088,7 +1102,8 @@ kproc fs_RamdiskWrite ;/////////////////////////////////////////////////////////
 ;# if ebx = 0, start from first byte
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     byte[esi], 0
-        jz      fs.error.access_denied
+        je      fs.error.access_denied
+
         pushad
         call    rd_find_lfn
         jnc     .found
@@ -1129,13 +1144,16 @@ kproc fs_RamdiskWrite ;/////////////////////////////////////////////////////////
         ; extend file if needed
         add     ecx, ebx
         jc      .eof ; FAT does not support files larger than 4GB
+
         push    ERROR_SUCCESS ; return value=0
+
         cmp     ecx, [edi + 28]
         jbe     .length_ok
         cmp     ecx, ebx
         jz      .length_ok
         call    ramdisk_extend_file
         jnc     .length_ok
+
         ; ramdisk_extend_file can return two error codes: FAT table error or disk full.
         ; First case is fatal error, in second case we may write some data
         mov     [esp], eax
@@ -1170,6 +1188,7 @@ kproc fs_RamdiskWrite ;/////////////////////////////////////////////////////////
   .write_loop:
         sub     ebx, 0x200
         jae     .next_cluster
+
         push    ecx
         neg     ebx
         cmp     ecx, ebx
@@ -1238,6 +1257,7 @@ kproc ramdisk_extend_file ;/////////////////////////////////////////////////////
         jb      .fat_err
         ; set length to full number of sectors and make sure that last sector is zero-padded
         sub     [edi + 28], ecx
+
         push    eax edi
         mov     edi, eax
         shl     edi, 9
@@ -1259,8 +1279,9 @@ kproc ramdisk_extend_file ;/////////////////////////////////////////////////////
         jae     .extend_done
         ; add new sector
         push    ecx
-        mov     ecx, edx
         push    edi
+
+        mov     ecx, edx
         mov     edi, esi
         jecxz   .disk_full
         push    eax
@@ -1290,6 +1311,7 @@ kproc ramdisk_extend_file ;/////////////////////////////////////////////////////
         xor     eax, eax
         mov     ecx, 512 / 4
         rep     stosd
+
         pop     eax ; eax=new cluster
         pop     edi ; edi->direntry
         pop     ecx ; ecx=required size
@@ -1324,7 +1346,7 @@ kproc fs_RamdiskSetFileEnd ;////////////////////////////////////////////////////
 ;< eax = 0 (ok) or error code
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     byte[esi], 0
-        jz      fs.error.access_denied
+        je      fs.error.access_denied
 
         push    edi
         call    rd_find_lfn
@@ -1390,8 +1412,9 @@ kproc fs_RamdiskSetFileEnd ;////////////////////////////////////////////////////
         xor     eax, eax
         rep     stosb
         pop     ecx
+
         ; terminate FAT chain
-        lea     ecx, [RAMDISK_FAT + ecx + ecx]
+        lea     ecx, [RAMDISK_FAT + ecx * 2]
         push    dword[ecx]
         mov     word[ecx], 0x0fff
         pop     ecx
@@ -1424,7 +1447,7 @@ kendp
 kproc fs_RamdiskGetFileInfo ;///////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     byte[esi], 0
-        jnz     @f
+        jne     @f
         mov     eax, ERROR_NOT_IMPLEMENTED ; unsupported
         ret
 
@@ -1452,7 +1475,7 @@ kendp
 kproc fs_RamdiskSetFileInfo ;///////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     byte[esi], 0
-        jnz     @f
+        jne     @f
         mov     eax, ERROR_NOT_IMPLEMENTED ; unsupported
         ret
 
@@ -1479,7 +1502,7 @@ kproc fs_RamdiskDelete ;////////////////////////////////////////////////////////
 ;< eax = 0 (ok) or error code
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     byte[esi], 0
-        jz      fs.error.access_denied ; cannot delete root!
+        je      fs.error.access_denied ; cannot delete root!
 
         and     [rd_prev_sector], 0
         and     [rd_prev_prev_sector], 0
