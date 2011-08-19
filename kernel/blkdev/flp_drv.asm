@@ -88,11 +88,11 @@ kproc take_data_from_application_1 ;////////////////////////////////////////////
 kendp
 
 ; Controller operation error code (FDC_Status)
-FDC_Normal         equ 0 ; ok
-FDC_TimeOut        equ 1 ; timeout
-FDC_DiskNotFound   equ 2 ; no disk in drive
-FDC_TrackNotFound  equ 3 ; track not found
-FDC_SectorNotFound equ 4 ; sector not found
+FDC_Normal         = 0 ; ok
+FDC_TimeOut        = 1 ; timeout
+FDC_DiskNotFound   = 2 ; no disk in drive
+FDC_TrackNotFound  = 3 ; track not found
+FDC_SectorNotFound = 4 ; sector not found
 
 ; Maximum sector coordinates values (these correspond to standard 3'' 1.44 MB disk)
 MAX_Track   equ 79
