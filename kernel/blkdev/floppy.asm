@@ -33,7 +33,7 @@ struct blkdev.floppy.status_t
   sector_size db ?
 ends
 
-struct blkdev.floppy.device_info_t
+struct blkdev.floppy.device_data_t
   position     blkdev.floppy.chs_t
   status       blkdev.floppy.status_t
   drive_number db ?
@@ -46,13 +46,15 @@ iglobal
     write
 endg
 
+include "floppy_ctl.asm"
+
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc blkdev.floppy.read ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> edi ^= buffer
 ;> ecx #= buffer size (number of bytes to read)
 ;> edx:eax #= offset
-;> ebx ^= blkdev.floppy.device_info_t
+;> ebx ^= blkdev.floppy.device_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -111,7 +113,7 @@ kproc blkdev.floppy.write ;/////////////////////////////////////////////////////
 ;> esi ^= buffer
 ;> ecx #= buffer size (number of bytes to write)
 ;> edx:eax #= offset
-;> ebx ^= blkdev.floppy.device_info_t
+;> ebx ^= blkdev.floppy.device_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -173,7 +175,7 @@ kproc blkdev.floppy._.read_sector ;/////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Read sector
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= blkdev.floppy.device_info_t
+;> ebx ^= blkdev.floppy.device_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;< FDD_DataBuffer ^= sector content (on success)
@@ -188,7 +190,7 @@ kproc blkdev.floppy._.write_sector ;////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Write sector
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= blkdev.floppy.device_info_t
+;> ebx ^= blkdev.floppy.device_data_t
 ;> FDD_DataBuffer ^= sector content to write
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
@@ -204,7 +206,7 @@ kproc blkdev.floppy._.perform_operation_with_retry ;////////////////////////////
 ;? Read sector (retry on errors)
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax ^= operation callback (read/write sector)
-;> ebx ^= blkdev.floppy.device_info_t
+;> ebx ^= blkdev.floppy.device_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -257,22 +259,22 @@ kendp
 kproc blkdev.floppy._.calculate_chs ;///////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax #= LBA address
-;> ebx ^= blkdev.floppy.device_info_t
+;> ebx ^= blkdev.floppy.device_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax ecx edx
         mov_s_  ecx, 18
         xor     edx, edx
         div     ecx
         inc     edx
-        mov     [ebx + blkdev.floppy.device_info_t.position.sector], dl
+        mov     [ebx + blkdev.floppy.device_data_t.position.sector], dl
         xor     edx, edx
         mov_s_  ecx, 2
         div     ecx
-        mov     [ebx + blkdev.floppy.device_info_t.position.cylinder], al
-        mov     [ebx + blkdev.floppy.device_info_t.position.head], 0
+        mov     [ebx + blkdev.floppy.device_data_t.position.cylinder], al
+        mov     [ebx + blkdev.floppy.device_data_t.position.head], 0
         test    edx, edx
         jz      .exit
-        inc     [ebx + blkdev.floppy.device_info_t.position.head]
+        inc     [ebx + blkdev.floppy.device_data_t.position.head]
 
   .exit:
         pop     edx ecx eax

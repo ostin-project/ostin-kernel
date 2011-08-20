@@ -27,7 +27,7 @@ kproc blkdev.floppy.ctl.perform_dma_transfer ;//////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> al #= operation (0xe6 - read in multi-track mode, 0xc5 - write in multi-track mode)
 ;> ah #= error status mask
-;> ebx ^= blkdev.floppy.device_info_t
+;> ebx ^= blkdev.floppy.device_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;< FDD_DataBuffer ^= sector content (on success)
@@ -49,14 +49,14 @@ kproc blkdev.floppy.ctl.perform_dma_transfer ;//////////////////////////////////
         ; send read/write command
         xchg    al, ah
         call    blkdev.floppy.ctl._.out_byte
-        mov     al, [ebx + blkdev.floppy.device_info_t.position.head]
+        mov     al, [ebx + blkdev.floppy.device_data_t.position.head]
         shl     al, 2
         call    blkdev.floppy.ctl._.out_byte
-        mov     al, [ebx + blkdev.floppy.device_info_t.position.cylinder]
+        mov     al, [ebx + blkdev.floppy.device_data_t.position.cylinder]
         call    blkdev.floppy.ctl._.out_byte
-        mov     al, [ebx + blkdev.floppy.device_info_t.position.head]
+        mov     al, [ebx + blkdev.floppy.device_data_t.position.head]
         call    blkdev.floppy.ctl._.out_byte
-        mov     al, [ebx + blkdev.floppy.device_info_t.position.sector]
+        mov     al, [ebx + blkdev.floppy.device_data_t.position.sector]
         call    blkdev.floppy.ctl._.out_byte
         mov     al, 2 ; sector size code (512 bytes)
         call    blkdev.floppy.ctl._.out_byte
@@ -75,7 +75,7 @@ kproc blkdev.floppy.ctl.perform_dma_transfer ;//////////////////////////////////
         ; get operation status
         call    blkdev.floppy.ctl._.get_status
         mov     al, [esp + regs_context32_t.ah]
-        test    [ebx + blkdev.floppy.device_info_t.status.st0], al
+        test    [ebx + blkdev.floppy.device_data_t.status.st0], al
         jnz     .error
         mov     eax, FDC_Normal
         jmp     .exit
@@ -94,7 +94,7 @@ kproc blkdev.floppy.ctl.seek ;//////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Seek to track
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= blkdev.floppy.device_info_t
+;> ebx ^= blkdev.floppy.device_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -105,12 +105,12 @@ kproc blkdev.floppy.ctl.seek ;//////////////////////////////////////////////////
         call    blkdev.floppy.ctl._.out_byte
 
         ; send head number
-        mov     al, [ebx + blkdev.floppy.device_info_t.position.head]
+        mov     al, [ebx + blkdev.floppy.device_data_t.position.head]
         shl     al, 2
         call    blkdev.floppy.ctl._.out_byte
 
         ; send track number
-        mov     al, [ebx + blkdev.floppy.device_info_t.position.cylinder]
+        mov     al, [ebx + blkdev.floppy.device_data_t.position.cylinder]
         call    blkdev.floppy.ctl._.out_byte
 
         ; wait for operation to complete
@@ -122,26 +122,26 @@ kproc blkdev.floppy.ctl.seek ;//////////////////////////////////////////////////
         mov     al, 0x08
         call    blkdev.floppy.ctl._.out_byte
         call    blkdev.floppy.ctl._.in_byte
-        mov     [ebx + blkdev.floppy.device_info_t.status.st0], al
+        mov     [ebx + blkdev.floppy.device_data_t.status.st0], al
         call    blkdev.floppy.ctl._.in_byte
-        mov     [ebx + blkdev.floppy.device_info_t.status.cylinder], al
+        mov     [ebx + blkdev.floppy.device_data_t.status.cylinder], al
 
         ; validate seek result
 
         ; seek complete?
-        test    [ebx + blkdev.floppy.device_info_t.status.st0], 0100000b
+        test    [ebx + blkdev.floppy.device_data_t.status.st0], 0100000b
         je      .error
 
         ; specified track found?
-        mov     al, [ebx + blkdev.floppy.device_info_t.status.cylinder]
-        cmp     al, [ebx + blkdev.floppy.device_info_t.position.cylinder]
+        mov     al, [ebx + blkdev.floppy.device_data_t.status.cylinder]
+        cmp     al, [ebx + blkdev.floppy.device_data_t.position.cylinder]
         jne     .error
 
         ; specified head found?
-        mov     al, [ebx + blkdev.floppy.device_info_t.status.st0]
+        mov     al, [ebx + blkdev.floppy.device_data_t.status.st0]
         and     al, 0100b
         shr     al, 2
-        cmp     al, [ebx + blkdev.floppy.device_info_t.position.head]
+        cmp     al, [ebx + blkdev.floppy.device_data_t.position.head]
         jne     .error
 
         ; operation completed successfully
@@ -162,7 +162,7 @@ kproc blkdev.floppy.ctl.recalibrate ;///////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Recalibrate drive
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= blkdev.floppy.device_info_t
+;> ebx ^= blkdev.floppy.device_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax
         call    blkdev.floppy.ctl._.select_drive
@@ -196,9 +196,9 @@ kproc blkdev.floppy.ctl._.update_motor_timer ;//////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Save FDD motor timer
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= blkdev.floppy.device_info_t
+;> ebx ^= blkdev.floppy.device_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov_s_  [ebx + blkdev.floppy.device_info_t.motor_timer], [timer_ticks]
+        mov_s_  [ebx + blkdev.floppy.device_data_t.motor_timer], [timer_ticks]
         ret
 kendp
 
@@ -207,14 +207,14 @@ kproc blkdev.floppy.ctl._.select_drive ;////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Save FDD motor timer
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= blkdev.floppy.device_info_t
+;> ebx ^= blkdev.floppy.device_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax ecx edx
 
-        mov     al, [ebx + blkdev.floppy.device_info_t.drive_number]
+        mov     al, [ebx + blkdev.floppy.device_data_t.drive_number]
         cmp     al, [blkdev.floppy.ctl._.data.last_drive_number]
         jne     .reset_and_select
-        cmp     [ebx + blkdev.floppy.device_info_t.motor_timer], 0
+        cmp     [ebx + blkdev.floppy.device_data_t.motor_timer], 0
         jne     .exit
 
   .reset_and_select:
@@ -361,23 +361,23 @@ kproc blkdev.floppy.ctl._.get_status ;//////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Get operation status
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= blkdev.floppy.device_info_t
+;> ebx ^= blkdev.floppy.device_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax
         call    blkdev.floppy.ctl._.in_byte
-        mov     [ebx + blkdev.floppy.device_info_t.status.st0], al
+        mov     [ebx + blkdev.floppy.device_data_t.status.st0], al
         call    blkdev.floppy.ctl._.in_byte
-        mov     [ebx + blkdev.floppy.device_info_t.status.st1], al
+        mov     [ebx + blkdev.floppy.device_data_t.status.st1], al
         call    blkdev.floppy.ctl._.in_byte
-        mov     [ebx + blkdev.floppy.device_info_t.status.st2], al
+        mov     [ebx + blkdev.floppy.device_data_t.status.st2], al
         call    blkdev.floppy.ctl._.in_byte
-        mov     [ebx + blkdev.floppy.device_info_t.status.cylinder], al
+        mov     [ebx + blkdev.floppy.device_data_t.status.cylinder], al
         call    blkdev.floppy.ctl._.in_byte
-        mov     [ebx + blkdev.floppy.device_info_t.status.head], al
+        mov     [ebx + blkdev.floppy.device_data_t.status.head], al
         call    blkdev.floppy.ctl._.in_byte
-        mov     [ebx + blkdev.floppy.device_info_t.status.sector], al
+        mov     [ebx + blkdev.floppy.device_data_t.status.sector], al
         call    blkdev.floppy.ctl._.in_byte
-        mov     [ebx + blkdev.floppy.device_info_t.status.sector_size], al
+        mov     [ebx + blkdev.floppy.device_data_t.status.sector_size], al
         pop     eax
         ret
 kendp

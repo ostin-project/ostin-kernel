@@ -14,7 +14,7 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-struct blkdev.memory.device_info_t
+struct blkdev.memory.device_data_t
   data_ptr  dd ?
   data_size dd ?
 ends
@@ -31,14 +31,14 @@ kproc blkdev.memory.read ;//////////////////////////////////////////////////////
 ;> edi ^= buffer
 ;> ecx #= buffer size (number of bytes to read)
 ;> edx:eax #= offset
-;> ebx ^= blkdev.memory.device_info_t
+;> ebx ^= blkdev.memory.device_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;-----------------------------------------------------------------------------------------------------------------------
         or      edx, edx
         jnz     .overflow_error
         lea     eax, [ecx + edx]
-        cmp     eax, [ebx + blkdev.memory.device_info_t.data_size]
+        cmp     eax, [ebx + blkdev.memory.device_data_t.data_size]
         ja      .overflow_error
         test    eax, 511
         jnz     .alignment_error
@@ -46,7 +46,7 @@ kproc blkdev.memory.read ;//////////////////////////////////////////////////////
         jnz     .alignment_error
 
         push    esi
-        mov     esi, [ebx + blkdev.memory.device_info_t.data_ptr]
+        mov     esi, [ebx + blkdev.memory.device_data_t.data_ptr]
         add     esi, edx
         rep     movsb
         pop     esi
@@ -67,14 +67,14 @@ kproc blkdev.memory.write ;/////////////////////////////////////////////////////
 ;> esi ^= buffer
 ;> ecx #= buffer size (number of bytes to write)
 ;> edx:eax #= offset
-;> ebx ^= blkdev.memory.device_info_t
+;> ebx ^= blkdev.memory.device_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;-----------------------------------------------------------------------------------------------------------------------
         or      edx, edx
         jnz     .overflow_error
         lea     eax, [ecx + edx]
-        cmp     eax, [ebx + blkdev.memory.device_info_t.data_size]
+        cmp     eax, [ebx + blkdev.memory.device_data_t.data_size]
         ja      .overflow_error
         test    eax, 511
         jnz     .alignment_error
@@ -82,7 +82,7 @@ kproc blkdev.memory.write ;/////////////////////////////////////////////////////
         jnz     .alignment_error
 
         push    edi
-        mov     edi, [ebx + blkdev.memory.device_info_t.data_ptr]
+        mov     edi, [ebx + blkdev.memory.device_data_t.data_ptr]
         add     edi, edx
         rep     movsb
         pop     edi
