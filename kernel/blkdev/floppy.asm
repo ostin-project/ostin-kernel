@@ -2,6 +2,7 @@
 ;;///// floppy.asm ///////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
 ;;======================================================================================================================
 ;; (c) 2011 Ostin project <http://ostin.googlecode.com/>
+;; (c) 2004-2009 KolibriOS team <http://kolibrios.org/>
 ;;======================================================================================================================
 ;; This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
 ;; License as published by the Free Software Foundation, either version 2 of the License, or (at your option) any later
@@ -57,6 +58,10 @@ kproc blkdev.floppy.read ;//////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         or      edx, edx
         jnz     .overflow_error
+        test    eax, 511
+        jnz     .alignment_error
+        test    ecx, 511
+        jnz     .alignment_error
 
         push    ecx esi
 
@@ -94,6 +99,10 @@ kproc blkdev.floppy.read ;//////////////////////////////////////////////////////
   .overflow_error:
         mov     eax, -123 ; TODO: add error code
         ret
+
+  .alignment_error:
+        mov     eax, -321 ; TODO: add error code
+        ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -108,6 +117,10 @@ kproc blkdev.floppy.write ;/////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         or      edx, edx
         jnz     .overflow_error
+        test    eax, 511
+        jnz     .alignment_error
+        test    ecx, 511
+        jnz     .alignment_error
 
         push    ecx edi
 
@@ -144,6 +157,10 @@ kproc blkdev.floppy.write ;/////////////////////////////////////////////////////
 
   .overflow_error:
         mov     eax, -123 ; TODO: add error code
+        ret
+
+  .alignment_error:
+        mov     eax, -321 ; TODO: add error code
         ret
 kendp
 
