@@ -20,6 +20,32 @@
 ;;///// public functions ///////////////////////////////////////////////////////////////////////////////////////////////
 ;;======================================================================================================================
 
+struct fs.fat.dir_entry_t
+  name               db 11 dup(?)
+  attributes         db ?
+                     rb 1
+  created_at.time_ms db ?
+  created_at.time    dw ?
+  created_at.date    dw ?
+  accessed_at.date   dw ?
+  ea_index           dw ?
+  modified_at.time   dw ?
+  modified_at.date   dw ?
+  start_cluster      dw ?
+  size               dd ?
+ends
+
+struct fs.fat.lfn_dir_entry_t
+  sequence_number db ?
+  name.part_1     du 5 dup(?)
+  attributes      db ?
+                  rb 1
+  checksum        db ?
+  name.part_2     du 6 dup(?)
+  start_cluster   dw ?
+  name.part_3     du 2 dup(?)
+ends
+
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs.fat.get_name ;/////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -187,59 +213,69 @@ kproc fs.fat.fat_entry_to_bdfe ;////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? convert FAT entry to BDFE (block of data of folder entry), advancing esi
 ;-----------------------------------------------------------------------------------------------------------------------
-;> edi ^= FAT entry
-;> esi ^= BDFE
+;> edi ^= fs.fat.dir_entry_t
+;> esi ^= fs.file_info_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;# destroys eax
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, [ebp - 4]
-        mov     [esi + 4], eax  ; ASCII/UNICODE name
+        mov     [esi + fs.file_info_t.flags], eax  ; ASCII/UNICODE name
 
   .direct:
-        movzx   eax, byte[edi + 11]
-        mov     [esi], eax ; attributes
-        movzx   eax, word[edi + 14]
+        movzx   eax, [edi + fs.fat.dir_entry_t.attributes]
+        mov     [esi + fs.file_info_t.attributes], eax
+
+        movzx   eax, [edi + fs.fat.dir_entry_t.created_at.time]
         call    fs.fat._.fat_time_to_bdfe_time
-        mov     [esi + 8], eax ; creation time
-        movzx   eax, word[edi + 16]
+        mov     [esi + fs.file_info_t.created_at.time], eax
+
+        movzx   eax, [edi + fs.fat.dir_entry_t.created_at.date]
         call    fs.fat._.fat_date_to_bdfe_date
-        mov     [esi + 12], eax ; creation date
-        and     dword[esi + 16], 0 ; last access time is not supported on FAT
-        movzx   eax, word[edi + 18]
+        mov     [esi + fs.file_info_t.created_at.date], eax
+
+        ; last access time is not supported on FAT
+        and     [esi + fs.file_info_t.accessed_at.time], 0
+
+        movzx   eax, [edi + fs.fat.dir_entry_t.accessed_at.date]
         call    fs.fat._.fat_date_to_bdfe_date
-        mov     [esi + 20], eax ; last access date
-        movzx   eax, word[edi + 22]
+        mov     [esi + fs.file_info_t.accessed_at.date], eax
+
+        movzx   eax, [edi + fs.fat.dir_entry_t.modified_at.time]
         call    fs.fat._.fat_time_to_bdfe_time
-        mov     [esi + 24], eax ; last write time
-        movzx   eax, word[edi + 24]
+        mov     [esi + fs.file_info_t.modified_at.time], eax
+
+        movzx   eax, [edi + fs.fat.dir_entry_t.modified_at.date]
         call    fs.fat._.fat_date_to_bdfe_date
-        mov     [esi + 28], eax ; last write date
-        mov     eax, [edi + 28]
-        mov     [esi + 32], eax ; file size (low dword)
-        xor     eax, eax
-        mov     [esi + 36], eax ; file size (high dword)
+        mov     [esi + fs.file_info_t.modified_at.date], eax
+
+        mov     eax, [edi + fs.fat.dir_entry_t.size]
+        mov     [esi + fs.file_info_t.size.low], eax
+        and     [esi + fs.file_info_t.size.high], 0
+
         test    ebp, ebp
-        jz      .ret
+        jz      .exit
+
         push    ecx edi
-        lea     edi, [esi + 40]
+        lea     edi, [esi + fs.file_info_t.name]
         mov     esi, ebp
         test    byte[esi - 4], 1
         jz      .ansi
+
         mov     ecx, 260 / 2
         rep     movsd
         mov     [edi - 2], ax
-
-    @@: mov     esi, edi
-        pop     edi ecx
-
-  .ret:
-        ret
+        jmp     @f
 
   .ansi:
         mov     ecx, 264 / 4
         rep     movsd
         mov     [edi - 1], al
-        jmp     @b
+
+    @@: mov     esi, edi
+        pop     edi ecx
+
+  .exit:
+        ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -666,7 +702,7 @@ kproc fs.fat.find_long_name ;///////////////////////////////////////////////////
 ;<   edi pointer to direntry
 ;-----------------------------------------------------------------------------------------------------------------------
         pusha
-        lea     eax, [esp + 0x0c + 0x20]
+        lea     eax, [esp + sizeof.regs_context32_t + 0x0c]
         call    dword[eax - 4]
         jc      .reterr
         sub     esp, 262 * 2 ; reserve place for LFN
@@ -680,7 +716,7 @@ kproc fs.fat.find_long_name ;///////////////////////////////////////////////////
         jz      .found
 
   .l2:
-        lea     eax, [esp + 0x0c + 0x20 + 262 * 2 + 4]
+        lea     eax, [esp + sizeof.regs_context32_t + 0x0c + 262 * 2 + 4]
         call    dword[eax - 8]
         jnc     .l1
         add     esp, 262 * 2 + 4
@@ -695,7 +731,7 @@ kproc fs.fat.find_long_name ;///////////////////////////////////////////////////
         ; if this is LFN entry, advance to true entry
         cmp     byte[edi + 11], 0x0f
         jnz     @f
-        lea     eax, [esp + 0x0c + 0x20]
+        lea     eax, [esp + sizeof.regs_context32_t + 0x0c]
         call    dword[eax - 8]
         jc      .reterr
 

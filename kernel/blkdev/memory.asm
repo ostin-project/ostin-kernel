@@ -15,8 +15,7 @@
 ;;======================================================================================================================
 
 struct blkdev.memory.device_data_t
-  data_ptr  dd ?
-  data_size dd ?
+  data range32_t
 ends
 
 iglobal
@@ -37,19 +36,21 @@ kproc blkdev.memory.read ;//////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         or      edx, edx
         jnz     .overflow_error
-        lea     eax, [ecx + edx]
-        cmp     eax, [ebx + blkdev.memory.device_data_t.data_size]
+        lea     edx, [eax + ecx]
+        cmp     edx, [ebx + blkdev.memory.device_data_t.data.length]
         ja      .overflow_error
         test    eax, 511
         jnz     .alignment_error
         test    ecx, 511
         jnz     .alignment_error
 
-        push    esi
-        mov     esi, [ebx + blkdev.memory.device_data_t.data_ptr]
-        add     esi, edx
+        push    esi edi
+        mov     esi, [ebx + blkdev.memory.device_data_t.data.offset]
+        add     esi, eax
         rep     movsb
-        pop     esi
+        pop     edi esi
+
+        xor     eax, eax
         ret
 
   .overflow_error:
@@ -73,19 +74,21 @@ kproc blkdev.memory.write ;/////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         or      edx, edx
         jnz     .overflow_error
-        lea     eax, [ecx + edx]
-        cmp     eax, [ebx + blkdev.memory.device_data_t.data_size]
+        lea     edx, [eax + ecx]
+        cmp     edx, [ebx + blkdev.memory.device_data_t.data.length]
         ja      .overflow_error
         test    eax, 511
         jnz     .alignment_error
         test    ecx, 511
         jnz     .alignment_error
 
-        push    edi
-        mov     edi, [ebx + blkdev.memory.device_data_t.data_ptr]
-        add     edi, edx
+        push    esi edi
+        mov     edi, [ebx + blkdev.memory.device_data_t.data.offset]
+        add     edi, eax
         rep     movsb
-        pop     edi
+        pop     edi esi
+
+        xor     eax, eax
         ret
 
   .overflow_error:

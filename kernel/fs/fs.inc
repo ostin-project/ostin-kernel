@@ -22,10 +22,11 @@ FS_PARTITION_TYPE_EXT2    = 5
 FS_PARTITION_TYPE_ISO9660 = 6
 
 struct fs.partition_t
-  device dd ? ; ^= blkdev.device_t
-  range  range64_t
-  type   db ? ; #= one of FS_PARTITION_TYPE_*
-  number db ?
+  device    dd ? ; ^= blkdev.device_t
+  range     range64_t
+  type      db ? ; #= one of FS_PARTITION_TYPE_*
+  number    db ?
+  user_data dd ? ; ^= fs.?.partition_data_t
 ends
 
 include "fs.asm"

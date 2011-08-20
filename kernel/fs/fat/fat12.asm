@@ -14,6 +14,14 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
+struct fs.fat12.partition_data_t
+  label         rb 16
+  is_fat_valid  db ?
+  fat           rw (8 * 1024) / 2
+  is_root_valid db ?
+  buffer        rb 9 * 1024
+ends
+
 uglobal
   n_sector              dd 0  ; temporary save for sector value
   clust_tmp_flp         dd 0  ; used by analyze_directory and analyze_directory_to_write
@@ -2319,6 +2327,44 @@ kproc fs_FloppySetFileEnd ;/////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12.get_file_info ;//////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> edx ^= fs.get_file_info_query_params_t
+;> ebx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
+        cmp     byte[esi], 0
+        je      .not_implemented_error
+
+        call    fs.fat12._.read_fat
+        or      eax, eax
+        jnz     .device_error
+
+        call    fs.fat12._.find_file_lfn
+        jc      .file_not_found_error
+
+        xor     ebp, ebp
+        mov     esi, [edx + fs.get_file_info_query_params_t.buffer_ptr]
+        and     [esi + fs.file_info_t.flags], 0
+        call    fs.fat.fat_entry_to_bdfe.direct
+
+        xor     eax, eax ; ERROR_SUCCESS
+        ret
+
+  .not_implemented_error:
+        mov     eax, ERROR_NOT_IMPLEMENTED
+        ret
+
+  .device_error:
+        mov     eax, ERROR_DEVICE_FAIL
+        ret
+
+  .file_not_found_error:
+        pop     edi
+        mov     eax, ERROR_FILE_NOT_FOUND
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
 kproc fs_FloppyGetFileInfo ;////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     byte[esi], 0
@@ -2506,5 +2552,240 @@ kproc fs_FloppyDelete ;/////////////////////////////////////////////////////////
         call    save_flp_fat
         pop     edi
         xor     eax, eax
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12._.check_partition_label ;////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= fs.partition_t
+;> ebp ^= fs.fat12.partition_data_t
+;-----------------------------------------------------------------------------------------------------------------------
+        push    ecx esi edi
+
+        xor     eax, eax
+        cdq
+        mov     ecx, 512
+        lea     edi, [ebp + fs.fat12.partition_data_t.buffer]
+        call    fs.read
+        or      eax, eax
+        jnz     .exit
+
+        lea     esi, [ebp + fs.fat12.partition_data_t.label]
+        add     edi, 39
+        mov     ecx, 15
+        push    esi edi
+        rep     cmpsb
+        pop     edi esi
+        je      .exit ; eax = 0
+
+        and     [ebp + fs.fat12.partition_data_t.is_fat_valid], 0
+        and     [ebp + fs.fat12.partition_data_t.is_root_valid], 0
+
+        xchg    esi, edi
+        mov     ecx, 15
+        rep     movsb
+
+  .exit:
+        pop     edi esi ecx
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12._.read_fat ;/////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
+        push    ecx edx esi edi ebp
+
+        mov     ebp, [ebx + fs.partition_t.user_data]
+
+        ; FIXME: disk change detection is not a FS driver job
+        call    fs.fat12._.check_partition_label
+        or      eax, eax
+        jnz     .exit
+
+        cmp     [ebp + fs.fat12.partition_data_t.is_fat_valid], 0
+        jne     .exit ; eax = 0
+
+        mov     eax, 512
+        cdq
+        mov     ecx, 9 * 2 * 512
+        lea     edi, [ebp + fs.fat12.partition_data_t.buffer]
+        call    fs.read
+        or      eax, eax
+        jnz     .exit
+
+        lea     esi, [ebp + fs.fat12.partition_data_t.fat]
+        xchg    esi, edi
+        call    fs.fat12.calculate_fat_chain
+
+        and     [ebp + fs.fat12.partition_data_t.is_root_valid], 0
+        inc     [ebp + fs.fat12.partition_data_t.is_fat_valid]
+
+  .exit:
+        pop     ebp edi esi edx ecx
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12._.find_file_lfn ;////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> esi + ebp pointer to name
+;> ebx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
+;< CF = 1 - file not found
+;< CF = 0,
+;<   edi = pointer to direntry
+;<   eax = directory cluster (0 for root)
+;-----------------------------------------------------------------------------------------------------------------------
+        push    esi edi
+        push    0
+        push    fs.fat12._.root_first
+        push    fs.fat12._.root_next
+
+  .next_level:
+        call    fs.fat.find_long_name
+        jc      .not_found
+        cmp     byte[esi], 0
+        jz      .found
+
+  .continue:
+        test    byte[edi + 11], 0x10
+        jz      .not_found
+        movzx   eax, word[edi + 26] ; cluster
+        mov     [esp + 8], eax
+        mov     dword[esp + 4], fs.fat12._.notroot_first
+        mov     dword[esp], fs.fat12._.notroot_next
+        jmp     .next_level
+
+  .not_found:
+        add     esp, 12
+        pop     edi esi
+        stc
+        ret
+
+  .found:
+        test    ebp, ebp
+        jz      @f
+        mov     esi, ebp
+        xor     ebp, ebp
+        jmp     .continue
+
+    @@: mov     eax, [esp + 8]
+        add     eax, 31
+        cmp     dword[esp], fs.fat12._.root_next
+        jnz     @f
+        add     eax, -31 + 19
+
+    @@: add     esp, 16 ; CF = 0
+        pop     esi
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12._.root_next ;////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
+        push    eax
+        mov     eax, [ebx + fs.partition_t.user_data]
+        add     eax, fs.fat12.partition_data_t.buffer + 512 - sizeof.fs.fat.dir_entry_t
+        cmp     edi, eax
+        pop     eax
+        jae     .next_sector
+
+        add     edi, sizeof.fs.fat.dir_entry_t
+        ret     ; CF = 0
+
+  .next_sector:
+        inc     dword[eax]
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12._.root_first ;///////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
+        mov     eax, [eax]
+
+        cmp     eax, 14
+        jae     .error
+
+        push    ecx edx
+        add     eax, 19
+        shl     eax, 9 ; #= physical address
+        cdq
+        mov     ecx, 512
+        mov     edi, [ebx + fs.partition_t.user_data]
+        add     edi, fs.fat12.partition_data_t.buffer
+        call    fs.read
+        pop     edx ecx
+
+        or      eax, eax
+        jnz     .error
+
+        ret     ; CF = 0
+
+  .error:
+        stc
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12._.notroot_next ;/////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
+        push    eax
+        mov     eax, [ebx + fs.partition_t.user_data]
+        add     eax, fs.fat12.partition_data_t.buffer + 512 - sizeof.fs.fat.dir_entry_t
+        cmp     edi, eax
+        pop     eax
+        jae     .next_sector
+
+        add     edi, sizeof.fs.fat.dir_entry_t
+        ret     ; CF = 0
+
+  .next_sector:
+        push    ecx
+        mov     ecx, [eax]
+        shl     ecx, 1
+        add     ecx, [ebx + fs.partition_t.user_data]
+        movzx   ecx, [fs.fat12.partition_data_t.fat + ecx]
+        and     ecx, 0x0fff
+        mov     [eax], ecx
+        pop     ecx
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12._.notroot_first ;////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
+        mov     eax, [eax]
+
+        cmp     eax, 2
+        jb      .error
+        cmp     eax, 2849
+        jae     .error
+
+        push    ecx edx
+        add     eax, 31
+        shl     eax, 9 ; #= physical address
+        cdq
+        mov     ecx, 512
+        mov     edi, [ebx + fs.partition_t.user_data]
+        add     edi, fs.fat12.partition_data_t.buffer
+        call    fs.read
+        pop     edx ecx
+
+        or      eax, eax
+        jnz     .error
+
+        ret     ; CF = 0
+
+  .error:
+        stc
         ret
 kendp

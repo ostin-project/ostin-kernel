@@ -21,10 +21,10 @@ iglobal
   ; in this table names must be in lowercase
   rootdirs:
     db 2, 'rd'
-    dd fs_OnRamdisk
+    dd fs_OnGenericQuery ; fs_OnRamdisk
     dd fs_NextRamdisk
     db 7, 'ramdisk'
-    dd fs_OnRamdisk
+    dd fs_OnGenericQuery ; fs_OnRamdisk
     dd fs_NextRamdisk
     db 2, 'fd'
     dd fs_OnFloppy
@@ -515,6 +515,62 @@ kendp
 ;< [image_of_eax] = image of eax
 ;< [image_of_ebx] = image of ebx
 ;-----------------------------------------------------------------------------------------------------------------------
+
+iglobal
+  align 4
+  ; blkdev.memory.device_data_t
+  static_test_ram_device_data:
+    ; data
+    dd RAMDISK ; offset
+    dd 2 * 80 * 18 * 512 ; length
+
+  align 4
+  ; blkdev.device_t
+  static_test_ram_device:
+    ; vftbl
+    dd blkdev.memory.read ; read
+    dd blkdev.memory.write ; write
+    ; name
+    db 'rd', 30 dup(0)
+    ; user_data
+    dd static_test_ram_device_data
+
+  align 4
+  ; fs.partition_t
+  static_test_ram_partition:
+    ; device
+    dd static_test_ram_device
+    ; range
+    dq 0 ; offset
+    dq 2 * 80 * 18 * 512 ; length
+    ; type
+    db FS_PARTITION_TYPE_FAT12
+    ; number
+    db 1
+    ; user_data
+    dd static_test_ram_partition_data
+endg
+
+uglobal
+  align 4
+  ; fs.fat12.partition_data_t
+  static_test_ram_partition_data:
+    rb sizeof.fs.fat12.partition_data_t
+endg
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs_OnGenericQuery ;///////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        cmp     [ebx + fs.query_t.function], 5
+        jne     fs_OnRamdisk
+
+        lea     edx, [ebx + fs.query_t.generic] ; ^= fs.get_file_info_query_params_t
+        mov     ebx, static_test_ram_partition ; ^= fs.partition_t
+        call    fs.fat12.get_file_info
+        mov     [esp + 4 + regs_context32_t.eax], eax
+        mov     [esp + 4 + regs_context32_t.ebx], ebx
+        ret
+kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs_OnRamdisk ;////////////////////////////////////////////////////////////////////////////////////////////////////
