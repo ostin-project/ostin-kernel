@@ -1,5 +1,5 @@
 ;;======================================================================================================================
-;;///// blkdev.inc ///////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
+;;///// fs.inc ///////////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
 ;;======================================================================================================================
 ;; (c) 2011 Ostin project <http://ostin.googlecode.com/>
 ;;======================================================================================================================
@@ -14,24 +14,23 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-BLKDEV_MAX_NAME_LEN = 32
+FS_PARTITION_TYPE_FAT12   = 1
+FS_PARTITION_TYPE_FAT16   = 2
+FS_PARTITION_TYPE_FAT32   = 3
+FS_PARTITION_TYPE_NTFS    = 4
+FS_PARTITION_TYPE_EXT2    = 5
+FS_PARTITION_TYPE_ISO9660 = 6
 
-struct blkdev.vftbl_t
-  read  dd ?
-  write dd ?
+struct fs.partition_t
+  device dd ? ; ^= blkdev.device_t
+  range  range64_t
+  type   db ? ; #= one of FS_PARTITION_TYPE_*
+  number db ?
 ends
 
-struct blkdev.device_t
-  vftbl     blkdev.vftbl_t
-  name      rb BLKDEV_MAX_NAME_LEN
-  user_data dd ? ; ^= blkdev.?.device_data_t
-ends
+include "fs.asm"
 
-match =1, KCONFIG_BLKDEV_FLOPPY
+match =1, KCONFIG_FS_FAT
 {
-include "floppy.asm"
-}
-match =1, KCONFIG_BLKDEV_MEMORY
-{
-include "memory.asm"
+include "fat/fat.inc"
 }

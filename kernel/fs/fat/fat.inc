@@ -16,5 +16,11 @@
 
 include "fat_common.asm"
 
+match =1, KCONFIG_FS_FAT12
+{
 include "fat12.asm"
+}
+match =1, KCONFIG_FS_FAT32
+{
 include "fat32.asm"
+}

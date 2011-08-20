@@ -37,6 +37,88 @@ iglobal
 endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
+kproc util.64bit.compare ;//////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> edx:eax #= first number
+;> [esp + 8]:[esp + 4] #= second number
+;-----------------------------------------------------------------------------------------------------------------------
+        cmp     edx, [esp + 8]
+        jne     @f
+
+        cmp     eax, [esp + 4]
+
+    @@: ret     8
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.read ;/////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> edi ^= buffer
+;> ecx #= buffer size (number of bytes to read)
+;> edx:eax #= offset
+;> ebx ^= fs.partition_info_t
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax #= error code
+;-----------------------------------------------------------------------------------------------------------------------
+        push    eax edx
+        add     eax, ecx
+        adc     edx, 0
+        push    dword[ebx + fs.partition_t.range.length + 4]
+        push    dword[ebx + fs.partition_t.range.length]
+        call    util.64bit.compare
+        pop     edx eax
+        ja      .overflow_error
+
+        push    ebx edx esi
+        add     eax, dword[ebx + fs.partition_t.range.offset]
+        adc     edx, dword[ebx + fs.partition_t.range.offset + 4]
+        mov     esi, [ebx + fs.partition_t.device]
+        mov     ebx, [esi + blkdev.device_t.user_data]
+        call    [esi + blkdev.device_t.vftbl.read]
+        pop     esi edx ebx
+
+        ret
+
+  .overflow_error:
+        mov     eax, -123 ; TODO: add error code
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.write ;////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> esi ^= buffer
+;> ecx #= buffer size (number of bytes to write)
+;> edx:eax #= offset
+;> ebx ^= fs.partition_info_t
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax #= error code
+;-----------------------------------------------------------------------------------------------------------------------
+        push    eax edx
+        add     eax, ecx
+        adc     edx, 0
+        push    dword[ebx + fs.partition_t.range.length + 4]
+        push    dword[ebx + fs.partition_t.range.length]
+        call    util.64bit.compare
+        pop     edx eax
+        ja      .overflow_error
+
+        push    ebx edx edi
+        add     eax, dword[ebx + fs.partition_t.range.offset]
+        adc     edx, dword[ebx + fs.partition_t.range.offset + 4]
+        mov     edi, [ebx + fs.partition_t.device]
+        mov     ebx, [edi + blkdev.device_t.user_data]
+        call    [edi + blkdev.device_t.vftbl.write]
+        pop     edi edx ebx
+
+        ret
+
+  .overflow_error:
+        mov     eax, -123 ; TODO: add error code
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
 kproc sysfn.file_system ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 58
