@@ -467,8 +467,6 @@ kproc check_label ;/////////////////////////////////////////////////////////////
         mov     [FDD_Track], 0
         mov     [FDD_Head], 0
         mov     [FDD_Sector], 1
-        call    SetUserInterrupts
-        call    FDDMotorON
         call    RecalibrateFDD
         cmp     [FDC_Status], 0
         jne     .fdc_status_error
@@ -1895,7 +1893,6 @@ kproc fs_FloppyWrite ;//////////////////////////////////////////////////////////
     @@: ; now ebx=start pos, ecx=end pos, both lie inside file
         sub     ecx, ebx
         jz      .ret
-        call    SetUserInterrupts
 
   .write_loop:
         ; skip unmodified sectors
@@ -1994,7 +1991,6 @@ kproc fs_FloppyWrite ;//////////////////////////////////////////////////////////
         jmp     .write_loop
 
   .done:
-        mov     [fdc_irq_func], fdc_null
         jmp     .ret
 kendp
 
@@ -2202,7 +2198,6 @@ kproc fs_FloppySetFileEnd ;/////////////////////////////////////////////////////
         call    save_flp_fat
         cmp     [FDC_Status], 0
         jnz     .device_err
-        call    SetUserInterrupts
         ; now zero new data
         ; edi = current cluster, [esp+12]=new size, [esp+4]=old size, [esp]=return code
 
@@ -2305,7 +2300,6 @@ kproc fs_FloppySetFileEnd ;/////////////////////////////////////////////////////
         add     eax, 31
         and     edi, 0x1ff
         jz      .truncate_done
-        call    SetUserInterrupts
         pusha
         call    read_chs_sector
         popa

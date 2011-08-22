@@ -133,8 +133,6 @@ kproc Init_FDC_DMA ;////////////////////////////////////////////////////////////
 ;? Initialize FDC DMA mode
 ;-----------------------------------------------------------------------------------------------------------------------
         pushad
-        mov     al, 0
-        out     0x0c, al ; reset the flip-flop to a known state.
         mov     al, 6 ; mask channel 2 so we can reprogram it.
         out     0x0a, al
         mov     al, [dmamode] ; 0x46 -> Read from floppy - 0x4a Write to floppy
@@ -210,7 +208,7 @@ kproc FDCDataInput ;////////////////////////////////////////////////////////////
         mov     [FDC_Status], FDC_Normal
         ; check if controller is ready to transfer data
         mov     dx, 0x3f4 ; (FDC status port)
-        xor     cx, cx ; set timeout counter
+        mov     ecx, 0x10000 ; set timeout counter
 
   .TestRS_1:
         in      al, dx ; read RS register
@@ -248,6 +246,7 @@ kproc SetUserInterrupts ;///////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Set FDC interrupt handler
 ;-----------------------------------------------------------------------------------------------------------------------
+        and     [FDD_IntFlag], 0
         mov     [fdc_irq_func], FDCInterrupt
         ret
 kendp
@@ -260,8 +259,6 @@ kproc WaitFDCInterrupt ;////////////////////////////////////////////////////////
         pusha
         ; reset controller error code
         mov     [FDC_Status], FDC_Normal
-        ; reset interrupt flag
-        mov     [FDD_IntFlag], 0
         ; reset timer tick counter
         mov     eax, [timer_ticks]
         mov     [TickCounter], eax
@@ -273,7 +270,7 @@ kproc WaitFDCInterrupt ;////////////////////////////////////////////////////////
         call    change_task
         mov     eax, [timer_ticks]
         sub     eax, [TickCounter]
-        cmp     eax, 50 ; 25 ; 5 ; wait for 5 ticks
+        cmp     eax, 3 * 18 ; 25 ; 5 ; wait for 5 ticks
 ;       jl      .TestRS_2
         jb      .TestRS_2
         ; timeout error
@@ -281,7 +278,20 @@ kproc WaitFDCInterrupt ;////////////////////////////////////////////////////////
         mov     [FDC_Status], FDC_TimeOut
 
   .End_7:
+        mov     [fdc_irq_func], fdc_null
         popa
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc FDCSenseInterrupt ;///////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        mov     al, 0x08
+        call    FDCDataOutput
+        call    FDCDataInput
+        mov     [FDC_ST0], al
+        call    FDCDataInput
+        mov     [FDC_C], al
         ret
 kendp
 
@@ -298,8 +308,6 @@ kproc FDDMotorON ;//////////////////////////////////////////////////////////////
         je      .fdd_motor_on
         ; reset FDC
         mov     dx, 0x3f2 ; motor control port
-        mov     al, 0
-        out     dx, al
         ; select and turn on disk motor
         cmp     [flp_number], 1
         jne     .FDDMotorON_B
@@ -400,7 +408,7 @@ kproc FDDMotorOFF ;/////////////////////////////////////////////////////////////
 
   .FDDMotorOFF_B:
         mov     dx, 0x3f2 ; motor control port
-        mov     al, 0x5 ; Floppy B
+        mov     al, 0xd ; Floppy B
         out     dx, al
         ret
 kendp
@@ -412,13 +420,22 @@ kproc RecalibrateFDD ;//////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         pusha
         call    save_timer_fdd_motor
+
+        call    FDDMotorON
+
+        call    SetUserInterrupts
+
         ; send "recalibrate" command
         mov     al, 0x07
         call    FDCDataOutput
         mov     al, 0
         call    FDCDataOutput
+
         ; wait for operation completion
         call    WaitFDCInterrupt
+
+        call    FDCSenseInterrupt
+
 ;       cmp     [FDC_Status], 0
 ;       je      .no_fdc_status_error
 ;       mov     [flp_status], 0
@@ -442,6 +459,11 @@ kproc SeekTrack ;///////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         pusha
         call    save_timer_fdd_motor
+
+        call    FDDMotorON
+
+        call    SetUserInterrupts
+
         ; send "seek" command
         mov     al, 0x0f
         call    FDCDataOutput
@@ -453,16 +475,15 @@ kproc SeekTrack ;///////////////////////////////////////////////////////////////
         mov     al, [FDD_Track]
         call    FDCDataOutput
         ; wait for operation to complete
+
         call    WaitFDCInterrupt
+
         cmp     [FDC_Status], FDC_Normal
         jne     .Exit
+
         ; save seek result
-        mov     al, 0x08
-        call    FDCDataOutput
-        call    FDCDataInput
-        mov     [FDC_ST0], al
-        call    FDCDataInput
-        mov     [FDC_C], al
+        call    FDCSenseInterrupt
+
         ; validate seek result
         ; seek complete?
         test    [FDC_ST0], 0100000b
@@ -492,6 +513,8 @@ kproc SeekTrack ;///////////////////////////////////////////////////////////////
         ret
 kendp
 
+xxx db 0
+
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc ReadSector ;//////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -507,13 +530,20 @@ kproc ReadSector ;//////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         pushad
         call    save_timer_fdd_motor
+
+        call    FDDMotorON
+
         ; set transfer speed to 500 KB/s
         mov     ax, 0
         mov     dx, 0x3f7
         out     dx, al
+
         ; initialise DMA channel
         mov     [dmamode], 0x46
         call    Init_FDC_DMA
+
+        call    SetUserInterrupts
+
         ; send "read data" command
         mov     al, 0xe6 ; reading in multi-track mode
         call    FDCDataOutput
@@ -534,12 +564,26 @@ kproc ReadSector ;//////////////////////////////////////////////////////////////
         call    FDCDataOutput
         mov     al, 0xff ; DTL value
         call    FDCDataOutput
+
         ; wait for operation completion
         call    WaitFDCInterrupt
+
         cmp     [FDC_Status], FDC_Normal
         jne     .Exit_1
+        mov     dx, 0x3f4 ; (FDC status port)
+        mov     ecx, 0x10000 ; set timeout counter
+    @@: in      al, dx ; read RS register
+        and     al, 0xc0 ; get bits 6 and 7
+        cmp     al, 0xc0 ; check bits 6 and 7
+        je      @f
+        loop    @b
+        mov     [FDC_Status], FDC_TimeOut
+        jmp     .Exit_1
+    @@:
+
         ; get operation status
         call    GetStatusInfo
+
         test    [FDC_ST0], 11011000b
         jnz     .Err_1
         mov     [FDC_Status], FDC_Normal
@@ -576,6 +620,8 @@ kproc ReadSectWithRetr ;////////////////////////////////////////////////////////
         ; reset read operation repeat counter
         mov     [ReadRepCounter], 0
 
+        call    SeekTrack
+
   .ReadSector_1:
         call    ReadSector
         cmp     [FDC_Status], 0
@@ -588,7 +634,6 @@ kproc ReadSectWithRetr ;////////////////////////////////////////////////////////
         jb      .ReadSector_1
         ; try recalibrating 3 times
         call    RecalibrateFDD
-        call    SeekTrack
         inc     [RecalRepCounter]
         cmp     [RecalRepCounter], 3
         jb      .TryAgain
@@ -619,13 +664,20 @@ kproc WriteSector ;/////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         pushad
         call    save_timer_fdd_motor
+
+        call    FDDMotorON
+
         ; set transfer speed to 500 KB/s
         mov     ax, 0
         mov     dx, 0x3f7
         out     dx, al
+
         ; initialize DMA channel
         mov     [dmamode], 0x4a
         call    Init_FDC_DMA
+
+        call    SetUserInterrupts
+
         ; send "write data" command
         mov     al, 0xc5 ; 0x45 ; writing in multi-track mode
         call    FDCDataOutput
@@ -646,8 +698,10 @@ kproc WriteSector ;/////////////////////////////////////////////////////////////
         call    FDCDataOutput
         mov     al, 0xff ; DTL value
         call    FDCDataOutput
+
         ; wait for operation completion
         call    WaitFDCInterrupt
+
         cmp     [FDC_Status], FDC_Normal
         jne     .Exit_3
         ; get operation status
@@ -687,6 +741,8 @@ kproc WriteSectWithRetr ;///////////////////////////////////////////////////////
         ; reset write operation repeat counter
         mov     [ReadRepCounter], 0
 
+        call    SeekTrack
+
   .WriteSector_1:
         call    WriteSector
         cmp     [FDC_Status], 0
@@ -699,7 +755,6 @@ kproc WriteSectWithRetr ;///////////////////////////////////////////////////////
         jb      .WriteSector_1
         ; try recalibrating 3 times
         call    RecalibrateFDD
-        call    SeekTrack
         inc     [RecalRepCounter]
         cmp     [RecalRepCounter], 3
         jb      .TryAgain_1

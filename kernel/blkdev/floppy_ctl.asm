@@ -46,6 +46,8 @@ kproc blkdev.floppy.ctl.perform_dma_transfer ;//////////////////////////////////
         mov     al, 0x46
         call    blkdev.floppy.ctl._.init_dma
 
+        call    blkdev.floppy.ctl._.prepare_for_interrupt
+
         ; send read/write command
         xchg    al, ah
         call    blkdev.floppy.ctl._.out_byte
@@ -100,15 +102,15 @@ kproc blkdev.floppy.ctl.seek ;//////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         call    blkdev.floppy.ctl._.select_drive
 
+        call    blkdev.floppy.ctl._.prepare_for_interrupt
+
         ; send "seek" command
         mov     al, 0x0f
         call    blkdev.floppy.ctl._.out_byte
-
         ; send head number
         mov     al, [ebx + blkdev.floppy.device_data_t.position.head]
         shl     al, 2
         call    blkdev.floppy.ctl._.out_byte
-
         ; send track number
         mov     al, [ebx + blkdev.floppy.device_data_t.position.cylinder]
         call    blkdev.floppy.ctl._.out_byte
@@ -118,25 +120,14 @@ kproc blkdev.floppy.ctl.seek ;//////////////////////////////////////////////////
         cmp     eax, FDC_Normal
         jne     .exit
 
-        ; save seek result
-        mov     al, 0x08
-        call    blkdev.floppy.ctl._.out_byte
-        call    blkdev.floppy.ctl._.in_byte
-        mov     [ebx + blkdev.floppy.device_data_t.status.st0], al
-        call    blkdev.floppy.ctl._.in_byte
-        mov     [ebx + blkdev.floppy.device_data_t.status.cylinder], al
-
-        ; validate seek result
-
+        call    blkdev.floppy.ctl._.sense_interrupt
         ; seek complete?
         test    [ebx + blkdev.floppy.device_data_t.status.st0], 0100000b
         je      .error
-
         ; specified track found?
         mov     al, [ebx + blkdev.floppy.device_data_t.status.cylinder]
         cmp     al, [ebx + blkdev.floppy.device_data_t.position.cylinder]
         jne     .error
-
         ; specified head found?
         mov     al, [ebx + blkdev.floppy.device_data_t.status.st0]
         and     al, 0100b
@@ -167,6 +158,8 @@ kproc blkdev.floppy.ctl.recalibrate ;///////////////////////////////////////////
         push    eax
         call    blkdev.floppy.ctl._.select_drive
 
+        call    blkdev.floppy.ctl._.prepare_for_interrupt
+
         ; send recalibrate command
         mov     al, 0x07
         call    blkdev.floppy.ctl._.out_byte
@@ -175,6 +168,8 @@ kproc blkdev.floppy.ctl.recalibrate ;///////////////////////////////////////////
 
         ; wait for operation completion
         call    blkdev.floppy.ctl._.wait_for_interrupt
+
+        call    blkdev.floppy.ctl._.sense_interrupt
 
         call    blkdev.floppy.ctl._.update_motor_timer
         pop     eax
@@ -211,20 +206,14 @@ kproc blkdev.floppy.ctl._.select_drive ;////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax ecx edx
 
-        mov     al, [ebx + blkdev.floppy.device_data_t.drive_number]
-        cmp     al, [blkdev.floppy.ctl._.data.last_drive_number]
-        jne     .reset_and_select
+        mov     cl, [ebx + blkdev.floppy.device_data_t.drive_number]
+        cmp     cl, [blkdev.floppy.ctl._.data.last_drive_number]
+        jne     .select_and_start_motor
         cmp     [ebx + blkdev.floppy.device_data_t.motor_timer], 0
         jne     .exit
 
-  .reset_and_select:
-        ; reset FDC
-        mov     cl, al
-        mov     dx, FLOPPY_CTL_DOR ; motor control port
-        mov     al, 0
-        out     dx, al
-
-        ; select drive, start motor, DMA
+  .select_and_start_motor:
+        mov     dx, FLOPPY_CTL_DOR
         mov     al, 00010000b
         shl     al, cl
         or      al, cl
@@ -235,11 +224,11 @@ kproc blkdev.floppy.ctl._.select_drive ;////////////////////////////////////////
         mov     ecx, [timer_ticks]
 
   .wait_for_motor:
-        ; wait for 0.5 sec
+        ; wait for ~3 sec
         call    change_task
         mov     eax, [timer_ticks]
         sub     eax, ecx
-        cmp     eax, 50
+        cmp     eax, 3 * 18
         jb      .wait_for_motor
 
   .exit:
@@ -257,8 +246,6 @@ kproc blkdev.floppy.ctl._.init_dma ;////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax
         xchg    al, ah
-        mov     al, 0
-        out     0x0c, al ; reset the flip-flop to a known state.
         mov     al, 6 ; mask channel 2 so we can reprogram it.
         out     0x0a, al
         xchg    al, ah
@@ -383,20 +370,41 @@ kproc blkdev.floppy.ctl._.get_status ;//////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
+kproc blkdev.floppy.ctl._.sense_interrupt ;/////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= blkdev.floppy.device_data_t
+;-----------------------------------------------------------------------------------------------------------------------
+        mov     al, 0x08
+        call    blkdev.floppy.ctl._.out_byte
+        call    blkdev.floppy.ctl._.in_byte
+        mov     [ebx + blkdev.floppy.device_data_t.status.st0], al
+        call    blkdev.floppy.ctl._.in_byte
+        mov     [ebx + blkdev.floppy.device_data_t.status.cylinder], al
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc blkdev.floppy.ctl._.prepare_for_interrupt ;///////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        ; reset interrupt flag
+        and     [blkdev.floppy.ctl._.data.interrupt_flag], 0
+        ; replace interrupt handler
+        mov     [fdc_irq_func], .raise_fdc_interrupt_flag
+        ret
+
+;-----------------------------------------------------------------------------------------------------------------------
+  .raise_fdc_interrupt_flag: ;::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+;-----------------------------------------------------------------------------------------------------------------------
+        inc     [blkdev.floppy.ctl._.data.interrupt_flag]
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
 kproc blkdev.floppy.ctl._.wait_for_interrupt ;//////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Wait for FDC interrupt
 ;-----------------------------------------------------------------------------------------------------------------------
         push    ecx
-        push    [fdc_irq_func]
-
-        pushfd
-        cli
-        ; reset interrupt flag
-        mov     [blkdev.floppy.ctl._.data.interrupt_flag], 0
-        ; replace interrupt handler
-        mov     [fdc_irq_func], .raise_fdc_interrupt_flag
-        popfd
 
         ; reset timer tick counter
         mov     ecx, [timer_ticks]
@@ -411,23 +419,17 @@ kproc blkdev.floppy.ctl._.wait_for_interrupt ;//////////////////////////////////
 
         call    change_task
 
-        ; check for timeout (50 ticks)
+        ; check for timeout (~3 sec)
         mov     eax, [timer_ticks]
         sub     eax, ecx
-        cmp     eax, 50
+        cmp     eax, 3 * 18
         jb      .check_flag
 
         ; timeout error
         mov     eax, FDC_TimeOut
 
   .exit:
-        pop     [fdc_irq_func]
+        mov     [fdc_irq_func], fdc_null
         pop     ecx
-        ret
-
-;-----------------------------------------------------------------------------------------------------------------------
-  .raise_fdc_interrupt_flag: ;::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-;-----------------------------------------------------------------------------------------------------------------------
-        mov     [blkdev.floppy.ctl._.data.interrupt_flag], 1
         ret
 kendp

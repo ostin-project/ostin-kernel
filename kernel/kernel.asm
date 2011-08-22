@@ -756,10 +756,6 @@ end if
         call    boot_log
         call    setmouse
 
-        ; STACK AND FDC
-        call    stack_init
-        call    fdc_init
-
         ; PALETTE FOR 320x200 and 640x480 16 col
         cmp     word[SCR_MODE], 0x12
         jne     no_pal_vga
@@ -937,6 +933,10 @@ end if
 
         sti
         call    change_task
+
+        ; STACK AND FDC
+        call    stack_init
+        call    fdc_init
 
         jmp     osloop
 

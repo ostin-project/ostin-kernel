@@ -197,18 +197,21 @@ align 16
         jnz     @f
         push    eax
         call    [fdc_irq_func]
+        mov     [check_idle_semaphore], 5
         pop     eax
 
     @@: cmp     al, 14
         jnz     @f
         push    eax
         call    [irq14_func]
+        mov     [check_idle_semaphore], 5
         pop     eax
 
     @@: cmp     al, 15
         jnz     @f
         push    eax
         call    [irq15_func]
+        mov     [check_idle_semaphore], 5
         pop     eax
 
     @@: mov     ebx, [irq_tab + eax * 4]
