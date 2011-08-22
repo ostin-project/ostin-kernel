@@ -34,10 +34,13 @@ struct blkdev.floppy.status_t
 ends
 
 struct blkdev.floppy.device_data_t
-  position     blkdev.floppy.chs_t
-  status       blkdev.floppy.status_t
-  drive_number db ?
-  motor_timer  dd ?
+  position           blkdev.floppy.chs_t
+  status             blkdev.floppy.status_t
+  drive_number       db ?
+  motor_timer        dd ?
+  bytes_per_sector   dw ?
+  sectors_per_track  dw ?
+  heads_per_cylinder dw ?
 ends
 
 iglobal
@@ -60,10 +63,18 @@ kproc blkdev.floppy.read ;//////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         or      edx, edx
         jnz     .overflow_error
-        test    eax, 511
+
+        push    ebp
+        movzx   ebp, [ebx + blkdev.floppy.device_data_t.bytes_per_sector]
+
+        dec     ebp
+
+        test    eax, ebp
         jnz     .alignment_error
-        test    ecx, 511
+        test    ecx, ebp
         jnz     .alignment_error
+
+        inc     ebp
 
         push    ecx esi
 
@@ -77,18 +88,16 @@ kproc blkdev.floppy.read ;//////////////////////////////////////////////////////
         jnz     .exit
 
         push    ecx
-        cmp     ecx, 512
-        jb      @f
-        mov     ecx, 512
-
-    @@: mov     esi, FDD_BUFF
-        rep     movsb
+        mov     ecx, ebp
+        shr     ecx, 2
+        mov     esi, FDD_BUFF
+        rep     movsd
         pop     ecx
 
         pop     eax
-        add     eax, 512
-        add     ecx, -512
-        jg      .next_sector
+        add     eax, ebp
+        sub     ecx, ebp
+        jnz     .next_sector
 
         xor     eax, eax
         push    eax
@@ -96,6 +105,7 @@ kproc blkdev.floppy.read ;//////////////////////////////////////////////////////
   .exit:
         add     esp, 4
         pop     esi ecx
+        pop     ebp
         ret
 
   .overflow_error:
@@ -104,6 +114,7 @@ kproc blkdev.floppy.read ;//////////////////////////////////////////////////////
 
   .alignment_error:
         mov     eax, -321 ; TODO: add error code
+        pop     ebp
         ret
 kendp
 
@@ -119,10 +130,18 @@ kproc blkdev.floppy.write ;/////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         or      edx, edx
         jnz     .overflow_error
-        test    eax, 511
+
+        push    ebp
+        movzx   ebp, [ebx + blkdev.floppy.device_data_t.bytes_per_sector]
+
+        dec     ebp
+
+        test    eax, ebp
         jnz     .alignment_error
-        test    ecx, 511
+        test    ecx, ebp
         jnz     .alignment_error
+
+        inc     ebp
 
         push    ecx edi
 
@@ -131,12 +150,10 @@ kproc blkdev.floppy.write ;/////////////////////////////////////////////////////
         call    blkdev.floppy._.calculate_chs
 
         push    ecx
-        cmp     ecx, 512
-        jb      @f
-        mov     ecx, 512
-
-    @@: mov     edi, FDD_BUFF
-        rep     movsb
+        mov     ecx, ebp
+        shr     ecx, 2
+        mov     edi, FDD_BUFF
+        rep     movsd
         pop     ecx
 
         mov     eax, blkdev.floppy._.write_sector
@@ -145,9 +162,9 @@ kproc blkdev.floppy.write ;/////////////////////////////////////////////////////
         jnz     .exit
 
         pop     eax
-        add     eax, 512
-        add     ecx, -512
-        jg      .next_sector
+        add     eax, ebp
+        sub     ecx, ebp
+        jnz     .next_sector
 
         xor     eax, eax
         push    eax
@@ -155,6 +172,7 @@ kproc blkdev.floppy.write ;/////////////////////////////////////////////////////
   .exit:
         add     esp, 4
         pop     edi ecx
+        pop     ebp
         ret
 
   .overflow_error:
@@ -163,6 +181,7 @@ kproc blkdev.floppy.write ;/////////////////////////////////////////////////////
 
   .alignment_error:
         mov     eax, -321 ; TODO: add error code
+        pop     ebp
         ret
 kendp
 
@@ -229,8 +248,8 @@ kproc blkdev.floppy._.perform_operation_with_retry ;////////////////////////////
         push    ecx
 
         call    ebp
-        cmp     eax, FDC_Normal
-        je      .exit
+        or      eax, eax ; FDC_Normal
+        jz      .exit
         cmp     eax, FDC_TimeOut
         je      .timeout_error
 
@@ -262,20 +281,20 @@ kproc blkdev.floppy._.calculate_chs ;///////////////////////////////////////////
 ;> ebx ^= blkdev.floppy.device_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax ecx edx
-        mov_s_  ecx, 18
-        shr     eax, 9 ; #= LBA
-        cdq
+
+        movzx   ecx, [ebx + blkdev.floppy.device_data_t.bytes_per_sector]
+        xor     edx, edx
+        div     ecx ; eax #= LBA
+        movzx   ecx, [ebx + blkdev.floppy.device_data_t.sectors_per_track]
+        xor     edx, edx
         div     ecx
         inc     edx
         mov     [ebx + blkdev.floppy.device_data_t.position.sector], dl
         xor     edx, edx
-        mov_s_  ecx, 2
+        movzx   ecx, [ebx + blkdev.floppy.device_data_t.heads_per_cylinder]
         div     ecx
         mov     [ebx + blkdev.floppy.device_data_t.position.cylinder], al
-        mov     [ebx + blkdev.floppy.device_data_t.position.head], 0
-        test    edx, edx
-        jz      .exit
-        inc     [ebx + blkdev.floppy.device_data_t.position.head]
+        mov     [ebx + blkdev.floppy.device_data_t.position.head], dl
 
   .exit:
         pop     edx ecx eax

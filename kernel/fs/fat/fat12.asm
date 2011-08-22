@@ -1224,7 +1224,7 @@ kproc fs_FloppyReadFolder ;/////////////////////////////////////////////////////
         add     esp, 262 * 2 + 4
         pop     ebp ecx edi edi
         or      ebx, -1
-        mov     eax, ERROR_FILE_NOT_FOUND
+        mov     eax, ERROR_DEVICE_FAIL
         ret
 
   .done:

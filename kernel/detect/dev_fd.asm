@@ -32,3 +32,10 @@ wait_cmos:
         jnz     wait_cmos
         in      al, 0x71
         mov     [DRIVE_DATA], al
+
+        or      al, al
+        jz      @f
+
+        stdcall enable_irq, 6
+
+    @@:

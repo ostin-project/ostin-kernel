@@ -39,10 +39,6 @@ kproc blkdev.memory.read ;//////////////////////////////////////////////////////
         lea     edx, [eax + ecx]
         cmp     edx, [ebx + blkdev.memory.device_data_t.data.length]
         ja      .overflow_error
-        test    eax, 511
-        jnz     .alignment_error
-        test    ecx, 511
-        jnz     .alignment_error
 
         push    esi edi
         mov     esi, [ebx + blkdev.memory.device_data_t.data.offset]
@@ -55,10 +51,6 @@ kproc blkdev.memory.read ;//////////////////////////////////////////////////////
 
   .overflow_error:
         mov     eax, -123 ; TODO: add error code
-        ret
-
-  .alignment_error:
-        mov     eax, -321 ; TODO: add error code
         ret
 kendp
 
@@ -77,10 +69,6 @@ kproc blkdev.memory.write ;/////////////////////////////////////////////////////
         lea     edx, [eax + ecx]
         cmp     edx, [ebx + blkdev.memory.device_data_t.data.length]
         ja      .overflow_error
-        test    eax, 511
-        jnz     .alignment_error
-        test    ecx, 511
-        jnz     .alignment_error
 
         push    esi edi
         mov     edi, [ebx + blkdev.memory.device_data_t.data.offset]
@@ -93,9 +81,5 @@ kproc blkdev.memory.write ;/////////////////////////////////////////////////////
 
   .overflow_error:
         mov     eax, -123 ; TODO: add error code
-        ret
-
-  .alignment_error:
-        mov     eax, -321 ; TODO: add error code
         ret
 kendp
