@@ -2353,7 +2353,6 @@ kproc fs.fat12.get_file_info ;//////////////////////////////////////////////////
         ret
 
   .file_not_found_error:
-        pop     edi
         mov     eax, ERROR_FILE_NOT_FOUND
         ret
 kendp
@@ -2634,6 +2633,7 @@ kproc fs.fat12._.find_file_lfn ;////////////////////////////////////////////////
 ;<   eax = directory cluster (0 for root)
 ;-----------------------------------------------------------------------------------------------------------------------
         push    esi edi
+
         push    0
         push    fs.fat12._.root_first
         push    fs.fat12._.root_next
@@ -2645,9 +2645,10 @@ kproc fs.fat12._.find_file_lfn ;////////////////////////////////////////////////
         jz      .found
 
   .continue:
-        test    byte[edi + 11], 0x10
+        test    byte[edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY
         jz      .not_found
-        movzx   eax, word[edi + 26] ; cluster
+
+        movzx   eax, [edi + fs.fat.dir_entry_t.start_cluster]
         mov     [esp + 8], eax
         mov     dword[esp + 4], fs.fat12._.notroot_first
         mov     dword[esp], fs.fat12._.notroot_next

@@ -27,10 +27,10 @@ iglobal
     dd fs_OnGenericQuery ; fs_OnRamdisk
     dd fs_NextRamdisk
     db 2, 'fd'
-    dd fs_OnFloppy
+    dd fs_OnGenericQuery2 ; fs_OnFloppy
     dd fs_NextFloppy
     db 10, 'floppydisk'
-    dd fs_OnFloppy
+    dd fs_OnGenericQuery2 ; fs_OnFloppy
     dd fs_NextFloppy
     db 3, 'hd0'
     dd fs_OnHd0
@@ -585,6 +585,73 @@ kproc fs_OnRamdisk ;////////////////////////////////////////////////////////////
 
         call    dword[fs_RamdiskServices + eax * 4]
 
+        mov     [esp + 4 + regs_context32_t.eax], eax
+        mov     [esp + 4 + regs_context32_t.ebx], ebx
+        ret
+kendp
+
+iglobal
+  align 4
+  ; blkdev.floppy.device_data_t
+  static_test_floppy_device_data:
+    ; position
+    db sizeof.blkdev.floppy.chs_t dup(0)
+    ; status
+    db sizeof.blkdev.floppy.status_t dup(0)
+    ; drive_number
+    db 0
+    ; motor_timer
+    dd 0
+    ; bytes_per_sector
+    dw 512
+    ; sectors_per_track
+    dw 18
+    ; heads_per_cylinder
+    dw 2
+
+  align 4
+  ; blkdev.device_t
+  static_test_floppy_device:
+    ; vftbl
+    dd blkdev.floppy.read ; read
+    dd blkdev.floppy.write ; write
+    ; name
+    db 'fd', 30 dup(0)
+    ; user_data
+    dd static_test_floppy_device_data
+
+  align 4
+  ; fs.partition_t
+  static_test_floppy_partition:
+    ; device
+    dd static_test_floppy_device
+    ; range
+    dq 0 ; offset
+    dq 2 * 80 * 18 * 512 ; length
+    ; type
+    db FS_PARTITION_TYPE_FAT12
+    ; number
+    db 1
+    ; user_data
+    dd static_test_floppy_partition_data
+endg
+
+uglobal
+  align 4
+  ; fs.fat12.partition_data_t
+  static_test_floppy_partition_data:
+    rb sizeof.fs.fat12.partition_data_t
+endg
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs_OnGenericQuery2 ;//////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        cmp     [ebx + fs.query_t.function], 5
+        jne     fs_OnFloppy
+
+        lea     edx, [ebx + fs.query_t.generic] ; ^= fs.get_file_info_query_params_t
+        mov     ebx, static_test_floppy_partition ; ^= fs.partition_t
+        call    fs.fat12.get_file_info
         mov     [esp + 4 + regs_context32_t.eax], eax
         mov     [esp + 4 + regs_context32_t.ebx], ebx
         ret

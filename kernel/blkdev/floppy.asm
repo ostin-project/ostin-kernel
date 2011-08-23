@@ -76,7 +76,7 @@ kproc blkdev.floppy.read ;//////////////////////////////////////////////////////
 
         inc     ebp
 
-        push    ecx esi
+        push    ecx esi edi
 
   .next_sector:
         push    eax
@@ -104,7 +104,7 @@ kproc blkdev.floppy.read ;//////////////////////////////////////////////////////
 
   .exit:
         add     esp, 4
-        pop     esi ecx
+        pop     edi esi ecx
         pop     ebp
         ret
 
@@ -143,7 +143,7 @@ kproc blkdev.floppy.write ;/////////////////////////////////////////////////////
 
         inc     ebp
 
-        push    ecx edi
+        push    ecx esi edi
 
   .next_sector:
         push    eax
@@ -171,7 +171,7 @@ kproc blkdev.floppy.write ;/////////////////////////////////////////////////////
 
   .exit:
         add     esp, 4
-        pop     edi ecx
+        pop     edi esi ecx
         pop     ebp
         ret
 
@@ -249,9 +249,9 @@ kproc blkdev.floppy._.perform_operation_with_retry ;////////////////////////////
 
         call    ebp
         or      eax, eax ; FDC_Normal
-        jz      .exit
+        jz      .free_stack_and_exit
         cmp     eax, FDC_TimeOut
-        je      .timeout_error
+        je      .free_stack_and_exit
 
         pop     ecx
         dec     ecx
@@ -266,7 +266,7 @@ kproc blkdev.floppy._.perform_operation_with_retry ;////////////////////////////
         mov     eax, -123 ; TODO: add error code
         jmp     .exit
 
-  .timeout_error:
+  .free_stack_and_exit:
         add     esp, 8
 
   .exit:
@@ -286,7 +286,6 @@ kproc blkdev.floppy._.calculate_chs ;///////////////////////////////////////////
         xor     edx, edx
         div     ecx ; eax #= LBA
         movzx   ecx, [ebx + blkdev.floppy.device_data_t.sectors_per_track]
-        xor     edx, edx
         div     ecx
         inc     edx
         mov     [ebx + blkdev.floppy.device_data_t.position.sector], dl

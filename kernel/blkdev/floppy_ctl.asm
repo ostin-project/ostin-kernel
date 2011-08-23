@@ -32,7 +32,7 @@ kproc blkdev.floppy.ctl.perform_dma_transfer ;//////////////////////////////////
 ;< eax #= error code
 ;< FDD_DataBuffer ^= sector content (on success)
 ;-----------------------------------------------------------------------------------------------------------------------
-        push    edx
+        push    eax edx
         call    blkdev.floppy.ctl._.select_drive
 
         xchg    al, ah
@@ -76,7 +76,7 @@ kproc blkdev.floppy.ctl.perform_dma_transfer ;//////////////////////////////////
 
         ; get operation status
         call    blkdev.floppy.ctl._.get_status
-        mov     al, [esp + regs_context32_t.ah]
+        mov     al, [esp + 4 + 1] ; ah
         test    [ebx + blkdev.floppy.device_data_t.status.st0], al
         jnz     .error
         mov     eax, FDC_Normal
@@ -88,6 +88,7 @@ kproc blkdev.floppy.ctl.perform_dma_transfer ;//////////////////////////////////
   .exit:
         call    blkdev.floppy.ctl._.update_motor_timer
         pop     edx
+        add     esp, 4
         ret
 kendp
 
@@ -219,6 +220,8 @@ kproc blkdev.floppy.ctl._.select_drive ;////////////////////////////////////////
         or      al, cl
         or      al, 00001100b
         out     dx, al
+
+        mov     [blkdev.floppy.ctl._.data.last_drive_number], cl
 
         ; reset timer tick counter
         mov     ecx, [timer_ticks]

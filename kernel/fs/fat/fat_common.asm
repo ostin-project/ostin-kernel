@@ -20,6 +20,16 @@
 ;;///// public functions ///////////////////////////////////////////////////////////////////////////////////////////////
 ;;======================================================================================================================
 
+FS_FAT_ATTR_READ_ONLY = 00000001b ; 0x01
+FS_FAT_ATTR_HIDDEN    = 00000010b ; 0x02
+FS_FAT_ATTR_SYSTEM    = 00000100b ; 0x04
+FS_FAT_ATTR_VOLUME_ID = 00001000b ; 0x08
+FS_FAT_ATTR_DIRECTORY = 00010000b ; 0x10
+FS_FAT_ATTR_ARCHIVE   = 00100000b ; 0x20
+FS_FAT_ATTR_LONG_NAME = 00001111b ; 0x0f
+
+FS_FAT_ATTR_LONG_NAME_MASK = 00111111b ; 0x3f
+
 struct fs.fat.dir_entry_t
   name               db 11 dup(?)
   attributes         db ?
@@ -49,7 +59,7 @@ ends
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs.fat.get_name ;/////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> edi ^= FAT entry
+;> edi ^= fs.fat.dir_entry_t or fs.fat.lfn_dir_entry_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< CF = 1
 ;<   no valid entry
@@ -68,17 +78,17 @@ kproc fs.fat.get_name ;/////////////////////////////////////////////////////////
         stc
         ret
 
-    @@: cmp     byte[edi + 11], 0x0f
+    @@: cmp     [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_LONG_NAME
         jz      .longname
-        test    byte[edi + 11], 8
+        test    [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_VOLUME_ID
         jnz     .no
         push    ecx
         push    edi ebp
         test    byte[ebp - 4], 1
         jnz     .unicode_short
 
-        mov     eax, [edi]
-        mov     ecx, [edi + 4]
+        mov     eax, dword[edi + fs.fat.dir_entry_t.name]
+        mov     ecx, dword[edi + fs.fat.dir_entry_t.name + 4]
         mov     [ebp], eax
         mov     [ebp + 4], ecx
 
@@ -87,7 +97,7 @@ kproc fs.fat.get_name ;/////////////////////////////////////////////////////////
     @@: cmp     byte[ebp + ecx - 1], ' '
         loope   @b
 
-        mov     eax, [edi + 8]
+        mov     eax, dword[edi + fs.fat.dir_entry_t.name + 8]
         cmp     al, ' '
         je      .done
         shl     eax, 8
@@ -112,7 +122,7 @@ kproc fs.fat.get_name ;/////////////////////////////////////////////////////////
         mov     ecx, 8
         push    ecx
 
-    @@: mov     al, [edi]
+    @@: mov     al, [edi + fs.fat.dir_entry_t.name]
         inc     edi
         call    ansi2uni_char
         mov     [ebp], ax
@@ -133,7 +143,7 @@ kproc fs.fat.get_name ;/////////////////////////////////////////////////////////
         mov     ecx, 3
         push    ecx
 
-    @@: mov     al, [edi]
+    @@: mov     al, [edi + fs.fat.dir_entry_t.name]
         inc     edi
         call    ansi2uni_char
         mov     [ebp], ax
@@ -156,7 +166,7 @@ kproc fs.fat.get_name ;/////////////////////////////////////////////////////////
 
   .longname:
         ; LFN
-        mov     al, [edi]
+        mov     al, [edi + fs.fat.lfn_dir_entry_t.sequence_number]
         and     eax, 0x3f
         dec     eax
         cmp     al, 20
@@ -164,25 +174,25 @@ kproc fs.fat.get_name ;/////////////////////////////////////////////////////////
         mov     word[ebp + 260 * 2], 0 ; force null-terminating for orphans
         imul    eax, 13 * 2
         add     ebp, eax
-        test    byte[edi], 0x40
+        test    [edi + fs.fat.lfn_dir_entry_t.sequence_number], 0x40
         jz      @f
         mov     word[ebp + 13 * 2], 0
 
     @@: push    eax
         ; now copy name from edi to ebp ...
-        mov     eax, [edi + 1]
+        mov     eax, dword[edi + fs.fat.lfn_dir_entry_t.name.part_1]
         mov     [ebp], eax ; symbols 1,2
-        mov     eax, [edi + 5]
+        mov     eax, dword[edi + fs.fat.lfn_dir_entry_t.name.part_1 + 2 * 2]
         mov     [ebp + 4], eax ; 3,4
-        mov     eax, [edi + 9]
+        mov     eax, dword[edi + fs.fat.lfn_dir_entry_t.name.part_1 + 2 * 4]
         mov     [ebp + 8], ax ; 5
-        mov     eax, [edi + 14]
+        mov     eax, dword[edi + fs.fat.lfn_dir_entry_t.name.part_2]
         mov     [ebp + 10], eax ; 6,7
-        mov     eax, [edi + 18]
+        mov     eax, dword[edi + fs.fat.lfn_dir_entry_t.name.part_2 + 2 * 2]
         mov     [ebp + 14], eax ; 8,9
-        mov     eax, [edi + 22]
+        mov     eax, dword[edi + fs.fat.lfn_dir_entry_t.name.part_2 + 2 * 4]
         mov     [ebp + 18], eax ; 10,11
-        mov     eax, [edi + 28]
+        mov     eax, dword[edi + fs.fat.lfn_dir_entry_t.name.part_3]
         mov     [ebp + 22], eax ; 12,13
         ; ... done
         pop     eax
@@ -289,28 +299,33 @@ kproc fs.fat.bdfe_to_fat_entry ;////////////////////////////////////////////////
 ;# destroys eax
 ;# attributes byte
 ;-----------------------------------------------------------------------------------------------------------------------
-        test    byte[edi + 11], 8 ; volume label?
+        test    byte[edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_VOLUME_ID
         jnz     @f
         mov     al, [edx]
         and     al, 0x27
-        and     byte[edi + 11], 0x10
-        or      byte[edi + 11], al
+        and     [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY
+        or      [edi + fs.fat.dir_entry_t.attributes], al
 
-    @@: mov     eax, [edx + 8]
+    @@: mov     eax, [edx + fs.file_info_t.created_at.time]
         call    fs.fat._.bdfe_time_to_fat_time
-        mov     [edi + 14], ax ; creation time
-        mov     eax, [edx + 12]
+        mov     [edi + fs.fat.dir_entry_t.created_at.time], ax
+
+        mov     eax, [edx + fs.file_info_t.created_at.date]
         call    fs.fat._.bdfe_date_to_fat_date
-        mov     [edi + 16], ax ; creation date
-        mov     eax, [edx + 20]
+        mov     [edi + fs.fat.dir_entry_t.created_at.date], ax
+
+        mov     eax, [edx + fs.file_info_t.accessed_at.date]
         call    fs.fat._.bdfe_date_to_fat_date
-        mov     [edi + 18], ax ; last access date
-        mov     eax, [edx + 24]
+        mov     [edi + fs.fat.dir_entry_t.accessed_at.date], ax
+
+        mov     eax, [edx + fs.file_info_t.modified_at.time]
         call    fs.fat._.bdfe_time_to_fat_time
-        mov     [edi + 22], ax ; last write time
-        mov     eax, [edx + 28]
+        mov     [edi + fs.fat.dir_entry_t.modified_at.time], ax
+
+        mov     eax, [edx + fs.file_info_t.modified_at.date]
         call    fs.fat._.bdfe_date_to_fat_date
-        mov     [edi + 24], ax ; last write date
+        mov     [edi + fs.fat.dir_entry_t.modified_at.date], ax
+
         ret
 kendp
 
@@ -488,7 +503,6 @@ kproc fs.fat.gen_short_name ;///////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< buffer filled
 ;-----------------------------------------------------------------------------------------------------------------------
-
         pushad
         mov     eax, '    '
         push    edi
@@ -601,10 +615,10 @@ kendp
 kproc fs.fat.update_datetime ;//////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         call    fs.fat.get_time_for_file
-        mov     [edi + 22], ax ; last write time
+        mov     [edi + fs.fat.dir_entry_t.modified_at.time], ax
         call    fs.fat.get_date_for_file
-        mov     [edi + 24], ax ; last write date
-        mov     [edi + 18], ax ; last access date
+        mov     [edi + fs.fat.dir_entry_t.modified_at.date], ax
+        mov     [edi + fs.fat.dir_entry_t.accessed_at.date], ax
         ret
 kendp
 

@@ -38,6 +38,8 @@ kproc fdc_init ;////////////////////////////////////////////////////////////////
 
         call    fdc_reset
 
+        or      [blkdev.floppy.ctl._.data.last_drive_number], -1
+
         ret
 kendp
 
