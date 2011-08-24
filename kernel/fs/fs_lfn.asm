@@ -549,6 +549,18 @@ iglobal
     db 1
     ; user_data
     dd static_test_ram_partition_data
+
+  jump_table fs.fat12, services, 0, \
+    -, \
+    read_directory, \
+    -, \
+    -, \
+    -, \
+    get_file_info, \
+    -, \
+    -, \
+    -, \
+    -
 endg
 
 uglobal
@@ -561,12 +573,14 @@ endg
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs_OnGenericQuery ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     [ebx + fs.query_t.function], 5
-        jne     fs_OnRamdisk
+        mov     eax, [ebx + fs.query_t.function]
+        mov     eax, [fs.fat12.services + eax * 4]
+        or      eax, eax
+        jz      fs_OnRamdisk
 
         lea     edx, [ebx + fs.query_t.generic] ; ^= fs.get_file_info_query_params_t
         mov     ebx, static_test_ram_partition ; ^= fs.partition_t
-        call    fs.fat12.get_file_info
+        call    eax
         mov     [esp + 4 + regs_context32_t.eax], eax
         mov     [esp + 4 + regs_context32_t.ebx], ebx
         ret
@@ -646,12 +660,14 @@ endg
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs_OnGenericQuery2 ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     [ebx + fs.query_t.function], 5
-        jne     fs_OnFloppy
+        mov     eax, [ebx + fs.query_t.function]
+        mov     eax, [fs.fat12.services + eax * 4]
+        or      eax, eax
+        jz      fs_OnRamdisk
 
         lea     edx, [ebx + fs.query_t.generic] ; ^= fs.get_file_info_query_params_t
         mov     ebx, static_test_floppy_partition ; ^= fs.partition_t
-        call    fs.fat12.get_file_info
+        call    eax
         mov     [esp + 4 + regs_context32_t.eax], eax
         mov     [esp + 4 + regs_context32_t.ebx], ebx
         ret

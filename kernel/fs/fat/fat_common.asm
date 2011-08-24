@@ -70,16 +70,16 @@ kproc fs.fat.get_name ;/////////////////////////////////////////////////////////
 ;# destroys eax
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     byte[edi], 0
-        jz      .no
+        je      .no
         cmp     byte[edi], 0xe5
-        jnz     @f
+        jne     @f
 
   .no:
         stc
         ret
 
     @@: cmp     [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_LONG_NAME
-        jz      .longname
+        je      .longname
         test    [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_VOLUME_ID
         jnz     .no
         push    ecx

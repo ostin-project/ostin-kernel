@@ -1094,6 +1094,142 @@ kproc fs_FloppyRead ;///////////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12.read_directory ;/////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> esi ^= path
+;> ebp ^= filename
+;> edx ^= fs.read_directory_query_params_t
+;> ebx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
+        call    fs.fat12._.read_fat
+        or      eax, eax
+        jnz     .device_error
+
+        cmp     byte[esi], 0
+        je      .root_directory
+
+        call    fs.fat12._.find_file_lfn
+        jc      .file_not_found_error
+
+        ; do not allow reading files
+        test    [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY
+        jz      .access_denied_error
+
+        movzx   eax, [edi + fs.fat.dir_entry_t.start_cluster]
+        add     eax, 31
+        push    eax
+        push    0
+        jmp     .prepare_header
+
+  .root_directory:
+        push    19
+        push    14
+
+  .prepare_header:
+        xor     eax, eax
+        mov     ecx, sizeof.fs.file_info_header_t / 4
+        mov     edi, [edx + fs.read_directory_query_params_t.buffer_ptr]
+        rep     stosd
+
+        sub     esp, 262 * 2 ; reserve space for LFN
+        mov     ebp, esp
+
+        push    [edx + fs.read_directory_query_params_t.flags] ; for fs.fat.get_name: read ANSI/UNICODE names
+        push    [edx + fs.read_directory_query_params_t.start_block]
+        push    0 ; LFN indicator
+
+        mov     ecx, [edx + fs.read_directory_query_params_t.count]
+        lea     edx, [edi - sizeof.fs.file_info_header_t]
+        mov     esi, edi ; ^= fs.file_info_t
+
+        mov     [edx + fs.file_info_header_t.version], 1
+
+  .read_next_sector:
+        mov     eax, [esp + 12 + 262 * 2 + 4]
+        call    fs.fat12._.read_sector
+        jnz     .error
+
+  .get_entry_name:
+        cmp     byte[esp], 0
+        jne     .do_bdfe
+
+        call    fs.fat.get_name
+        jc      .move_to_next_entry
+
+        cmp     [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_LONG_NAME
+        jne     .do_bdfe
+
+        mov     byte[esp], 1
+        jmp     .move_to_next_entry
+
+  .do_bdfe:
+        and     byte[esp], 0
+
+        inc     [edx + fs.file_info_header_t.files_count] ; new file found
+        dec     dword[esp + 4]
+        jns     .move_to_next_entry
+        dec     ecx
+        js      .move_to_next_entry
+
+        inc     [edx + fs.file_info_header_t.files_read] ; new file block copied
+        call    fs.fat.fat_entry_to_bdfe
+
+  .move_to_next_entry:
+        mov     eax, [ebx + fs.partition_t.user_data]
+        add     eax, fs.fat12.partition_data_t.buffer + 512
+        add     edi, sizeof.fs.fat.dir_entry_t
+        cmp     edi, eax
+        jb      .get_entry_name
+
+        inc     dword[esp + 12 + 262 * 2 + 4]
+        dec     dword[esp + 12 + 262 * 2]
+        jz      .done ; end of root directory
+        jns     .read_next_sector ; more sectors in root directory are available
+
+        ; read next sector from FAT
+        push    ebp
+        mov     ebp, [ebx + fs.partition_t.user_data]
+        mov     eax, [esp + 4 + 12 + 262 * 2 + 4]
+        movzx   eax, [ebp + fs.fat12.partition_data_t.fat + (eax - 31 - 1) * 2]
+        pop     ebp
+        and     eax, 0x0fff
+        cmp     eax, 0x0ff8
+        jae     .done ; end of ordinary directory
+
+        add     eax, 31
+        mov     [esp + 12 + 262 * 2 + 4], eax
+        and     dword[esp + 12 + 262 * 2], 0
+        jmp     .read_next_sector
+
+  .done:
+        add     esp, 12 + 262 * 2 + 8
+
+        mov     ebx, [edx + fs.file_info_header_t.files_read]
+        xor     eax, eax
+        dec     ecx
+        js      @f
+        mov     al, ERROR_END_OF_FILE
+
+    @@: ret
+
+  .error:
+        add     esp, 12 + 262 * 2 + 8
+        or      ebx, -1
+
+  .device_error:
+        mov     eax, ERROR_DEVICE_FAIL
+        ret
+
+  .file_not_found_error:
+        mov     eax, ERROR_FILE_NOT_FOUND
+        ret
+
+  .access_denied_error:
+        mov     eax, ERROR_ACCESS_DENIED
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
 kproc fs_FloppyReadFolder ;/////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? LFN variant for reading floppy folders
@@ -2323,6 +2459,8 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs.fat12.get_file_info ;//////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
+;> esi ^= path
+;> ebp ^= filename
 ;> edx ^= fs.get_file_info_query_params_t
 ;> ebx ^= fs.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -2557,11 +2695,7 @@ kproc fs.fat12._.check_partition_label ;////////////////////////////////////////
         push    ecx esi edi
 
         xor     eax, eax
-        cdq
-        mov     ecx, 512
-        lea     edi, [ebp + fs.fat12.partition_data_t.buffer]
-        call    fs.read
-        or      eax, eax
+        call    fs.fat12._.read_sector
         jnz     .exit
 
         lea     esi, [ebp + fs.fat12.partition_data_t.label]
@@ -2624,13 +2758,14 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs.fat12._.find_file_lfn ;////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> esi + ebp pointer to name
+;> esi ^= path
+;> ebp ^= filename
 ;> ebx ^= fs.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< CF = 1 - file not found
 ;< CF = 0,
-;<   edi = pointer to direntry
-;<   eax = directory cluster (0 for root)
+;<   edi ^= fs.fat.dir_entry_t
+;<   eax #= directory cluster (0 for root)
 ;-----------------------------------------------------------------------------------------------------------------------
         push    esi edi
 
@@ -2707,20 +2842,12 @@ kproc fs.fat12._.root_first ;///////////////////////////////////////////////////
         cmp     eax, 14
         jae     .error
 
-        push    ecx edx
         add     eax, 19
-        shl     eax, 9 ; #= physical address
-        cdq
-        mov     ecx, 512
-        mov     edi, [ebx + fs.partition_t.user_data]
-        add     edi, fs.fat12.partition_data_t.buffer
-        call    fs.read
-        pop     edx ecx
-
-        or      eax, eax
+        call    fs.fat12._.read_sector
         jnz     .error
 
-        ret     ; CF = 0
+        clc
+        ret
 
   .error:
         stc
@@ -2765,22 +2892,38 @@ kproc fs.fat12._.notroot_first ;////////////////////////////////////////////////
         cmp     eax, 2849
         jae     .error
 
-        push    ecx edx
         add     eax, 31
+        call    fs.fat12._.read_sector
+        jnz     .error
+
+        clc
+        ret
+
+  .error:
+        stc
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12._.read_sector ;//////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> eax #= sector number
+;> ebx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax #= error code
+;< edi ^= buffer
+;< eflags[zf] = 1 (ok) or 0 (error)
+;-----------------------------------------------------------------------------------------------------------------------
+        push    ecx edx
+
         shl     eax, 9 ; #= physical address
         cdq
         mov     ecx, 512
         mov     edi, [ebx + fs.partition_t.user_data]
         add     edi, fs.fat12.partition_data_t.buffer
         call    fs.read
-        pop     edx ecx
 
         or      eax, eax
-        jnz     .error
-
-        ret     ; CF = 0
-
-  .error:
-        stc
+        pop     edx ecx
         ret
 kendp
