@@ -551,7 +551,7 @@ iglobal
     dd static_test_ram_partition_data
 
   jump_table fs.fat12, services, 0, \
-    -, \
+    read_file, \
     read_directory, \
     -, \
     -, \
@@ -578,7 +578,7 @@ kproc fs_OnGenericQuery ;///////////////////////////////////////////////////////
         or      eax, eax
         jz      fs_OnRamdisk
 
-        lea     edx, [ebx + fs.query_t.generic] ; ^= fs.get_file_info_query_params_t
+        lea     edx, [ebx + fs.query_t.generic] ; ^= fs.?_query_params_t
         mov     ebx, static_test_ram_partition ; ^= fs.partition_t
         call    eax
         mov     [esp + 4 + regs_context32_t.eax], eax
@@ -663,9 +663,9 @@ kproc fs_OnGenericQuery2 ;//////////////////////////////////////////////////////
         mov     eax, [ebx + fs.query_t.function]
         mov     eax, [fs.fat12.services + eax * 4]
         or      eax, eax
-        jz      fs_OnRamdisk
+        jz      fs_OnFloppy
 
-        lea     edx, [ebx + fs.query_t.generic] ; ^= fs.get_file_info_query_params_t
+        lea     edx, [ebx + fs.query_t.generic] ; ^= fs.?_query_params_t
         mov     ebx, static_test_floppy_partition ; ^= fs.partition_t
         call    eax
         mov     [esp + 4 + regs_context32_t.eax], eax

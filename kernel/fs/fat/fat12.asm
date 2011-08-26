@@ -912,7 +912,7 @@ kproc flp_notroot_extend_dir ;//////////////////////////////////////////////////
         sub     edi, FLOPPY_FAT
         shr     edi, 1
         dec     edi
-        mov     eax, [esp + 28]
+        mov     eax, [esp + regs_context32_t.eax]
         mov     ecx, [eax]
         mov     [FLOPPY_FAT + ecx * 2], di
         mov     [eax], edi
@@ -983,6 +983,118 @@ kproc fd_find_lfn ;/////////////////////////////////////////////////////////////
 
     @@: add     esp, 16 ; CF=0
         pop     esi
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12.read_file ;//////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> esi ^= path to file
+;> edx ^= fs.read_file_query_params_t
+;> ebx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax #= error code
+;< ebx #= bytes read (on success)
+;-----------------------------------------------------------------------------------------------------------------------
+        cmp     byte[esi], 0
+        je      .access_denied_error
+
+        cmp     dword[edx + fs.read_file_query_params_t.range.offset + 4], 0
+        jne     .end_of_file_error
+
+        call    fs.fat12._.read_fat
+        or      eax, eax
+        jnz     .device_error
+
+        call    fs.fat12._.find_file_lfn
+        jc      .file_not_found_error
+
+        ; do not allow reading directories
+        test    [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY
+        jnz     .access_denied_error
+
+        mov     ebp, dword[edx + fs.read_file_query_params_t.range.offset]
+        mov     eax, [edi + fs.fat.dir_entry_t.size]
+        cmp     ebp, eax
+        jae     .end_of_file_error
+
+        mov     ecx, [edx + fs.read_file_query_params_t.range.length]
+        sub     eax, ebp
+        cmp     ecx, eax
+        jbe     @f
+        mov     ecx, eax
+
+    @@: movzx   esi, [edi + fs.fat.dir_entry_t.start_cluster]
+        mov     edx, [edx + fs.read_file_query_params_t.buffer_ptr]
+        push    edx
+
+  .read_next_sector:
+        jecxz   .done
+
+        cmp     esi, 2
+        jb      .end_of_file_error_in_loop
+        cmp     esi, 0x0ff8
+        jae     .end_of_file_error_in_loop
+
+        sub     ebp, 512
+        jae     .skip_sector
+
+        lea     eax, [esi + 31]
+        call    fs.fat12._.read_sector
+        jnz     .device_error_in_loop
+
+        lea     eax, [edi + 512 + ebp]
+        neg     ebp
+        push    ebx ecx
+        cmp     ecx, ebp
+        jbe     @f
+        mov     ecx, ebp
+
+    @@: mov     ebx, edx
+        call    memmove
+        add     edx, ecx
+        sub     [esp], ecx
+        pop     ecx ebx
+
+        xor     ebp, ebp
+
+  .skip_sector:
+        mov     eax, [ebx + fs.partition_t.user_data]
+        movzx   esi, [eax + fs.fat12.partition_data_t.fat + esi * 2]
+        jmp     .read_next_sector
+
+  .done:
+        mov     ebx, edx
+        pop     edx
+        sub     ebx, edx
+
+        xor     eax, eax ; ERROR_SUCCESS
+        ret
+
+  .access_denied_error:
+        mov     eax, ERROR_ACCESS_DENIED
+        or      ebx, -1
+        ret
+
+  .end_of_file_error_in_loop:
+        add     esp, 4
+
+  .end_of_file_error:
+        mov     eax, ERROR_END_OF_FILE
+        or      ebx, -1
+        ret
+
+  .device_error_in_loop:
+        add     esp, 4
+
+  .device_error:
+        mov     eax, ERROR_DEVICE_FAIL
+        or      ebx, -1
+        ret
+
+  .file_not_found_error:
+        mov     eax, ERROR_FILE_NOT_FOUND
+        or      ebx, -1
         ret
 kendp
 
@@ -1096,8 +1208,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs.fat12.read_directory ;/////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> esi ^= path
-;> ebp ^= filename
+;> esi ^= path to directory
 ;> edx ^= fs.read_directory_query_params_t
 ;> ebx ^= fs.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -1407,9 +1518,9 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
         pushad
         xor     edi, edi
         push    esi
-        test    ebp, ebp
-        jz      @f
-        mov     esi, ebp
+;///        test    ebp, ebp
+;///        jz      @f
+;///        mov     esi, ebp
 
     @@: lodsb
         test    al, al
@@ -1422,8 +1533,8 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
     @@: pop     esi
         test    edi, edi
         jnz     .noroot
-        test    ebp, ebp
-        jnz     .hasebp
+;///        test    ebp, ebp
+;///        jnz     .hasebp
 
         call    read_flp_root
         cmp     [FDC_Status], 0
@@ -1439,16 +1550,16 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
         push    flp_rootmem_next
         jmp     .common1
 
-  .hasebp:
-        mov     eax, ERROR_ACCESS_DENIED
-        cmp     byte[ebp], 0
-        jz      .ret1
-        push    ebp
-        xor     ebp, ebp
-        call    fd_find_lfn
-        pop     esi
-        jc      .notfound0
-        jmp     .common0
+;///  .hasebp:
+;///        mov     eax, ERROR_ACCESS_DENIED
+;///        cmp     byte[ebp], 0
+;///        jz      .ret1
+;///        push    ebp
+;///        xor     ebp, ebp
+;///        call    fd_find_lfn
+;///        pop     esi
+;///        jc      .notfound0
+;///        jmp     .common0
 
   .noroot:
         mov     eax, ERROR_ACCESS_DENIED
@@ -1466,7 +1577,7 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
         mov     eax, ERROR_FILE_NOT_FOUND
 
   .ret1:
-        mov     [esp + 28], eax
+        mov     [esp + regs_context32_t.eax], eax
         popad
         xor     ebx, ebx
         ret
@@ -1474,10 +1585,10 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
     @@: inc     esi
 
   .common0:
-        test    byte[edi + 11], 0x10 ; must be directory
+        test    [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY ; must be directory
         mov     eax, ERROR_ACCESS_DENIED
         jz      .ret1
-        movzx   ebp, word[edi + 26] ; ebp=cluster
+        movzx   ebp, [edi + fs.fat.dir_entry_t.start_cluster] ; ebp=cluster
         mov     eax, ERROR_FAT_TABLE
         cmp     ebp, 2
         jb      .ret1
@@ -1496,7 +1607,7 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
         call    fs.fat.find_long_name
         jc      .notfound
         ; found
-        test    byte[edi + 11], 0x10
+        test    [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY
         jz      .exists_file
         ; found directory; if we are creating directory, return OK,
         ;                  if we are creating file, say "access denied"
@@ -1524,8 +1635,8 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
     @@: ; delete FAT chain
         push    edi
         xor     eax, eax
-        mov     dword[edi + 28], eax ; zero size
-        xchg    ax, word[edi + 26] ; start cluster
+        mov     [edi + fs.fat.dir_entry_t.size], eax ; zero size
+        xchg    ax, [edi + fs.fat.dir_entry_t.start_cluster] ; start cluster
         test    eax, eax
         jz      .done1
 
@@ -1539,11 +1650,11 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
   .done1:
         pop     edi
         call    fs.fat.get_time_for_file
-        mov     [edi + 22], ax
+        mov     [edi + fs.fat.dir_entry_t.modified_at.time], ax
         call    fs.fat.get_date_for_file
-        mov     [edi + 24], ax
-        mov     [edi + 18], ax
-        or      byte[edi + 11], 0x20 ; set 'archive' attribute
+        mov     [edi + fs.fat.dir_entry_t.modified_at.date], ax
+        mov     [edi + fs.fat.dir_entry_t.accessed_at.date], ax
+        or      byte[edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_ARCHIVE ; set 'archive' attribute
         jmp     .doit
 
   .notfound:
@@ -1569,7 +1680,7 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
         jc      .found
 
   .test_short_name_entry:
-        cmp     byte[edi + 11], 0x0f
+        cmp     [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_LONG_NAME
         jz      .test_short_name_cont
         mov     ecx, 11
         push    esi edi
@@ -1651,9 +1762,9 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
         ret
 
   .scan_dir:
-        cmp     byte[edi], 0
+        cmp     [edi + fs.fat.dir_entry_t.name], 0
         jz      .free
-        cmp     byte[edi], 0xe5
+        cmp     [edi + fs.fat.dir_entry_t.name], 0xe5
         jz      .free
         xor     ecx, ecx
 
@@ -1740,26 +1851,27 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
         xchg    esi, [esp]
         mov     ecx, 11
         rep     movsb
-        mov     word[edi], 0x20 ; attributes
         sub     edi, 11
+        mov     [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_ARCHIVE ; attributes
         pop     esi ecx
         add     esp, 12
-        mov     byte[edi + 13], 0 ; tenths of a second at file creation time
+        mov     [edi + fs.fat.dir_entry_t.created_at.time_ms], 0 ; tenths of a second at file creation time
         call    fs.fat.get_time_for_file
-        mov     [edi + 14], ax ; creation time
-        mov     [edi + 22], ax ; last write time
+        mov     [edi + fs.fat.dir_entry_t.created_at.time], ax ; creation time
+        mov     [edi + fs.fat.dir_entry_t.modified_at.time], ax ; last write time
         call    fs.fat.get_date_for_file
-        mov     [edi + 16], ax ; creation date
-        mov     [edi + 24], ax ; last write date
-        mov     [edi + 18], ax ; last access date
-        and     word[edi + 20], 0 ; high word of cluster
-        and     word[edi + 26], 0 ; low word of cluster - to be filled
-        and     dword[edi + 28], 0 ; file size - to be filled
+        mov     [edi + fs.fat.dir_entry_t.created_at.date], ax ; creation date
+        mov     [edi + fs.fat.dir_entry_t.modified_at.date], ax ; last write date
+        mov     [edi + fs.fat.dir_entry_t.accessed_at.date], ax ; last access date
+        and     [edi + fs.fat.dir_entry_t.ea_index], 0 ; high word of cluster
+        and     [edi + fs.fat.dir_entry_t.start_cluster], 0 ; low word of cluster - to be filled
+        and     [edi + fs.fat.dir_entry_t.size], 0 ; file size - to be filled
         cmp     [esp + 28 + regs_context32_t.al], 0
         jz      .doit
+
         ; create directory
-        mov     byte[edi + 11], 0x10 ; attributes: folder
-        mov     ecx, 32 * 2
+        mov     [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY ; attributes: folder
+        mov     ecx, sizeof.fs.fat.dir_entry_t * 2
         mov     edx, edi
 
   .doit:
@@ -1785,8 +1897,8 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
         dec     edi
         dec     edi
 
-        mov eax, edi
-        sub eax, FLOPPY_FAT
+        mov     eax, edi
+        sub     eax, FLOPPY_FAT
 
         shr     eax, 1 ; eax = cluster
         mov     word[edi], 0x0fff ; mark as last cluster
@@ -1839,15 +1951,15 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
 
   .ret:
         pop     ebx edi edi ecx
-        mov     [esp + 28 + 28], eax
+        mov     [esp + 28 + regs_context32_t.eax], eax
         lea     eax, [esp + 8]
         call    dword[eax + 4]
-        mov     [edi + 26], bx
+        mov     [edi + fs.fat.dir_entry_t.start_cluster], bx
         mov     ebx, esi
         sub     ebx, edx
-        mov     [edi + 28], ebx
+        mov     [edi + fs.fat.dir_entry_t.size], ebx
         call    dword[eax + 12]
-        mov     [esp + 28 + 16], ebx
+        mov     [esp + 28 + regs_context32_t.ebx], ebx
         test    ebp, ebp
         jnz     @f
         call    save_flp_root
@@ -1875,27 +1987,28 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
 
   .writedir:
         push    ecx
-        mov     ecx, 32 / 4
+
+        mov     ecx, sizeof.fs.fat.dir_entry_t / 4
         push    ecx esi
         rep     movsd
         pop     esi ecx
 
-        mov     dword[edi - 32], '.   '
-        mov     dword[edi - 32 + 4], '    '
-        mov     dword[edi - 32 + 8], '    '
-        mov     byte[edi - 32 + 11], 0x10
-        mov     word[edi - 32 + 26], ax
+        mov     dword[edi - 32 + fs.fat.dir_entry_t.name], '.   '
+        mov     dword[edi - 32 + fs.fat.dir_entry_t.name + 4], '    '
+        mov     dword[edi - 32 + fs.fat.dir_entry_t.name + 8], '    '
+        mov     [edi - 32 + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY
+        mov     [edi - 32 + fs.fat.dir_entry_t.start_cluster], ax
 
         push    esi
         rep     movsd
         pop     esi
 
-        mov     dword[edi - 32], '..  '
-        mov     dword[edi - 32 + 4], '    '
-        mov     dword[edi - 32 + 8], '    '
-        mov     byte[edi - 32 + 11], 0x10
+        mov     dword[edi - 32 + fs.fat.dir_entry_t.name], '..  '
+        mov     dword[edi - 32 + fs.fat.dir_entry_t.name + 4], '    '
+        mov     dword[edi - 32 + fs.fat.dir_entry_t.name + 8], '    '
+        mov     [edi - 32 + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY
         mov     ecx, [esp + 28 + 8]
-        mov     word[edi - 32 + 26], cx
+        mov     [edi - 32 + fs.fat.dir_entry_t.start_cluster], cx
 
         pop     ecx
         jmp     .writedircont
@@ -2459,8 +2572,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs.fat12.get_file_info ;//////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> esi ^= path
-;> ebp ^= filename
+;> esi ^= path to file or directory
 ;> edx ^= fs.get_file_info_query_params_t
 ;> ebx ^= fs.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
