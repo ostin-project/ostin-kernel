@@ -96,7 +96,7 @@ kproc fs.fat12.restore_fat_chain ;//////////////////////////////////////////////
   .next:
         lodsd
         xchg    eax, ebx
-        lodsw
+        lodsd
         xchg    eax, ebx
 
         shl     ax, 4
@@ -1024,7 +1024,7 @@ kproc fs.fat12.read_file ;//////////////////////////////////////////////////////
         jbe     @f
         mov     ecx, eax
 
-    @@: movzx   esi, [edi + fs.fat.dir_entry_t.start_cluster]
+    @@: movzx   esi, [edi + fs.fat.dir_entry_t.start_cluster.low]
         mov     edx, [edx + fs.read_file_query_params_t.buffer_ptr]
         push    edx
 
@@ -1226,7 +1226,7 @@ kproc fs.fat12.read_directory ;/////////////////////////////////////////////////
         test    [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY
         jz      .access_denied_error
 
-        movzx   eax, [edi + fs.fat.dir_entry_t.start_cluster]
+        movzx   eax, [edi + fs.fat.dir_entry_t.start_cluster.low]
         add     eax, 31
         push    eax
         push    0
@@ -1486,6 +1486,624 @@ kproc fs_FloppyReadFolder ;/////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
+kproc util.noop ;///////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc util.raise_cf ;///////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        stc
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12._.root_mem_first ;///////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
+        mov     edi, [ebx + fs.partition_t.user_data]
+        add     edi, fs.fat12.partition_data_t.buffer + 1024
+        clc
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12._.root_mem_next ;////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
+        xor     eax, eax
+        push    eax
+        mov     eax, [ebx + fs.partition_t.user_data]
+        add     eax, fs.fat12.partition_data_t.buffer + 1024 + 14 * 512
+        add     edi, sizeof.fs.fat.dir_entry_t
+        cmp     edi, eax
+        pop     eax
+        cmc
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12._.notroot_begin_write ;//////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
+        pusha
+        mov     eax, [eax]
+        add     eax, 31
+        call    fs.fat12._.read_sector
+        popa
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12._.notroot_end_write ;////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
+        pusha
+        mov     eax, [eax]
+        add     eax, 31
+        call    fs.fat12._.write_sector
+        popa
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12._.notroot_next_write ;///////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
+        push    eax
+        mov     eax, [ebx + fs.partition_t.user_data]
+        add     eax, fs.fat12.partition_data_t.buffer + 512
+        cmp     edi, eax
+        pop     eax
+        jae     @f
+        ret
+
+    @@: call    fs.fat12._.notroot_end_write
+        jmp     fs.fat12._.notroot_next
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12._.notroot_extend_dir ;///////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
+        ; find free cluster in FAT
+        pusha
+        xor     eax, eax
+        mov     edi, [ebx + fs.partition_t.user_data]
+        add     edi, fs.fat12.partition_data_t.fat
+        mov     ecx, 2849
+        push    edi
+        repnz   scasw
+        pop     edx
+        jnz     .notfound
+
+        mov     word[edi - 2], 0x0fff ; mark as last cluster
+        sub     edi, edx
+        shr     edi, 1
+        dec     edi
+        mov     eax, [esp + regs_context32_t.eax]
+        mov     ecx, [eax]
+        mov     [edx + ecx * 2], di
+        mov     [eax], edi
+
+        xor     eax, eax
+        mov     edi, [ebx + fs.partition_t.user_data]
+        add     edi, fs.fat12.partition_data_t.buffer
+        mov     ecx, 512 / 4
+        rep     stosd
+
+        popa
+        call    fs.fat12._.notroot_end_write
+        mov     edi, [ebx + fs.partition_t.user_data]
+        add     edi, fs.fat12.partition_data_t.buffer
+        clc
+        ret
+
+  .notfound:
+        popa
+        stc
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc util.string.length ;//////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> eax ^= string
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax #= length
+;-----------------------------------------------------------------------------------------------------------------------
+        push    ecx esi
+        xor     ecx, ecx
+        xchg    eax, esi
+
+    @@: lodsd
+
+        or      al, al
+        jz      .exit
+        or      ah, ah
+        jz      .add_1
+        shr     eax, 16
+        or      al, al
+        jz      .add_2
+        or      ah, ah
+        jz      .add_3
+
+        add     ecx, 4
+        jmp     @b
+
+  .add_3:
+        inc     ecx
+
+  .add_2:
+        inc     ecx
+
+  .add_1:
+        inc     ecx
+
+  .exit:
+        xchg    eax, ecx
+        pop     esi ecx
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12.create_directory ;///////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> esi ^= path to directory
+;> ebx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
+        cmp     byte[esi], 0
+        je      .access_denied_error
+
+        call    fs.fat12._.read_fat
+        or      eax, eax
+        jnz     .device_error
+
+        pusha
+        xor     edi, edi
+        push    esi
+
+    @@: lodsb
+        test    al, al
+        jz      @f
+        cmp     al, '/'
+        jnz     @b
+        lea     edi, [esi - 1]
+        jmp     @b
+
+    @@: pop     esi
+
+        push    esi
+        test    edi, edi
+        jz      @f
+
+        lea     esi, [edi + 1]
+
+    @@: call    fs.fat.name_is_legal
+        pop     esi
+        jnc     .name_not_legal_error
+
+        test    edi, edi
+        jnz     .not_root
+
+        call    fs.fat12._.read_root_directory
+        or      eax, eax
+        jnz     .device_error_2
+
+        xor     ebp, ebp
+
+        push    ebp
+        push    fs.fat12._.dir_handlers.root_mem
+
+        jmp     .check_file_exists
+
+  .not_root:
+        cmp     byte[edi + 1], 0
+        je      .access_denied_error_2
+
+        ; check parent entry existence
+        mov     byte[edi], 0
+        push    edi
+        call    fs.fat12._.find_file_lfn
+        pop     esi
+        mov     byte[esi], '/'
+        jc      .file_not_found_error
+
+        ; edi ^= parent entry
+        test    [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY ; must be directory
+        jz      .access_denied_error_2
+
+        movzx   ebp, [edi + fs.fat.dir_entry_t.start_cluster.low] ; ebp #= cluster
+        cmp     ebp, 2
+        jb      .fat_table_error
+        cmp     ebp, 2849
+        jae     .fat_table_error
+
+        push    ebp
+        push    fs.fat12._.dir_handlers.non_root
+
+        inc     esi
+
+  .check_file_exists:
+        call    fs.fat.find_long_name
+        jnc     .access_denied_error_3
+
+        ; file is not found; generate short name
+        sub     esp, 12
+        mov     edi, esp
+        call    fs.fat.gen_short_name
+
+  .test_short_name_loop:
+        push    esi edi ecx
+        mov     esi, edi
+        lea     eax, [esp + 12 + 12 + 4]
+        mov     [eax], ebp
+        stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.first_entry
+        jc      .short_name_not_found
+
+  .test_short_name_entry:
+        cmp     [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_LONG_NAME
+        je      .test_short_name_cont
+        mov     ecx, 11
+        push    esi edi
+        repe    cmpsb
+        pop     edi esi
+        je      .short_name_found
+
+  .test_short_name_cont:
+        lea     eax, [esp + 12 + 12 + 4]
+        stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.next_entry
+        jc      .short_name_not_found
+        jmp     .test_short_name_entry
+
+  .short_name_found:
+        pop     ecx edi esi
+        call    fs.fat.next_short_name
+        jc      .disk_full_error
+        jmp     .test_short_name_loop
+
+  .short_name_not_found:
+        pop     ecx edi esi
+
+        ; check if error occured during (first|next)_entry
+        or      eax, eax
+        jnz     .device_error_5
+
+        ; now find space in directory
+        ; we need to save LFN <=> LFN is not equal to short name <=> generated name contains '~'
+        mov     al, '~'
+        push    ecx edi
+        mov     ecx, 8
+        repne   scasb
+        mov_s_  eax, 1 ; 1 entry
+        jne     .notilde
+
+        ; we need `ceil(strlen(esi) / 13) + 1` additional entries = `floor((strlen(esi) + 12 + 13) / 13)` total
+        mov     eax, esi
+        call    util.string.length
+        add     eax, 12 + 13
+        mov     ecx, 13
+        push    edx
+        cdq
+        div     ecx
+        pop     edx
+
+  .notilde:
+        push    -1 ; first entry sector
+        push    -1 ; first entry pointer
+
+        ; find <eax> successive free entries in directory
+        xor     ecx, ecx
+        push    eax
+        lea     eax, [esp + 12 + 8 + 12 + 4]
+        mov     [eax], ebp
+        stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.first_entry
+        pop     eax
+        ; TODO: check if there really was an error
+        jc      .device_error_3
+
+  .scan_dir:
+        cmp     [edi + fs.fat.dir_entry_t.name + 0], 0
+        je      .free
+        cmp     [edi + fs.fat.dir_entry_t.name + 0], 0xe5
+        je      .free
+
+        xor     ecx, ecx
+
+  .scan_cont:
+        push    eax
+        lea     eax, [esp + 12 + 8 + 12 + 4]
+        stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.next_entry
+        jc      .check_for_scan_error
+        pop     eax
+        jmp     .scan_dir
+
+  .check_for_scan_error:
+        or      eax, eax
+        pop     eax
+        jnz     .device_error_3
+
+        push    eax
+        lea     eax, [esp + 12 + 8 + 12 + 4]
+        stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.extend_dir
+        pop     eax
+        jc      .disk_full_error_2
+        jmp     .scan_dir
+
+  .free:
+        test    ecx, ecx
+        jnz     @f
+
+        mov     [esp], edi ; save first entry pointer
+        mov     ecx, [esp + 8 + 8 + 12 + 4]
+        mov     [esp + 4], ecx ; save first entry sector
+        xor     ecx, ecx
+
+    @@: inc     ecx
+        cmp     ecx, eax
+        jb      .scan_cont
+
+        ; found!
+        pop     edi ; edi points to first entry in free chunk
+        pop     dword[esp + 4 + 8 + 12 + 4]
+
+        ; calculate name checksum
+        mov     eax, [esp]
+        call    fs.fat.calculate_name_checksum
+
+        dec     ecx
+        jz      .not_lfn
+
+        push    esi eax
+
+        lea     eax, [esp + 8 + 8 + 12 + 4]
+        stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.begin_write
+
+        mov     al, 0x40
+
+  .write_lfn:
+        or      al, cl
+        mov     esi, [esp + 4]
+
+        push    ecx
+
+        dec     ecx
+        imul    ecx, 13
+        add     esi, ecx
+        stosb   ; sequence_number
+        mov     cl, 5
+        call    fs.fat.read_symbols ; name.part_1
+        mov     ax, FS_FAT_ATTR_LONG_NAME
+        stosw   ; attributes
+        mov     al, [esp + 4]
+        stosb   ; checksum
+        mov     cl, 6
+        call    fs.fat.read_symbols ; name.part_2
+        xor     eax, eax
+        stosw   ; start_cluster
+        mov     cl, 2
+        call    fs.fat.read_symbols ; name.part_3
+
+        pop     ecx
+
+        lea     eax, [esp + 8 + 8 + 12 + 4]
+        stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.next_write
+
+        xor     eax, eax
+        loop    .write_lfn
+
+        pop     eax esi
+
+;       lea     eax, [esp + 8 + 12 + 4]
+;       stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.end_write
+
+  .not_lfn:
+        xchg    esi, [esp]
+        mov     ecx, 11
+        rep     movsb
+        sub     edi, 11
+        mov     [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY
+        pop     esi ecx
+        add     esp, 12
+        and     [edi + fs.fat.dir_entry_t.created_at.time_ms], 0
+        call    fs.fat.get_time_for_file
+        mov     [edi + fs.fat.dir_entry_t.created_at.time], ax
+        mov     [edi + fs.fat.dir_entry_t.modified_at.time], ax
+        call    fs.fat.get_date_for_file
+        mov     [edi + fs.fat.dir_entry_t.created_at.date], ax
+        mov     [edi + fs.fat.dir_entry_t.modified_at.date], ax
+        mov     [edi + fs.fat.dir_entry_t.accessed_at.date], ax
+        and     [edi + fs.fat.dir_entry_t.start_cluster.high], 0
+        and     [edi + fs.fat.dir_entry_t.start_cluster.low], 0 ; to be filled
+        and     [edi + fs.fat.dir_entry_t.size], 0
+
+        mov     ecx, sizeof.fs.fat.dir_entry_t * 2
+        mov     edx, edi
+
+        lea     eax, [esp + 4]
+        stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.end_write
+
+        push    ecx
+        push    edi
+        push    0 ; pointer to previous cluster number in FAT
+        push    0 ; first cluster number
+
+        mov     esi, edx
+;///        test    ecx, ecx
+;///        jz      .done
+
+        mov     ecx, 2849
+        mov     edi, [ebx + fs.partition_t.user_data]
+        add     edi, fs.fat12.partition_data_t.fat
+
+;///  .write_loop:
+        ; allocate new cluster
+        xor     eax, eax
+        repne   scasw
+        mov     al, ERROR_DISK_FULL
+        jne     .ret
+        dec     edi
+        dec     edi
+
+        lea     eax, [edi - fs.fat12.partition_data_t.fat]
+        sub     eax, [ebx + fs.partition_t.user_data]
+
+        shr     eax, 1 ; eax = cluster
+        mov     word[edi], 0x0fff ; mark as last cluster
+        xchg    edi, [esp + 4]
+        cmp     dword[esp], 0
+        je      .first
+        stosw
+        jmp     @f
+
+  .first:
+        mov     [esp], eax
+
+    @@:
+;///        mov     edi, [esp + 4]
+;///        inc     ecx
+        ; write data
+;///        push    ecx edi
+        mov     edi, [ebx + fs.partition_t.user_data]
+        add     edi, fs.fat12.partition_data_t.buffer
+
+;///  .writedir:
+        mov_s_  ecx, sizeof.fs.fat.dir_entry_t / 4
+        push    ecx esi
+        rep     movsd
+        pop     esi ecx
+
+        mov     dword[edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.name], '.   '
+        mov     dword[edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.name + 4], '    '
+        mov     dword[edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.name + 8], '   '
+        mov     [edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY
+        mov     [edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.start_cluster.low], ax
+
+        push    esi
+        rep     movsd
+        pop     esi
+
+        mov     dword[edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.name], '..  '
+        mov     dword[edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.name + 4], '    '
+        mov     dword[edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.name + 8], '   '
+        mov     [edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY
+;///        mov     ecx, [esp + 8 + 8]
+        mov     ecx, [esp + 8]
+        mov     [edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.start_cluster.low], cx
+
+;///  .writedircont:
+;///        mov     ecx, [esp + 8 + 12]
+;///        cmp     ecx, 512
+;///        jbe     @f
+;///        mov     ecx, 512
+;///
+;///    @@: push    ecx
+;///        sub     ecx, 512
+;///        neg     ecx
+        mov_s_  ecx, (512 - sizeof.fs.fat.dir_entry_t * 2) / 4
+
+        push    eax
+        xor     eax, eax
+        rep     stosd
+        pop     eax
+        add     eax, 31
+        call    fs.fat12._.write_sector
+;///        pop     ecx
+        jnz     .device_error_4
+
+;///        sub     [esp + 8 + 12], ecx
+;///        pop     edi ecx
+;///        jnz     .write_loop
+
+;///  .done:
+;///        xor     eax, eax
+
+  .ret:
+        pop     edx edi edi ecx
+        mov     [esp + 8 + regs_context32_t.eax], eax
+        lea     eax, [esp + 4]
+        stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.begin_write
+        DEBUGF  1, "ret: start_cluster = %u\n", dx, edi
+        mov     [edi + fs.fat.dir_entry_t.start_cluster.low], dx
+;///        mov     ecx, esi
+;///        sub     ecx, edx
+;///        mov     [edi + fs.fat.dir_entry_t.size], ecx
+;///        mov     [esp + 28 + regs_context32_t.ebx], ecx
+        and     [esp + 8 + regs_context32_t.ebx], 0
+        stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.end_write
+
+        test    ebp, ebp
+        jnz     @f
+
+        call    fs.fat12._.write_root_directory
+        or      eax, eax
+        jnz     .device_error_5
+
+    @@: add     esp, 8
+        call    fs.fat12._.write_fat
+        or      eax, eax
+        jnz     .device_error_2
+        popa
+        ret
+
+  .disk_full_error_2:
+        add     esp, 8 + 8 + 12
+
+  .disk_full_error:
+        add     esp, 8 + sizeof.regs_context32_t
+        mov     eax, ERROR_DISK_FULL
+        ret
+
+  .name_not_legal_error:
+        add     esp, sizeof.regs_context32_t
+        mov     eax, ERROR_FILE_NOT_FOUND
+        ret
+
+  .fat_table_error:
+        add     esp, sizeof.regs_context32_t
+        mov     eax, ERROR_FAT_TABLE
+        ret
+
+  .file_not_found_error:
+        add     esp, sizeof.regs_context32_t
+        mov     eax, ERROR_FILE_NOT_FOUND
+        ret
+
+  .access_denied_error_3:
+        add     esp, 8
+
+  .access_denied_error_2:
+        add     esp, sizeof.regs_context32_t
+
+  .access_denied_error:
+        mov     eax, ERROR_ACCESS_DENIED
+        ret
+
+  .device_error_3:
+        add     esp, 4
+
+  .device_error_4:
+        add     esp, 16
+
+  .device_error_5:
+        add     esp, 8
+
+  .device_error_2:
+        add     esp, sizeof.regs_context32_t
+
+  .device_error:
+        mov     eax, ERROR_DEVICE_FAIL
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
 kproc fs_FloppyCreateFolder ;///////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     al, 1
@@ -1588,7 +2206,7 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
         test    [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY ; must be directory
         mov     eax, ERROR_ACCESS_DENIED
         jz      .ret1
-        movzx   ebp, [edi + fs.fat.dir_entry_t.start_cluster] ; ebp=cluster
+        movzx   ebp, [edi + fs.fat.dir_entry_t.start_cluster.low] ; ebp=cluster
         mov     eax, ERROR_FAT_TABLE
         cmp     ebp, 2
         jb      .ret1
@@ -1636,7 +2254,7 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
         push    edi
         xor     eax, eax
         mov     [edi + fs.fat.dir_entry_t.size], eax ; zero size
-        xchg    ax, [edi + fs.fat.dir_entry_t.start_cluster] ; start cluster
+        xchg    ax, [edi + fs.fat.dir_entry_t.start_cluster.low] ; start cluster
         test    eax, eax
         jz      .done1
 
@@ -1863,8 +2481,8 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
         mov     [edi + fs.fat.dir_entry_t.created_at.date], ax ; creation date
         mov     [edi + fs.fat.dir_entry_t.modified_at.date], ax ; last write date
         mov     [edi + fs.fat.dir_entry_t.accessed_at.date], ax ; last access date
-        and     [edi + fs.fat.dir_entry_t.ea_index], 0 ; high word of cluster
-        and     [edi + fs.fat.dir_entry_t.start_cluster], 0 ; low word of cluster - to be filled
+        and     [edi + fs.fat.dir_entry_t.start_cluster.high], 0 ; high word of cluster
+        and     [edi + fs.fat.dir_entry_t.start_cluster.low], 0 ; low word of cluster - to be filled
         and     [edi + fs.fat.dir_entry_t.size], 0 ; file size - to be filled
         cmp     [esp + 28 + regs_context32_t.al], 0
         jz      .doit
@@ -1954,7 +2572,7 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
         mov     [esp + 28 + regs_context32_t.eax], eax
         lea     eax, [esp + 8]
         call    dword[eax + 4]
-        mov     [edi + fs.fat.dir_entry_t.start_cluster], bx
+        mov     [edi + fs.fat.dir_entry_t.start_cluster.low], bx
         mov     ebx, esi
         sub     ebx, edx
         mov     [edi + fs.fat.dir_entry_t.size], ebx
@@ -1997,7 +2615,7 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
         mov     dword[edi - 32 + fs.fat.dir_entry_t.name + 4], '    '
         mov     dword[edi - 32 + fs.fat.dir_entry_t.name + 8], '    '
         mov     [edi - 32 + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY
-        mov     [edi - 32 + fs.fat.dir_entry_t.start_cluster], ax
+        mov     [edi - 32 + fs.fat.dir_entry_t.start_cluster.low], ax
 
         push    esi
         rep     movsd
@@ -2008,7 +2626,7 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
         mov     dword[edi - 32 + fs.fat.dir_entry_t.name + 8], '    '
         mov     [edi - 32 + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY
         mov     ecx, [esp + 28 + 8]
-        mov     [edi - 32 + fs.fat.dir_entry_t.start_cluster], cx
+        mov     [edi - 32 + fs.fat.dir_entry_t.start_cluster.low], cx
 
         pop     ecx
         jmp     .writedircont
@@ -2798,6 +3416,32 @@ kproc fs_FloppyDelete ;/////////////////////////////////////////////////////////
         ret
 kendp
 
+iglobal
+  align 4
+  fs.fat12._.dir_handlers:
+    .root_mem dd \
+      fs.fat12._.root_mem_first, \
+      fs.fat12._.root_mem_next, \
+      util.noop, \ ; begin_write
+      util.noop, \ ; next_write
+      util.noop, \ ; end_write
+      util.raise_cf ; extend_dir
+    .root dd \
+      fs.fat12._.root_first, \
+      fs.fat12._.root_next, \
+      util.noop, \ ; begin_write
+      util.noop, \ ; next_write
+      util.noop, \ ; end_write
+      util.raise_cf ; extend_dir
+    .non_root dd \
+      fs.fat12._.notroot_first, \
+      fs.fat12._.notroot_next, \
+      fs.fat12._.notroot_begin_write, \
+      fs.fat12._.notroot_next_write, \
+      fs.fat12._.notroot_end_write, \
+      fs.fat12._.notroot_extend_dir
+endg
+
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs.fat12._.check_partition_label ;////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -2868,6 +3512,100 @@ kproc fs.fat12._.read_fat ;/////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12._.write_fat ;////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        push    ecx edx esi edi ebp
+
+        mov     ebp, [ebx + fs.partition_t.user_data]
+
+        ; FIXME: disk change detection is not a FS driver job
+        call    fs.fat12._.check_partition_label
+        or      eax, eax
+        jnz     .exit
+
+        cmp     [ebp + fs.fat12.partition_data_t.is_fat_valid], 0
+        je      .exit ; eax = 0
+
+        lea     esi, [ebp + fs.fat12.partition_data_t.fat]
+        lea     edi, [ebp + fs.fat12.partition_data_t.buffer]
+        call    fs.fat12.restore_fat_chain
+
+        mov     eax, 512
+        cdq
+        mov     ecx, 9 * 2 * 512
+        lea     esi, [ebp + fs.fat12.partition_data_t.buffer]
+        call    fs.write
+        or      eax, eax
+        jnz     .exit
+
+        and     [ebp + fs.fat12.partition_data_t.is_root_valid], 0
+
+  .exit:
+        pop     ebp edi esi edx ecx
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12._.read_root_directory ;//////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
+        push    ecx edx edi ebp
+
+        mov     ebp, [ebx + fs.partition_t.user_data]
+
+        ; FIXME: disk change detection is not a FS driver job
+        call    fs.fat12._.check_partition_label
+        or      eax, eax
+        jnz     .exit
+
+        cmp     [ebp + fs.fat12.partition_data_t.is_root_valid], 0
+        jne     .exit ; eax = 0
+
+        mov     eax, 19 * 512
+        cdq
+        mov     ecx, (33 - 19) * 512
+        lea     edi, [ebp + fs.fat12.partition_data_t.buffer + 1024]
+        call    fs.read
+        or      eax, eax
+        jnz     .exit
+
+        inc     [ebp + fs.fat12.partition_data_t.is_root_valid]
+
+  .exit:
+        pop     ebp edi edx ecx
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12._.write_root_directory ;/////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        push    ecx edx esi ebp
+
+        mov     ebp, [ebx + fs.partition_t.user_data]
+
+        ; FIXME: disk change detection is not a FS driver job
+        call    fs.fat12._.check_partition_label
+        or      eax, eax
+        jnz     .exit
+
+        cmp     [ebp + fs.fat12.partition_data_t.is_root_valid], 0
+        je      .exit ; eax = 0
+
+        mov     eax, 19 * 512
+        cdq
+        mov     ecx, (33 - 19) * 512
+        lea     esi, [ebp + fs.fat12.partition_data_t.buffer + 1024]
+        call    fs.write
+        or      eax, eax
+        jnz     .exit
+
+  .exit:
+        pop     ebp esi edx ecx
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
 kproc fs.fat12._.find_file_lfn ;////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> esi ^= path
@@ -2882,27 +3620,25 @@ kproc fs.fat12._.find_file_lfn ;////////////////////////////////////////////////
         push    esi edi
 
         push    0
-        push    fs.fat12._.root_first
-        push    fs.fat12._.root_next
+        push    fs.fat12._.dir_handlers.root
 
   .next_level:
         call    fs.fat.find_long_name
         jc      .not_found
         cmp     byte[esi], 0
-        jz      .found
+        je      .found
 
   .continue:
         test    byte[edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY
         jz      .not_found
 
-        movzx   eax, [edi + fs.fat.dir_entry_t.start_cluster]
-        mov     [esp + 8], eax
-        mov     dword[esp + 4], fs.fat12._.notroot_first
-        mov     dword[esp], fs.fat12._.notroot_next
+        movzx   eax, [edi + fs.fat.dir_entry_t.start_cluster.low]
+        mov     [esp + 4], eax
+        mov     dword[esp], fs.fat12._.dir_handlers.non_root
         jmp     .next_level
 
   .not_found:
-        add     esp, 12
+        add     esp, 8
         pop     edi esi
         stc
         ret
@@ -2914,13 +3650,13 @@ kproc fs.fat12._.find_file_lfn ;////////////////////////////////////////////////
         xor     ebp, ebp
         jmp     .continue
 
-    @@: mov     eax, [esp + 8]
+    @@: mov     eax, [esp + 4]
         add     eax, 31
-        cmp     dword[esp], fs.fat12._.root_next
-        jnz     @f
+        cmp     dword[esp], fs.fat12._.dir_handlers.root
+        jne     @f
         add     eax, -31 + 19
 
-    @@: add     esp, 16 ; CF = 0
+    @@: add     esp, 8 + 4 ; CF = 0
         pop     esi
         ret
 kendp
@@ -2999,6 +3735,8 @@ kproc fs.fat12._.notroot_first ;////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, [eax]
 
+        cmp     eax, 0x0fff
+        je      .eof_error
         cmp     eax, 2
         jb      .error
         cmp     eax, 2849
@@ -3010,6 +3748,9 @@ kproc fs.fat12._.notroot_first ;////////////////////////////////////////////////
 
         clc
         ret
+
+  .eof_error:
+        xor     eax, eax
 
   .error:
         stc
@@ -3034,6 +3775,29 @@ kproc fs.fat12._.read_sector ;//////////////////////////////////////////////////
         mov     edi, [ebx + fs.partition_t.user_data]
         add     edi, fs.fat12.partition_data_t.buffer
         call    fs.read
+
+        or      eax, eax
+        pop     edx ecx
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12._.write_sector ;/////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> eax #= sector number
+;> ebx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax #= error code
+;< eflags[zf] = 1 (ok) or 0 (error)
+;-----------------------------------------------------------------------------------------------------------------------
+        push    ecx edx
+
+        shl     eax, 9 ; #= physical address
+        cdq
+        mov     ecx, 512
+        mov     esi, [ebx + fs.partition_t.user_data]
+        add     esi, fs.fat12.partition_data_t.buffer
+        call    fs.write
 
         or      eax, eax
         pop     edx ecx

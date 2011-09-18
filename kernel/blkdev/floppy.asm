@@ -199,8 +199,7 @@ kproc blkdev.floppy._.read_sector ;/////////////////////////////////////////////
 ;< eax #= error code
 ;< FDD_DataBuffer ^= sector content (on success)
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     al, 0xe6 ; reading in multi-track mode
-        mov     ah, 11011000b
+        mov     eax, (0x46 shl 16) + (11011000b shl 8) + 0xe6 ; reading in multi-track mode
         jmp     blkdev.floppy.ctl.perform_dma_transfer
 kendp
 
@@ -214,8 +213,7 @@ kproc blkdev.floppy._.write_sector ;////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     al, 0xc5 ; writing in multi-track mode
-        mov     ah, 11000000b
+        mov     eax, (0x4a shl 16) + (11000000b shl 8) + 0xc5 ; writing in multi-track mode
         jmp     blkdev.floppy.ctl.perform_dma_transfer
 kendp
 
@@ -240,6 +238,7 @@ kproc blkdev.floppy._.perform_operation_with_retry ;////////////////////////////
         push    ecx
 
         call    blkdev.floppy.ctl.seek
+        ; TODO: check for seek error
 
         ; try reading 3 times
         mov_s_  ecx, 3
@@ -248,12 +247,15 @@ kproc blkdev.floppy._.perform_operation_with_retry ;////////////////////////////
         push    ecx
 
         call    ebp
-        or      eax, eax ; FDC_Normal
+        test    eax, eax ; FDC_Normal
         jz      .free_stack_and_exit
         cmp     eax, FDC_TimeOut
-        je      .free_stack_and_exit
+        jne     @f
 
-        pop     ecx
+        ; controller timed out, need to reset
+        call    blkdev.floppy.ctl.reset
+
+    @@: pop     ecx
         dec     ecx
         jnz     .next_read_attempt
 

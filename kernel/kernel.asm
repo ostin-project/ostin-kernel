@@ -161,7 +161,7 @@ B32:
         mov     fs, ax
         mov     gs, ax
         mov     ss, ax
-        mov     esp, 0x3ec00 ; Set stack
+        mov     esp, STACK_TOP - OS_BASE ; Set stack
 
         ; CLEAR 0x280000 - HEAP_BASE
         xor     eax, eax

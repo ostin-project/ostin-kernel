@@ -38,12 +38,14 @@ struct fs.fat.dir_entry_t
   created_at.time    dw ?
   created_at.date    dw ?
   accessed_at.date   dw ?
-  ea_index           dw ?
+  start_cluster.high dw ?
   modified_at.time   dw ?
   modified_at.date   dw ?
-  start_cluster      dw ?
+  start_cluster.low  dw ?
   size               dd ?
 ends
+
+static_assert sizeof.fs.fat.dir_entry_t = 32
 
 struct fs.fat.lfn_dir_entry_t
   sequence_number db ?
@@ -55,6 +57,33 @@ struct fs.fat.lfn_dir_entry_t
   start_cluster   dw ?
   name.part_3     du 2 dup(?)
 ends
+
+static_assert sizeof.fs.fat.lfn_dir_entry_t = sizeof.fs.fat.dir_entry_t
+
+struct fs.fat.dir_handlers_t
+  first_entry dd ?
+  next_entry  dd ?
+  begin_write dd ?
+  next_write  dd ?
+  end_write   dd ?
+  extend_dir  dd ?
+ends
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat.call_dir_handler ;/////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> eax ^= handler parameters
+;> ebx ^= fs.partition_t
+;> [eax - 4] ^= fs.fat.dir_handlers_t
+;> [esp + 4] = offset in handers table
+;-----------------------------------------------------------------------------------------------------------------------
+        push    ecx
+        mov     ecx, [eax - 4]
+        add     ecx, [esp + 4 + 4]
+        call    dword[ecx]
+        pop     ecx
+        ret     4
+kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs.fat.get_name ;/////////////////////////////////////////////////////////////////////////////////////////////////
@@ -706,9 +735,8 @@ kendp
 kproc fs.fat.find_long_name ;///////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> esi ^= name
-;> [esp + 4] ^= next entry callback
-;> [esp + 8] ^= first entry callback
-;> [esp + c]... = possibly parameters for first and next
+;> [esp + 4] ^= fs.fat.dir_handlers_t
+;> [esp + 8]... = possibly parameters for first and next
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< CF = 1 - file not found
 ;< CF = 0,
@@ -716,8 +744,8 @@ kproc fs.fat.find_long_name ;///////////////////////////////////////////////////
 ;<   edi pointer to direntry
 ;-----------------------------------------------------------------------------------------------------------------------
         pusha
-        lea     eax, [esp + sizeof.regs_context32_t + 0x0c]
-        call    dword[eax - 4]
+        lea     eax, [esp + sizeof.regs_context32_t + 8]
+        stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.first_entry
         jc      .reterr
         sub     esp, 262 * 2 ; reserve place for LFN
         mov     ebp, esp
@@ -730,8 +758,8 @@ kproc fs.fat.find_long_name ;///////////////////////////////////////////////////
         jz      .found
 
   .l2:
-        lea     eax, [esp + sizeof.regs_context32_t + 0x0c + 262 * 2 + 4]
-        call    dword[eax - 8]
+        lea     eax, [esp + sizeof.regs_context32_t + 8 + 262 * 2 + 4]
+        stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.next_entry
         jnc     .l1
         add     esp, 262 * 2 + 4
 
@@ -744,9 +772,9 @@ kproc fs.fat.find_long_name ;///////////////////////////////////////////////////
         add     esp, 262 * 2 + 4
         ; if this is LFN entry, advance to true entry
         cmp     byte[edi + 11], 0x0f
-        jnz     @f
-        lea     eax, [esp + sizeof.regs_context32_t + 0x0c]
-        call    dword[eax - 8]
+        jne     @f
+        lea     eax, [esp + sizeof.regs_context32_t + 8]
+        stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.next_entry
         jc      .reterr
 
     @@: add     esp, 8 ; CF=0

@@ -263,7 +263,7 @@ MOUSE_BACKGROUND    = OS_BASE + 0x000fff4 ; unused? 6 writes, 0 reads
 DONT_DRAW_MOUSE     = OS_BASE + 0x000fff5 ; unused? 4 writes, 0 reads
 DONT_SWITCH         = OS_BASE + 0x000ffff
 
-;TMP_STACK_TOP      = 0x006cc00           ; unused
+STACK_TOP           = OS_BASE + 0x006dbf0
 
 FONT_II             = OS_BASE + 0x006dc00
 FONT_I              = OS_BASE + 0x006e600

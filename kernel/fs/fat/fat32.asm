@@ -15,14 +15,6 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-PUSHAD_EAX equ [esp + 28]
-PUSHAD_ECX equ [esp + 24]
-PUSHAD_EDX equ [esp + 20]
-PUSHAD_EBX equ [esp + 16]
-PUSHAD_EBP equ [esp + 8]
-PUSHAD_ESI equ [esp + 4]
-PUSHAD_EDI equ [esp + 0]
-
 uglobal
   align 4
   longname_sec1        dd 0   ; used by analyze_directory to save 2 previous
@@ -561,7 +553,7 @@ kproc file_read ;///////////////////////////////////////////////////////////////
         jmp     .file_read_start
 
   .no_read_root:
-        mov     ebx, PUSHAD_EAX ; file name
+        mov     ebx, [esp + regs_context32_t.eax] ; file name
         call    analyze_directory
         jc      .file_to_read_not_found
 
@@ -584,9 +576,9 @@ kproc file_read ;///////////////////////////////////////////////////////////////
         and     eax, [fatMASK]
 
   .file_read_start:
-        mov     ebx, PUSHAD_ECX ; pointer to buffer
-        mov     edx, PUSHAD_EBX ; file blocks to read
-        mov     esi, PUSHAD_ESI ; first 512 block to read
+        mov     ebx, [esp + regs_context32_t.ecx] ; pointer to buffer
+        mov     edx, [esp + regs_context32_t.ebx] ; file blocks to read
+        mov     esi, [esp + regs_context32_t.esi] ; first 512 block to read
 
   .file_read_new_cluster:
         call    get_data_cluster

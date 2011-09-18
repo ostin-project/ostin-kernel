@@ -21,12 +21,31 @@ FLOPPY_CTL_FIFO = 0x3f5
 FLOPPY_CTL_CCR  = 0x3f7
 
 ;-----------------------------------------------------------------------------------------------------------------------
+kproc blkdev.floppy.ctl.reset ;/////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= blkdev.floppy.device_data_t
+;-----------------------------------------------------------------------------------------------------------------------
+        call    blkdev.floppy.ctl._.prepare_for_interrupt
+
+        push    eax edx
+        mov     dx, FLOPPY_CTL_DOR
+        mov     al, 0
+        out     dx, al
+        mov     al, 0x0c
+        out     dx, al
+        pop     edx eax
+
+        call    blkdev.floppy.ctl._.wait_for_interrupt
+        call    blkdev.floppy.ctl._.sense_interrupt
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
 kproc blkdev.floppy.ctl.perform_dma_transfer ;//////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Read/write sector
 ;-----------------------------------------------------------------------------------------------------------------------
-;> al #= operation (0xe6 - read in multi-track mode, 0xc5 - write in multi-track mode)
-;> ah #= error status mask
+;> eax #= pack[8(?), 8(DMA mode), 8(ST0 mask), 8(operation)]
 ;> ebx ^= blkdev.floppy.device_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
@@ -35,21 +54,19 @@ kproc blkdev.floppy.ctl.perform_dma_transfer ;//////////////////////////////////
         push    eax edx
         call    blkdev.floppy.ctl._.select_drive
 
-        xchg    al, ah
-
         ; set transfer speed to 500 KB/s
-        mov     al, 0
+        shl     eax, 8
         mov     dx, FLOPPY_CTL_CCR
         out     dx, al
 
         ; initialize DMA channel
-        mov     al, 0x46
+        rol     eax, 8
         call    blkdev.floppy.ctl._.init_dma
 
         call    blkdev.floppy.ctl._.prepare_for_interrupt
 
         ; send read/write command
-        xchg    al, ah
+        shr     eax, 16
         call    blkdev.floppy.ctl._.out_byte
         mov     al, [ebx + blkdev.floppy.device_data_t.position.head]
         shl     al, 2
@@ -76,7 +93,7 @@ kproc blkdev.floppy.ctl.perform_dma_transfer ;//////////////////////////////////
 
         ; get operation status
         call    blkdev.floppy.ctl._.get_status
-        mov     al, [esp + 4 + 1] ; ah
+        mov     al, [esp + 4 + 1]
         test    [ebx + blkdev.floppy.device_data_t.status.st0], al
         jnz     .error
         mov     eax, FDC_Normal
@@ -195,6 +212,16 @@ kproc blkdev.floppy.ctl._.update_motor_timer ;//////////////////////////////////
 ;> ebx ^= blkdev.floppy.device_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
         mov_s_  [ebx + blkdev.floppy.device_data_t.motor_timer], [timer_ticks]
+
+        ; TODO: remove this
+        push    eax
+        mov     al, [blkdev.floppy.ctl._.data.last_drive_number]
+        inc     al
+        mov     [flp_number], al
+        mov     [fdd_motor_status], al
+        mov_s_  [timer_fdd_motor], [timer_ticks]
+        pop     eax
+
         ret
 kendp
 
