@@ -940,33 +940,3 @@ kproc pi32bit12 ;///////////////////////////////////////////////////////////////
         xor     eax, eax
         ret
 kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc vesa12_read_screen_pixel ;////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        and     eax, 0x3fffff
-        cmp     byte[ScreenBPP], 24      ; 24 or 32 bpp ?
-        jz      .v12rsp24
-
-        mov     edi, eax
-        shl     edi, 2
-        mov     eax, edi
-        shr     eax, 16
-        call    set_bank
-        and     edi, 65535
-        add     edi, VGABasePtr
-        mov     eax, [edi]
-        and     eax, 0x00ffffff
-        ret
-
-  .v12rsp24:
-        imul    eax, 3
-        mov     edi, eax
-        shr     eax, 16
-        call    set_bank
-        and     edi, 65535
-        add     edi, VGABasePtr
-        mov     eax, [edi]
-        and     eax, 0x00ffffff
-        ret
-kendp

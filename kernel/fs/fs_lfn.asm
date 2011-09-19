@@ -87,29 +87,29 @@ iglobal
     dd 0
 
   fs_RamdiskServices:
-    dd fs_RamdiskRead
-    dd fs_RamdiskReadFolder
+    dd 0 ; fs_RamdiskRead
+    dd 0 ; fs_RamdiskReadFolder
     dd fs_RamdiskRewrite
     dd fs_RamdiskWrite
     dd fs_RamdiskSetFileEnd
-    dd fs_RamdiskGetFileInfo
+    dd 0 ; fs_RamdiskGetFileInfo
     dd fs_RamdiskSetFileInfo
     dd 0
     dd fs_RamdiskDelete
-    dd fs_RamdiskCreateFolder
+    dd 0 ; fs_RamdiskCreateFolder
   fs_NumRamdiskServices = ($ - fs_RamdiskServices) / 4
 
   fs_FloppyServices:
-    dd fs_FloppyRead
-    dd fs_FloppyReadFolder
+    dd 0 ; fs_FloppyRead
+    dd 0 ; fs_FloppyReadFolder
     dd fs_FloppyRewrite
     dd fs_FloppyWrite
     dd fs_FloppySetFileEnd
-    dd fs_FloppyGetFileInfo
+    dd 0 ; fs_FloppyGetFileInfo
     dd fs_FloppySetFileInfo
     dd 0
     dd fs_FloppyDelete
-    dd fs_FloppyCreateFolder
+    dd 0 ; fs_FloppyCreateFolder
   fs_NumFloppyServices = ($ - fs_FloppyServices) / 4
 
   fs_HdServices:
@@ -1518,6 +1518,7 @@ kproc sysfn.current_directory_ctl.get ;/////////////////////////////////////////
         add     esp, 8
         or      [esp + 4 + regs_context32_t.eax], -1 ; error not found zerro at string ->[eax+app_data_t.cur_dir]
         ret
+kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc sysfn.current_directory_ctl.set ;/////////////////////////////////////////////////////////////////////////////////

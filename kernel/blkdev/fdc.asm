@@ -16,9 +16,7 @@
 ;;======================================================================================================================
 
 iglobal
-  ; function pointers.
-  fdc_irq_func dd \
-    fdc_null
+  fdc_irq_func dd util.noop
 endg
 
 uglobal
@@ -56,19 +54,10 @@ kproc fdc_reset ;///////////////////////////////////////////////////////////////
         out     dx, al
 
         call    WaitFDCInterrupt
-        mov     [fdc_irq_func], fdc_null
+        mov     [fdc_irq_func], util.noop
 
         call    FDCSenseInterrupt
 
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc fdc_irq ;/////////////////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        call    [fdc_irq_func]
-
-fdc_null:
         ret
 kendp
 
@@ -113,7 +102,7 @@ kproc save_image ;//////////////////////////////////////////////////////////////
         jne     .save_image_1
 
   .unnecessary_save_image:
-        mov     [fdc_irq_func], fdc_null
+        mov     [fdc_irq_func], util.noop
         popa
         mov     [flp_status], 0
         ret

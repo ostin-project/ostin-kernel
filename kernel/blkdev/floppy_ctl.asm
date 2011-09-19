@@ -459,7 +459,7 @@ kproc blkdev.floppy.ctl._.wait_for_interrupt ;//////////////////////////////////
         mov     eax, FDC_TimeOut
 
   .exit:
-        mov     [fdc_irq_func], fdc_null
+        mov     [fdc_irq_func], util.noop
         pop     ecx
         ret
 kendp

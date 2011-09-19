@@ -278,7 +278,7 @@ kproc WaitFDCInterrupt ;////////////////////////////////////////////////////////
         mov     [FDC_Status], FDC_TimeOut
 
   .End_7:
-        mov     [fdc_irq_func], fdc_null
+        mov     [fdc_irq_func], util.noop
         popa
         ret
 kendp

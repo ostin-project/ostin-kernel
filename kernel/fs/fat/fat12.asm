@@ -350,7 +350,7 @@ kproc floppy_fileread ;/////////////////////////////////////////////////////////
   .frnoread2_1:
         cmp     dword[esp + 16], 0 ; eof without read ?
         je      .frnoread_1
-        mov     [fdc_irq_func], fdc_null
+        mov     [fdc_irq_func], util.noop
         pop     edi esi edx ecx
         add     esp, 4
         pop     ebx ; ebx <- eax : size of file
@@ -527,7 +527,7 @@ kproc save_flp_root ;///////////////////////////////////////////////////////////
         jne     .save_flp_root_1
 
   .unnecessary_root_save:
-        mov     [fdc_irq_func], fdc_null
+        mov     [fdc_irq_func], util.noop
         popa
         ret
 kendp
@@ -570,7 +570,7 @@ kproc save_flp_fat ;////////////////////////////////////////////////////////////
         mov     [root_read], 0
 
   .unnecessary_flp_fat_save:
-        mov     [fdc_irq_func], fdc_null
+        mov     [fdc_irq_func], util.noop
         popa
         ret
 kendp
@@ -813,6 +813,7 @@ kproc flp_rootmem_extend_dir ;//////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         stc
         ret
+kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc flp_notroot_next ;////////////////////////////////////////////////////////////////////////////////////////////////
@@ -3028,7 +3029,7 @@ kproc fs_FloppySetFileEnd ;/////////////////////////////////////////////////////
     @@:
 
   .doret:
-        mov     [fdc_irq_func], fdc_null
+        mov     [fdc_irq_func], util.noop
         ret
 
   .expand:

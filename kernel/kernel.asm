@@ -3441,28 +3441,6 @@ kproc modify_pce ;//////////////////////////////////////////////////////////////
         ret
 kendp
 
-;-----------------------------------------------------------------------------------------------------------------------
-kproc checkpixel ;//////////////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;? check if pixel is allowed to be drawn
-;-----------------------------------------------------------------------------------------------------------------------
-        push    eax edx
-
-        mov     edx, [Screen_Max_X]     ; screen x size
-        inc     edx
-        imul    edx, ebx
-        add     eax, [_WinMapAddress]
-        mov     dl, [eax + edx] ; lea eax, [...]
-
-        xor     ecx, ecx
-        mov     eax, [CURRENT_TASK]
-        cmp     al, dl
-        setne   cl
-
-        pop     edx eax
-        ret
-kendp
-
 iglobal
   cpustring db 'CPU', 0
 endg
@@ -4577,13 +4555,6 @@ kproc __sys_drawbar ;///////////////////////////////////////////////////////////
 ;> edx = y end
 ;> edi = color
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     esi, [current_slot]
-        add     eax, [esi + app_data_t.wnd_clientbox.left]
-        add     ecx, [esi + app_data_t.wnd_clientbox.left]
-        add     ebx, [esi + app_data_t.wnd_clientbox.top]
-        add     edx, [esi + app_data_t.wnd_clientbox.top]
-
-  .forced:
         inc     [mouse_pause]
 ;       call    [disable_mouse]
         cmp     word[SCR_MODE], 0x12
@@ -5574,21 +5545,6 @@ kproc sysfn.socket ;////////////////////////////////////////////////////////////
         ; enable these for zero delay between sent packet
 ;       mov     [check_idle_semaphore], 5
 ;       call    change_task
-
-        mov     [esp + 8 + regs_context32_t.eax], eax
-        mov     [esp + 8 + regs_context32_t.ebx], ebx
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc read_from_hd ;////////////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        mov     edi, [TASK_BASE]
-        add     edi, task_data_t.mem_start
-        add     eax, [edi]
-        add     ecx, [edi]
-        add     edx, [edi]
-        call    file_read
 
         mov     [esp + 8 + regs_context32_t.eax], eax
         mov     [esp + 8 + regs_context32_t.ebx], ebx

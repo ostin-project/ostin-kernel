@@ -136,7 +136,7 @@ db 0
 dd 0 ; servetable - 0x10000
 draw_line       dd __sys_draw_line
 draw_pointer    dd __sys_draw_pointer
-drawbar         dd __sys_drawbar.forced ; __sys_drawbar
+drawbar         dd __sys_drawbar
 putpixel        dd __sys_putpixel
 
 align 4

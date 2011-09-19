@@ -2609,7 +2609,20 @@ kproc fat32_HdGetFileInfo ;/////////////////////////////////////////////////////
         ret
 
     @@: popfd
-        jmp     fs_RamdiskGetFileInfo.finish
+        jnc     @f
+        pop     edi
+        mov     eax, ERROR_FILE_NOT_FOUND
+        ret
+
+    @@: push    esi ebp
+        xor     ebp, ebp
+        mov     esi, edx
+        and     dword[esi + 4], 0
+        call    fs.fat.fat_entry_to_bdfe.direct
+        pop     ebp esi
+        pop     edi
+        xor     eax, eax
+        ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
