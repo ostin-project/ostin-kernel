@@ -3156,10 +3156,10 @@ kproc checkmisc ;///////////////////////////////////////////////////////////////
         xchg    al, [REDRAW_BACKGROUND]
         test    al, al ; got new update request?
         jnz     @b
-        mov     [draw_data + sizeof.rect32_t + rect32_t.left], eax
-        mov     [draw_data + sizeof.rect32_t + rect32_t.top], eax
-        mov     [draw_data + sizeof.rect32_t + rect32_t.right], eax
-        mov     [draw_data + sizeof.rect32_t + rect32_t.bottom], eax
+        mov     [draw_data + 2 * sizeof.rect32_t + rect32_t.left], eax
+        mov     [draw_data + 2 * sizeof.rect32_t + rect32_t.top], eax
+        mov     [draw_data + 2 * sizeof.rect32_t + rect32_t.right], eax
+        mov     [draw_data + 2 * sizeof.rect32_t + rect32_t.bottom], eax
 ;       mov     [MOUSE_BACKGROUND], 0
 
   .nobackgr:
