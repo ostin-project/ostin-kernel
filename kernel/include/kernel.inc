@@ -354,6 +354,13 @@ ends
 
 static_assert sizeof.app_data_t = 256
 
+struct app_io_ports_range_t
+  pid        dd ?
+  start_port dd ?
+  end_port   dd ?
+             rd 1
+ends
+
 struct regs_context16_t
   di dw ?
   si dw ?

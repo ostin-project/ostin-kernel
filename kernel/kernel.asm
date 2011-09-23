@@ -161,7 +161,7 @@ B32:
         mov     fs, ax
         mov     gs, ax
         mov     ss, ax
-        mov     esp, STACK_TOP - OS_BASE ; Set stack
+        mov     esp, KERNEL_STACK_TOP - OS_BASE ; Set stack
 
         ; CLEAR 0x280000 - HEAP_BASE
         xor     eax, eax
@@ -170,13 +170,14 @@ B32:
         cld
         rep     stosd
 
-        mov     edi, 0x40000
-        mov     ecx, (0x90000 - 0x40000) / 4
-        rep     stosd
+;///        mov     edi, 0x40000
+;///        mov     ecx, (0x90000 - 0x40000) / 4
+;///        rep     stosd
 
         ; CLEAR KERNEL UNDEFINED GLOBALS
         mov     edi, endofcode - OS_BASE
-        mov     ecx, (uglobals_size / 4) + 4
+;///        mov     ecx, (uglobals_size / 4) + 4
+        mov     ecx, (0xa0000 - (endofcode - OS_BASE)) / 4
         rep     stosd
 
         ; SAVE & CLEAR 0-0xffff
@@ -313,17 +314,17 @@ high_code:
         dec     eax
         mov     [Screen_Max_Y], eax
         mov     [screen_workarea.bottom], eax
-        movzx   eax, [BOOT_VAR + BOOT_VESA_MODE] ; screen mode
-        mov     [SCR_MODE], eax
-        mov     eax, [BOOT_VAR + BOOT_BANK_SW]; Vesa 1.2 bnk sw add
-        mov     [BANK_SWITCH], eax
-        mov     word[BytesPerScanLine], 640 * 4 ; Bytes PerScanLine
-        cmp     word[SCR_MODE], 0x13 ; 320x200
+        mov     ax, [BOOT_VAR + BOOT_VESA_MODE] ; screen mode
+        mov     [SCR_MODE], ax
+;       mov     eax, [BOOT_VAR + BOOT_BANK_SW]; Vesa 1.2 bnk sw add
+;       mov     [BANK_SWITCH], eax
+        mov     [BytesPerScanLine], 640 * 4 ; Bytes PerScanLine
+        cmp     [SCR_MODE], 0x13 ; 320x200
         je      @f
-        cmp     word[SCR_MODE], 0x12 ; VGA 640x480
+        cmp     [SCR_MODE], 0x12 ; VGA 640x480
         je      @f
         movzx   eax, [BOOT_VAR + BOOT_SCANLINE] ; for other modes
-        mov     [BytesPerScanLine], ax
+        mov     [BytesPerScanLine], eax
         mov     [_display.pitch], eax
 
     @@: mov     eax, [_display.box.width]
@@ -341,35 +342,35 @@ high_code:
         mov     eax, [BOOT_VAR + BOOT_LFB]
         mov     [LFBAddress], eax
 
-        cmp     word[SCR_MODE], 0100000000000000b
+        cmp     [SCR_MODE], 0100000000000000b
         jge     .setvesa20
-        cmp     word[SCR_MODE], 0x13
+        cmp     [SCR_MODE], 0x13
         je      .v20ga32
-        mov     dword[PUTPIXEL], Vesa12_putpixel24 ; Vesa 1.2
-        mov     dword[GETPIXEL], Vesa12_getpixel24
-        cmp     byte[ScreenBPP], 24
+        mov     [PUTPIXEL], Vesa12_putpixel24 ; Vesa 1.2
+        mov     [GETPIXEL], Vesa12_getpixel24
+        cmp     [ScreenBPP], 24
         jz      .ga24
-        mov     dword[PUTPIXEL], Vesa12_putpixel32
-        mov     dword[GETPIXEL], Vesa12_getpixel32
+        mov     [PUTPIXEL], Vesa12_putpixel32
+        mov     [GETPIXEL], Vesa12_getpixel32
 
   .ga24:
         jmp     .v20ga24
 
   .setvesa20:
-        mov     dword[PUTPIXEL], Vesa20_putpixel24 ; Vesa 2.0
-        mov     dword[GETPIXEL], Vesa20_getpixel24
-        cmp     byte[ScreenBPP], 24
+        mov     [PUTPIXEL], Vesa20_putpixel24 ; Vesa 2.0
+        mov     [GETPIXEL], Vesa20_getpixel24
+        cmp     [ScreenBPP], 24
         jz      .v20ga24
 
   .v20ga32:
-        mov     dword[PUTPIXEL], Vesa20_putpixel32
-        mov     dword[GETPIXEL], Vesa20_getpixel32
+        mov     [PUTPIXEL], Vesa20_putpixel32
+        mov     [GETPIXEL], Vesa20_getpixel32
 
   .v20ga24:
-        cmp     word[SCR_MODE], 0x12 ; 16 C VGA 640x480
+        cmp     [SCR_MODE], 0x12 ; 16 C VGA 640x480
         jne     .no_mode_0x12
-        mov     dword[PUTPIXEL], VGA_putpixel
-        mov     dword[GETPIXEL], Vesa20_getpixel32
+        mov     [PUTPIXEL], VGA_putpixel
+        mov     [GETPIXEL], Vesa20_getpixel32
 
   .no_mode_0x12:
 
@@ -501,9 +502,16 @@ high_code:
         mov     [unpack.p], eax
 
         call    init_events
-        mov     eax, srv.next_ptr - SRV_FD_OFFSET
+
+        mov     eax, srv
         mov     [srv.next_ptr], eax
         mov     [srv.prev_ptr], eax
+        mov     eax, shmem_list
+        mov     [shmem_list.next_ptr], eax
+        mov     [shmem_list.prev_ptr], eax
+        mov     eax, dll_list
+        mov     [dll_list.next_ptr], eax
+        mov     [dll_list.prev_ptr], eax
 
         mov     edi, irq_tab
         xor     eax, eax
@@ -616,7 +624,7 @@ end if
         mov     esi, boot_memdetect
         call    boot_log
 
-        movzx   ecx, word[boot_y]
+        mov     ecx, [boot_y]
         or      ecx, (10 + 29 * 6) shl 16 ; "Determining amount of memory"
         sub     ecx, 10
         mov     edx, 0x00ffffff
@@ -684,7 +692,7 @@ end if
         mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.exc_handler], eax
         mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.except_mask], eax
 
-        mov     ebx, SLOT_BASE + sizeof.app_data_t + APP_OBJ_OFFSET
+        mov     ebx, SLOT_BASE + sizeof.app_data_t + app_data_t.obj
         mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.obj.next_ptr], ebx
         mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.obj.prev_ptr], ebx
 
@@ -694,8 +702,8 @@ end if
         ; task list
         mov     [TASK_DATA + task_data_t.mem_start], eax ; process base address
         inc     eax
-        mov     dword[CURRENT_TASK], eax
-        mov     dword[TASK_COUNT], eax
+        mov     [CURRENT_TASK], eax
+        mov     [TASK_COUNT], eax
         mov     [current_slot], SLOT_BASE + sizeof.app_data_t
         mov     dword[TASK_BASE], TASK_DATA
         mov     [TASK_DATA + task_data_t.wnd_number], al ; on screen number
@@ -736,7 +744,7 @@ end if
         call    boot_log
 
         mov     ebx, edx
-        movzx   ecx, word[boot_y]
+        mov     ecx, [boot_y]
         add     ecx, (10 + 17 * 6) shl 16 - 10 ; 'CPU frequency is '
         mov     edx, 0x00ffffff
         xor     edi, edi
@@ -757,7 +765,7 @@ end if
         call    setmouse
 
         ; PALETTE FOR 320x200 and 640x480 16 col
-        cmp     word[SCR_MODE], 0x12
+        cmp     [SCR_MODE], 0x12
         jne     no_pal_vga
         mov     esi, boot_pal_vga
         call    boot_log
@@ -765,7 +773,7 @@ end if
 
 no_pal_vga:
 
-        cmp     word[SCR_MODE], 0x13
+        cmp     [SCR_MODE], 0x13
         jne     no_pal_ega
         mov     esi, boot_pal_ega
         call    boot_log
@@ -822,9 +830,9 @@ no_load_vrr_m:
 first_app_found:
         cli
 
-;       mov     dword[TASK_COUNT], 2
+;       mov     [TASK_COUNT], 2
         push    1
-        pop     dword[CURRENT_TASK] ; set OS task fisrt
+        pop     [CURRENT_TASK] ; set OS task fisrt
 
         ; SET KEYBOARD PARAMETERS
         mov     al, 0xf6 ; reset keyboard, scan enabled
@@ -902,7 +910,7 @@ if KCONFIG_BOOT_LOG_ESC
 
 end if
 
-;       mov     byte[ENABLE_TASKSWITCH], 1 ; multitasking enabled
+;       mov     [ENABLE_TASKSWITCH], 1 ; multitasking enabled
 
         ; UNMASK ALL IRQ'S
 
@@ -954,7 +962,7 @@ kproc boot_log ;////////////////////////////////////////////////////////////////
 
         mov     ebx, 10 * 65536
         mov     bx, word[boot_y]
-        add     dword[boot_y], 10
+        add     [boot_y], 10
         mov     ecx, 0x80ffffff ; ASCIIZ string with white color
         xor     edi, edi
         mov     edx, esi
@@ -1053,32 +1061,23 @@ kproc reserve_irqs_ports ;//////////////////////////////////////////////////////
         pop     eax
 
         ; RESERVE PORTS
-        push    4
-        pop     dword[RESERVED_PORTS]
+        mov_s_  dword[RESERVED_PORTS], 4
 
-        push    1
-        pop     dword[RESERVED_PORTS + 16 + 0]
-        and     dword[RESERVED_PORTS + 16 + 4], 0
-        mov     dword[RESERVED_PORTS + 16 + 8], 0x2d
+        mov_s_  [RESERVED_PORTS + 16 + app_io_ports_range_t.pid], 1
+        and     [RESERVED_PORTS + 16 + app_io_ports_range_t.start_port], 0
+        mov_s_  [RESERVED_PORTS + 16 + app_io_ports_range_t.end_port], 0x2d
 
-        push    1
-        pop     dword[RESERVED_PORTS + 32 + 0]
-        push    0x30
-        pop     dword[RESERVED_PORTS + 32 + 4]
-        push    0x4d
-        pop     dword[RESERVED_PORTS + 32 + 8]
+        mov_s_  [RESERVED_PORTS + 32 + app_io_ports_range_t.pid], 1
+        mov_s_  [RESERVED_PORTS + 32 + app_io_ports_range_t.start_port], 0x30
+        mov_s_  [RESERVED_PORTS + 32 + app_io_ports_range_t.end_port], 0x4d
 
-        push    1
-        pop     dword[RESERVED_PORTS + 48 + 0]
-        push    0x50
-        pop     dword[RESERVED_PORTS + 48 + 4]
-        mov     dword[RESERVED_PORTS + 48 + 8], 0xdf
+        mov_s_  [RESERVED_PORTS + 48 + app_io_ports_range_t.pid], 1
+        mov_s_  [RESERVED_PORTS + 48 + app_io_ports_range_t.start_port], 0x50
+        mov_s_  [RESERVED_PORTS + 48 + app_io_ports_range_t.end_port], 0xdf
 
-        push    1
-        pop     dword[RESERVED_PORTS + 64 + 0]
-
-        mov     dword[RESERVED_PORTS + 64 + 4], 0xe5
-        mov     dword[RESERVED_PORTS + 64 + 8], 0xff
+        mov_s_  [RESERVED_PORTS + 64 + app_io_ports_range_t.pid], 1
+        mov_s_  [RESERVED_PORTS + 64 + app_io_ports_range_t.start_port], 0xe5
+        mov_s_  [RESERVED_PORTS + 64 + app_io_ports_range_t.end_port], 0xff
 
         ret
 kendp
@@ -1116,17 +1115,17 @@ kproc set_variables ;///////////////////////////////////////////////////////////
         shl     eax, 16
         mov     ax, [BOOT_VAR + BOOT_X_RES]
         shr     ax, 1
-        mov     [MOUSE_X], eax
+        mov     dword[MOUSE_X], eax
 
         xor     eax, eax
-        mov     dword[BTN_ADDR], BUTTON_INFO ; address of button list
+        mov     [BTN_ADDR], BUTTON_INFO ; address of button list
 
-        mov     byte[MOUSE_BUFF_COUNT], al ; mouse buffer
-        mov     byte[KEY_COUNT], al ; keyboard buffer
-        mov     byte[BTN_COUNT], al ; button buffer
+;       mov     [MOUSE_BUFF_COUNT], al ; mouse buffer
+        mov     [KEY_COUNT], al ; keyboard buffer
+        mov     [BTN_COUNT], al ; button buffer
 ;       mov     dword[MOUSE_X], 100 * 65536 + 100 ; mouse x/y
 
-        mov     byte[DONT_SWITCH], al ; change task if possible
+        mov     [DONT_SWITCH], al ; change task if possible
         pop     eax
 
         ret
@@ -1153,7 +1152,7 @@ kproc sysfn.write_to_port ;/////////////////////////////////////////////////////
 
   .sopl8:
         mov     edx, [TASK_BASE]
-        mov     edx, [edx + 0x4]
+        mov     edx, [edx + task_data_t.pid]
 ;       and     ecx,65535
 ;       cld     ; set on interrupt 0x40
 
@@ -1161,11 +1160,11 @@ kproc sysfn.write_to_port ;/////////////////////////////////////////////////////
         mov     esi, eax
         shl     esi, 4
         add     esi, RESERVED_PORTS
-        cmp     edx, [esi + 0]
+        cmp     edx, [esi + app_io_ports_range_t.pid]
         jne     .sopl2
-        cmp     ecx, [esi + 4]
+        cmp     ecx, [esi + app_io_ports_range_t.start_port]
         jb      .sopl2
-        cmp     ecx, [esi + 8]
+        cmp     ecx, [esi + app_io_ports_range_t.end_port]
         jg      .sopl2
 
   .sopl3:
@@ -1401,10 +1400,10 @@ kproc draw_num_text ;///////////////////////////////////////////////////////////
         shl     edi, 8
 
         mov     eax, [ecx - twdw + window_data_t.box.left]
-        add     eax, [edi + SLOT_BASE + app_data_t.wnd_clientbox.left]
+        add     eax, [SLOT_BASE + edi + app_data_t.wnd_clientbox.left]
         shl     eax, 16
         add     eax, [ecx - twdw + window_data_t.box.top]
-        add     eax, [edi + SLOT_BASE + app_data_t.wnd_clientbox.top]
+        add     eax, [SLOT_BASE + edi + app_data_t.wnd_clientbox.top]
         add     ebx, eax
         mov     ecx, [esp + 64 + 32 - 12 + 4]
         and     ecx, not 0x80000000 ; force counted string
@@ -1512,7 +1511,7 @@ kproc sysfn.set_config.keyboard_layout ;////////////////////////////////////////
         sub     ecx, 6
         jnz     .kbnocountry
 
-        mov     word[keyboard], dx
+        mov     [keyboard], dx
         jmp     sysfn.set_config.exit
 
   .kbnocountry:
@@ -1765,7 +1764,7 @@ kproc sysfn.get_config.keyboard_layout ;////////////////////////////////////////
         sub     ecx, 6
         jnz     .exit
 
-        movzx   eax, word[keyboard]
+        movzx   eax, [keyboard]
         mov     [esp + 4 + regs_context32_t.eax], eax
 
   .exit:
@@ -1879,7 +1878,7 @@ kproc sysfn.mouse_ctl.get_screen_coordinates ;//////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 37.0: get screen-relative cursor coordinates
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, [MOUSE_X]
+        mov     eax, dword[MOUSE_X]
         shl     eax, 16
         mov     ax, [MOUSE_Y]
         mov     [esp + 4 + regs_context32_t.eax], eax
@@ -1891,7 +1890,7 @@ kproc sysfn.mouse_ctl.get_window_coordinates ;//////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 37.1: get window-relative cursor coordinates
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, [MOUSE_X]
+        mov     eax, dword[MOUSE_X]
         shl     eax, 16
         mov     ax, [MOUSE_Y]
         mov     esi, [TASK_BASE]
@@ -1902,9 +1901,9 @@ kproc sysfn.mouse_ctl.get_window_coordinates ;//////////////////////////////////
 
         mov     edi, [CURRENT_TASK]
         shl     edi, 8
-        sub     ax, word[edi + SLOT_BASE + app_data_t.wnd_clientbox.top]
+        sub     ax, word[SLOT_BASE + edi + app_data_t.wnd_clientbox.top]
         rol     eax, 16
-        sub     ax, word[edi + SLOT_BASE + app_data_t.wnd_clientbox.left]
+        sub     ax, word[SLOT_BASE + edi + app_data_t.wnd_clientbox.left]
         rol     eax, 16
         mov     [esp + 4 + regs_context32_t.eax], eax
         ret
@@ -1915,7 +1914,7 @@ kproc sysfn.mouse_ctl.get_buttons_state ;///////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 37.2: get mouse buttons state
 ;-----------------------------------------------------------------------------------------------------------------------
-        movzx   eax, byte[BTN_DOWN]
+        movzx   eax, [BTN_DOWN]
         mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
@@ -1926,15 +1925,15 @@ kproc sysfn.mouse_ctl.get_scroll_info ;/////////////////////////////////////////
 ;? System function 37.7: get mouse wheel changes from last query
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     edi, [TASK_COUNT]
-        movzx   edi, word[WIN_POS + edi * 2]
+        movzx   edi, [WIN_POS + edi * 2]
         cmp     edi, [CURRENT_TASK]
         jne     @f
         mov     ax, [MOUSE_SCROLL_H]
         shl     eax, 16
         mov     ax, [MOUSE_SCROLL_V]
         mov     [esp + 4 + regs_context32_t.eax], eax
-        and     word[MOUSE_SCROLL_H], 0
-        and     word[MOUSE_SCROLL_V], 0
+        and     [MOUSE_SCROLL_H], 0
+        and     [MOUSE_SCROLL_V], 0
         ret
 
     @@: and     [esp + 4 + regs_context32_t.eax], 0
@@ -2202,8 +2201,8 @@ kproc sysfn.system_ctl.kill_process_by_slot ;///////////////////////////////////
         ja      noprocessterminate
         mov     eax, [TASK_COUNT]
         shl     ecx, 5
-        mov     edx, [ecx + CURRENT_TASK + task_data_t.pid]
-        add     ecx, CURRENT_TASK + task_data_t.state
+        mov     edx, [TASK_DATA + ecx - sizeof.task_data_t + task_data_t.pid]
+        add     ecx, TASK_DATA - sizeof.task_data_t + task_data_t.state
         cmp     byte[ecx], TSTATE_FREE
         jz      noprocessterminate
 
@@ -2266,14 +2265,14 @@ kproc sysfn.system_ctl.activate_window ;////////////////////////////////////////
 
         mov     [window_minimize], 2 ; restore window if minimized
 
-        movzx   esi, word[WIN_STACK + ecx * 2]
+        movzx   esi, [WIN_STACK + ecx * 2]
         cmp     esi, [TASK_COUNT]
         je      .nowindowactivate ; already active
 
         mov     edi, ecx
         shl     edi, 5
         add     edi, window_data
-        movzx   esi, word[WIN_STACK + ecx * 2]
+        movzx   esi, [WIN_STACK + ecx * 2]
         lea     esi, [WIN_POS + esi * 2]
         call    waredraw
 
@@ -2310,7 +2309,7 @@ kproc sysfn.system_ctl.get_active_window_slot ;/////////////////////////////////
 ;? System function 18.7: get process slot number of active window
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, [TASK_COUNT]
-        movzx   eax, word[WIN_POS + eax * 2]
+        movzx   eax, [WIN_POS + eax * 2]
         mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
@@ -2496,7 +2495,7 @@ kproc sysfn.system_ctl.mouse_ctl.set_cursor_position ;//////////////////////////
         cmp     dx, word[Screen_Max_X]
         ja      .exit
 
-        mov     [MOUSE_X], edx
+        mov     dword[MOUSE_X], edx
 
   .exit:
         ret
@@ -2560,7 +2559,7 @@ kproc sysfn.system_ctl.alien_window_ctl ;///////////////////////////////////////
         jz      .error
         cmp     eax, 255 ; varify maximal slot number
         ja      .error
-        movzx   eax, word[WIN_STACK + eax * 2]
+        movzx   eax, [WIN_STACK + eax * 2]
         shr     ecx, 1
         jc      .restore
 
@@ -2626,350 +2625,6 @@ kproc sysfn.flush_floppy_cache ;////////////////////////////////////////////////
         ret
 kendp
 
-uglobal
-  align 4
-  bgrlockpid dd ?
-  bgrlock    db ?
-endg
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc sysfn.set_background_ctl ;////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;? System function 15
-;-----------------------------------------------------------------------------------------------------------------------
-iglobal
-  jump_table sysfn.set_background_ctl, subfn, sysfn.not_implemented, \
-    set_size, \ ; 1
-    set_pixel, \ ; 2
-    redraw, \ ; 3
-    set_mode, \ ; 4
-    put_pixel_block, \ ; 5
-    map, \ ; 6
-    unmap ; 7
-endg
-;-----------------------------------------------------------------------------------------------------------------------
-        dec     ebx
-        cmp     ebx, .countof.subfn
-        jae     sysfn.not_implemented
-
-        jmp     [.subfn + ebx * 4]
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc sysfn.set_background_ctl.set_size ;///////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;? System function 15.1: set background image size
-;-----------------------------------------------------------------------------------------------------------------------
-        test    ecx, ecx
-;       cmp     ecx, 0
-        jz      .sbgrr
-        test    edx, edx
-;       cmp     edx, 0
-        jz      .sbgrr
-
-    @@: bts     dword[bgrlock], 0
-        jnc     @f
-        call    change_task
-        jmp     @b
-
-    @@: mov     [BgrDataWidth], ecx
-        mov     [BgrDataHeight], edx
-;       mov     [bgrchanged], 1
-
-        pushad
-
-        ; return memory for old background
-        mov     eax, [img_background]
-        cmp     eax, static_background_data
-        jz      @f
-        stdcall kernel_free, eax
-
-    @@: ; calculate RAW size
-        xor     eax, eax
-        inc     eax
-        cmp     [BgrDataWidth], eax
-        jae     @f
-        mov     [BgrDataWidth], eax
-
-    @@: cmp     [BgrDataHeight], eax
-        jae     @f
-        mov     [BgrDataHeight], eax
-
-    @@: mov     eax, [BgrDataWidth]
-        imul    eax, [BgrDataHeight]
-        lea     eax, [eax * 3]
-        mov     [mem_BACKGROUND], eax
-        ; get memory for new background
-        stdcall kernel_alloc, eax
-        test    eax, eax
-        jz      .memfailed
-        mov     [img_background], eax
-        jmp     .exit
-
-  .memfailed:
-        ; revert to static monotone data
-        mov     [img_background], static_background_data
-        xor     eax, eax
-        inc     eax
-        mov     [BgrDataWidth], eax
-        mov     [BgrDataHeight], eax
-        mov     [mem_BACKGROUND], 4
-
-  .exit:
-        popad
-        mov     [bgrlock], 0
-
-  .sbgrr:
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc sysfn.set_background_ctl.set_pixel ;//////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;? System function 15.2: set background image pixel
-;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, [img_background]
-        test    ecx, ecx
-        jz      @f
-        cmp     eax, static_background_data
-        jz      .exit
-
-    @@: mov     ebx, [mem_BACKGROUND]
-        add     ebx, 4095
-        and     ebx, -4096
-        sub     ebx, 4
-        cmp     ecx, ebx
-        ja      .exit
-
-        mov     ebx, [eax + ecx]
-        and     ebx, 0xff000000
-        and     edx, 0x00ffffff
-        add     edx, ebx
-        mov     [eax + ecx], edx
-
-  .exit:
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc sysfn.set_background_ctl.redraw ;/////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;? System function 15.3: redraw background
-;-----------------------------------------------------------------------------------------------------------------------
-        mov     [background_defined], 1
-        mov     byte[BACKGROUND_CHANGED], 1
-        call    force_redraw_background
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc sysfn.set_background_ctl.set_mode ;///////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;? System function 15.4: set background drawing mode
-;-----------------------------------------------------------------------------------------------------------------------
-        mov     [BgrDrawMode], ecx
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc sysfn.set_background_ctl.put_pixel_block ;////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;? System function 15.5: copy pixel block to background image
-;-----------------------------------------------------------------------------------------------------------------------
-        cmp     [img_background], static_background_data
-        jnz     @f
-        test    edx, edx
-        jnz     .exit
-        cmp     esi, 4
-        ja      .exit
-
-    @@: ; FIXME: bughere
-        mov     eax, ecx
-        mov     ebx, edx
-        add     ebx, [img_background] ; IMG_BACKGROUND
-        mov     ecx, esi
-        call    memmove
-
-  .exit:
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc sysfn.set_background_ctl.map ;////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;? System function 15.6: map background data to process address space
-;-----------------------------------------------------------------------------------------------------------------------
-    @@: bts     dword[bgrlock], 0
-        jnc     @f
-        call    change_task
-        jmp     @b
-
-    @@: mov     eax, [CURRENT_TASK]
-        mov     [bgrlockpid], eax
-        cmp     [img_background], static_background_data
-        jz      .nomem
-        stdcall user_alloc, [mem_BACKGROUND]
-        mov     [esp + 4 + regs_context32_t.eax], eax
-        test    eax, eax
-        jz      .nomem
-        mov     ebx, eax
-        shr     ebx, 12
-        or      dword[page_tabs + (ebx - 1) * 4], DONT_FREE_BLOCK
-        mov     esi, [img_background]
-        shr     esi, 12
-        mov     ecx, [mem_BACKGROUND]
-        add     ecx, 0x0fff
-        shr     ecx, 12
-
-  .z:
-        mov     eax, [page_tabs + ebx * 4]
-        test    al, 1
-        jz      @f
-        call    free_page
-
-    @@: mov     eax, [page_tabs + esi * 4]
-        or      al, PG_UW
-        mov     [page_tabs + ebx * 4], eax
-        mov     eax, ebx
-        shl     eax, 12
-        invlpg  [eax]
-        inc     ebx
-        inc     esi
-        loop    .z
-        ret
-
-  .nomem:
-        and     [bgrlockpid], 0
-        mov     [bgrlock], 0
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc sysfn.set_background_ctl.unmap ;//////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;? System function 15.7: unmap background data from process address space
-;-----------------------------------------------------------------------------------------------------------------------
-        cmp     [bgrlock], 0
-        jz      .err
-        mov     eax, [CURRENT_TASK]
-        cmp     [bgrlockpid], eax
-        jnz     .err
-        mov     eax, ecx
-        mov     ebx, ecx
-        shr     eax, 12
-        mov     ecx, [page_tabs + (eax - 1) * 4]
-        test    cl, USED_BLOCK + DONT_FREE_BLOCK
-        jz      .err
-        jnp     .err
-        push    eax
-        shr     ecx, 12
-        dec     ecx
-
-    @@: and     dword[page_tabs + eax * 4], 0
-        mov     edx, eax
-        shl     edx, 12
-        push    eax
-        invlpg  [edx]
-        pop     eax
-        inc     eax
-        loop    @b
-        pop     eax
-        and     dword[page_tabs + (eax - 1) * 4], not DONT_FREE_BLOCK
-        stdcall user_free, ebx
-        mov     [esp + 4 + regs_context32_t.eax], eax
-        and     [bgrlockpid], 0
-        mov     [bgrlock], 0
-        ret
-
-  .err:
-        and     [esp + 4 + regs_context32_t.eax], 0
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc force_redraw_background ;/////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        and     [draw_data + 32 + rect32_t.left], 0
-        and     [draw_data + 32 + rect32_t.top], 0
-        push    eax ebx
-        mov     eax, [Screen_Max_X]
-        mov     ebx, [Screen_Max_Y]
-        mov     [draw_data + 32 + rect32_t.right], eax
-        mov     [draw_data + 32 + rect32_t.bottom], ebx
-        pop     ebx eax
-        inc     byte[REDRAW_BACKGROUND]
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc sysfn.get_background_ctl ;////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;? System function 39
-;-----------------------------------------------------------------------------------------------------------------------
-iglobal
-  jump_table sysfn.get_background_ctl, subfn, sysfn.not_implemented, \
-    get_size, \ ; 1
-    get_pixel, \ ; 2
-    -, \
-    get_mode ; 4
-endg
-;-----------------------------------------------------------------------------------------------------------------------
-        dec     ebx
-        cmp     ebx, .countof.subfn
-        jae     sysfn.not_implemented
-
-        jmp     [.subfn + ebx * 4]
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc sysfn.get_background_ctl.get_size ;///////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;? System function 39.1
-;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, [BgrDataWidth]
-        shl     eax, 16
-        mov     ax, [BgrDataHeight]
-        mov     [esp + 4 + regs_context32_t.eax], eax
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc sysfn.get_background_ctl.get_pixel ;//////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;? System function 39.2
-;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, [img_background]
-        test    ecx, ecx
-        jz      @f
-        cmp     eax, static_background_data
-        jz      .exit
-
-    @@: mov     ebx, [mem_BACKGROUND]
-        add     ebx, 4095
-        and     ebx, -4096
-        sub     ebx, 4
-        cmp     ecx, ebx
-        ja      .exit
-
-        mov     eax, [ecx + eax]
-
-        and     eax, 0x00ffffff
-        mov     [esp + 4 + regs_context32_t.eax], eax
-
-  .exit:
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc sysfn.get_background_ctl.get_mode ;///////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;? System function 39.4
-;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, [BgrDrawMode]
-        mov     [esp + 4 + regs_context32_t.eax], eax
-        ret
-kendp
-
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc sysfn.get_key ;///////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -2978,18 +2633,18 @@ kproc sysfn.get_key ;///////////////////////////////////////////////////////////
         mov     [esp + 4 + regs_context32_t.eax], 1
         ; test main buffer
         mov     ebx, [CURRENT_TASK] ; TOP OF WINDOW STACK
-        movzx   ecx, word[WIN_STACK + ebx * 2]
+        movzx   ecx, [WIN_STACK + ebx * 2]
         mov     edx, [TASK_COUNT]
         cmp     ecx, edx
         jne     .finish
-        cmp     byte[KEY_COUNT], 0
+        cmp     [KEY_COUNT], 0
         je      .finish
-        movzx   eax, byte[KEY_BUFF]
+        movzx   eax, [KEY_BUFF]
         shl     eax, 8
         push    eax
-        dec     byte[KEY_COUNT]
-        and     byte[KEY_COUNT], 127
-        movzx   ecx, byte[KEY_COUNT]
+        dec     [KEY_COUNT]
+        and     [KEY_COUNT], 127
+        movzx   ecx, [KEY_COUNT]
         add     ecx, 2
         mov     eax, KEY_BUFF + 1
         mov     ebx, KEY_BUFF
@@ -3028,16 +2683,16 @@ kproc sysfn.get_clicked_button_id ;/////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     ebx, [CURRENT_TASK] ; TOP OF WINDOW STACK
         mov     [esp + 4 + regs_context32_t.eax], 1
-        movzx   ecx, word[WIN_STACK + ebx * 2]
+        movzx   ecx, [WIN_STACK + ebx * 2]
         mov     edx, [TASK_COUNT] ; less than 256 processes
         cmp     ecx, edx
         jne     .exit
-        movzx   eax, byte[BTN_COUNT]
+        movzx   eax, [BTN_COUNT]
         test    eax, eax
         jz      .exit
         mov     eax, [BTN_BUFF]
         and     al, 0xfe ; delete left button bit
-        mov     byte[BTN_COUNT], 0
+        mov     [BTN_COUNT], 0
         mov     [esp + 4 + regs_context32_t.eax], eax
 
   .exit:
@@ -3077,11 +2732,11 @@ kproc sysfn.get_process_info ;//////////////////////////////////////////////////
         shl     ecx, 5
 
         ; +0: dword: memory usage
-        mov     eax, [ecx + CURRENT_TASK + task_data_t.cpu_usage]
+        mov     eax, [TASK_DATA + ecx - sizeof.task_data_t + task_data_t.cpu_usage]
         mov     [ebx], eax
         ; +10: 11 bytes: name of the process
         push    ecx
-        lea     eax, [ecx * 8 + SLOT_BASE + app_data_t.app_name]
+        lea     eax, [SLOT_BASE + ecx * 8 + app_data_t.app_name]
         add     ebx, 10
         mov     ecx, 11
         call    memmove
@@ -3104,34 +2759,34 @@ kproc sysfn.get_process_info ;//////////////////////////////////////////////////
         stosd
 
         ; +30: PID/TID
-        mov     eax, [ecx + CURRENT_TASK + task_data_t.pid]
+        mov     eax, [TASK_DATA + ecx - sizeof.task_data_t + task_data_t.pid]
         stosd
 
         ; window position and size
         push    esi
-        lea     esi, [ecx + window_data + window_data_t.box]
+        lea     esi, [window_data + ecx + window_data_t.box]
         movsd
         movsd
         movsd
         movsd
 
         ; Process state (+50)
-        mov     eax, dword[ecx + CURRENT_TASK + task_data_t.state]
+        movzx   eax, [TASK_DATA + ecx - sizeof.task_data_t + task_data_t.state]
         stosd
 
         ; Window client area box
-        lea     esi, [ecx * 8 + SLOT_BASE + app_data_t.wnd_clientbox]
+        lea     esi, [SLOT_BASE + ecx * 8 + app_data_t.wnd_clientbox]
         movsd
         movsd
         movsd
         movsd
 
         ; Window state
-        mov     al, [ecx + window_data + window_data_t.fl_wstate]
+        mov     al, [window_data + ecx + window_data_t.fl_wstate]
         stosb
 
         ; Event mask (+71)
-        mov     eax, [ecx + CURRENT_TASK + task_data_t.event_mask]
+        mov     eax, [TASK_DATA + ecx - sizeof.task_data_t + task_data_t.event_mask]
         stosd
 
         pop     esi
@@ -3469,47 +3124,47 @@ kproc checkmisc ;///////////////////////////////////////////////////////////////
 
   .set_mouse_event:
         add     edi, sizeof.app_data_t
-        or      dword[edi + SLOT_BASE + app_data_t.event_mask], 0100000b
+        or      [SLOT_BASE + edi + app_data_t.event_mask], 0100000b
         loop    .set_mouse_event
 
   .mouse_not_active:
-        cmp     byte[BACKGROUND_CHANGED], 0
+        cmp     [BACKGROUND_CHANGED], 0
         jz      .no_set_bgr_event
         xor     edi, edi
         mov     ecx, [TASK_COUNT]
 
   .set_bgr_event:
         add     edi, sizeof.app_data_t
-        or      [edi + SLOT_BASE + app_data_t.event_mask], 16
+        or      [SLOT_BASE + edi + app_data_t.event_mask], 16
         loop    .set_bgr_event
-        mov     byte[BACKGROUND_CHANGED], 0
+        mov     [BACKGROUND_CHANGED], 0
 
   .no_set_bgr_event:
-        cmp     byte[REDRAW_BACKGROUND], 0 ; background update?
+        cmp     [REDRAW_BACKGROUND], 0 ; background update?
         jz      .nobackgr
         cmp     [background_defined], 0
         jz      .nobackgr
-;       mov     [draw_data + 32 + rect32_t.left], 0
-;       mov     [draw_data + 32 + rect32_t.top], 0
+;       mov     [draw_data + sizeof.rect32_t + rect32_t.left], 0
+;       mov     [draw_data + sizeof.rect32_t + rect32_t.top], 0
 ;       mov     eax, [Screen_Max_X]
 ;       mov     ebx, [Screen_Max_Y]
-;       mov     [draw_data + 32 + rect32_t.right], eax
-;       mov     [draw_data + 32 + rect32_t.bottom], ebx
+;       mov     [draw_data + sizeof.rect32_t + rect32_t.right], eax
+;       mov     [draw_data + sizeof.rect32_t + rect32_t.bottom], ebx
 
     @@: call    drawbackground
         xor     eax, eax
         xchg    al, [REDRAW_BACKGROUND]
         test    al, al ; got new update request?
         jnz     @b
-        mov     [draw_data + 32 + rect32_t.left], eax
-        mov     [draw_data + 32 + rect32_t.top], eax
-        mov     [draw_data + 32 + rect32_t.right], eax
-        mov     [draw_data + 32 + rect32_t.bottom], eax
-        mov     byte[MOUSE_BACKGROUND], 0
+        mov     [draw_data + sizeof.rect32_t + rect32_t.left], eax
+        mov     [draw_data + sizeof.rect32_t + rect32_t.top], eax
+        mov     [draw_data + sizeof.rect32_t + rect32_t.right], eax
+        mov     [draw_data + sizeof.rect32_t + rect32_t.bottom], eax
+;       mov     [MOUSE_BACKGROUND], 0
 
   .nobackgr:
         ; system shutdown request
-        cmp     byte[SYS_SHUTDOWN], 0
+        cmp     [SYS_SHUTDOWN], 0
         je      .noshutdown
 
         mov     edx, [shutdown_processes]
@@ -3529,7 +3184,7 @@ kproc checkmisc ;///////////////////////////////////////////////////////////////
   .no_mark_system_shutdown:
     @@: call    [_display.disable_mouse]
 
-        dec     byte[SYS_SHUTDOWN]
+        dec     [SYS_SHUTDOWN]
         je      system_shutdown
 
   .noshutdown:
@@ -3616,9 +3271,9 @@ kproc redrawscreen ;////////////////////////////////////////////////////////////
   .bgli:
         cmp     dword[esp], 1
         jnz     .az
-;       cmp     byte[BACKGROUND_CHANGED], 0
+;       cmp     [BACKGROUND_CHANGED], 0
 ;       jnz     .newdw8
-        cmp     byte[REDRAW_BACKGROUND], 0
+        cmp     [REDRAW_BACKGROUND], 0
         jz      .az
         mov     dl, 0
         lea     eax, [edi + draw_data - window_data]
@@ -3646,7 +3301,7 @@ kproc redrawscreen ;////////////////////////////////////////////////////////////
         mov     [eax + rect32_t.bottom], ebx
         mov     dl, 1
 
-    @@: add     byte[REDRAW_BACKGROUND], dl
+    @@: add     [REDRAW_BACKGROUND], dl
         jmp     .newdw8
 
   .az:
@@ -3667,11 +3322,11 @@ kproc redrawscreen ;////////////////////////////////////////////////////////////
 
         cmp     dword[esp], 1
         jne     .nobgrd
-        inc     byte[REDRAW_BACKGROUND]
+        inc     [REDRAW_BACKGROUND]
 
   .newdw8:
   .nobgrd:
-        mov     byte[eax + window_data_t.fl_redraw], 1 ; mark as redraw
+        mov     [eax + window_data_t.fl_redraw], 1 ; mark as redraw
 
   .ricino:
   .not_this_task:
@@ -3682,21 +3337,6 @@ kproc redrawscreen ;////////////////////////////////////////////////////////////
 
         pop     eax
         popad
-
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc calculatebackground ;/////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        mov     edi, [_WinMapAddress] ; set os to use all pixels
-        mov     eax, 0x01010101
-        mov     ecx, [_WinMapSize]
-        shr     ecx, 2
-        rep     stosd
-
-        mov     byte[REDRAW_BACKGROUND], 0 ; do not draw background!
-        mov     byte[BACKGROUND_CHANGED], 0
 
         ret
 kendp
@@ -3874,7 +3514,7 @@ kproc sysfn.get_irq_data ;//////////////////////////////////////////////////////
 
   .gidril1:
         shl     ebx, 12
-        lea     eax, [ebx + IRQ_SAVE] ; eax = address of the beginning of buffer: +0x0 - data size, +0x4 - data offset
+        lea     eax, [IRQ_SAVE + ebx] ; eax = address of the beginning of buffer: +0x0 - data size, +0x4 - data offset
         mov     edx, [eax]
         dec     esi
         jz      .gid1
@@ -3983,9 +3623,9 @@ kproc r_f_port_area ;///////////////////////////////////////////////////////////
         mov     ebx, eax
         shl     ebx, 4
         add     ebx, RESERVED_PORTS
-        cmp     ecx, [ebx + 8]
+        cmp     ecx, [ebx + app_io_ports_range_t.end_port]
         ja      .rpal4
-        cmp     edx, [ebx + 4]
+        cmp     edx, [ebx + app_io_ports_range_t.start_port]
 ;       jb      .rpal4
 ;       jmp     .rpal1
         jae     .rpal1
@@ -4034,9 +3674,9 @@ kproc r_f_port_area ;///////////////////////////////////////////////////////////
         add     eax, RESERVED_PORTS
         mov     ebx, [TASK_BASE]
         mov     ebx, [ebx + task_data_t.pid]
-        mov     [eax], ebx
-        mov     [eax + 4], ecx
-        mov     [eax + 8], edx
+        mov     [eax + app_io_ports_range_t.pid], ebx
+        mov     [eax + app_io_ports_range_t.start_port], ecx
+        mov     [eax + app_io_ports_range_t.end_port], edx
 
         xor     eax, eax
         ret
@@ -4053,11 +3693,11 @@ kproc r_f_port_area ;///////////////////////////////////////////////////////////
         mov     edi, eax
         shl     edi, 4
         add     edi, RESERVED_PORTS
-        cmp     ebx, [edi]
+        cmp     ebx, [edi + app_io_ports_range_t.pid]
         jne     .frpal4
-        cmp     ecx, [edi + 4]
+        cmp     ecx, [edi + app_io_ports_range_t.start_port]
         jne     .frpal4
-        cmp     edx, [edi + 8]
+        cmp     edx, [edi + app_io_ports_range_t.end_port]
         jne     .frpal4
         jmp     .frpal1
 
@@ -4172,38 +3812,6 @@ iglobal
 endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc drawbackground ;//////////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        inc     [mouse_pause]
-        cmp     word[SCR_MODE], 0x12
-        je      .dbrv20
-
-  .dbrv12:
-        cmp     word[SCR_MODE], 0100000000000000b
-        jge     .dbrv20
-        cmp     word[SCR_MODE], 0x13
-        je      .dbrv20
-        call    vesa12_drawbackground
-        dec     [mouse_pause]
-        call    [draw_pointer]
-        ret
-
-  .dbrv20:
-        cmp     dword[BgrDrawMode], 1
-        jne     .bgrstr
-        call    vesa20_drawbackground_tiled
-        dec     [mouse_pause]
-        call    [draw_pointer]
-        ret
-
-  .bgrstr:
-        call    vesa20_drawbackground_stretch
-        dec     [mouse_pause]
-        call    [draw_pointer]
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
 kproc sysfn.put_image ;/////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 7
@@ -4233,12 +3841,12 @@ kendp
 kproc sys_putimage_bpp
 ;       call    [disable_mouse] ; this will be done in xxx_putimage
 ;       mov     eax, vga_putimage
-        cmp     word[SCR_MODE], 0x12
+        cmp     [SCR_MODE], 0x12
         jz      @f
         mov     eax, vesa12_putimage
-        cmp     word[SCR_MODE], 0100000000000000b
+        cmp     [SCR_MODE], 0100000000000000b
         jae     @f
-        cmp     word[SCR_MODE], 0x13
+        cmp     [SCR_MODE], 0x13
         jnz     .doit
 
     @@: mov     eax, vesa20_putimage
@@ -4265,9 +3873,9 @@ kproc sysfn.put_image_with_palette ;////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, [CURRENT_TASK]
         shl     eax, 8
-        add     dx, word[eax + SLOT_BASE + app_data_t.wnd_clientbox.top]
+        add     dx, word[SLOT_BASE + eax + app_data_t.wnd_clientbox.top]
         rol     edx, 16
-        add     dx, word[eax + SLOT_BASE + app_data_t.wnd_clientbox.left]
+        add     dx, word[SLOT_BASE + eax + app_data_t.wnd_clientbox.left]
         rol     edx, 16
 
   .forced:
@@ -4557,13 +4165,13 @@ kproc __sys_drawbar ;///////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         inc     [mouse_pause]
 ;       call    [disable_mouse]
-        cmp     word[SCR_MODE], 0x12
+        cmp     [SCR_MODE], 0x12
         je      .dbv20
 
   .sdbv20:
-        cmp     word[SCR_MODE], 0100000000000000b
+        cmp     [SCR_MODE], 0100000000000000b
         jge     .dbv20
-        cmp     word[SCR_MODE], 0x13
+        cmp     [SCR_MODE], 0x13
         je      .dbv20
 
         call    vesa12_drawbar
@@ -4711,7 +4319,7 @@ kproc setmouse ;////////////////////////////////////////////////////////////////
 ;? set mousepicture -pointer
 ;-----------------------------------------------------------------------------------------------------------------------
         ; ps2 mouse enable
-        mov     dword[MOUSE_PICTURE], mousepointer
+        mov     [MOUSE_PICTURE], mousepointer
         cli
         ret
 kendp
@@ -4807,55 +4415,6 @@ kproc sys_msg_board_str ;///////////////////////////////////////////////////////
         jmp     @b
 
     @@: popad
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc sys_msg_board_byte ;//////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        ; in: al = byte to display
-        ; out: nothing
-        ; destroys: nothing
-        pushad
-        mov     ecx, 2
-        shl     eax, 24
-        jmp     @f
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc sys_msg_board_word ;//////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        ; in: ax = word to display
-        ; out: nothing
-        ; destroys: nothing
-        pushad
-        mov     ecx, 4
-        shl     eax, 16
-        jmp     @f
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc sys_msg_board_dword ;/////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        ; in: eax = dword to display
-        ; out: nothing
-        ; destroys: nothing
-        pushad
-        mov     ecx, 8
-
-    @@: push    ecx
-        rol     eax, 4
-        push    eax
-        and     al, 0x0f
-        cmp     al, 10
-        sbb     al, 0x69
-        das
-        mov     bl, al
-        call    sysfn.debug_board.push_back
-        pop     eax
-        pop     ecx
-        loop    @b
-        popad
         ret
 kendp
 
@@ -4973,7 +4532,7 @@ kproc sysfn.keyboard_ctl.set_input_mode ;///////////////////////////////////////
 ;? System function 66.1: set keyboard mode
 ;-----------------------------------------------------------------------------------------------------------------------
         shl     edi, 8
-        mov     [edi + SLOT_BASE + app_data_t.keyboard_mode], cl
+        mov     [SLOT_BASE + edi + app_data_t.keyboard_mode], cl
         ret
 kendp
 
@@ -5106,7 +4665,7 @@ kproc sysfs.direct_screen_access.get_screen_resolution ;////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, [Screen_Max_X]
         shl     eax, 16
-        mov     ax, [Screen_Max_Y]
+        mov     ax, word[Screen_Max_Y]
         add     eax, 0x00010001
         mov     [esp + 4 + regs_context32_t.eax], eax
         ret
@@ -5117,7 +4676,7 @@ kproc sysfs.direct_screen_access.get_bits_per_pixel ;///////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 61.2: get bits per pixel
 ;-----------------------------------------------------------------------------------------------------------------------
-        movzx   eax, byte[ScreenBPP]
+        movzx   eax, [ScreenBPP]
         mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
@@ -5223,9 +4782,9 @@ kproc sysfn.get_screen_size ;///////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 14
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     ax, [Screen_Max_X]
+        mov     ax, word[Screen_Max_X]
         shl     eax, 16
-        mov     ax, [Screen_Max_Y]
+        mov     ax, word[Screen_Max_Y]
         mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
@@ -5354,7 +4913,7 @@ kproc sysfn.get_pixel ;/////////////////////////////////////////////////////////
         div     ecx
         mov     ebx, edx
         xchg    eax, ebx
-        call    dword[GETPIXEL] ; eax - x, ebx - y
+        call    [GETPIXEL] ; eax - x, ebx - y
         mov     [esp + 4 + regs_context32_t.eax], ecx
         ret
 kendp
@@ -5378,13 +4937,13 @@ kproc sysfn.grab_screen_area ;//////////////////////////////////////////////////
 
         ; Since the test for the coordinates of the mouse should not be used,
         ; then use the call [disable_mouse] is not possible!
-        cmp     dword[MOUSE_VISIBLE], 0
+        cmp     [MOUSE_VISIBLE], 0
         jne     @f
         pushf
         cli
         call    draw_mouse_under
         popf
-        mov     dword[MOUSE_VISIBLE], 1
+        mov     [MOUSE_VISIBLE], 1
 
     @@: mov     edi, ebx
         mov     eax, edx
@@ -5423,7 +4982,7 @@ kproc sysfn.grab_screen_area ;//////////////////////////////////////////////////
         push    eax ebx ecx
         add     eax, ecx
 
-        call    dword[GETPIXEL] ; eax - x, ebx - y
+        call    [GETPIXEL] ; eax - x, ebx - y
 
         mov     [ebp], cx
         shr     ecx, 16

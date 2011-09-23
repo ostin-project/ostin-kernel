@@ -20,6 +20,16 @@ DRV_CURRENT equ 5 ; current drivers model version
 DRV_VERSION equ (DRV_COMPAT shl 16) or DRV_CURRENT
 PID_KERNEL  equ 1 ; os_idle thread
 
+MAX_DEFAULT_DLL_ADDR = 0x20000000
+MIN_DEFAULT_DLL_ADDR = 0x10000000
+
+uglobal
+  align 4
+  srv          linked_list_t
+  dll_list     linked_list_t
+  dll_cur_addr dd MIN_DEFAULT_DLL_ADDR
+endg
+
 align 4
 ;-----------------------------------------------------------------------------------------------------------------------
 proc attach_int_handler stdcall, irq:dword, handler:dword, access_rights:dword ;////////////////////////////////////////
@@ -420,10 +430,11 @@ proc get_service stdcall, sz_name:dword ;///////////////////////////////////////
 
     @@: mov     edx, [srv.next_ptr]
 
-    @@: cmp     edx, srv.next_ptr - SRV_FD_OFFSET
+    @@: cmp     edx, srv
         je      .not_load
 
-        stdcall strncmp, edx, [sz_name], 16
+        lea     eax, [edx + service_t.srv_name]
+        stdcall strncmp, eax, [sz_name], 16
         test    eax, eax
         je      .ok
 
@@ -458,21 +469,19 @@ proc reg_service stdcall, name:dword, handler:dword ;///////////////////////////
         test    eax, eax
         jz      .fail
 
-        push    esi
-        push    edi
-        mov     edi, eax
+        push    esi edi
+        lea     edi, [eax + service_t.srv_name]
         mov     esi, [name]
         movsd
         movsd
         movsd
         movsd
-        pop     edi
-        pop     esi
+        pop     edi esi
 
         mov     [eax + service_t.magic], ' SRV'
         mov     [eax + service_t.size], sizeof.service_t
 
-        mov     ebx, srv.next_ptr - SRV_FD_OFFSET
+        mov     ebx, srv
         mov     edx, [ebx + service_t.next_ptr]
         mov     [eax + service_t.next_ptr], edx
         mov     [eax + service_t.prev_ptr], ebx
@@ -777,12 +786,7 @@ endl
         test    eax, eax
         jnz     @f
 
-        mov     esi, msg_unresolved
-        call    sys_msg_board_str
-        mov     esi, edi
-        call    sys_msg_board_str
-        mov     esi, msg_CR
-        call    sys_msg_board_str
+        DEBUGF  1, "K : unresolved %s\n", edi
 
         mov     [retval], 0
 
@@ -1082,25 +1086,11 @@ endl
         ret
 
   .ver_fail:
-        mov     esi, msg_CR
-        call    sys_msg_board_str
-        mov     esi, [driver_name]
-        call    sys_msg_board_str
-        mov     esi, msg_CR
-        call    sys_msg_board_str
-        mov     esi, msg_version
-        call    sys_msg_board_str
-        mov     esi, msg_www
-        call    sys_msg_board_str
+        DEBUGF  1, "K : incompatible driver version: %s\n", [driver_name]
         jmp     .cleanup
 
   .link_fail:
-        mov     esi, msg_module
-        call    sys_msg_board_str
-        mov     esi, [driver_name]
-        call    sys_msg_board_str
-        mov     esi, msg_CR
-        call    sys_msg_board_str
+        DEBUGF  1, "K : in module %s\n", [driver_name]
 
   .cleanup:
         stdcall kernel_free, [img_base]
@@ -1169,7 +1159,7 @@ endl
         mov     esi, [CURRENT_TASK]
         shl     esi, 8
         lea     edi, [fullname]
-        mov     ebx, [esi + SLOT_BASE + app_data_t.dlls_list_ptr]
+        mov     ebx, [SLOT_BASE + esi + app_data_t.dlls_list_ptr]
         test    ebx, ebx
         jz      .not_in_process
         mov     esi, [ebx + dll_handle_t.next_ptr]
@@ -1451,7 +1441,7 @@ endl
         jz      .fail_and_free_user
         mov     ebx, [CURRENT_TASK]
         shl     ebx, 5
-        mov     edx, [CURRENT_TASK + ebx + task_data_t.pid]
+        mov     edx, [TASK_DATA + ebx - sizeof.task_data_t + task_data_t.pid]
         mov     [eax + dll_handle_t.pid], edx
         push    eax
         call    init_dlls_in_thread
@@ -1685,7 +1675,7 @@ kproc stop_all_services ;///////////////////////////////////////////////////////
         mov     edx, [srv.next_ptr]
 
   .next:
-        cmp     edx, srv.next_ptr - SRV_FD_OFFSET
+        cmp     edx, srv
         je      .done
         cmp     [edx + service_t.magic], ' SRV'
         jne     .next
@@ -1724,7 +1714,7 @@ kproc create_kernel_object ;////////////////////////////////////////////////////
         jz      .fail
 
         mov     ecx, [current_slot]
-        add     ecx, APP_OBJ_OFFSET
+        add     ecx, app_data_t.obj
 
         pushfd
         cli

@@ -92,7 +92,7 @@ kproc sysfn.debug_ctl.detach ;//////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         call    get_debuggee_slot
         jc      .ret
-        and     dword[eax * 8 + SLOT_BASE + app_data_t.debugger_slot], 0
+        and     [SLOT_BASE + eax * 8 + app_data_t.debugger_slot], 0
         call    do_resume
 
   .ret:
@@ -131,7 +131,7 @@ kproc sysfn.debug_ctl.suspend ;/////////////////////////////////////////////////
         call    pid_to_slot
         shl     eax, 5
         jz      .ret
-        mov     cl, [CURRENT_TASK + eax + task_data_t.state] ; process state
+        mov     cl, [TASK_DATA + eax - sizeof.task_data_t + task_data_t.state] ; process state
         test    cl, cl ; TSTATE_RUNNING
         jz      .1
         cmp     cl, TSTATE_WAITING
@@ -139,7 +139,7 @@ kproc sysfn.debug_ctl.suspend ;/////////////////////////////////////////////////
         mov     cl, TSTATE_WAIT_SUSPENDED
 
   .2:
-        mov     [CURRENT_TASK + eax + task_data_t.state], cl
+        mov     [TASK_DATA + eax - sizeof.task_data_t + task_data_t.state], cl
 
   .ret:
         sti
@@ -153,7 +153,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc do_resume ;///////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     cl, [CURRENT_TASK + eax + task_data_t.state]
+        mov     cl, [TASK_DATA + eax - sizeof.task_data_t + task_data_t.state]
         cmp     cl, TSTATE_RUN_SUSPENDED
         jz      .1
         cmp     cl, TSTATE_WAIT_SUSPENDED
@@ -161,7 +161,7 @@ kproc do_resume ;///////////////////////////////////////////////////////////////
         mov     cl, TSTATE_WAITING
 
   .2:
-        mov     [CURRENT_TASK + eax + task_data_t.state], cl
+        mov     [TASK_DATA + eax - sizeof.task_data_t + task_data_t.state], cl
 
   .ret:
         ret
@@ -214,8 +214,8 @@ kproc sysfn.debug_ctl.get_context ;/////////////////////////////////////////////
         call    get_debuggee_slot
         jc      .ret
         mov     edi, esi
-        mov eax, [eax * 8 + SLOT_BASE + app_data_t.pl0_stack]
-        lea esi, [eax + RING0_STACK_SIZE]
+        mov     eax, [SLOT_BASE + eax * 8 + app_data_t.pl0_stack]
+        lea     esi, [eax + RING0_STACK_SIZE]
 
   .ring0:
         ; note that following code assumes that all interrupt/exception handlers
@@ -272,8 +272,8 @@ kproc sysfn.debug_ctl.set_context ;/////////////////////////////////////////////
         call    get_debuggee_slot
         jc      .stiret
 ;       mov     esi, edx
-        mov eax, [eax * 8 + SLOT_BASE + app_data_t.pl0_stack]
-        lea edi, [eax + RING0_STACK_SIZE]
+        mov     eax, [SLOT_BASE + eax * 8 + app_data_t.pl0_stack]
+        lea     edi, [eax + RING0_STACK_SIZE]
 
   .ring0:
         sub     edi, 8 + 12 + 0x20
@@ -315,7 +315,7 @@ kproc sysfn.debug_ctl.set_drx ;/////////////////////////////////////////////////
         call    get_debuggee_slot
         jc      .errret
         mov     ebp, eax
-        lea     eax, [eax * 8 + SLOT_BASE + app_data_t.dbg_regs]
+        lea     eax, [SLOT_BASE + eax * 8 + app_data_t.dbg_regs]
         ; [eax]=dr0, [eax+4]=dr1, [eax+8]=dr2, [eax+C]=dr3
         ; [eax+10]=dr7
         cmp     esi, OS_BASE
@@ -342,7 +342,7 @@ kproc sysfn.debug_ctl.set_drx ;/////////////////////////////////////////////////
         jnz     .okret
 ;       imul    eax, ebp, tss_step/32
 ;       and     byte[eax + tss_data + tss_t._trap], not 1
-        and     [ebp * 8 + SLOT_BASE + app_data_t.dbg_state], not 1
+        and     [SLOT_BASE + ebp * 8 + app_data_t.dbg_state], not 1
 
   .okret:
         and     [esp + 4 + regs_context32_t.eax], 0
@@ -393,7 +393,7 @@ kproc sysfn.debug_ctl.set_drx ;/////////////////////////////////////////////////
         or      [eax + 0x10 + 2], dx ; set R/W and LEN fields
 ;       imul    eax, ebp, tss_step / 32
 ;       or      byte[eax + tss_data + tss_t._trap], 1
-        or      [ebp * 8 + SLOT_BASE + app_data_t.dbg_state], 1
+        or      [SLOT_BASE + ebp * 8 + app_data_t.dbg_state], 1
         jmp     .okret
 kendp
 
@@ -502,7 +502,7 @@ kproc debugger_notify ;/////////////////////////////////////////////////////////
         pop     ecx
         pop     ecx
         pop     ecx
-        cmp     dword[CURRENT_TASK], 1
+        cmp     [CURRENT_TASK], 1
         jnz     .notos
         cmp     [timer_ticks], edi
         jae     .ret

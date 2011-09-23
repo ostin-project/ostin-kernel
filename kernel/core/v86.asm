@@ -373,8 +373,7 @@ endg
         jz      @f
         cmp     [v86_irqhooks + edx * 8], eax
         jz      @f
-        mov     esi, v86_irqerr
-        call    sys_msg_board_str
+        DEBUGF  1, "K : V86 : IRQ already hooked\n"
         inc     [v86_irqhooks + edx * 8 + 4]
         mov     eax, 3
         jmp     v86_exc_c.exit
@@ -392,17 +391,9 @@ kendp
 ; exception handler, which in turn calls the virtual 8086-mode monitor).
 
 iglobal
-  v86_exc_str1 db 'V86 : unexpected exception ', 0
-  v86_exc_str2 db ' at ', 0
-  v86_exc_str3 db ':', 0
-  v86_exc_str4 db 13, 10, 'V86 : faulted code:', 0
-  v86_exc_str5 db ' (unavailable)', 0
-  v86_newline  db 13, 10, 0
-  v86_io_str1  db 'V86 : access to disabled i/o port ', 0
-  v86_io_byte  db ' (byte)', 13, 10, 0
-  v86_io_word  db ' (word)', 13, 10, 0
-  v86_io_dword db ' (dword)', 13, 10, 0
-  v86_irqerr   db 'V86 : IRQ already hooked', 13, 10, 0
+  v86_io_byte  db ' (byte)', 0
+  v86_io_word  db ' (word)', 0
+  v86_io_dword db ' (dword)', 0
 endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -414,7 +405,7 @@ kproc v86_exc_c ;///////////////////////////////////////////////////////////////
         xor     eax, eax
         mov     dr6, eax
 
-    @@: mov     eax, [esp + sizeof.v86_regs_t + 0x10 + 0x18]
+    @@: mov     eax, [esp + sizeof.v86_regs_t + 0x10 + v86_regs_t.ecx]
         cmp     word[esp + v86_regs_t.eip], ax
         jnz     @f
         shr     eax, 16
@@ -470,7 +461,6 @@ kproc v86_exc_c ;///////////////////////////////////////////////////////////////
         jae     .nogp
         xor     eax, eax
         lodsb
-;       call    sys_msg_board_byte
         ; simulate INT command
         ; N.B. It is possible that some checks need to be corrected,
         ;      but at least in case of normal execution the code works.
@@ -488,7 +478,7 @@ kproc v86_exc_c ;///////////////////////////////////////////////////////////////
         sub     eax, 6
         add     edx, eax
         mov     eax, edx
-        mov     esi, [esp + 4 + sizeof.v86_regs_t + 0x10 + 4]
+        mov     esi, [esp + 4 + sizeof.v86_regs_t + 0x10 + v86_regs_t.esi]
         call    v86_get_lin_addr
         cmp     eax, 0x1000
         jae     @f
@@ -537,7 +527,7 @@ kproc v86_exc_c ;///////////////////////////////////////////////////////////////
         movzx   eax, word[esp + v86_regs_t.esp]
         add     edx, eax
         mov     eax, edx
-        mov     esi, [esp + sizeof.v86_regs_t + 0x10 + 4]
+        mov     esi, [esp + sizeof.v86_regs_t + 0x10 + v86_regs_t.esi]
         call    v86_get_lin_addr
         cmp     eax, 0x1000
         jae     @f
@@ -574,7 +564,7 @@ kproc v86_exc_c ;///////////////////////////////////////////////////////////////
         movzx   eax, ax
         add     edx, eax
         mov     eax, edx
-        mov     esi, [esp + sizeof.v86_regs_t + 0x10 + 4]
+        mov     esi, [esp + sizeof.v86_regs_t + 0x10 + v86_regs_t.esi]
         call    v86_get_lin_addr
         cmp     eax, 0x1000
         jae     @f
@@ -607,7 +597,7 @@ kproc v86_exc_c ;///////////////////////////////////////////////////////////////
         sub     eax, 4
         add     edx, eax
         mov     eax, edx
-        mov     esi, [esp + sizeof.v86_regs_t + 0x10 + 4]
+        mov     esi, [esp + sizeof.v86_regs_t + 0x10 + v86_regs_t.esi]
         call    v86_get_lin_addr
         cmp     eax, 0x1000
         jae     @f
@@ -639,7 +629,7 @@ kproc v86_exc_c ;///////////////////////////////////////////////////////////////
         movzx   eax, word[esp + v86_regs_t.esp]
         add     edx, eax
         mov     eax, edx
-        mov     esi, [esp + sizeof.v86_regs_t + 0x10 + 4]
+        mov     esi, [esp + sizeof.v86_regs_t + 0x10 + v86_regs_t.esi]
         call    v86_get_lin_addr
         cmp     eax, 0x1000
         jae     @f
@@ -671,7 +661,7 @@ kproc v86_exc_c ;///////////////////////////////////////////////////////////////
         movzx   eax, word[esp + v86_regs_t.esp]
         add     edx, eax
         mov     eax, edx
-        mov     esi, [esp + sizeof.v86_regs_t + 0x10 + 4]
+        mov     esi, [esp + sizeof.v86_regs_t + 0x10 + v86_regs_t.esi]
         call    v86_get_lin_addr
         cmp     eax, 0x1000
         jae     @f
@@ -756,10 +746,7 @@ kproc v86_exc_c ;///////////////////////////////////////////////////////////////
         mov     ecx, 4
 
   .invalid_io:
-        mov     esi, v86_io_str1
-        call    sys_msg_board_str
-        mov     eax, ebx
-        call    sys_msg_board_dword
+        DEBUGF  1, "K : V86 : access to disabled i/o port %u", ebx
         mov     esi, v86_io_byte
         cmp     ecx, 1
         jz      @f
@@ -768,14 +755,14 @@ kproc v86_exc_c ;///////////////////////////////////////////////////////////////
         jz      @f
         mov     esi, v86_io_dword
 
-    @@: call    sys_msg_board_str
+    @@: DEBUGF  1, "%s\n", esi
 
 if KCONFIG_DEBUG_SHOW_IO
 
         mov     edx, ebx
         mov     ebx, 200
         call    sysfn.delay_hs
-        mov     esi, [esp + sizeof.v86_regs_t + 0x10 + 4]
+        mov     esi, [esp + sizeof.v86_regs_t + 0x10 + v86_regs_t.esi]
         mov     eax, [esi + v86_machine_t.iopm]
 
     @@: btr     [eax], edx
@@ -792,44 +779,27 @@ else
 end if
 
   .nogp:
-        mov     esi, v86_exc_str1
-        call    sys_msg_board_str
-        mov     al, bl
-        call    sys_msg_board_byte
-        mov     esi, v86_exc_str2
-        call    sys_msg_board_str
-        mov     ax, [esp + 32 + 4]
-        call    sys_msg_board_word
-        mov     esi, v86_exc_str3
-        call    sys_msg_board_str
-        mov     ax, [esp + 32]
-        call    sys_msg_board_word
-        mov     esi, v86_exc_str4
-        call    sys_msg_board_str
+        DEBUGF  1, "K : V86 : unexpected exception %u at %x:%x\n", bl, [esp + 32 + 4]:4, [esp + 32]:4
+        DEBUGF  1, "K : V86 : faulted code:"
         mov     ecx, 8
         movzx   edx, word[esp + 32 + 4]
         shl     edx, 4
         add     edx, [esp + 32]
 
-    @@: mov     esi, [esp + sizeof.v86_regs_t + 0x10 + 4]
+    @@: mov     esi, [esp + sizeof.v86_regs_t + 0x10 + v86_regs_t.esi]
         mov     eax, edx
         call    v86_get_lin_addr
         cmp     eax, 0x1000
         jb      .nopage
-        mov     esi, v86_exc_str3 - 2
-        call    sys_msg_board_str
-        mov     al, [edx]
-        call    sys_msg_board_byte
+        DEBUGF  1, " %x", [edx]:2
         inc     edx
         loop    @b
         jmp     @f
 
   .nopage:
-        mov     esi, v86_exc_str5
-        call    sys_msg_board_str
+        DEBUGF  1, " (unavailable)"
 
-    @@: mov     esi, v86_newline
-        call    sys_msg_board_str
+    @@: DEBUGF  1, "\n"
         mov     eax, 1
         jmp     .exit
 
@@ -837,10 +807,10 @@ end if
         xor     eax, eax
 
   .exit:
-        mov     [esp + sizeof.v86_regs_t + 0x10 + 0x1c], eax
-        mov     [esp + sizeof.v86_regs_t + 0x10 + 0x18], ebx
+        mov     [esp + sizeof.v86_regs_t + 0x10 + v86_regs_t.eax], eax
+        mov     [esp + sizeof.v86_regs_t + 0x10 + v86_regs_t.ecx], ebx
 
-        mov     edx, [esp + sizeof.v86_regs_t + 0x10 + 0x14]
+        mov     edx, [esp + sizeof.v86_regs_t + 0x10 + v86_regs_t.edx]
         cmp     edx, -1
         jz      @f
         dec     [v86_irqhooks + edx * 8 + 4]
@@ -848,7 +818,7 @@ end if
         and     [v86_irqhooks + edx * 8], 0
 
     @@: mov     esi, esp
-        mov     edi, [esi + sizeof.v86_regs_t + 0x10 + 0x10]
+        mov     edi, [esi + sizeof.v86_regs_t + 0x10 + v86_regs_t.ebx]
         add     edi, sizeof.v86_regs_t
         mov     ecx, sizeof.v86_regs_t / 4
         rep     movsd
@@ -863,10 +833,10 @@ end if
         pop     eax
         mov     [SLOT_BASE + ecx + app_data_t.dir_table], eax
         pop     ebx
-        mov     dword[SLOT_BASE + ecx + app_data_t.io_map + 4], ebx
+        mov     [SLOT_BASE + ecx + app_data_t.io_map + 4], ebx
         mov     dword[page_tabs + (tss.io_map_1 shr 10)], ebx
         pop     ebx
-        mov     dword[SLOT_BASE + ecx + app_data_t.io_map], ebx
+        mov     [SLOT_BASE + ecx + app_data_t.io_map], ebx
         mov     dword[page_tabs + (tss.io_map_0 shr 10)], ebx
         mov     cr3, eax
 ;       mov     [irq_tab + 5 * 4], 0
@@ -943,7 +913,7 @@ kproc v86_irq ;/////////////////////////////////////////////////////////////////
     @@: jmp     v86_exc_c.simulate_int
 
   .notcurrent:
-        mov     ebx, SLOT_BASE + 0x100
+        mov     ebx, SLOT_BASE + sizeof.app_data_t
         mov     ecx, [TASK_COUNT]
 
   .scan:
@@ -1008,7 +978,7 @@ kproc v86_irq ;/////////////////////////////////////////////////////////////////
         mov     word[esi - sizeof.v86_regs_t + v86_regs_t.cs], cx
         and     byte[esi - sizeof.v86_regs_t + v86_regs_t.eflags + 1], not 3
         call    update_counters
-        lea     edi, [ebx + 0x100000000 - SLOT_BASE]
+        lea     edi, [ebx - (SLOT_BASE - OS_BASE)]
         shr     edi, 3
         add     edi, TASK_DATA
         call    find_next_task.found

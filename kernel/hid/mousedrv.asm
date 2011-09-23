@@ -28,8 +28,26 @@
 ;   FCFF              com1/ps2 buffer count starting from FC00
 
 uglobal
-  mousecount dd 0x0
-  mousedata  dd 0x0
+  align 4
+  current_cursor   rd 1
+  hw_cursor        rd 1
+  mouse_active     rd 1
+  mouse_pause      rd 1
+  MouseTickCounter rd 1
+  MOUSE_PICTURE    dd ?
+  MOUSE_VISIBLE    dd ?
+  MOUSE_SCROLL_H   dw ?
+  MOUSE_X          dw ?
+  MOUSE_Y          dw ?
+  MOUSE_SCROLL_V   dw ?
+  MOUSE_COLOR_MEM  dd ?
+  COLOR_TEMP       dd ?
+  X_UNDER          dw ?
+  Y_UNDER          dw ?
+  mousecount       dd 0x0
+  mousedata        dd 0x0
+  mouseunder       rb 0x600
+  BTN_DOWN         db ?
 endg
 
 iglobal
@@ -47,8 +65,8 @@ kproc draw_mouse_under ;////////////////////////////////////////////////////////
         je      @f
 
         pushad
-        movzx   eax, word[X_UNDER]
-        movzx   ebx, word[Y_UNDER]
+        movzx   eax, [X_UNDER]
+        movzx   ebx, [Y_UNDER]
         stdcall [_display.restore_cursor], eax, ebx
         popad
         ret
@@ -59,8 +77,8 @@ kproc draw_mouse_under ;////////////////////////////////////////////////////////
 
 align  4
   .mres:
-        movzx   eax, word[X_UNDER]
-        movzx   ebx, word[Y_UNDER]
+        movzx   eax, [X_UNDER]
+        movzx   ebx, [Y_UNDER]
         add     eax, ecx
         add     ebx, edx
         push    ecx
@@ -99,8 +117,8 @@ kproc save_draw_mouse ;/////////////////////////////////////////////////////////
 
         mov     [X_UNDER], ax
         mov     [Y_UNDER], bx
-        movzx   eax, word[MOUSE_Y]
-        movzx   ebx, word[MOUSE_X]
+        movzx   eax, [MOUSE_Y]
+        movzx   ebx, [MOUSE_X]
         push    eax
         push    ebx
 
@@ -110,7 +128,7 @@ kproc save_draw_mouse ;/////////////////////////////////////////////////////////
         add     eax, [_WinMapAddress]
         movzx   edx, byte[ebx + eax]
         shl     edx, 8
-        mov     esi, [edx + SLOT_BASE + app_data_t.cursor]
+        mov     esi, [SLOT_BASE + edx + app_data_t.cursor]
 
         cmp     esi, [current_cursor]
         je      .draw
@@ -126,7 +144,7 @@ kproc save_draw_mouse ;/////////////////////////////////////////////////////////
 
   .fail:
         mov     ecx, [def_cursor]
-        mov     [edx + SLOT_BASE + app_data_t.cursor], ecx
+        mov     [SLOT_BASE + edx + app_data_t.cursor], ecx
         stdcall [_display.move_cursor], ecx ; stdcall: [esp]=ebx,eax
         popad
         ret
@@ -275,18 +293,18 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc __sys_disable_mouse ;/////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     dword[MOUSE_VISIBLE], 0
+        cmp     [MOUSE_VISIBLE], 0
         je      @f
         ret
 
     @@: pushad
-        cmp     dword[CURRENT_TASK], 1
+        cmp     [CURRENT_TASK], 1
         je      .disable_m
         mov     edx, [CURRENT_TASK]
         shl     edx, 5
         add     edx, window_data
-        movzx   eax, word[MOUSE_X]
-        movzx   ebx, word[MOUSE_Y]
+        movzx   eax, [MOUSE_X]
+        movzx   ebx, [MOUSE_Y]
         mov     ecx, [Screen_Max_X]
         inc     ecx
         imul    ecx, ebx
@@ -314,8 +332,8 @@ kproc __sys_disable_mouse ;/////////////////////////////////////////////////////
         mov     edx, [CURRENT_TASK]
         shl     edx, 5
         add     edx, window_data
-        movzx   eax, word[MOUSE_X]
-        movzx   ebx, word[MOUSE_Y]
+        movzx   eax, [MOUSE_X]
+        movzx   ebx, [MOUSE_Y]
         mov     ecx, [edx + 0] ; mouse inside the area ?
         add     eax, 10
         cmp     eax, ecx
@@ -334,13 +352,13 @@ kproc __sys_disable_mouse ;/////////////////////////////////////////////////////
         jg      .no_mouse_disable
 
   .disable_m:
-        cmp     dword[MOUSE_VISIBLE], 0
+        cmp     [MOUSE_VISIBLE], 0
         jne     .no_mouse_disable
         pushf
         cli
         call    draw_mouse_under
         popf
-        mov     dword[MOUSE_VISIBLE], 1
+        mov     [MOUSE_VISIBLE], 1
 
   .no_mouse_disable:
         popad
@@ -366,11 +384,11 @@ kproc __sys_draw_pointer ;//////////////////////////////////////////////////////
         mov     [MouseTickCounter], eax
         pop     eax
         pushad
-        cmp     dword[MOUSE_VISIBLE], 0 ; mouse visible ?
+        cmp     [MOUSE_VISIBLE], 0 ; mouse visible ?
         je      .chms00
-        mov     dword[MOUSE_VISIBLE], 0
-        movzx   ebx, word[MOUSE_Y]
-        movzx   eax, word[MOUSE_X]
+        mov     [MOUSE_VISIBLE], 0
+        movzx   ebx, [MOUSE_Y]
+        movzx   eax, [MOUSE_X]
         pushfd
         cli
         call    save_draw_mouse
@@ -381,10 +399,10 @@ kproc __sys_draw_pointer ;//////////////////////////////////////////////////////
         ret
 
   .chms00:
-        movzx   ecx, word[X_UNDER]
-        movzx   edx, word[Y_UNDER]
-        movzx   ebx, word[MOUSE_Y]
-        movzx   eax, word[MOUSE_X]
+        movzx   ecx, [X_UNDER]
+        movzx   edx, [Y_UNDER]
+        movzx   ebx, [MOUSE_Y]
+        movzx   eax, [MOUSE_X]
         cmp     eax, ecx
         jne     .redrawmouse
         cmp     ebx, edx
@@ -407,7 +425,7 @@ kendp
 proc set_mouse_data stdcall, BtnState:dword, XMoving:dword, YMoving:dword, VScroll:dword, HScroll:dword ;///////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, [BtnState]
-        mov     [BTN_DOWN], eax
+        mov     [BTN_DOWN], al
 
         mov     eax, [XMoving]
         call    mouse_acceleration
@@ -418,9 +436,9 @@ proc set_mouse_data stdcall, BtnState:dword, XMoving:dword, YMoving:dword, VScro
         jmp     .M2
 
   .M1:
-        cmp     ax, [Screen_Max_X] ; ScreenLength
+        cmp     ax, word[Screen_Max_X] ; ScreenLength
         jl      .M2
-        mov     ax, [Screen_Max_X] ; ScreenLength-1
+        mov     ax, word[Screen_Max_X] ; ScreenLength-1
 
   .M2:
         mov     [MOUSE_X], ax ; [XCoordinate]
@@ -436,9 +454,9 @@ proc set_mouse_data stdcall, BtnState:dword, XMoving:dword, YMoving:dword, VScro
         jmp     .M4
 
   .M3:
-        cmp     ax, [Screen_Max_Y] ; ScreenHeigth
+        cmp     ax, word[Screen_Max_Y] ; ScreenHeigth
         jl      .M4
-        mov     ax, [Screen_Max_Y] ; ScreenHeigth-1
+        mov     ax, word[Screen_Max_Y] ; ScreenHeigth-1
 
   .M4:
         mov     [MOUSE_Y], ax ; [YCoordinate]

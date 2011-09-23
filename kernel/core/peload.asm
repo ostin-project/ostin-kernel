@@ -264,12 +264,7 @@ kproc map_PE ;//////////////////////////////////////////////////////////////////
         cmp     ebx, [__exports + 24]
         jne     .L37
 
-        mov     esi, msg_unresolved
-        call    sys_msg_board_str
-        lea     esi, [edi + 2]
-        call    sys_msg_board_str
-        mov     esi, msg_CR
-        call    sys_msg_board_str
+        DEBUGF  1, "K : unresolved %s\n", [edi + 2]
 
         mov     dword[esp + 40], 1
         jmp     .L37

@@ -15,16 +15,14 @@
 ;;======================================================================================================================
 
 struct memory_block_t
-  next_block dd ?
   prev_block dd ?
+  next_block dd ?
   list       linked_list_t
   base       dd ?
   size       dd ?
   flags      dd ?
   handle     dd ?
 ends
-
-MEM_LIST_OFFSET equ  8
 
 macro calc_index op
 {
@@ -80,6 +78,25 @@ macro remove_from_used op
         mov     [op + memory_block_t.list.prev_ptr], 0
 }
 
+uglobal
+  align 4
+  mem_block_map    rb 512
+  mem_block_list   rd 64
+  large_block_list rd 31
+  mem_block_mask   rd 2
+  large_block_mask rd 1
+  mem_used         linked_list_t
+  mem_block_arr    rd 1
+  mem_block_start  rd 1
+  mem_block_end    rd 1
+  heap_mutex       rd 1
+  heap_size        rd 1
+  heap_free        rd 1
+  heap_blocks      rd 1
+  free_blocks      rd 1
+  shmem_list       linked_list_t
+endg
+
 align 4
 ;-----------------------------------------------------------------------------------------------------------------------
 proc init_kernel_heap ;/////////////////////////////////////////////////////////////////////////////////////////////////
@@ -99,7 +116,7 @@ proc init_kernel_heap ;/////////////////////////////////////////////////////////
         mov     [mem_block_end], mem_block_map + 512
         mov     [mem_block_arr], HEAP_BASE
 
-        mov     eax, mem_used.next_ptr - MEM_LIST_OFFSET
+        mov     eax, mem_used - memory_block_t.list
         mov     [mem_used.next_ptr], eax
         mov     [mem_used.prev_ptr], eax
 
@@ -358,7 +375,7 @@ endl
         bts     [mem_block_mask], eax
 
   .m_eq_ind:
-        mov     ecx, mem_used.next_ptr - MEM_LIST_OFFSET
+        mov     ecx, mem_used - memory_block_t.list
         mov     edx, [ecx + memory_block_t.list.next_ptr]
         mov     [esi + memory_block_t.list.next_ptr], edx
         mov     [esi + memory_block_t.list.prev_ptr], ecx
@@ -382,7 +399,7 @@ endl
         jnz     @f
         btr     [mem_block_mask], ebx
 
-    @@: mov     ecx, mem_used.next_ptr - MEM_LIST_OFFSET
+    @@: mov     ecx, mem_used - memory_block_t.list
         mov     edx, [ecx + memory_block_t.list.next_ptr]
         mov     [edi + memory_block_t.list.next_ptr], edx
         mov     [edi + memory_block_t.list.prev_ptr], ecx
@@ -421,7 +438,7 @@ proc free_kernel_space stdcall uses ebx ecx edx esi edi, base:dword ;///////////
         mov     eax, [base]
         mov     esi, [mem_used.next_ptr]
 
-    @@: cmp     esi, mem_used.next_ptr - MEM_LIST_OFFSET
+    @@: cmp     esi, mem_used - memory_block_t.list
         je      .fail
 
         cmp     [esi + memory_block_t.base], eax
@@ -640,7 +657,7 @@ proc kernel_free stdcall, base:dword ;//////////////////////////////////////////
         mov     eax, [base]
         mov     esi, [mem_used.next_ptr]
 
-    @@: cmp     esi, mem_used.next_ptr - MEM_LIST_OFFSET
+    @@: cmp     esi, mem_used - memory_block_t.list
         je      .fail
 
         cmp     [esi + memory_block_t.base], eax
@@ -1497,7 +1514,7 @@ align 4
 
         mov     ebx, [CURRENT_TASK]
         shl     ebx, 5
-        mov     ebx, [CURRENT_TASK + ebx + 4]
+        mov     ebx, [TASK_DATA + ebx - sizeof.task_data_t + task_data_t.pid]
         mov     eax, sizeof.smap_t
 
         call    create_kernel_object
@@ -1587,7 +1604,7 @@ proc shmem_close stdcall, name:dword ;//////////////////////////////////////////
         cli
 
         mov     esi, [current_slot]
-        add     esi, APP_OBJ_OFFSET
+        add     esi, app_data_t.obj
 
   .next:
         mov     eax, [esi + app_object_t.next_ptr]

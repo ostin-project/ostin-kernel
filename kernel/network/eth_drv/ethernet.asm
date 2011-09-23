@@ -458,7 +458,7 @@ kproc ethernet_driver ;/////////////////////////////////////////////////////////
 ;# This is a kernel function, called by stack_handler
 ;-----------------------------------------------------------------------------------------------------------------------
         ; Do nothing if the driver is inactive
-        cmp     byte[ethernet_active], 0
+        cmp     [ethernet_active], 0
         je      .eth_exit
 
         call    eth_rx

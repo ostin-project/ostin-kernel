@@ -83,12 +83,12 @@ kproc fpu_save ;////////////////////////////////////////////////////////////////
         mov     [fpu_owner], esi
 
         shl     ecx, 8
-        mov     eax, [ecx + SLOT_BASE + app_data_t.fpu_state]
+        mov     eax, [SLOT_BASE + ecx + app_data_t.fpu_state]
 
         call    save_context
 
         shl     esi, 8
-        mov     esi, [esi + SLOT_BASE + app_data_t.fpu_state]
+        mov     esi, [SLOT_BASE + esi + app_data_t.fpu_state]
         mov     ecx, 512 / 4
         cld
         rep     movsd
@@ -152,7 +152,7 @@ kproc fpu_restore ;/////////////////////////////////////////////////////////////
 
   .copy:
         shl     eax, 8
-        mov     edi, [eax + SLOT_BASE + app_data_t.fpu_state]
+        mov     edi, [SLOT_BASE + eax + app_data_t.fpu_state]
         mov     ecx, 512 / 4
         cld
         rep     movsd
@@ -178,7 +178,7 @@ kproc except_7 ;////////////////////////////////////////////////////////////////
         je      .exit
 
         shl     ebx, 8
-        mov     eax, [ebx + SLOT_BASE + app_data_t.fpu_state]
+        mov     eax, [SLOT_BASE + ebx + app_data_t.fpu_state]
         bt      [cpu_caps], CAPS_SSE
         jnc     .no_SSE
 
@@ -186,7 +186,7 @@ kproc except_7 ;////////////////////////////////////////////////////////////////
         mov     ebx, [CURRENT_TASK]
         mov     [fpu_owner], ebx
         shl     ebx, 8
-        mov     eax, [ebx + SLOT_BASE + app_data_t.fpu_state]
+        mov     eax, [SLOT_BASE + ebx + app_data_t.fpu_state]
         fxrstor [eax]
 
   .exit:
@@ -198,7 +198,7 @@ kproc except_7 ;////////////////////////////////////////////////////////////////
         mov     ebx, [CURRENT_TASK]
         mov     [fpu_owner], ebx
         shl     ebx, 8
-        mov     eax, [ebx + SLOT_BASE + app_data_t.fpu_state]
+        mov     eax, [SLOT_BASE + ebx + app_data_t.fpu_state]
         frstor  [eax]
         restore_ring3_context
         iret

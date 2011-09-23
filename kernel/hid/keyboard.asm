@@ -111,8 +111,8 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc set_keyboard_data ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        movzx   eax, word[TASK_COUNT] ; top window process
-        movzx   eax, word[WIN_POS + eax * 2]
+        mov     eax, [TASK_COUNT] ; top window process
+        movzx   eax, [WIN_POS + eax * 2]
         shl     eax, 8
         mov     al, [SLOT_BASE + eax + app_data_t.keyboard_mode]
         mov     [keyboard_mode], al
@@ -136,8 +136,8 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc irq1 ;////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        movzx   eax, word[TASK_COUNT] ; top window process
-        movzx   eax, word[WIN_POS + eax * 2]
+        mov     eax, [TASK_COUNT] ; top window process
+        movzx   eax, [WIN_POS + eax * 2]
         shl     eax, 8
         mov     al, [SLOT_BASE + eax + app_data_t.keyboard_mode]
         mov     [keyboard_mode], al
@@ -361,12 +361,12 @@ kproc send_scancode ;///////////////////////////////////////////////////////////
         mov     bl, ch
 
   .dowrite:
-        movzx   eax, byte[KEY_COUNT]
+        movzx   eax, [KEY_COUNT]
         cmp     al, 120
         jae     .exit.irq1
         inc     eax
         mov     [KEY_COUNT], al
-        mov     [KEY_COUNT + eax], bl
+        mov     [KEY_BUFF + eax - 1], bl
 
   .exit.irq1:
         mov     [check_idle_semaphore], 5

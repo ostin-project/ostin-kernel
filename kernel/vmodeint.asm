@@ -26,8 +26,8 @@ kproc sysfn.set_config.video_ctl ;//////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 21.13: call videomode driver functions
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov_s_  [old_screen_height], dword[Screen_Max_Y]
-        mov_s_  [old_screen_width], dword[Screen_Max_X]
+        mov_s_  [old_screen_height], [Screen_Max_Y]
+        mov_s_  [old_screen_width], [Screen_Max_X]
 
         or      eax, -1 ; If driver is absent then eax does not change
 

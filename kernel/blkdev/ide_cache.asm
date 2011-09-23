@@ -35,6 +35,15 @@ cache_max equ 1919 ; max. is 1919*512+0x610000=0x6ffe00
 uglobal
   align 4
   cache_search_start dd 0 ; used by find_empty_slot
+  ide_drives_cache:
+    .0 drive_cache_t
+    .1 drive_cache_t
+    .2 drive_cache_t
+    .3 drive_cache_t
+  BiosDiskCaches     rb 0x80 * sizeof.drive_cache_t
+  BiosDisksData      rb 0x200
+  hdd_appl_data      rb 1 ; 0 = system cache, 1 - application cache
+  cd_appl_data       rb 1 ; 0 = system cache, 1 - application cache
 endg
 
 iglobal

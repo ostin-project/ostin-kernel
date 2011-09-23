@@ -15,6 +15,12 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
+uglobal
+  align 4
+  application_table_status rd 1 ; 0 - free : other - pid
+  idts                     rb 0x41 * (2 + 4 + 2)
+endg
+
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc build_interrupt_table ;///////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -65,7 +71,7 @@ end if
 
   idtreg: ; data for LIDT instruction (!!! must be immediately below sys_int data)
     dw 2 * ($ - sys_int - 4) - 1
-    dd idts ; 0x8000B100
+    dd idts
     dw 0 ; for alignment
 
   msg_fault_sel dd msg_exc_8, msg_exc_u, msg_exc_a, msg_exc_b, msg_exc_c, msg_exc_d, msg_exc_e
@@ -369,8 +375,7 @@ kproc set_application_table_status ;////////////////////////////////////////////
 
         mov     eax, [CURRENT_TASK]
         shl     eax, 5
-        add     eax, CURRENT_TASK + task_data_t.pid
-        mov     eax, [eax]
+        mov     eax, [TASK_DATA + eax - sizeof.task_data_t + task_data_t.pid]
 
         mov     [application_table_status], eax
 
@@ -386,8 +391,7 @@ kproc clear_application_table_status ;//////////////////////////////////////////
 
         mov     eax, [CURRENT_TASK]
         shl     eax, 5
-        add     eax, CURRENT_TASK + task_data_t.pid
-        mov     eax, [eax]
+        mov     eax, [TASK_DATA + eax - sizeof.task_data_t + task_data_t.pid]
 
         cmp     eax, [application_table_status]
         jne     .apptsl1
@@ -445,11 +449,8 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         jne     @f
         pop     esi
         shl     esi, 5
-        mov     [CURRENT_TASK + esi + task_data_t.state], TSTATE_FREE
+        mov     [TASK_DATA + esi - sizeof.task_data_t + task_data_t.state], TSTATE_FREE
         ret
-
-;   @@: mov     esi, process_terminating
-;       call    sys_msg_board_str
 
     @@: cli
         cmp     [application_table_status], 0
@@ -464,24 +465,24 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         ; if the process is in V86 mode...
         mov     eax, [.slot]
         shl     eax, 8
-        mov     esi, [eax + SLOT_BASE + app_data_t.pl0_stack]
+        mov     esi, [SLOT_BASE + eax + app_data_t.pl0_stack]
         add     esi, RING0_STACK_SIZE
-        cmp     [eax + SLOT_BASE + app_data_t.saved_esp0], esi
+        cmp     [SLOT_BASE + eax + app_data_t.saved_esp0], esi
         jz      .nov86
         ; ...it has page directory for V86 mode
-        mov     esi, [eax + SLOT_BASE + app_data_t.saved_esp0]
+        mov     esi, [SLOT_BASE + eax + app_data_t.saved_esp0]
         mov     ecx, [esi + 4]
-        mov     [eax + SLOT_BASE + app_data_t.dir_table], ecx
+        mov     [SLOT_BASE + eax + app_data_t.dir_table], ecx
         ; ...and I/O permission map for V86 mode
         mov     ecx, [esi + 12]
-        mov     [eax + SLOT_BASE + app_data_t.io_map], ecx
+        mov     [SLOT_BASE + eax + app_data_t.io_map], ecx
         mov     ecx, [esi + 8]
-        mov     [eax + SLOT_BASE + app_data_t.io_map + 4], ecx
+        mov     [SLOT_BASE + eax + app_data_t.io_map + 4], ecx
 
   .nov86:
         mov     esi, [.slot]
         shl     esi, 8
-        add     esi, SLOT_BASE + APP_OBJ_OFFSET
+        add     esi, SLOT_BASE + app_data_t.obj
 
     @@: mov     eax, [esi + app_object_t.next_ptr]
         test    eax, eax
@@ -516,8 +517,8 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         fnclex
         frstor  [eax]
 
-    @@: mov     byte[KEY_COUNT], 0 ; empty keyboard buffer
-        mov     byte[BTN_COUNT], 0 ; empty button buffer
+    @@: mov     [KEY_COUNT], 0 ; empty keyboard buffer
+        mov     [BTN_COUNT], 0 ; empty button buffer
 
         ; remove defined hotkeys
         mov     eax, hotkey_list
@@ -620,7 +621,7 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         jz      .nodebug
         push    8
         pop     ecx
-        push    dword[CURRENT_TASK + edi + task_data_t.pid] ; PID
+        push    [TASK_DATA + edi - sizeof.task_data_t + task_data_t.pid] ; PID
         push    2
         call    debugger_notify
         pop     ecx
@@ -663,7 +664,7 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         rep     stosd
 
         ; activate window
-        movzx   eax, word[WIN_STACK + esi * 2]
+        movzx   eax, [WIN_STACK + esi * 2]
         cmp     eax, [TASK_COUNT]
         jne     .dont_activate
         pushad
@@ -675,7 +676,7 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         lea     esi, [WIN_POS + eax * 2]
         movzx   edi, word[esi] ; edi = process
         shl     edi, 5
-        cmp     [CURRENT_TASK + edi + task_data_t.state], TSTATE_FREE ; skip dead slots
+        cmp     [TASK_DATA + edi - sizeof.task_data_t + task_data_t.state], TSTATE_FREE ; skip dead slots
         je      .check_next_window
         add     edi, window_data
 
@@ -691,7 +692,7 @@ kproc terminate ;///////////////////////////////////////////////////////////////
   .dont_activate:
         push    esi ; remove hd1 & cd & flp reservation
         shl     esi, 5
-        mov     esi, [esi + CURRENT_TASK + task_data_t.pid]
+        mov     esi, [TASK_DATA + esi - sizeof.task_data_t + task_data_t.pid]
         cmp     [hd1_status], esi
         jnz     @f
         call    free_hd_channel
@@ -715,7 +716,7 @@ kproc terminate ;///////////////////////////////////////////////////////////////
     @@: pusha   ; remove all irq reservations
         mov     eax, esi
         shl     eax, 5
-        mov     eax, [eax + CURRENT_TASK + task_data_t.pid]
+        mov     eax, [TASK_DATA + eax - sizeof.task_data_t + task_data_t.pid]
         mov     edi, irq_owner
         xor     ebx, ebx
         xor     edx, edx
@@ -736,8 +737,7 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         pusha   ; remove all port reservations
         mov     edx, esi
         shl     edx, 5
-        add     edx, CURRENT_TASK
-        mov     edx, [edx + task_data_t.pid]
+        mov     edx, [TASK_DATA + edx - sizeof.task_data_t + task_data_t.pid]
 
   rmpr0:
         mov     esi, [RESERVED_PORTS]
@@ -750,7 +750,7 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         shl     edi, 4
         add     edi, RESERVED_PORTS
 
-        cmp     edx, [edi]
+        cmp     edx, [edi + app_io_ports_range_t.pid]
         je      rmpr4
 
         dec     esi
@@ -776,10 +776,10 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         popa
         mov     edi, esi ; do not run this process slot
         shl     edi, 5
-        mov     [edi + CURRENT_TASK + task_data_t.state], TSTATE_FREE
+        mov     [TASK_DATA + edi - sizeof.task_data_t + task_data_t.state], TSTATE_FREE
         ; debugger test - terminate all debuggees
         mov     eax, 2
-        mov     ecx, SLOT_BASE + 2 * 0x100 + app_data_t.debugger_slot
+        mov     ecx, SLOT_BASE + 2 * sizeof.task_data_t + app_data_t.debugger_slot
 
   .xd0:
         cmp     eax, [TASK_COUNT]
@@ -794,7 +794,7 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         popad
 
     @@: inc     eax
-        add     ecx, 0x100
+        add     ecx, sizeof.task_data_t
         jmp     .xd0
 
   .xd1:
@@ -810,12 +810,10 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         xor     esi, esi
         call    redrawscreen
 
-        mov     byte[MOUSE_BACKGROUND], 0 ; no mouse background
-        mov     byte[DONT_DRAW_MOUSE], 0 ; draw mouse
+;       mov     [MOUSE_BACKGROUND], 0 ; no mouse background
+;       mov     [DONT_DRAW_MOUSE], 0 ; draw mouse
 
         and     [application_table_status], 0
-;       mov     esi,process_terminated
-;       call    sys_msg_board_str
         add     esp, 4
         ret
 kendp

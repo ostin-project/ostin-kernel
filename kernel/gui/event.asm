@@ -82,7 +82,7 @@ kproc create_event ;////////////////////////////////////////////////////////////
 ;# EXPORT use
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     ebx, [current_slot]
-        add     ebx, APP_OBJ_OFFSET
+        add     ebx, app_data_t.obj
         mov     edx, [TASK_BASE]
         mov     edx, [edx + task_data_t.pid]
         pushfd
@@ -208,7 +208,7 @@ kproc raise_event ;/////////////////////////////////////////////////////////////
         jz      RemoveEventTo.break ; POPF+RET
 
     @@: or      byte[ebx + event_t.state + 3], EVENT_SIGNALED shr 24
-        add     eax, SLOT_BASE + APP_EV_OFFSET
+        add     eax, SLOT_BASE + app_data_t.ev
         xchg    eax, ebx
         jmp     RemoveEventTo
 kendp
@@ -223,7 +223,7 @@ kproc clear_event ;/////////////////////////////////////////////////////////////
 ;# EXPORT use
 ;-----------------------------------------------------------------------------------------------------------------------
         call    NotDummyTest ; not returned for fail !!!
-        add     eax, SLOT_BASE + APP_OBJ_OFFSET
+        add     eax, SLOT_BASE + app_data_t.obj
         and     byte[ebx + event_t.state + 3], not ((EVENT_SIGNALED + EVENT_WATCHED) shr 24)
         xchg    eax, ebx
         jmp     RemoveEventTo
@@ -251,7 +251,7 @@ kproc send_event ;//////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     edx, eax
         call    NotDummyTest.small ; not returned for fail !!!
-        lea     ebx, [eax + SLOT_BASE + APP_EV_OFFSET]
+        lea     ebx, [SLOT_BASE + eax + app_data_t.ev]
         mov     ecx, EVENT_SIGNALED
         jmp     set_event
 kendp
@@ -377,7 +377,7 @@ wait_finish:
         test    byte[eax + event_t.state + 3], MANUAL_DESTROY shr 24
         jz      destroy_event.internal
         mov     ebx, [current_slot]
-        add     ebx, APP_OBJ_OFFSET
+        add     ebx, app_data_t.obj
         pushfd
         cli
         jmp     RemoveEventTo
@@ -424,7 +424,7 @@ kproc get_event_queue ;/////////////////////////////////////////////////////////
 ;#   * may be assumed, that interrupt are disabled
 ;#   * it is not restriction for scratched registers
 ;-----------------------------------------------------------------------------------------------------------------------
-        add     ebx, APP_EV_OFFSET
+        add     ebx, app_data_t.ev
         mov     eax, [ebx + app_object_t.prev_ptr] ; checking from the end (FIFO)
         cmp     eax, ebx ; empty ???
         je      get_event_alone.ret0
@@ -474,19 +474,19 @@ kproc sysfn.send_window_message ;///////////////////////////////////////////////
         jnz     .retf
 
   .sendbtn:
-        cmp     byte[BTN_COUNT], 1
+        cmp     [BTN_COUNT], 1
         jae     .result ; overflow
-        inc     byte[BTN_COUNT]
+        inc     [BTN_COUNT]
         shl     edx, 8
         mov     [BTN_BUFF], edx
         jmp     .result
 
   .sendkey:
-        movzx   eax, byte[KEY_COUNT]
+        movzx   eax, [KEY_COUNT]
         cmp     al, 120
         jae     .result ; overflow
-        inc     byte[KEY_COUNT]
-        mov     [KEY_COUNT + 1 + eax], dl
+        inc     [KEY_COUNT]
+        mov     [KEY_BUFF + eax], dl
 
   .result:
         setae   [esp + 4 + regs_context32_t.al] ; initially, dword[esp+32]==72
@@ -548,7 +548,7 @@ kproc get_event_for_app ;///////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         movzx   edi, bh ; bh  is assumed as [CURRENT_TASK]
         shl     edi, 5
-        add     edi, CURRENT_TASK ; edi is assumed as [TASK_BASE]
+        add     edi, TASK_DATA - sizeof.task_data_t ; edi is assumed as [TASK_BASE]
         mov     ecx, [edi + task_data_t.event_mask]
 
   .loop:
@@ -610,12 +610,12 @@ kproc get_event_for_app ;///////////////////////////////////////////////////////
 
   .BtKy:
         movzx   edx, bh
-        movzx   edx, word[WIN_STACK + edx * 2]
+        movzx   edx, [WIN_STACK + edx * 2]
         je      .Keys ; eax=1, retval Keys=2
 
   .Buttons:
         ; eax=2, retval Buttons=3
-        cmp     byte[BTN_COUNT], 0
+        cmp     [BTN_COUNT], 0
         je      .loop ; empty ???
         cmp     edx, [TASK_COUNT]
         jne     .loop ; not Top ???
@@ -624,7 +624,7 @@ kproc get_event_for_app ;///////////////////////////////////////////////////////
         cmp     edx, 0xffff ; -ID for Minimize-Button of Form
         jne     .result
         mov     [window_minimize], 1
-        dec     byte[BTN_COUNT]
+        dec     [BTN_COUNT]
         jmp     .loop
 
   .Keys:

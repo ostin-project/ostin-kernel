@@ -22,8 +22,10 @@
 window.BORDER_SIZE = 5
 
 uglobal
-  common_colours rd 32
-  draw_limits    rect32_t
+  common_colours    rd 32
+  draw_limits       rect32_t
+  buttontype        rd 1
+  windowtypechanged rd 1
 endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -69,7 +71,7 @@ kproc sysfn.draw_window ;///////////////////////////////////////////////////////
 
     @@: ; type IV & V - skinned window (resizable & not)
         mov     eax, [TASK_COUNT]
-        movzx   eax, word[WIN_POS + eax * 2]
+        movzx   eax, [WIN_POS + eax * 2]
         cmp     eax, [CURRENT_TASK]
         setz    al
         movzx   eax, al
@@ -398,9 +400,9 @@ kproc sysfn.move_window ;///////////////////////////////////////////////////////
         add     esp, sizeof.box32_t
 
         ; NOTE: do we really need this? to be reworked
-;       mov     byte[DONT_DRAW_MOUSE], 0 ; mouse pointer
-;       mov     byte[MOUSE_BACKGROUND], 0 ; no mouse under
-;       mov     byte[MOUSE_DOWN], 0 ; react to mouse up/down
+;       mov     [DONT_DRAW_MOUSE], 0 ; mouse pointer
+;       mov     [MOUSE_BACKGROUND], 0 ; no mouse under
+;       mov     [MOUSE_DOWN], 0 ; react to mouse up/down
 
         ; NOTE: do we really need this? to be reworked
 ;       call    [draw_pointer]
@@ -423,8 +425,8 @@ kproc sysfn.window_settings ;///////////////////////////////////////////////////
         mov     edi, [CURRENT_TASK]
         shl     edi, 5
 
-        mov     [edi * 8 + SLOT_BASE + app_data_t.wnd_caption], ecx
-        or      [edi + window_data + window_data_t.fl_wstyle], WSTYLE_HASCAPTION
+        mov     [SLOT_BASE + edi * 8 + app_data_t.wnd_caption], ecx
+        or      [window_data + edi + window_data_t.fl_wstyle], WSTYLE_HASCAPTION
 
         call    window._.draw_window_caption
 
@@ -448,7 +450,7 @@ kproc set_window_defaults ;/////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? <description>
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     byte[window_data + 0x20 + window_data_t.cl_titlebar + 3], 1 ; desktop is not movable
+        mov     byte[window_data + sizeof.window_data_t + window_data_t.cl_titlebar + 3], 1 ; desktop is not movable
         push    eax ecx
         xor     eax, eax
         mov     ecx, WIN_STACK
@@ -456,9 +458,9 @@ kproc set_window_defaults ;/////////////////////////////////////////////////////
     @@: inc     eax
         add     ecx, 2
         ; process no
-        mov     [ecx + 0x000], ax
+        mov     [ecx], ax
         ; positions in stack
-        mov     [ecx + 0x400], ax
+        mov     [ecx + WIN_POS - WIN_STACK], ax
         cmp     ecx, WIN_POS - 2
         jne     @b
         pop     ecx eax
@@ -492,10 +494,10 @@ kproc calculatescreen ;/////////////////////////////////////////////////////////
         push    edx ecx ebx eax
 
   .next_window:
-        movzx   edi, word[WIN_POS + esi * 2]
+        movzx   edi, [WIN_POS + esi * 2]
         shl     edi, 5
 
-        cmp     [CURRENT_TASK + edi + task_data_t.state], TSTATE_FREE
+        cmp     [TASK_DATA + edi - sizeof.task_data_t + task_data_t.state], TSTATE_FREE
         je      .skip_window
 
         add     edi, window_data
@@ -534,7 +536,7 @@ kproc calculatescreen ;/////////////////////////////////////////////////////////
         mov     edx, [esp + rect32_t.bottom]
 
     @@: push    esi
-        movzx   esi, word[WIN_POS + esi * 2]
+        movzx   esi, [WIN_POS + esi * 2]
         call    window._.set_screen
         pop     esi
 
@@ -558,7 +560,7 @@ kproc repos_windows ;///////////////////////////////////////////////////////////
 ;? <description>
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     ecx, [TASK_COUNT]
-        mov     edi, window_data + sizeof.window_data_t * 2
+        mov     edi, window_data + 2 * sizeof.window_data_t
         call    force_redraw_background
         dec     ecx
         jle     .exit
@@ -633,8 +635,8 @@ kproc sys_window_mouse ;////////////////////////////////////////////////////////
 ;       cmp     [new_window_starting], eax
 ;       jb      .exit
 ;
-;       mov     byte[MOUSE_BACKGROUND], 0
-;       mov     byte[DONT_DRAW_MOUSE], 0
+;       mov     [MOUSE_BACKGROUND], 0
+;       mov     [DONT_DRAW_MOUSE], 0
 ;
 ;       mov     [new_window_starting], eax
 ;
@@ -938,12 +940,12 @@ kproc waredraw ;////////////////////////////////////////////////////////////////
         jz      .do_not_draw
 
         ; yes it is, activate and update screen buffer
-        mov     byte[MOUSE_DOWN], 1
+;       mov     [MOUSE_DOWN], 1
         call    window._.window_activate
 
         pushad
         mov     edi, [TASK_COUNT]
-        movzx   esi, word[WIN_POS + edi * 2]
+        movzx   esi, [WIN_POS + edi * 2]
         shl     esi, 5
         add     esi, window_data
 
@@ -956,7 +958,7 @@ kproc waredraw ;////////////////////////////////////////////////////////////////
         add     edx, ebx
 
         mov     edi, [TASK_COUNT]
-        movzx   esi, word[WIN_POS + edi * 2]
+        movzx   esi, [WIN_POS + edi * 2]
         call    window._.set_screen
         popad
 
@@ -969,12 +971,12 @@ kproc waredraw ;////////////////////////////////////////////////////////////////
         ; no it's not, just activate the window
         call    window._.window_activate
         xor     eax, eax
-        mov     byte[MOUSE_BACKGROUND], al
-        mov     byte[DONT_DRAW_MOUSE], al
+;       mov     [MOUSE_BACKGROUND], al
+;       mov     [DONT_DRAW_MOUSE], al
 
 
   .exit:
-        mov     byte[MOUSE_DOWN], 0
+;       mov     [MOUSE_DOWN], 0
         inc     eax
         ret
 kendp
@@ -991,7 +993,7 @@ kproc minimize_window ;/////////////////////////////////////////////////////////
         cli
 
         ; is it already minimized?
-        movzx   edi, word[WIN_POS + eax * 2]
+        movzx   edi, [WIN_POS + eax * 2]
         shl     edi, 5
         add     edi, window_data
         test    [edi + window_data_t.fl_wstate], WSTATE_MINIMIZED
@@ -1036,7 +1038,7 @@ kproc restore_minimized_window ;////////////////////////////////////////////////
         cli
 
         ; is it already restored?
-        movzx   esi, word[WIN_POS + eax * 2]
+        movzx   esi, [WIN_POS + eax * 2]
         mov     edi, esi
         shl     edi, 5
         add     edi, window_data
@@ -1059,7 +1061,7 @@ kproc restore_minimized_window ;////////////////////////////////////////////////
         add     edx, ebx
         call    ebp
 
-        mov     byte[MOUSE_BACKGROUND], 0
+;       mov     [MOUSE_BACKGROUND], 0
 
   .exit:
         popfd
@@ -1461,32 +1463,32 @@ kproc window._.set_window_clientbox ;///////////////////////////////////////////
         movzx   eax, [ecx + window_data_t.fl_wstyle]
         and     eax, 0x0f
         mov     eax, [eax * 8 + window_topleft + 0]
-        mov     [edi + SLOT_BASE + app_data_t.wnd_clientbox.left], eax
+        mov     [SLOT_BASE + edi + app_data_t.wnd_clientbox.left], eax
         shl     eax, 1
         neg     eax
         add     eax, [ecx + window_data_t.box.width]
-        mov     [edi + SLOT_BASE + app_data_t.wnd_clientbox.width], eax
+        mov     [SLOT_BASE + edi + app_data_t.wnd_clientbox.width], eax
 
         movzx   eax, [ecx + window_data_t.fl_wstyle]
         and     eax, 0x0f
         push    [eax * 8 + window_topleft + 0]
         mov     eax, [eax * 8 + window_topleft + 4]
-        mov     [edi + SLOT_BASE + app_data_t.wnd_clientbox.top], eax
+        mov     [SLOT_BASE + edi + app_data_t.wnd_clientbox.top], eax
         neg     eax
         sub     eax, [esp]
         add     eax, [ecx + window_data_t.box.height]
-        mov     [edi + SLOT_BASE + app_data_t.wnd_clientbox.height], eax
+        mov     [SLOT_BASE + edi + app_data_t.wnd_clientbox.height], eax
         add     esp, 4
         jmp     .exit
 
   .whole_window:
         xor     eax, eax
-        mov     [edi + SLOT_BASE + app_data_t.wnd_clientbox.left], eax
-        mov     [edi + SLOT_BASE + app_data_t.wnd_clientbox.top], eax
+        mov     [SLOT_BASE + edi + app_data_t.wnd_clientbox.left], eax
+        mov     [SLOT_BASE + edi + app_data_t.wnd_clientbox.top], eax
         mov     eax, [ecx + window_data_t.box.width]
-        mov     [edi + SLOT_BASE + app_data_t.wnd_clientbox.width], eax
+        mov     [SLOT_BASE + edi + app_data_t.wnd_clientbox.width], eax
         mov     eax, [ecx + window_data_t.box.height]
-        mov     [edi + SLOT_BASE + app_data_t.wnd_clientbox.height], eax
+        mov     [SLOT_BASE + edi + app_data_t.wnd_clientbox.height], eax
 
   .exit:
         pop     edi ecx eax
@@ -1562,7 +1564,7 @@ kproc window._.sys_set_window ;/////////////////////////////////////////////////
         pop     edi ecx
 
         mov     esi, [CURRENT_TASK]
-        movzx   esi, word[WIN_STACK + esi * 2]
+        movzx   esi, [WIN_STACK + esi * 2]
         lea     esi, [WIN_POS + esi * 2]
         call    waredraw
 
@@ -1574,8 +1576,8 @@ kproc window._.sys_set_window ;/////////////////////////////////////////////////
         add     edx, ebx
         call    calculatescreen
 
-        mov     byte[KEY_COUNT], 0 ; empty keyboard buffer
-        mov     byte[BTN_COUNT], 0 ; empty button buffer
+        mov     [KEY_COUNT], 0 ; empty keyboard buffer
+        mov     [BTN_COUNT], 0 ; empty button buffer
 
   .set_client_box:
         ; update window client box coordinates
@@ -1889,7 +1891,7 @@ kproc window._.window_activate ;////////////////////////////////////////////////
 
         ; if type of current active window is 3 or 4, it must be redrawn
         mov     ebx, [TASK_COUNT]
-        movzx   ebx, word[WIN_POS + ebx * 2]
+        movzx   ebx, [WIN_POS + ebx * 2]
         shl     ebx, 5
         add     eax, window_data
         mov     al, [window_data + ebx + window_data_t.fl_wstyle]
@@ -1906,7 +1908,7 @@ kproc window._.window_activate ;////////////////////////////////////////////////
         ; ax <- process no
         movzx   ebx, word[esi]
         ; ax <- position in window stack
-        movzx   ebx, word[WIN_STACK + ebx * 2]
+        movzx   ebx, [WIN_STACK + ebx * 2]
 
         ; drop others
         xor     eax, eax
@@ -1917,13 +1919,13 @@ kproc window._.window_activate ;////////////////////////////////////////////////
         inc     eax
         cmp     [WIN_STACK + eax * 2], bx
         jbe     .next_stack_window
-        dec     word[WIN_STACK + eax * 2]
+        dec     [WIN_STACK + eax * 2]
         jmp     .next_stack_window
 
   .move_self_up:
         movzx   ebx, word[esi]
         ; number of processes
-        mov     ax, [TASK_COUNT]
+        mov     eax, [TASK_COUNT]
         ; this is the last (and the upper)
         mov     [WIN_STACK + ebx * 2], ax
 
@@ -1934,15 +1936,15 @@ kproc window._.window_activate ;////////////////////////////////////////////////
         cmp     eax, [TASK_COUNT]
         jae     .reset_vars
         inc     eax
-        movzx   ebx, word[WIN_STACK + eax * 2]
+        movzx   ebx, [WIN_STACK + eax * 2]
         mov     [WIN_POS + ebx * 2], ax
         jmp     .next_window_pos
 
   .reset_vars:
-        mov     byte[KEY_COUNT], 0
-        mov     byte[BTN_COUNT], 0
-        mov     word[MOUSE_SCROLL_H], 0
-        mov     word[MOUSE_SCROLL_V], 0
+        mov     [KEY_COUNT], 0
+        mov     [BTN_COUNT], 0
+        mov     [MOUSE_SCROLL_H], 0
+        mov     [MOUSE_SCROLL_V], 0
 
         pop     ebx eax
         ret
@@ -1968,21 +1970,21 @@ kproc window._.check_window_draw ;//////////////////////////////////////////////
         sub     eax, window_data
         shr     eax, 5
 
-        movzx   eax, word[WIN_STACK + eax * 2] ; get value of the curr process
+        movzx   eax, [WIN_STACK + eax * 2] ; get value of the curr process
         lea     esi, [WIN_POS + eax * 2] ; get address of this process at 0xC400
 
   .next_window:
         add     esi, 2
 
         mov     eax, [TASK_COUNT]
-        lea     eax, word[WIN_POS + eax * 2] ; number of the upper window
+        lea     eax, [WIN_POS + eax * 2] ; number of the upper window
 
         cmp     esi, eax
         ja      .exit.no_redraw
 
         movzx   edx, word[esi]
         shl     edx, 5
-        cmp     [CURRENT_TASK + edx + task_data_t.state], TSTATE_FREE
+        cmp     [TASK_DATA + edx - sizeof.task_data_t + task_data_t.state], TSTATE_FREE
         je      .next_window
 
         mov     eax, [edi + window_data_t.box.top]
@@ -2030,7 +2032,7 @@ kproc window._.draw_window_caption ;////////////////////////////////////////////
 
         xor     eax, eax
         mov     edx, [TASK_COUNT]
-        movzx   edx, word[WIN_POS + edx * 2]
+        movzx   edx, [WIN_POS + edx * 2]
         cmp     edx, [CURRENT_TASK]
         jne     @f
         inc     eax
@@ -2069,13 +2071,13 @@ kproc window._.draw_window_caption ;////////////////////////////////////////////
   .2:
         mov     edi, [CURRENT_TASK]
         shl     edi, 5
-        test    [edi + window_data + window_data_t.fl_wstyle], WSTYLE_HASCAPTION
+        test    [window_data + edi + window_data_t.fl_wstyle], WSTYLE_HASCAPTION
         jz      .exit
-        mov     edx, [edi * 8 + SLOT_BASE + app_data_t.wnd_caption]
+        mov     edx, [SLOT_BASE + edi * 8 + app_data_t.wnd_caption]
         or      edx, edx
         jz      .exit
 
-        movzx   eax, [edi + window_data + window_data_t.fl_wstyle]
+        movzx   eax, [window_data + edi + window_data_t.fl_wstyle]
         and     al, 0x0f
         cmp     al, 3
         je      .skinned
@@ -2085,9 +2087,9 @@ kproc window._.draw_window_caption ;////////////////////////////////////////////
         jmp     .not_skinned
 
   .skinned:
-        mov     ebp, [edi + window_data + window_data_t.box.left - 2]
-        mov     bp, word[edi + window_data + window_data_t.box.top]
-        movzx   eax, word[edi + window_data + window_data_t.box.width]
+        mov     ebp, [window_data + edi + window_data_t.box.left - 2]
+        mov     bp, word[window_data + edi + window_data_t.box.top]
+        movzx   eax, word[window_data + edi + window_data_t.box.width]
         sub     ax, [_skinmargins.left]
         sub     ax, [_skinmargins.right]
         push    edx
@@ -2115,9 +2117,9 @@ kproc window._.draw_window_caption ;////////////////////////////////////////////
         cmp     al, 1
         je      .exit
 
-        mov     ebp, [edi + window_data + window_data_t.box.left - 2]
-        mov     bp, word[edi + window_data + window_data_t.box.top]
-        movzx   eax, word[edi + window_data + window_data_t.box.width]
+        mov     ebp, [window_data + edi + window_data_t.box.left - 2]
+        mov     bp, word[window_data + edi + window_data_t.box.top]
+        movzx   eax, word[window_data + edi + window_data_t.box.width]
         sub     eax, 16
         push    edx
         cwde

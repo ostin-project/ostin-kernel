@@ -136,8 +136,8 @@ kproc mouse_check_events ;//////////////////////////////////////////////////////
         call    .call_middle_button_handler
 
   .check_position:
-        movzx   eax, word[MOUSE_X]
-        movzx   ebx, word[MOUSE_Y]
+        movzx   eax, [MOUSE_X]
+        movzx   ebx, [MOUSE_Y]
         cmp     eax, [mouse.state.pos.x]
         jne     .position_changed
         cmp     ebx, [mouse.state.pos.y]
@@ -545,7 +545,7 @@ kproc mouse._.activate_sys_window_under_cursor ;////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         ; activate and redraw window under cursor (if necessary)
         call    mouse._.find_sys_window_under_cursor
-        movzx   esi, word[WIN_STACK + esi * 2]
+        movzx   esi, [WIN_STACK + esi * 2]
         lea     esi, [WIN_POS + esi * 2]
         jmp     waredraw
 kendp

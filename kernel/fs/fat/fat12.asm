@@ -1925,7 +1925,7 @@ kproc fs.fat12.create_directory ;///////////////////////////////////////////////
         and     [edi + fs.fat.dir_entry_t.start_cluster.low], 0 ; to be filled
         and     [edi + fs.fat.dir_entry_t.size], 0
 
-        mov     ecx, sizeof.fs.fat.dir_entry_t * 2
+        mov     ecx, 2 * sizeof.fs.fat.dir_entry_t
         mov     edx, edi
 
         lea     eax, [esp + 4]
@@ -2008,7 +2008,7 @@ kproc fs.fat12.create_directory ;///////////////////////////////////////////////
 ;///    @@: push    ecx
 ;///        sub     ecx, 512
 ;///        neg     ecx
-        mov_s_  ecx, (512 - sizeof.fs.fat.dir_entry_t * 2) / 4
+        mov_s_  ecx, (512 - 2 * sizeof.fs.fat.dir_entry_t) / 4
 
         push    eax
         xor     eax, eax
@@ -2490,7 +2490,7 @@ kproc fs_FloppyRewrite ;////////////////////////////////////////////////////////
 
         ; create directory
         mov     [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY ; attributes: folder
-        mov     ecx, sizeof.fs.fat.dir_entry_t * 2
+        mov     ecx, 2 * sizeof.fs.fat.dir_entry_t
         mov     edx, edi
 
   .doit:

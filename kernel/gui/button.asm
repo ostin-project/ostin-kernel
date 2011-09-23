@@ -32,6 +32,10 @@ struct sys_button_t
          dw ?
 ends
 
+uglobal
+  BTN_ADDR dd ?
+endg
+
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc sysfn.define_button ;/////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -87,7 +91,7 @@ kproc sysfn.define_button ;/////////////////////////////////////////////////////
         add     edi, eax
         ; NOTE: this code doesn't rely on sys_button_t struct, please revise it
         ;       if you change something
-        mov     ax, [CURRENT_TASK]
+        mov     eax, [CURRENT_TASK]
         stosw
         mov     ax, dx
         stosw   ; button id number: bits 0-15
@@ -230,7 +234,7 @@ sysfn.define_button.remove_button:
         add     esi, -sizeof.sys_button_t
 
         ; does it belong to our process?
-        mov     ax, [CURRENT_TASK]
+        mov     eax, [CURRENT_TASK]
         cmp     ax, [esi + sys_button_t.pslot]
         jne     .next_button
 
@@ -306,10 +310,16 @@ kproc sys_button_perform_handler ;//////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         shl     eax, 8
         mov     al, cl
-        movzx   ebx, byte[BTN_COUNT]
-        mov     [BTN_BUFF + ebx * 4], eax
-        inc     bl
-        mov     [BTN_COUNT], bl
+
+        ; FIXME: the rest of code assumes there could be at most 1 button in the buffer...
+;       movzx   ebx, [BTN_COUNT]
+;       mov     [BTN_BUFF + ebx * 4], eax
+;       inc     bl
+;       mov     [BTN_COUNT], bl
+        ; FIXME: ... so we simplify it for now
+        mov     [BTN_BUFF], eax
+        mov     [BTN_COUNT], 1
+
         ret
 kendp
 

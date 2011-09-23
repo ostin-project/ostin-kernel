@@ -478,7 +478,7 @@ proc build_tcp_packet stdcall, sockAddr:DWORD ;/////////////////////////////////
 
         mov     eax, pseudoHeader
         mov     [checkAdd1], eax
-        mov     word[checkSize1], 12
+        mov     [checkSize1], 12
         mov     eax, edx
         add     eax, 20
         mov     [checkAdd2], eax
@@ -665,7 +665,7 @@ proc signal_network_event ;/////////////////////////////////////////////////////
 
   .found_pid:
         shl     ecx, 8
-        or      [ecx + SLOT_BASE + app_data_t.event_mask], EVENT_NETWORK ; stack event
+        or      [SLOT_BASE + ecx + app_data_t.event_mask], EVENT_NETWORK ; stack event
         pop     eax esi ecx
         ret
 endp

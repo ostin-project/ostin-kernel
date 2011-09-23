@@ -149,9 +149,6 @@ endl
         test    eax, eax
         jz      .err_hdr
 
-;       mov     esi, new_process_loading
-;       call    sys_msg_board_str ; write message to message board
-
   .wait_lock:
         cmp     [application_table_status], 0
         je      .get_lock
@@ -334,7 +331,7 @@ proc get_new_process_place ;////////////////////////////////////////////////////
 ;# This function find least empty slot.
 ;# It doesn't increase [TASK_COUNT]!
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, CURRENT_TASK
+        mov     eax, TASK_DATA - sizeof.task_data_t
         mov     ebx, [TASK_COUNT]
         inc     ebx
         shl     ebx, 5
@@ -344,17 +341,17 @@ proc get_new_process_place ;////////////////////////////////////////////////////
         ; eax = address of process information for current slot
         cmp     eax, ebx
         jz      .endnewprocessplace ; empty slot after high boundary
-        add     eax, 0x20
-        cmp     word[eax + 0x0a], 9 ; check process state, 9 means that process slot is empty
+        add     eax, sizeof.task_data_t
+        cmp     [eax + task_data_t.state], TSTATE_FREE ; check process state, 9 means that process slot is empty
         jnz     .newprocessplace
 
   .endnewprocessplace:
         mov     ebx, eax
-        sub     eax, CURRENT_TASK
+        sub     eax, TASK_DATA - sizeof.task_data_t
         shr     eax, 5 ; calculate slot index
         cmp     eax, 256
         jge     .failed ; it should be <256
-        mov     word[ebx + 0x0a], 9 ; set process state to 9 (for slot after hight boundary)
+        mov     [ebx + task_data_t.state], TSTATE_FREE ; set process state to 9 (for slot after hight boundary)
         ret
 
   .failed:
@@ -563,7 +560,7 @@ proc destroy_app_space stdcall, pg_dir:dword, dlls_list:dword ;/////////////////
         ; eax = current slot of process
         mov     ecx, eax
         shl     ecx, 5
-        cmp     byte[CURRENT_TASK + ecx + 0x0a], 9 ; if process running?
+        cmp     [TASK_DATA + ecx - sizeof.task_data_t + task_data_t.state], TSTATE_FREE ; if process running?
         jz      @f ; skip empty slots
         shl     ecx, 3
         add     ecx, SLOT_BASE
@@ -642,18 +639,18 @@ kproc pid_to_slot ;/////////////////////////////////////////////////////////////
         push    ecx
         mov     ebx, [TASK_COUNT]
         shl     ebx, 5
-        mov     ecx, 2 * 32
+        mov     ecx, 2 * sizeof.task_data_t
 
   .loop:
         ; ecx=offset of current process info entry
         ; ebx=maximum permitted offset
-        cmp     byte[CURRENT_TASK + ecx + 0x0a], 9
+        cmp     [TASK_DATA + ecx - sizeof.task_data_t + task_data_t.state], TSTATE_FREE
         jz      .endloop ; skip empty slots
-        cmp     [CURRENT_TASK + ecx + 0x4], eax ; check PID
+        cmp     [TASK_DATA + ecx - sizeof.task_data_t + task_data_t.pid], eax ; check PID
         jz      .pid_found
 
   .endloop:
-        add     ecx, 32
+        add     ecx, sizeof.task_data_t
         cmp     ecx, ebx
         jle     .loop
 
@@ -696,10 +693,10 @@ kproc check_region ;////////////////////////////////////////////////////////////
         test    edx, edx
         jle     .ok
         shl     eax, 5
-        cmp     word[CURRENT_TASK + eax + 0x0a], 0
+        cmp     [TASK_DATA + eax - sizeof.task_data_t + task_data_t.state], TSTATE_RUNNING
         jnz     .failed
         shl     eax, 3
-        mov     eax, [SLOT_BASE + eax + 0xb8]
+        mov     eax, [SLOT_BASE + eax + app_data_t.dir_table]
         test    eax, eax
         jz      .failed
 
@@ -928,8 +925,6 @@ endl
         mov     [app_cmdline], eax
         mov     [app_esp], edx
         mov     [app_path], eax
-;       mov     esi, new_process_loading
-;       call    sys_msg_board_str
 
   .wait_lock:
         cmp     [application_table_status], 0
@@ -997,8 +992,6 @@ endl
         lea     eax, [app_cmdline]
         stdcall set_app_params, [slot], eax, 0, 0, 0
 
-;       mov     esi, new_process_running
-;       call    sys_msg_board_str ; output information about succefull startup
         xor     eax, eax
         mov     [application_table_status], eax ; unlock application_table_status mutex
         mov     eax, [process_number] ; set result
@@ -1073,15 +1066,15 @@ endl
         mov     ebx, eax
 
         shl     eax, 8
-        mov     [eax + SLOT_BASE + app_data_t.fpu_state], edi
-        mov     [eax + SLOT_BASE + app_data_t.exc_handler], 0
-        mov     [eax + SLOT_BASE + app_data_t.except_mask], 0
+        mov     [SLOT_BASE + eax + app_data_t.fpu_state], edi
+        mov     [SLOT_BASE + eax + app_data_t.exc_handler], 0
+        mov     [SLOT_BASE + eax + app_data_t.except_mask], 0
 
         ; set default io permission map
         mov     ecx, [SLOT_BASE + sizeof.app_data_t + app_data_t.io_map]
-        mov     [eax + SLOT_BASE + app_data_t.io_map], ecx
+        mov     [SLOT_BASE + eax + app_data_t.io_map], ecx
         mov     ecx, [SLOT_BASE + sizeof.app_data_t + app_data_t.io_map + 4]
-        mov     [eax + SLOT_BASE + app_data_t.io_map + 4], ecx
+        mov     [SLOT_BASE + eax + app_data_t.io_map + 4], ecx
 
         mov     esi, fpu_data
         mov     ecx, 512 / 4
@@ -1089,24 +1082,24 @@ endl
 
         cmp     ebx, [TASK_COUNT]
         jle     .noinc
-        inc     dword[TASK_COUNT] ; update number of processes
+        inc     [TASK_COUNT] ; update number of processes
 
   .noinc:
         shl     ebx, 8
-        lea     edx, [ebx + SLOT_BASE + APP_EV_OFFSET]
-        mov     [SLOT_BASE + app_data_t.ev.next_ptr + ebx], edx
-        mov     [SLOT_BASE + app_data_t.ev.prev_ptr + ebx], edx
+        lea     edx, [SLOT_BASE + ebx + app_data_t.ev]
+        mov     [SLOT_BASE + ebx + app_data_t.ev.next_ptr], edx
+        mov     [SLOT_BASE + ebx + app_data_t.ev.prev_ptr], edx
 
-        add     edx, APP_OBJ_OFFSET - APP_EV_OFFSET
-        mov     [SLOT_BASE + app_data_t.obj.next_ptr + ebx], edx
-        mov     [SLOT_BASE + app_data_t.obj.prev_ptr + ebx], edx
+        add     edx, app_data_t.obj - app_data_t.ev
+        mov     [SLOT_BASE + ebx + app_data_t.obj.next_ptr], edx
+        mov     [SLOT_BASE + ebx + app_data_t.obj.prev_ptr], edx
 
         mov     ecx, [def_cursor]
-        mov     [SLOT_BASE + app_data_t.cursor + ebx], ecx
+        mov     [SLOT_BASE + ebx + app_data_t.cursor], ecx
         mov     eax, [pl0_stack]
-        mov     [SLOT_BASE + app_data_t.pl0_stack + ebx], eax
+        mov     [SLOT_BASE + ebx + app_data_t.pl0_stack], eax
         add     eax, RING0_STACK_SIZE
-        mov     [SLOT_BASE + app_data_t.saved_esp0 + ebx], eax
+        mov     [SLOT_BASE + ebx + app_data_t.saved_esp0], eax
 
         push    ebx
         stdcall kernel_alloc, 0x1000
@@ -1115,12 +1108,12 @@ endl
         mov     esi, [esi + app_data_t.cur_dir]
         mov     ecx, 0x1000 / 4
         mov     edi, eax
-        mov     [ebx + SLOT_BASE + app_data_t.cur_dir], eax
+        mov     [SLOT_BASE + ebx + app_data_t.cur_dir], eax
         rep     movsd
 
         shr     ebx, 3
         mov     eax, new_app_base
-        mov     dword[CURRENT_TASK + ebx + 0x10], eax
+        mov     [TASK_DATA + ebx - sizeof.task_data_t + task_data_t.mem_start], eax
 
   .add_command_line:
         mov     edx, [params]
@@ -1132,7 +1125,7 @@ endl
         add     eax, 256
         jc      @f
 
-        cmp     eax, [SLOT_BASE + app_data_t.mem_size + ebx * 8]
+        cmp     eax, [SLOT_BASE + ebx * 8 + app_data_t.mem_size]
         ja      @f
 
         mov     byte[edx], 0 ; force empty string if no cmdline given
@@ -1148,7 +1141,7 @@ endl
         mov     eax, edx
         add     eax, 1024
         jc      @f
-        cmp     eax, [SLOT_BASE + app_data_t.mem_size + ebx * 8]
+        cmp     eax, [SLOT_BASE + ebx * 8 + app_data_t.mem_size]
         ja      @f
         stdcall strncpy, edx, [app_path], 1024
 
@@ -1158,14 +1151,14 @@ endl
         lea     ecx, [draw_data + ebx] ; ecx - pointer to draw data
 
         mov     edx, irq0.return
-        cmp     [ebx * 8 + SLOT_BASE + app_data_t.tls_base], -1
+        cmp     [SLOT_BASE + ebx * 8 + app_data_t.tls_base], -1
         jne     @f
         mov     edx, tls_app_entry
 
     @@: ; set window state to 'normal' (non-minimized/maximized/rolled-up) state
-        mov     [ebx + window_data + window_data_t.fl_wstate], WSTATE_NORMAL
-        mov     [ebx + window_data + window_data_t.fl_redraw], 1
-        add     ebx, CURRENT_TASK ; ebx - pointer to information about process
+        mov     [window_data + ebx + window_data_t.fl_wstate], WSTATE_NORMAL
+        mov     [window_data + ebx + window_data_t.fl_redraw], 1
+        add     ebx, TASK_DATA - sizeof.task_data_t ; ebx - pointer to information about process
         mov     [ebx + task_data_t.wnd_number], al ; set window number on screen = process slot
 
         mov     [ebx + task_data_t.event_mask], 1 + 2 + 4 ; set default event flags (see 40 function)
@@ -1210,7 +1203,7 @@ endl
         lea     ecx, [ebx + REG_RET]
         mov     ebx, [slot]
         shl     ebx, 5
-        mov     [ebx * 8 + SLOT_BASE + app_data_t.saved_esp], ecx
+        mov     [SLOT_BASE + ebx * 8 + app_data_t.saved_esp], ecx
 
         xor     ecx, ecx ; TSTATE_RUNNING, process state - running
         ; set if debuggee
@@ -1221,9 +1214,7 @@ endl
         mov     [SLOT_BASE + ebx * 8 + app_data_t.debugger_slot], eax
 
   .no_debug:
-        mov     [CURRENT_TASK + ebx + task_data_t.state], cl
-;       mov     esi, new_process_running
-;       call    sys_msg_board_str ; output information about succefull startup
+        mov     [TASK_DATA + ebx - sizeof.task_data_t + task_data_t.state], cl
         ret
 endp
 

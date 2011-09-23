@@ -52,6 +52,7 @@ include "fs/iso9660.asm"
 include "fs/ntfs.asm"
 include "fs/parse_fn.asm"
 
+include "gui/background.asm"
 include "gui/button.asm"
 include "gui/event.asm"
 include "gui/font.asm"

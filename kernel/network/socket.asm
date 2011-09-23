@@ -969,7 +969,7 @@ proc socket_write stdcall ;/////////////////////////////////////////////////////
 
         mov     eax, pseudoHeader
         mov     [checkAdd1], eax
-        mov     word[checkSize1], 12
+        mov     [checkSize1], 12
         mov     eax, edx
         add     eax, 20
         mov     [checkAdd2], eax

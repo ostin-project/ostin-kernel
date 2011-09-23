@@ -22,6 +22,25 @@ uglobal
     arp_rx_count    dd 0
     ip_rx_count     dd 0
     ip_tx_count     dd 0
+
+  ; 32 bit word
+  stack_config          dd ?
+  ; 32 bit word - IP Address in network format
+  stack_ip              dd ?
+  ; 1 byte. 0 == inactive, 1 = active
+  ethernet_active       db ?
+  ; Parameter to checksum routine - data ptr
+  checkAdd1             dd ?
+  ; Parameter to checksum routine - 2nd data ptr
+  checkAdd2             dd ?
+  ; Parameter to checksum routine - data size
+  checkSize1            dw ?
+  ; Parameter to checksum routine - 2nd data size
+  checkSize2            dw ?
+  ; result of checksum routine
+  checkResult           dw ?
+  ; holds the TCP/UDP pseudo header. SA|DA|0|prot|UDP len|
+  pseudoHeader:         rb 16
 endg
 
 ; socket buffers
@@ -233,7 +252,7 @@ kproc checksum ;////////////////////////////////////////////////////////////////
         loopw   .cs1
 
   .cs1_1:
-        and     word[checkSize1], 0x01
+        and     [checkSize1], 0x01
         jz      .cs_test2
 
         mov     bh, [eax]
@@ -261,7 +280,7 @@ kproc checksum ;////////////////////////////////////////////////////////////////
         loopw   .cs2
 
   .cs2_1:
-        and     word[checkSize2], 0x01
+        and     [checkSize2], 0x01
         jz      .cs_exit
 
         mov     bh, [eax]
@@ -348,7 +367,7 @@ kproc app_stack_handler ;///////////////////////////////////////////////////////
         cmp     cl, 3
         je      ash_eth_enable
         ; Ethernet isn't enabled, so make sure that the card is disabled
-        mov     byte[ethernet_active], 0
+        mov     [ethernet_active], 0
         ret
 
   .03:
@@ -439,14 +458,14 @@ kproc a_probe ;/////////////////////////////////////////////////////////////////
 ;> ecx = pointer to target MAC, MAC should set to 0 by application
 ;> edx = target IP
 ;-----------------------------------------------------------------------------------------------------------------------
-        push    dword[stack_ip]
+        push    [stack_ip]
 
         mov     edx, [stack_ip]
-        and     dword[stack_ip], 0
+        and     [stack_ip], 0
         mov     esi, ecx ; pointer to target MAC address
         call    arp_request
 
-        pop     dword[stack_ip]
+        pop     [stack_ip]
         ret
 kendp
 
@@ -478,7 +497,7 @@ kproc ash_eth_enable ;//////////////////////////////////////////////////////////
         test    eax, eax
         jz      .ash_eth_done ; Abort if no hardware found
 
-        mov     byte[ethernet_active], 1
+        mov     [ethernet_active], 1
 
   .ash_eth_done:
         ret

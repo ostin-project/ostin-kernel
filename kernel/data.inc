@@ -38,7 +38,6 @@ keymap_shift:
   db 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
   db 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
-
 keymap_alt:
   db ' ', 27
   db ' @ $  {[]}\ ', 8, 9
@@ -50,7 +49,6 @@ keymap_alt:
   db 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
   db 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
   db 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-
 
 boot_memdetect   db 'Determining amount of memory', 0
 boot_fonts       db 'Fonts loaded', 0
@@ -74,18 +72,11 @@ boot_failed      db 'Failed to start first app', 0
 boot_mtrr        db 'Setting MTRR', 0
 
 if KCONFIG_BOOT_LOG_ESC
+
 boot_tasking     db 'All set - press ESC to start', 0
+
 end if
 
-;new_process_loading db 'K : New Process - loading', 13, 10, 0
-;new_process_running db 'K : New Process - done', 13, 10, 0
-start_not_enough_memory db 'K : New Process - not enough memory', 13, 10, 0
-
-msg_unresolved   db 'unresolved ', 0
-msg_module       db 'in module ', 0
-msg_version      db 'incompatible driver version', 13, 10, 0
-msg_www          db 'please visit www.kolibrios.org', 13, 10, 0
-msg_CR           db  13, 10, 0
 aSis             db 'SIS', 0
 
 intel_str        db "GenuineIntel", 0
@@ -117,39 +108,20 @@ vmode            db '/sys/drivers/VMODE.MDR', 0
 vrr_m            db 'VRR_M', 0
 kernel_file      db 'KERNEL  MNT'
 
-
 align 4
-
-shmem_list:
-  .prev_ptr dd shmem_list
-  .next_ptr dd shmem_list
-
-dll_list:
-  .prev_ptr dd dll_list
-  .next_ptr dd dll_list
-
-MAX_DEFAULT_DLL_ADDR = 0x20000000
-MIN_DEFAULT_DLL_ADDR = 0x10000000
-dll_cur_addr dd MIN_DEFAULT_DLL_ADDR
-
-db 0
-dd 0 ; servetable - 0x10000
 draw_line       dd __sys_draw_line
 draw_pointer    dd __sys_draw_pointer
 drawbar         dd __sys_drawbar
 putpixel        dd __sys_putpixel
 
-align 4
-keyboard        dd 1
-syslang         dd 1
-
 boot_y          dd 10
+syslang         dd 1
+keyboard        dw 1
 
-pci_bios_entry  dd 0
-                dw pci_code_sel
+if KCONFIG_DEBUG
 
-if KCONFIG_DEBUG eq 1
-  include_debug_strings
+include_debug_strings
+
 end if
 
 IncludeIGlobals
@@ -258,11 +230,11 @@ tls_data_l:
   db drw3
   dw D32
 
-endofcode:
 gdte:
 
+endofcode:
+
 align 16
-cur_saved_data    rb 4096
 fpu_data:         rb 512
 
 ; device irq owners
@@ -288,36 +260,8 @@ irq15read         rd 16
 
 irq_tab           rd 16
 
-mem_block_map     rb 512
-mem_block_list    rd 64
-large_block_list  rd 31
-mem_block_mask    rd 2
-large_block_mask  rd 1
-
-mem_used:
-  .next_ptr dd ?
-  .prev_ptr dd ?
-
-mem_block_arr     rd 1
-mem_block_start   rd 1
-mem_block_end     rd 1
-
-heap_mutex        rd 1
-heap_size         rd 1
-heap_free         rd 1
-heap_blocks       rd 1
-free_blocks       rd 1
-
-mst               memory_state_t
-
-page_start        rd 1
-page_end          rd 1
-sys_page_map      rd 1
+;sys_page_map     rd 1
 os_stack_seg      rd 1
-
-srv:
-  .next_ptr dd ?
-  .prev_ptr dd ?
 
 align 16
 
@@ -326,55 +270,15 @@ _display          display_t
 _WinMapAddress    rd 1
 _WinMapSize       rd 1
 
-def_cursor        rd 1
-current_cursor    rd 1
-hw_cursor         rd 1
-cur_saved_base    rd 1
-
-cur:
-  .lock   dd ? ; 1 - lock update, 2 - hide
-  .left   dd ? ; cursor clip box
-  .top    dd ?
-  .right  dd ?
-  .bottom dd ?
-  .w      dd ?
-  .h      dd ?
-
-ipc_tmp           rd 1
-ipc_pdir          rd 1
-ipc_ptab          rd 1
-
-proc_mem_map      rd 1
-proc_mem_pdir     rd 1
-proc_mem_tab      rd 1
-
-tmp_task_pdir     rd 1
-tmp_task_ptab     rd 1
-
 default_io_map    rd 1
 
 LFBSize           rd 1
 
 stall_mcs         rd 1
-current_slot      rd 1
-
-; status
-hd1_status               rd 1 ; 0 - free : other - pid
-application_table_status rd 1 ; 0 - free : other - pid
 
 ; device addresses
 mididp            rd 1
 midisp            rd 1
-
-cdbase            rd 1
-cdid              rd 1
-
-hdbase            rd 1 ; for boot 0x1f0
-hdid              rd 1
-hdpos             rd 1 ; for boot 0x1
-label known_part dword
-fat32part         rd 1 ; for boot 0x1
-cdpos             rd 1
 
 ; CPUID information
 cpu_vendor        rd 3
@@ -382,39 +286,26 @@ cpu_sign          rd 1
 cpu_info          rd 1
 cpu_caps          rd 4
 
-pg_data           pages_data_t
-heap_test         rd 1
+WIN_STACK         rw 512
+WIN_POS           rw 512
 
-buttontype        rd 1
-windowtypechanged rd 1
+KEY_COUNT         db ?
+KEY_BUFF          rb 255
+BTN_COUNT         db ?
+                  rb 3
+BTN_BUFF          dd ?
 
-hd_entries        rd 1 ; unused ? 0xfe10
+CPU_FREQ          dd ?
 
-mouse_active      rd 1
-mouse_pause       rd 1
-MouseTickCounter  rd 1
-
-img_background    rd 1
-mem_BACKGROUND    rd 1
-static_background_data rd 1
-
-ide_drives_cache:
-  .0 drive_cache_t
-  .1 drive_cache_t
-  .2 drive_cache_t
-  .3 drive_cache_t
-
-debug_step_pointer rd 1
-hdd_appl_data      rb 1 ; 0 = system cache, 1 - application cache
-cd_appl_data       rb 1 ; 0 = system cache, 1 - application cache
-
-lba_read_enabled   rd 1 ; 0 = disabled , 1 = enabled
-pci_access_enabled rd 1 ; 0 = disabled , 1 = enabled
-timer_ticks_enable rb 1 ; for cd driver
-
-NumBiosDisks       rd 1
-BiosDisksData      rb 0x200
-BiosDiskCaches     rb 0x80 * sizeof.drive_cache_t
-BiosDiskPartitions rd 0x80
+ScreenBPP         db ?
+                  rb 3
+Screen_Max_X      dd ?
+Screen_Max_Y      dd ?
+BytesPerScanLine  dd ?
+SCR_MODE          dw ?
+                  rb 2
+LFBAddress        dd ?
+MEM_AMOUNT        dd ?
+SYS_SHUTDOWN      db ?
 
 IncludeUGlobals

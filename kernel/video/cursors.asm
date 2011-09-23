@@ -37,6 +37,22 @@ virtual at 0
   BI bitmap_info_header_t
 end virtual
 
+uglobal
+  align 16
+  cur_saved_data rb 4096
+  def_cursor     rd 1
+  cur_saved_base rd 1
+
+  cur:
+    .lock   dd ? ; 1 - lock update, 2 - hide
+    .left   dd ? ; cursor clip box
+    .top    dd ?
+    .right  dd ?
+    .bottom dd ?
+    .w      dd ?
+    .h      dd ?
+endg
+
 align 4
 ;-----------------------------------------------------------------------------------------------------------------------
 proc init_cursor stdcall, dst:dword, src:dword ;////////////////////////////////////////////////////////////////////////
@@ -608,7 +624,7 @@ endl
         sub     edx, [y]
         mov     [_dy], edx
 
-        mul     dword[BytesPerScanLine]
+        mul     [BytesPerScanLine]
         lea     edx, [LFB_BASE + ecx * 3]
         add     edx, eax
         mov     [cur_saved_base], edx
@@ -717,7 +733,7 @@ endl
         sub     edx, [y]
         mov     [_dy], edx
 
-        mul     dword[BytesPerScanLine]
+        mul     [BytesPerScanLine]
         lea     edx, [LFB_BASE + eax + ecx * 4]
         mov     [cur_saved_base], edx
 
@@ -807,15 +823,15 @@ kproc init_display ;////////////////////////////////////////////////////////////
         mov     [edi + display_t.cr_list.next_ptr], ecx
         mov     [edi + display_t.cr_list.prev_ptr], ecx
 
-        cmp     word[SCR_MODE], 0x13
+        cmp     [SCR_MODE], 0x13
         jbe     .fail
 
-        test    word[SCR_MODE], 0x4000
+        test    [SCR_MODE], 0x4000
         jz      .fail
 
         mov     ebx, restore_32
         mov     ecx, move_cursor_32
-        movzx   eax, byte[ScreenBPP]
+        movzx   eax, [ScreenBPP]
         cmp     eax, 32
         je      @f
 

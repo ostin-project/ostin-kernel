@@ -186,161 +186,75 @@ struct tss_t
   io_map_1 rb 4096
 ends
 
-OS_BASE             = 0x80000000
+OS_BASE = 0x80000000
 
-window_data         = OS_BASE + 0x0001000
-
-CURRENT_TASK        = OS_BASE + 0x0003000
-TASK_COUNT          = OS_BASE + 0x0003004
-TASK_BASE           = OS_BASE + 0x0003010
-TASK_DATA           = OS_BASE + 0x0003020
-;TASK_EVENT         = OS_BASE + 0x0003020 ; unused
-
-mouseunder          = OS_BASE + 0x0006900
-CDDataBuf           = OS_BASE + 0x0007000
-FLOPPY_BUFF         = OS_BASE + 0x0008000
-;ACTIVE_PROC_STACK  = OS_BASE + 0x000a400 ; unused
-idts                = OS_BASE + 0x000b100
-WIN_STACK           = OS_BASE + 0x000c000
-WIN_POS             = OS_BASE + 0x000c400
-FDD_BUFF            = OS_BASE + 0x000d000
-
-ENABLE_TASKSWITCH   = OS_BASE + 0x000e000 ; unused? 1 write, 0 reads
-
-PUTPIXEL            = OS_BASE + 0x000e020
-GETPIXEL            = OS_BASE + 0x000e024
-
-BANK_SWITCH         = OS_BASE + 0x000e030 ; unused? 1 write, 0 reads
-
-; store mousepointer
-MOUSE_PICTURE       = OS_BASE + 0x000f200
-
-MOUSE_VISIBLE       = OS_BASE + 0x000f204
-;WIN_TEMP_XY        = OS_BASE + 0x000f300 ; unused
-KEY_COUNT           = OS_BASE + 0x000f400
-KEY_BUFF            = OS_BASE + 0x000f401
-
-BTN_COUNT           = OS_BASE + 0x000f500
-BTN_BUFF            = OS_BASE + 0x000f501
-
-CPU_FREQ            = OS_BASE + 0x000f600
-
-;MOUSE_PORT         = OS_BASE + 0x000f604 ; unused
-
-;PS2_CHUNK          = OS_BASE + 0x000fb00 ; unused
-
-MOUSE_SCROLL_H      = OS_BASE + 0x000fb08
-MOUSE_X             = OS_BASE + 0x000fb0a
-MOUSE_Y             = OS_BASE + 0x000fb0c
-MOUSE_SCROLL_V      = OS_BASE + 0x000fb0e
-
-MOUSE_COLOR_MEM     = OS_BASE + 0x000fb10
-COLOR_TEMP          = OS_BASE + 0x000fb30
-BTN_DOWN            = OS_BASE + 0x000fb40
-MOUSE_DOWN          = OS_BASE + 0x000fb44 ; unused? 3 writes, 0 reads
-X_UNDER             = OS_BASE + 0x000fb4a
-Y_UNDER             = OS_BASE + 0x000fb4c
-ScreenBPP           = OS_BASE + 0x000fbf1
-
-MOUSE_BUFF_COUNT    = OS_BASE + 0x000fcff ; unused? 1 write, 0 reads
-
-Screen_Max_X        = OS_BASE + 0x000fe00
-Screen_Max_Y        = OS_BASE + 0x000fe04
-BytesPerScanLine    = OS_BASE + 0x000fe08
-SCR_MODE            = OS_BASE + 0x000fe0c
-
-LFBAddress          = OS_BASE + 0x000fe80
-BTN_ADDR            = OS_BASE + 0x000fe88
-MEM_AMOUNT          = OS_BASE + 0x000fe8c
-
-SYS_SHUTDOWN        = OS_BASE + 0x000ff00
-;TASK_ACTIVATE      = OS_BASE + 0x000ff01 ; unused
-
-REDRAW_BACKGROUND   = OS_BASE + 0x000fff0
-BACKGROUND_CHANGED  = OS_BASE + 0x000fff1
-BANK_RW             = OS_BASE + 0x000fff2
-MOUSE_BACKGROUND    = OS_BASE + 0x000fff4 ; unused? 6 writes, 0 reads
-DONT_DRAW_MOUSE     = OS_BASE + 0x000fff5 ; unused? 4 writes, 0 reads
-DONT_SWITCH         = OS_BASE + 0x000ffff
-
-STACK_TOP           = OS_BASE + 0x006dbf0
-
-FONT_II             = OS_BASE + 0x006dc00
-FONT_I              = OS_BASE + 0x006e600
-
-sys_pgdir           = OS_BASE + 0x006f000
-
-DRIVE_DATA          = OS_BASE + 0x0070000
-
-SLOT_BASE           = OS_BASE + 0x0080000
-
-;TMP_BUFF           = OS_BASE + 0x0090000 ; unused
-
-VGABasePtr          = OS_BASE + 0x00a0000
-
-RAMDISK             = OS_BASE + 0x0100000
-RAMDISK_FAT         = OS_BASE + 0x0280000
-FLOPPY_FAT          = OS_BASE + 0x0282000
-
-CLEAN_ZONE          = 0x284000
-IDE_DMA             = 0x284000
-
-BgrAuxTable         = OS_BASE + 0x0298000
-;SB16Buffer         = OS_BASE + 0x02a0000 ; unused
-;SB16_Status        = OS_BASE + 0x02b0000 ; unused
-
-BUTTON_INFO         = OS_BASE + 0x02c0000
-RESERVED_PORTS      = OS_BASE + 0x02d0000
-IRQ_SAVE            = OS_BASE + 0x02e0000
-BOOT_VAR            = OS_BASE + 0x02f0000
-
-stack_data_start    = OS_BASE + 0x0300000
-eth_data_start      = OS_BASE + 0x0300000
-stack_data          = OS_BASE + 0x0304000
-
-; 32 bit word
-stack_config        = stack_data
-; 32 bit word - IP Address in network format
-stack_ip            = stack_data + 4
-; 1 byte. 0 == inactive, 1 = active
-ethernet_active     = stack_data + 9
-; Address of selected socket
-;sktAddr            = stack_data + 32
-; Parameter to checksum routine - data ptr
-checkAdd1           = stack_data + 36
-; Parameter to checksum routine - 2nd data ptr
-checkAdd2           = stack_data + 40
-; Parameter to checksum routine - data size
-checkSize1          = stack_data + 44
-; Parameter to checksum routine - 2nd data size
-checkSize2          = stack_data + 46
-; result of checksum routine
-checkResult         = stack_data + 48
-; holds the TCP/UDP pseudo header. SA|DA|0|prot|UDP len|
-pseudoHeader        = stack_data + 50
-
-;stack_data_end     = OS_BASE + 0x031ffff ; unused
-resendQ             = OS_BASE + 0x0320000
-VMODE_BASE          = OS_BASE + 0x0328000
-skin_data           = OS_BASE + 0x0330000
-draw_data           = OS_BASE + 0x0338000
-
-BgrDrawMode         = OS_BASE + 0x033bff4
-BgrDataWidth        = OS_BASE + 0x033bff8
-BgrDataHeight       = OS_BASE + 0x033bffc
-
-BOOT_VAR            = OS_BASE + 0x0340000
-
-sys_pgmap           = OS_BASE + 0x0350000
-
-;UPPER_KERNEL_PAGES = OS_BASE + 0x0400000 ; unused
-
-virtual at            OS_BASE + 0x05fff80
-  tss tss_t
+virtual at OS_BASE
+                        rb 0x1000
+  window_data:          rb 256 * sizeof.window_data_t
+                        rb OS_BASE + 0x00003000 - $
+  CURRENT_TASK          dd ?
+  TASK_COUNT            dd ?
+                        rd 2
+  TASK_BASE             dd ?
+                        rd 3
+  TASK_DATA:            rb 256 * sizeof.task_data_t
+                        rb OS_BASE + 0x00007000 - $
+  CDDataBuf:            rb 0x1000
+  FLOPPY_BUFF           rb 0x2400
+                        rb OS_BASE + 0x0000d000 - $
+  FDD_BUFF              rb 0x200
+                        rb OS_BASE + 0x00010000 - $
+  KERNEL_CODE           rb 371 * 1024
+                        rb OS_BASE + 0x0006dbf0 - $
+  KERNEL_STACK_TOP:
+                        rb OS_BASE + 0x0006f000 - $
+  sys_pgdir             rd 0x400
+  DRIVE_DATA            rb 0x10000
+                        rb OS_BASE + 0x00080000 - $
+  SLOT_BASE:            rb 256 * sizeof.app_data_t
+                        rb OS_BASE + 0x000a0000 - $
+  VGABasePtr:           rb 0x10000
+                        rb OS_BASE + 0x000b0000 - $
+  BIOS_RIP_AREA:        rb 0x50000
+  RAMDISK:              rb 0x180000
+  RAMDISK_FAT:          rb 0x2000
+  FLOPPY_FAT:           rb 0x2000
+  IDE_DMA:              rb 32 * 1024
+                        rb OS_BASE + 0x00298000 - $
+  BgrAuxTable           rb 32 * 1024
+                        rb OS_BASE + 0x002c0000 - $
+  BUTTON_INFO:          rb 0x10 + button.MAX_BUTTONS * sizeof.sys_button_t
+                        rb OS_BASE + 0x002d0000 - $
+  RESERVED_PORTS:       rb 0x10 + 256 * sizeof.app_io_ports_range_t
+                        rb OS_BASE + 0x002e0000 - $
+  IRQ_SAVE:             rb 16 * 4096
+                        rb OS_BASE + 0x002f0000 - $
+  LOW_MEMORY_SAVE       rb 64 * 1024
+                        rb OS_BASE + 0x00300000 - $
+  stack_data_start:
+  eth_data_start:
+                        rb OS_BASE + 0x00304000 - $
+  stack_data:
+                        rb OS_BASE + 0x00320000 - $
+  resendQ:              rb 32 * 1024
+  VMODE_BASE:           rb 32 * 1024
+  skin_data:            rb 32 * 1024
+  draw_data:            rb 256 * sizeof.rect32_t
+                        rb OS_BASE + 0x00340000 - $
+  BOOT_VAR:             rb BOOT_VARS_END - BOOT_VARS_BEGIN
+                        rb OS_BASE + 0x00350000 - $
+  sys_pgmap:
+                        rb OS_BASE + 0x005fff80 - $
+  tss                   tss_t
+                        rb OS_BASE + 0x00800000 - $
+  HEAP_BASE:
 end virtual
 
-HEAP_BASE           = OS_BASE + 0x0800000
+CLEAN_ZONE          = 0x284000
+
 HEAP_MIN_SIZE       = 0x01000000
+
+PCIe_CONFIG_SPACE   = 0xf0000000
 
 page_tabs           = 0xfdc00000
 app_page_tabs       = 0xfdc00000
@@ -392,6 +306,8 @@ DONT_FREE_BLOCK     = 0x10
 ;;----------------------------------------------------------------------------------------------------------------------
 
 virtual at 0x9000
+  BOOT_VARS_BEGIN:
+
   BOOT_BPP              db ?  ; 0x09000 - bits per pixel
   BOOT_SCANLINE         dw ?  ; 0x09001 - scanline length
                         rb 5  ;
@@ -427,6 +343,8 @@ virtual at 0x9000
   BOOT_BIOS_DISKS       rd 32 ; 0x09080 - BIOS disks data
   BOOT_PHOENIX_SMAP_CNT dd ?  ; 0x09100
   BOOT_PHOENIX_SMAP     rb 32 * sizeof.phoenix_smap_addr_range_t ; 0x09104
+
+  BOOT_VARS_END:
 end virtual
 
 ;;----------------------------------------------------------------------------------------------------------------------
@@ -447,16 +365,13 @@ EVENT_EXTENDED      = 0x00000200
 
 EV_INTR             = 1
 
-struct app_object_t ; common object header
+struct app_object_t linked_list_t ; common object header
   magic    dd ?
   destroy  dd ? ; internal destructor
-  next_ptr dd ? ; next object in list
-  prev_ptr dd ? ; prev object in list
+; next_ptr dd ? ; next object in list
+; prev_ptr dd ? ; prev object in list
   pid      dd ? ; owner id
 ends
-
-APP_OBJ_OFFSET  = 48
-APP_EV_OFFSET   = 40
 
 struct cursor_t app_object_t ; magic = 'CURS'
   base    dd ?          ; allocated memory
@@ -610,19 +525,17 @@ ends
 ;  import    dd ?
 ;ends
 
-struct service_t
+struct service_t linked_list_t
   srv_name    rb 16 ; ASCIIZ string
   magic       dd ?  ; ' SRV'
   size        dd ?  ; size of structure Service
-  next_ptr    dd ?  ; next Service descriptor
-  prev_ptr    dd ?  ; prev Service descriptor
+; next_ptr    dd ?  ; next Service descriptor
+; prev_ptr    dd ?  ; prev Service descriptor
   base        dd ?  ; service base address
   entry       dd ?  ; service START function
   srv_proc    dd ?  ; user mode service handler
   srv_proc_ex dd ?  ; kernel mode service handler
 ends
-
-SRV_FD_OFFSET = 0x18
 
 DRV_ENTRY = 1
 DRV_EXIT  = -1

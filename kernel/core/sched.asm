@@ -17,6 +17,12 @@
 
 include "mutex.asm"
 
+uglobal
+  align 4
+  current_slot rd 1
+  DONT_SWITCH  db ?
+endg
+
 align 32
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc irq0 ;////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -77,7 +83,7 @@ end if
         call    find_next_task
         jz      .return ; the same task -> skip switch
 
-    @@: mov     byte[DONT_SWITCH], 1
+    @@: mov     [DONT_SWITCH], 1
         call    do_change_task
 
   .return:
@@ -145,10 +151,10 @@ kproc find_next_task ;//////////////////////////////////////////////////////////
         Mov     esi, ebx, [current_slot]
 
   .loop:
-        cmp     bh, [TASK_COUNT]
+        cmp     bh, byte[TASK_COUNT]
         jb      @f
         xor     bh, bh
-        mov     edi, CURRENT_TASK
+        mov     edi, TASK_DATA - sizeof.task_data_t
 
     @@: inc     bh ; ebx += app_data_t.size
         add     edi, sizeof.task_data_t ; edi += sizeof.task_data_t
@@ -174,7 +180,7 @@ kproc find_next_task ;//////////////////////////////////////////////////////////
         mov     [edi + task_data_t.state], TSTATE_RUNNING
 
   .found:
-        mov     [CURRENT_TASK], bh
+        mov     byte[CURRENT_TASK], bh
         mov     [TASK_BASE], edi
 ;       call    _rdtsc
         rdtsc

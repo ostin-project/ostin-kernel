@@ -14,6 +14,21 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
+uglobal
+  align 4
+  page_start    rd 1
+  page_end      rd 1
+  ipc_tmp       rd 1
+  ipc_pdir      rd 1
+  ipc_ptab      rd 1
+  proc_mem_map  rd 1
+  proc_mem_pdir rd 1
+  proc_mem_tab  rd 1
+  tmp_task_pdir rd 1
+  tmp_task_ptab rd 1
+  pg_data       pages_data_t
+endg
+
 align 4
 ;-----------------------------------------------------------------------------------------------------------------------
 proc alloc_page ;///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -367,7 +382,7 @@ locals
   pg_count dd ?
 endl
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     dword[LFBAddress], -1
+        cmp     [LFBAddress], -1
         jne     @f
         mov     [BOOT_VAR + BOOT_MTRR], 2
         stdcall alloc_pages, 0x280000 / 4096
@@ -380,10 +395,10 @@ endl
         mov     ebx, LFB_BASE
         mov     ecx, 0x280000 / 4096
         call    commit_pages
-        mov     dword[LFBAddress], LFB_BASE
+        mov     [LFBAddress], LFB_BASE
         ret
 
-    @@: test    word[SCR_MODE], 0100000000000000b
+    @@: test    [SCR_MODE], 0100000000000000b
         jnz     @f
         mov     [BOOT_VAR + BOOT_MTRR], 2
         ret
@@ -414,7 +429,7 @@ endl
         jnc     @f
         or      dword[sys_pgdir + (LFB_BASE shr 20)], PG_GLOBAL
 
-    @@: mov     dword[LFBAddress], LFB_BASE
+    @@: mov     [LFBAddress], LFB_BASE
         mov     eax, cr3 ; flush TLB
         mov     cr3, eax
         ret
@@ -438,7 +453,7 @@ endl
         dec     ecx
         jnz     @b
 
-        mov     dword[LFBAddress], LFB_BASE
+        mov     [LFBAddress], LFB_BASE
         mov     eax, cr3 ; flush TLB
         mov     cr3, eax
 
@@ -593,7 +608,7 @@ kproc update_mem_size ;/////////////////////////////////////////////////////////
         jg      .search_threads_end
         mov     edx, eax
         shl     edx, 5
-        cmp     word[CURRENT_TASK + edx + task_data_t.state], TSTATE_FREE ; if slot empty?
+        cmp     [TASK_DATA + edx - sizeof.task_data_t + task_data_t.state], TSTATE_FREE ; if slot empty?
         jz      .search_threads_next
         shl     edx, 3
         cmp     [SLOT_BASE + edx + app_data_t.dir_table], ecx ; if it is our thread?
@@ -1107,7 +1122,7 @@ endl
 
         mov     [dst_slot], eax
         shl     eax, 8
-        mov     edi, [eax + SLOT_BASE + 0xa0] ; is ipc area defined?
+        mov     edi, [SLOT_BASE + eax + app_data_t.ipc.offset] ; is ipc area defined?
         test    edi, edi
         jz      .no_ipc_area
 
@@ -1115,7 +1130,7 @@ endl
         and     ebx, 0x0fff
         mov     [dst_offset], ebx
 
-        mov     esi, [eax + SLOT_BASE + 0xa4]
+        mov     esi, [SLOT_BASE + eax + app_data_t.ipc.length]
         mov     [buf_size], esi
 
         mov     ecx, [ipc_tmp]
@@ -1178,7 +1193,7 @@ endl
 
         mov     eax, [dst_slot]
         shl     eax, 8
-        or      dword[eax + SLOT_BASE + 0xa8], 0x40
+        or      [SLOT_BASE + eax + app_data_t.event_mask], 0x40
         cmp     dword[check_idle_semaphore], 20
         jge     .ipc_no_cis
 

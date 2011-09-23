@@ -407,7 +407,7 @@ kproc drawwindow_IV ;///////////////////////////////////////////////////////////
         shl     eax, 4
         add     eax, edi
 
-        mov     bx, [CURRENT_TASK]
+        mov     ebx, [CURRENT_TASK]
         mov     [eax], bx
 
         add     eax, 2 ; save button id number
@@ -447,7 +447,7 @@ kproc drawwindow_IV ;///////////////////////////////////////////////////////////
         shl     eax, 4
         add     eax, edi
 
-        mov     bx, [CURRENT_TASK]
+        mov     ebx, [CURRENT_TASK]
         mov     [eax], bx
 
         add     eax, 2 ; save button id number

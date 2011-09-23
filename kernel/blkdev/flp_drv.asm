@@ -38,7 +38,7 @@ kproc reserve_flp ;/////////////////////////////////////////////////////////////
         push    eax
         mov     eax, [CURRENT_TASK]
         shl     eax, 5
-        mov     eax, [eax + CURRENT_TASK + task_data_t.pid]
+        mov     eax, [TASK_DATA + eax - sizeof.task_data_t + task_data_t.pid]
         mov     [flp_status], eax
         pop     eax
         sti

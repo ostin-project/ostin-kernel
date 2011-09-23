@@ -50,6 +50,9 @@ end if
 ; Modifying the set_bank -function is mostly enough
 ; for different Vesa 1.2 setups.
 
+uglobal
+  BANK_RW db ?
+endg
 
 if TRIDENT
 
@@ -251,51 +254,51 @@ kproc vesa12_drawbackground ;///////////////////////////////////////////////////
         push    edx
 
         xor     edx, edx
-        mov     eax, dword[BgrDataWidth]
-        mov     ebx, dword[BgrDataHeight]
+        mov     eax, [BgrDataWidth]
+        mov     ebx, [BgrDataHeight]
         mul     ebx
         mov     ebx, 3
         mul     ebx
         mov     [imax], eax
-        mov     eax, [draw_data + 32 + rect32_t.left]
-        mov     ebx, [draw_data + 32 + rect32_t.top]
+        mov     eax, [draw_data + sizeof.rect32_t + rect32_t.left]
+        mov     ebx, [draw_data + sizeof.rect32_t + rect32_t.top]
         xor     edi, edi ; no force
 
   .v12dp3:
         push    eax
         push    ebx
 
-        cmp     dword[BgrDrawMode], 1 ; tiled background
+        cmp     [BgrDrawMode], 1 ; tiled background
         jne     .no_vesa12_tiled_bgr
 
         push    edx
 
         xor     edx, edx
-        div     dword[BgrDataWidth]
+        div     [BgrDataWidth]
 
         push    edx
         mov     eax, ebx
         xor     edx, edx
-        div     dword[BgrDataHeight]
+        div     [BgrDataHeight]
         mov     ebx, edx
         pop     eax
 
         pop     edx
 
   .no_vesa12_tiled_bgr:
-        cmp     dword[BgrDrawMode], 2 ; stretched background
+        cmp     [BgrDrawMode], 2 ; stretched background
         jne     .no_vesa12_stretched_bgr
 
         push    edx
 
-        mul     dword[BgrDataWidth]
+        mul     [BgrDataWidth]
         mov     ecx, [Screen_Max_X]
         inc     ecx
         div     ecx
 
         push    eax
         mov     eax, ebx
-        mul     dword[BgrDataHeight]
+        mul     [BgrDataHeight]
         mov     ecx, [Screen_Max_Y]
         inc     ecx
         div     ecx
@@ -306,7 +309,7 @@ kproc vesa12_drawbackground ;///////////////////////////////////////////////////
 
   .no_vesa12_stretched_bgr:
         mov     esi, ebx
-        imul    esi, dword[BgrDataWidth]
+        imul    esi, [BgrDataWidth]
         add     esi, eax
         lea     esi, [esi * 3]
         add     esi, [img_background] ; IMG_BACKGROUND
@@ -331,7 +334,7 @@ kproc vesa12_drawbackground ;///////////////////////////////////////////////////
         mul     ebx
         add     eax, esi
         lea     eax, [VGABasePtr + eax + esi * 2]
-        cmp     byte[ScreenBPP], 24
+        cmp     [ScreenBPP], 24
         jz      .v12bgl3
         add     eax, esi
 
@@ -358,14 +361,14 @@ kproc vesa12_drawbackground ;///////////////////////////////////////////////////
         popa
         add     esi, 3
         inc     eax
-        cmp     eax, [draw_data + 32 + rect32_t.right]
+        cmp     eax, [draw_data + sizeof.rect32_t + rect32_t.right]
         jg      .v12nodp31
         jmp     .v12dp3
 
   .v12nodp31:
-        mov     eax, [draw_data + 32 + rect32_t.left]
+        mov     eax, [draw_data + sizeof.rect32_t + rect32_t.left]
         inc     ebx
-        cmp     ebx, [draw_data + 32 + rect32_t.bottom]
+        cmp     ebx, [draw_data + sizeof.rect32_t + rect32_t.bottom]
         jg      .v12dp4
         jmp     .v12dp3
 
@@ -402,7 +405,7 @@ kproc vesa12_drawbar ;//////////////////////////////////////////////////////////
         add     eax, ecx ; x
         add     eax, ecx
         add     eax, ecx
-        cmp     byte[ScreenBPP], 24 ; 24 or 32 bpp ? - x start
+        cmp     [ScreenBPP], 24 ; 24 or 32 bpp ? - x start
         jz      .dbpi2412
         add     eax, ecx
 
@@ -416,7 +419,7 @@ kproc vesa12_drawbar ;//////////////////////////////////////////////////////////
         mov     ecx, eax
         add     ecx, eax
         add     ecx, eax
-        cmp     byte[ScreenBPP], 24 ; 24 or 32 bpp ? - x size
+        cmp     [ScreenBPP], 24 ; 24 or 32 bpp ? - x size
         jz      .dbpi24312
         add     ecx, eax
 
@@ -451,7 +454,7 @@ kproc vesa12_drawbar ;//////////////////////////////////////////////////////////
         push    1
 
   .dbcblimitlno12:
-        cmp     byte[ScreenBPP], 24     ; 24 or 32 bpp ?
+        cmp     [ScreenBPP], 24     ; 24 or 32 bpp ?
         jz      dbpi24bit12
         jmp     dbpi32bit12
 kendp
@@ -747,12 +750,12 @@ kproc vesa12_putimage ;/////////////////////////////////////////////////////////
         add     ebx, [ecx - twdw + window_data_t.box.top]
         push    eax
         mov     eax, ebx ; y
-        mul     dword[BytesPerScanLine]
+        mul     [BytesPerScanLine]
         pop     ecx
         add     eax, ecx ; x
         add     eax, ecx
         add     eax, ecx
-        cmp     byte[ScreenBPP], 24 ; 24 or 32 bpp ? - x start
+        cmp     [ScreenBPP], 24 ; 24 or 32 bpp ? - x start
         jz      .pi2412
         add     eax, ecx
 
@@ -771,9 +774,9 @@ kproc vesa12_putimage ;/////////////////////////////////////////////////////////
 
         push    ecx
         mov     eax, [TASK_BASE]
-        cmp     dword[eax + draw_data - CURRENT_TASK + rect32_t.left], 0
+        cmp     [eax + draw_data - CURRENT_TASK + rect32_t.left], 0
         jnz     .dbcblimitlset212
-        cmp     dword[eax + draw_data - CURRENT_TASK + rect32_t.top], 0
+        cmp     [eax + draw_data - CURRENT_TASK + rect32_t.top], 0
         jnz     .dbcblimitlset212
         mov     ecx, [eax + draw_data - CURRENT_TASK + rect32_t.right]
         cmp     ecx, [Screen_Max_X]
@@ -790,7 +793,7 @@ kproc vesa12_putimage ;/////////////////////////////////////////////////////////
         push    1
 
   .dbcblimitlno212:
-        cmp     byte[ScreenBPP], 24 ; 24 or 32 bpp ?
+        cmp     [ScreenBPP], 24 ; 24 or 32 bpp ?
         jnz     pi32bit12
 kendp
 
@@ -905,7 +908,7 @@ kproc pi32bit12 ;///////////////////////////////////////////////////////////////
         call    set_bank
         pop     eax
         and     edi, 0xffff
-        mov     [edi + VGABasePtr], eax
+        mov     [VGABasePtr + edi], eax
         pop     edi
 
   .imp32no12:

@@ -20,7 +20,10 @@ uglobal
   align 4
   hd_error        dd 0 ; set by wait_for_sector_buffer
   hd_wait_timeout dd 0
-
+  hd1_status      rd 1 ; 0 - free : other - pid
+  hdbase          rd 1 ; for boot 0x1f0
+  hdpos           rd 1 ; for boot 0x1
+  hdid            rb 1
   hd_in_cache     db ?
 endg
 
@@ -39,7 +42,7 @@ kproc reserve_hd1 ;/////////////////////////////////////////////////////////////
         push    eax
         mov     eax, [CURRENT_TASK]
         shl     eax, 5
-        mov     eax, [eax + CURRENT_TASK + task_data_t.pid]
+        mov     eax, [TASK_DATA + eax - sizeof.task_data_t + task_data_t.pid]
         mov     [hd1_status], eax
         pop     eax
         sti
@@ -233,7 +236,7 @@ kproc hd_read_pio ;/////////////////////////////////////////////////////////////
         shr     eax, 8
         inc     edx
         and     al, 1 + 2 + 4 + 8
-        add     al, byte[hdid]
+        add     al, [hdid]
         add     al, 128 + 64 + 32
         out     dx, al ; head/disk number
         inc     edx
@@ -384,7 +387,7 @@ kproc cache_write_pio ;/////////////////////////////////////////////////////////
         shr     eax, 8
         inc     edx
         and     al, 1 + 2 + 4 + 8
-        add     al, byte[hdid]
+        add     al, [hdid]
         add     al, 128 + 64 + 32
         out     dx, al
         inc     edx
@@ -452,8 +455,6 @@ kproc hd_timeout_error ;////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;       call    clear_hd_cache
 ;       call    clear_application_table_status
-;       mov     esi,hd_timeout_str
-;       call    sys_msg_board_str
         DEBUGF  1, "K : FS - HD timeout\n"
         mov     [hd_error], 1
         pop     eax
@@ -465,8 +466,6 @@ kproc hd_read_error ;///////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;       call    clear_hd_cache
 ;       call    clear_application_table_status
-;       mov     esi,hd_read_str
-;       call    sys_msg_board_str
         DEBUGF  1, "K : FS - HD read error\n"
         pop     edx eax
         ret
@@ -477,8 +476,6 @@ kproc hd_write_error ;//////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;       call    clear_hd_cache
 ;       call    clear_application_table_status
-;       mov     esi,hd_write_str
-;       call    sys_msg_board_str
         DEBUGF  1, "K : FS - HD write error\n"
         ret
 kendp
@@ -488,8 +485,6 @@ kproc hd_write_error_dma ;//////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;       call    clear_hd_cache
 ;       call    clear_application_table_status
-;       mov     esi, hd_write_str
-;       call    sys_msg_board_str
         DEBUGF  1, "K : FS - HD read error\n"
         pop     esi
         ret
@@ -500,8 +495,6 @@ kproc hd_lba_error ;////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;       call    clear_hd_cache
 ;       call    clear_application_table_status
-;       mov     esi,hd_lba_str
-;       call    sys_msg_board_str
         DEBUGF  1, "K : FS - HD LBA error\n"
         jmp     LBA_read_ret
 kendp
@@ -619,7 +612,7 @@ iglobal
   align 4
   ; note that IDE descriptor table must be 4-byte aligned and do not cross 4K boundary
   IDE_descriptor_table:
-    dd IDE_DMA
+    dd IDE_DMA - OS_BASE
     dw 0x2000
     dw 0x8000
 
@@ -663,7 +656,7 @@ kproc hdd_irq14 ;///////////////////////////////////////////////////////////////
 ;       mov     [dma_slot_ptr], eax
 ;       mov     [CURRENT_TASK], ebx
 ;       mov     [TASK_BASE], edi
-;       mov     byte[DONT_SWITCH], 1
+;       mov     [DONT_SWITCH], 1
 ;       call    do_change_task
 
   .noswitch:
@@ -700,7 +693,7 @@ kproc hdd_irq15 ;///////////////////////////////////////////////////////////////
 ;       mov     [dma_slot_ptr], eax
 ;       mov     [CURRENT_TASK], ebx
 ;       mov     [TASK_BASE], edi
-;       mov     byte[DONT_SWITCH], 1
+;       mov     [DONT_SWITCH], 1
 ;       call    do_change_task
 
   .noswitch:
@@ -726,7 +719,7 @@ kproc hd_read_dma ;/////////////////////////////////////////////////////////////
         mov     eax, [esp + 4]
         sub     eax, [dma_cur_sector]
         shl     eax, 9
-        add     eax, OS_BASE + IDE_DMA
+        add     eax, IDE_DMA
         push    ecx esi edi
         mov     esi, eax
         shl     edi, 9
@@ -746,7 +739,7 @@ kproc hd_read_dma ;/////////////////////////////////////////////////////////////
 
   .notread:
         mov     eax, IDE_descriptor_table
-        mov     dword[eax], IDE_DMA
+        mov     dword[eax], IDE_DMA - OS_BASE
         mov     word[eax + 4], 0x2000
         sub     eax, OS_BASE
         mov     dx, [IDEContrRegsBaseAddr]
@@ -786,7 +779,7 @@ kproc hd_read_dma ;/////////////////////////////////////////////////////////////
         shr     eax, 8
         inc     edx
         and     al, 0x0f
-        add     al, byte[hdid]
+        add     al, [hdid]
         add     al, 11100000b
         out     dx, al
         inc     edx
@@ -853,8 +846,8 @@ kproc write_cache_chain ;///////////////////////////////////////////////////////
         shl     esi, 9
         call    calculate_cache_2
         add     esi, eax
-        mov     edi, OS_BASE + IDE_DMA
-        mov     dword[edx], IDE_DMA
+        mov     edi, IDE_DMA
+        mov     dword[edx], IDE_DMA - OS_BASE
         movzx   ecx, [cache_chain_size]
         shl     ecx, 9
         mov     word[edx + 4], cx
@@ -901,7 +894,7 @@ kproc write_cache_chain ;///////////////////////////////////////////////////////
         shr     eax, 8
         inc     edx
         and     al, 0x0f
-        add     al, byte[hdid]
+        add     al, [hdid]
         add     al, 11100000b
         out     dx, al
         inc     edx

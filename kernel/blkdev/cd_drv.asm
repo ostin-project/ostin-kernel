@@ -25,9 +25,11 @@ NoTickWaitTime equ 0x000fffff
 CDBlockSize    equ 2048
 
 uglobal
-  IDE_Channel_1 db 0
-  IDE_Channel_2 db 0
-  cd_status     dd 0
+  cdpos              rd 1
+  cd_status          dd 0
+  IDE_Channel_1      db 0
+  IDE_Channel_2      db 0
+  timer_ticks_enable rb 1 ; for cd driver
 endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -45,7 +47,7 @@ reserve_ok2:
         push    eax
         mov     eax, [CURRENT_TASK]
         shl     eax, 5
-        mov     eax, [eax + CURRENT_TASK + task_data_t.pid]
+        mov     eax, [TASK_DATA + eax - sizeof.task_data_t + task_data_t.pid]
         mov     [cd_status], eax
         pop     eax
         sti

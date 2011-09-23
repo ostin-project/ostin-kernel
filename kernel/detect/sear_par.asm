@@ -16,6 +16,12 @@
 ;? Find and save partitions on detected HDD in table
 ;;======================================================================================================================
 
+uglobal
+  align 4
+  label known_part dword
+  fat32part rd 1 ; for boot 0x1
+endg
+
         mov     [transfer_adress], DRIVE_DATA + 0x0a
 
 search_partitions_ide0:

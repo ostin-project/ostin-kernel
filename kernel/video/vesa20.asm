@@ -24,6 +24,11 @@
 ;LFBAddress              equ     0xfe80
 ;ScreenBPP               equ     0xfbf1
 
+uglobal
+  PUTPIXEL dd ?
+  GETPIXEL dd ?
+endg
+
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc getpixel ;////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -35,7 +40,7 @@ kproc getpixel ;////////////////////////////////////////////////////////////////
 ;< ecx = 00 RR GG BB
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax ebx edx edi
-        call    dword[GETPIXEL]
+        call    [GETPIXEL]
         pop     edi edx ebx eax
         ret
 kendp
@@ -174,7 +179,7 @@ kproc vesa20_putimage ;/////////////////////////////////////////////////////////
         mov     [putimg.winmap_newline], eax
         ; screen new line increment
         mov     eax, [BytesPerScanLine]
-        movzx   ebx, byte[ScreenBPP]
+        movzx   ebx, [ScreenBPP]
         shr     ebx, 3
         imul    ecx, ebx
         sub     eax, ecx
@@ -185,7 +190,7 @@ kproc vesa20_putimage ;/////////////////////////////////////////////////////////
         mov     edx, [putimg.abs_cy]
         imul    edx, [BytesPerScanLine]
         mov     eax, [putimg.abs_cx]
-        movzx   ebx, byte[ScreenBPP]
+        movzx   ebx, [ScreenBPP]
         shr     ebx, 3
         imul    eax, ebx
         add     edx, eax
@@ -198,7 +203,7 @@ kproc vesa20_putimage ;/////////////////////////////////////////////////////////
         xchg    eax, ebp
         ; get process number
         mov     ebx, [CURRENT_TASK]
-        cmp     byte[ScreenBPP], 32
+        cmp     [ScreenBPP], 32
         je      put_image_end_32
 
 ;put_image_end_24:
@@ -340,7 +345,7 @@ kproc __sys_putpixel ;//////////////////////////////////////////////////////////
 
   .noneg:
         ; OK to set pixel
-        call    dword[PUTPIXEL] ; call the real put_pixel function
+        call    [PUTPIXEL] ; call the real put_pixel function
 
   .exit:
         popad
@@ -652,7 +657,7 @@ kproc vesa20_drawbar ;//////////////////////////////////////////////////////////
         mov     [drbar.line_inc_map], eax
         ; line_inc_scr
         mov     eax, [drbar.real_sx]
-        movzx   ebx, byte[ScreenBPP]
+        movzx   ebx, [ScreenBPP]
         shr     ebx, 3
         imul    eax, ebx
         neg     eax
@@ -662,7 +667,7 @@ kproc vesa20_drawbar ;//////////////////////////////////////////////////////////
         mov     edx, [drbar.abs_cy]
         imul    edx, [BytesPerScanLine]
         mov     eax, [drbar.abs_cx]
-;       movzx   ebx, byte[ScreenBPP]
+;       movzx   ebx, [ScreenBPP]
 ;       shr     ebx, 3
         imul    eax, ebx
         add     edx, eax
@@ -675,7 +680,7 @@ kproc vesa20_drawbar ;//////////////////////////////////////////////////////////
         xchg    eax, ebp
         ; get process number
         mov     ebx, [CURRENT_TASK]
-        cmp     byte[ScreenBPP], 24
+        cmp     [ScreenBPP], 24
         jne     draw_bar_end_32
 
 draw_bar_end_24:
@@ -771,10 +776,10 @@ kproc vesa20_drawbackground_tiled ;/////////////////////////////////////////////
         call    [_display.disable_mouse]
         pushad
         ; External loop for all y from start to end
-        mov     ebx, [draw_data + 32 + rect32_t.top] ; y start
+        mov     ebx, [draw_data + sizeof.rect32_t + rect32_t.top] ; y start
 
   .dp2:
-        mov     ebp, [draw_data + 32 + rect32_t.left] ; x start
+        mov     ebp, [draw_data + sizeof.rect32_t + rect32_t.left] ; x start
         ; 1) Calculate pointers in WinMapAddress (does pixel belong to OS thread?) [ebp]
         ;                       and LFB data (output for our function) [edi]
         mov     eax, [BytesPerScanLine]
@@ -783,7 +788,7 @@ kproc vesa20_drawbackground_tiled ;/////////////////////////////////////////////
         add     ebp, eax
         add     ebp, eax
         add     ebp, eax
-        cmp     byte[ScreenBPP], 24 ; 24 or 32 bpp ? - x size
+        cmp     [ScreenBPP], 24 ; 24 or 32 bpp ? - x size
         jz      @f
         add     ebp, eax
 
@@ -797,7 +802,7 @@ kproc vesa20_drawbackground_tiled ;/////////////////////////////////////////////
         push    eax
         xor     edx, edx
         mov     eax, ebx
-        div     dword[BgrDataHeight]   ; edx := y mod BgrDataHeight
+        div     [BgrDataHeight]   ; edx := y mod BgrDataHeight
         pop     eax
         push    eax
         mov     ecx, [BgrDataWidth]
@@ -832,12 +837,12 @@ kproc vesa20_drawbackground_tiled ;/////////////////////////////////////////////
         add     esi, 3
         add     edi, 3
 
-    @@: cmp     byte[ScreenBPP], 25 ; 24 or 32 bpp?
+    @@: cmp     [ScreenBPP], 25 ; 24 or 32 bpp?
         sbb     edi, -1 ; +1 for 32 bpp
         ; I do not use 'inc eax' because this is slightly slower then 'add eax,1'
         add     ebp, edx
         add     eax, edx
-        cmp     eax, [draw_data + 32 + rect32_t.right]
+        cmp     eax, [draw_data + sizeof.rect32_t + rect32_t.right]
         ja      .dp4
         sub     ecx, edx
         jnz     .dp3
@@ -851,7 +856,7 @@ kproc vesa20_drawbackground_tiled ;/////////////////////////////////////////////
   .dp4:
         ; next scan line
         inc     ebx
-        cmp     ebx, [draw_data + 32 + rect32_t.bottom]
+        cmp     ebx, [draw_data + sizeof.rect32_t + rect32_t.bottom]
         jbe     .dp2
         popad
         mov     [EGA_counter], 1
@@ -869,23 +874,23 @@ kproc vesa20_drawbackground_stretch ;///////////////////////////////////////////
         mov     eax, [BgrDataWidth]
         dec     eax
         xor     edx, edx
-        div     dword[Screen_Max_X]
+        div     [Screen_Max_X]
         push    eax ; high
         xor     eax, eax
-        div     dword[Screen_Max_X]
+        div     [Screen_Max_X]
         push    eax ; low
         ; the same for height
         mov     eax, [BgrDataHeight]
         dec     eax
         xor     edx, edx
-        div     dword[Screen_Max_Y]
+        div     [Screen_Max_Y]
         push    eax ; high
         xor     eax, eax
-        div     dword[Screen_Max_Y]
+        div     [Screen_Max_Y]
         push    eax ; low
         ; External loop for all y from start to end
-        mov     ebx, [draw_data + 32 + rect32_t.top] ; y start
-        mov     ebp, [draw_data + 32 + rect32_t.left] ; x start
+        mov     ebx, [draw_data + sizeof.rect32_t + rect32_t.top] ; y start
+        mov     ebp, [draw_data + sizeof.rect32_t + rect32_t.left] ; x start
         ; 1) Calculate pointers in WinMapAddress (does pixel belong to OS thread?) [ebp]
         ;                       and LFB data (output for our function) [edi]
         mov     eax, [BytesPerScanLine]
@@ -894,7 +899,7 @@ kproc vesa20_drawbackground_stretch ;///////////////////////////////////////////
         add     ebp, eax
         add     ebp, eax
         add     ebp, eax
-        cmp     byte[ScreenBPP], 24 ; 24 or 32 bpp ? - x size
+        cmp     [ScreenBPP], 24 ; 24 or 32 bpp ? - x size
         jz      @f
         add     ebp, eax
 
@@ -986,14 +991,14 @@ kproc vesa20_drawbackground_stretch ;///////////////////////////////////////////
         mov     [LFB_BASE + edi + 2], al
 
   .snbgp:
-        cmp     byte[ScreenBPP], 25
+        cmp     [ScreenBPP], 25
         sbb     edi, -4
         add     ebp, 1
         mov     eax, [esp + 20]
         add     eax, 1
         mov     [esp + 20], eax
         add     esi, 4
-        cmp     eax, [draw_data + 32 + rect32_t.right]
+        cmp     eax, [draw_data + sizeof.rect32_t + rect32_t.right]
         jbe     .sdp3a
 
   .sdp4:
@@ -1001,17 +1006,17 @@ kproc vesa20_drawbackground_stretch ;///////////////////////////////////////////
         mov     ebx, [esp + 24]
         add     ebx, 1
         mov     [esp + 24], ebx
-        cmp     ebx, [draw_data + 32 + rect32_t.bottom]
+        cmp     ebx, [draw_data + sizeof.rect32_t + rect32_t.bottom]
         ja      .sdpdone
         ; advance edi, ebp to next scan line
-        sub     eax, [draw_data + 32 + rect32_t.left]
+        sub     eax, [draw_data + sizeof.rect32_t + rect32_t.left]
         sub     ebp, eax
         add     ebp, [Screen_Max_X]
         add     ebp, 1
         sub     edi, eax
         sub     edi, eax
         sub     edi, eax
-        cmp     byte[ScreenBPP], 24
+        cmp     [ScreenBPP], 24
         jz      @f
         sub     edi, eax
 
@@ -1027,7 +1032,7 @@ kproc vesa20_drawbackground_stretch ;///////////////////////////////////////////
         lea     eax, [eax * 3]
         imul    eax, [BgrDataWidth]
         sub     [esp], eax
-        mov     eax, [draw_data + 32 + rect32_t.left]
+        mov     eax, [draw_data + sizeof.rect32_t + rect32_t.left]
         mov     [esp + 20], eax
         test    ebx, ebx
         jz      .sdp3
@@ -1071,7 +1076,7 @@ kproc smooth_line ;/////////////////////////////////////////////////////////////
         mov     eax, [esp + 20 + 8]
         add     eax, 1
         mov     [esp + 20 + 8], eax
-        cmp     eax, [draw_data + 32 + rect32_t.right]
+        cmp     eax, [draw_data + sizeof.rect32_t + rect32_t.right]
         ja      @f
         add     ecx, [esp + 36 + 8]
         mov     eax, edx
@@ -1081,7 +1086,7 @@ kproc smooth_line ;/////////////////////////////////////////////////////////////
         sub     esi, eax
         jmp     smooth_line
 
-    @@: mov     eax, [draw_data + 32 + rect32_t.left]
+    @@: mov     eax, [draw_data + sizeof.rect32_t + rect32_t.left]
         mov     [esp + 20 + 8], eax
         ret
 kendp

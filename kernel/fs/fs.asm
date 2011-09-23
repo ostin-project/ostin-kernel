@@ -36,6 +36,12 @@ iglobal
     dd 0x170, 0x00, 0x170, 0x10
 endg
 
+uglobal
+  align 4
+  hd_entries       rd 1 ; unused? 1 write, 0 reads
+  lba_read_enabled rd 1 ; 0 = disabled , 1 = enabled
+endg
+
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc util.64bit.compare ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -165,7 +171,7 @@ kproc sysfn.file_system ;///////////////////////////////////////////////////////
         cmp     dword[eax + 0], 15 ; GET_DISK_INFO
         je      fs_info
 
-        cmp     dword[CURRENT_TASK], 1 ; no memory checks for kernel requests
+        cmp     [CURRENT_TASK], 1 ; no memory checks for kernel requests
         jz      no_checks_for_kernel
         mov     edx, eax
         cmp     dword[eax + 0], 1
@@ -178,15 +184,10 @@ kproc sysfn.file_system ;///////////////////////////////////////////////////////
         jnz     area_in_app_mem
 
   .error_output:
-        mov     esi, buffer_failed
-        call    sys_msg_board_str
+        DEBUGF  1, "K : Buffer check failed\n"
 ;       mov     eax, 7
         mov     [esp + 8 + regs_context32_t.eax], ERROR_MEMORY_POINTER
         ret
-
-iglobal
-  buffer_failed db 'K : Buffer check failed', 13, 10, 0
-endg
 
   .usual_check:
         cmp     dword[eax + 0], 0
@@ -684,7 +685,7 @@ kproc LBA_read ;////////////////////////////////////////////////////////////////
         mov     ebx, [edi + 4]
 
         mov     [hdbase], eax
-        mov     [hdid], ebx
+        mov     [hdid], bl
 
         call    wait_for_hd_idle
         cmp     [hd_error], 0

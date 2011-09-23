@@ -122,7 +122,7 @@ proc udp_rx stdcall ;///////////////////////////////////////////////////////////
 
   .found_pid:
         shl     ecx, 8
-        or      [ecx + SLOT_BASE + app_data_t.event_mask], EVENT_NETWORK ; stack event
+        or      [SLOT_BASE + ecx + app_data_t.event_mask], EVENT_NETWORK ; stack event
 
         mov     [check_idle_semaphore], 200
 

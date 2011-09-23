@@ -14,8 +14,6 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-PCIe_CONFIG_SPACE equ 0xf0000000 ; to be moved to const.inc
-
 mmio_pcie_cfg_addr dd 0 ; intel pcie space may be defined here
 mmio_pcie_cfg_lim  dd 0 ; upper pcie space address
 

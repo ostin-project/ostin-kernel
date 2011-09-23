@@ -142,14 +142,14 @@ endg
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc checkVga_N13 ;////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     dword[SCR_MODE], 0x13
+        cmp     [SCR_MODE], 0x13
         jne     @f
 
 ; .cnvl:
         pushad
         cmp     [EGA_counter], 1
         je      .novesal
-        mov     ecx, [MOUSE_X]
+        mov     ecx, dword[MOUSE_X]
         cmp     ecx, [novesachecksum]
         jne     .novesal
         popad
@@ -159,7 +159,7 @@ kproc checkVga_N13 ;////////////////////////////////////////////////////////////
   .novesal:
         mov     [novesachecksum], ecx
         mov     ecx, 0
-        movzx   eax, word[MOUSE_Y]
+        movzx   eax, [MOUSE_Y]
         cmp     eax, 100
         jge     .m13l3
         mov     eax, 100
@@ -173,7 +173,7 @@ kproc checkVga_N13 ;////////////////////////////////////////////////////////////
         sub     eax, 100
         imul    eax, 640 * 4
         add     ecx, eax
-        movzx   eax, word[MOUSE_X]
+        movzx   eax, [MOUSE_X]
         cmp     eax, 160
         jge     .m13l1
         mov     eax, 160
@@ -226,7 +226,7 @@ kendp
 kproc VGA_drawbackground ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         ; draw all
-        cmp     dword[SCR_MODE], 0x12
+        cmp     [SCR_MODE], 0x12
         jne     .end
         pushad
         mov     esi, [LFBAddress]
@@ -428,7 +428,7 @@ kproc VGA__putimage ;///////////////////////////////////////////////////////////
         ; ecx = size [x|y]
         ; edx = coordinates [x|y]
 
-        cmp     dword[SCR_MODE], 0x12
+        cmp     [SCR_MODE], 0x12
         jne     @f
         pushad
         rol     edx, 16
@@ -452,7 +452,7 @@ kproc VGA_draw_bar ;////////////////////////////////////////////////////////////
         ; ecx   xe
         ; edx   ye
 
-        cmp     dword[SCR_MODE], 0x12
+        cmp     [SCR_MODE], 0x12
         jne     @f
         pushad
         sub     ecx, eax

@@ -15,18 +15,24 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
+uglobal
+  align 4
+  cdbase rw 1
+  cdid   rw 1
+endg
+
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc sys_cd_atapi_command ;////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         pushad
 
-        mov     dx, word[cdbase]
+        mov     dx, [cdbase]
         add     dx, 6
-        mov     ax, word[cdid]
+        mov     ax, [cdid]
         out     dx, al
         mov     esi, 10
         call    delay_ms
-        mov     dx, word[cdbase]
+        mov     dx, [cdbase]
         add     dx, 7
         in      al, dx
         and     al, 0x80
@@ -35,17 +41,17 @@ kproc sys_cd_atapi_command ;////////////////////////////////////////////////////
         jmp     .cdl6
 
   .res:
-        mov     dx, word[cdbase]
+        mov     dx, [cdbase]
         add     dx, 7
         mov     al, 0x08
         out     dx, al
-        mov     dx, word[cdbase]
+        mov     dx, [cdbase]
         add     dx, 0x206
         mov     al, 0x0e
         out     dx, al
         mov     esi, 1
         call    delay_ms
-        mov     dx, word[cdbase]
+        mov     dx, [cdbase]
         add     dx, 0x206
         mov     al, 0x08
         out     dx, al
@@ -57,7 +63,7 @@ kproc sys_cd_atapi_command ;////////////////////////////////////////////////////
         inc     cx
         cmp     cx, 10
         jz      .cdl6
-        mov     dx, word[cdbase]
+        mov     dx, [cdbase]
         add     dx, 7
         in      al, dx
         and     al, 0x88
@@ -68,21 +74,21 @@ kproc sys_cd_atapi_command ;////////////////////////////////////////////////////
         jmp     .cdl5
 
   .cdl6:
-        mov     dx, word[cdbase]
+        mov     dx, [cdbase]
         add     dx, 4
         mov     al, 0
         out     dx, al
-        mov     dx, word[cdbase]
+        mov     dx, [cdbase]
         add     dx, 5
         mov     al, 0
         out     dx, al
-        mov     dx, word[cdbase]
+        mov     dx, [cdbase]
         add     dx, 7
         mov     al, 0xec
         out     dx, al
         mov     esi, 5
         call    delay_ms
-        mov     dx, word[cdbase]
+        mov     dx, [cdbase]
         add     dx, 1
         mov     al, 0
         out     dx, al
@@ -102,7 +108,7 @@ kproc sys_cd_atapi_command ;////////////////////////////////////////////////////
         mov     al, 0xa0
         out     dx, al
         xor     cx, cx
-        mov     dx, word[cdbase]
+        mov     dx, [cdbase]
         add     dx, 7
 
   .cdl1:
@@ -125,7 +131,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc sys_cdplay ;//////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     word[cdbase], 0
+        cmp     [cdbase], 0
         jnz     @f
         mov     eax, 1
         ret
@@ -137,7 +143,7 @@ kproc sys_cdplay ;//////////////////////////////////////////////////////////////
   .cdplay:
         call    sys_cd_atapi_command
         cli
-        mov     dx, word[cdbase]
+        mov     dx, [cdbase]
         mov     ax, 0x0047
         out     dx, ax
         mov     al, 1
@@ -176,7 +182,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc sys_cdtracklist ;/////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     word[cdbase], 0
+        cmp     [cdbase], 0
         jnz     @f
         mov     eax, 1
         ret
@@ -185,7 +191,7 @@ kproc sys_cdtracklist ;/////////////////////////////////////////////////////////
 
   .tcdplay:
         call     sys_cd_atapi_command
-        mov      dx, word[cdbase]
+        mov      dx, [cdbase]
         mov      ax, 0x43 + 2 * 256
         out      dx, ax
         mov      ax, 0
@@ -200,7 +206,7 @@ kproc sys_cdtracklist ;/////////////////////////////////////////////////////////
         out      dx, ax
         in       al, dx
         mov      cx, 1000
-        mov      dx, word[cdbase]
+        mov      dx, [cdbase]
         add      dx, 7
         cld
 
@@ -216,7 +222,7 @@ kproc sys_cdtracklist ;/////////////////////////////////////////////////////////
   .cdtrl1:
         ; read the result
         mov     ecx, [esp + 0]
-        mov     dx, word[cdbase]
+        mov     dx, [cdbase]
 
   .cdtrread:
         add     dx, 7
@@ -239,14 +245,14 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc sys_cdpause ;/////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     word[cdbase], 0
+        cmp     [cdbase], 0
         jnz     @f
         mov     eax, 1
         ret
 
     @@:call    sys_cd_atapi_command
 
-        mov     dx, word[cdbase]
+        mov     dx, [cdbase]
         mov     ax, 0x004b
         out     dx, ax
         mov     ax, 0
