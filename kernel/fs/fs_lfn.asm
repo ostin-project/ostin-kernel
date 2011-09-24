@@ -529,11 +529,14 @@ iglobal
     ; data
     dd RAMDISK ; offset
     dd 2 * 80 * 18 * 512 ; length
+    ; needs_free
+    db 0
 
   align 4
   ; blkdev.device_t
   static_test_ram_device:
     ; vftbl
+    dd blkdev.memory.destroy ; destroy
     dd blkdev.memory.read ; read
     dd blkdev.memory.write ; write
     ; name
@@ -622,17 +625,12 @@ iglobal
     db 0
     ; motor_timer
     dd 0
-    ; bytes_per_sector
-    dw 512
-    ; sectors_per_track
-    dw 18
-    ; heads_per_cylinder
-    dw 2
 
   align 4
   ; blkdev.device_t
   static_test_floppy_device:
     ; vftbl
+    dd blkdev.floppy.destroy ; destroy
     dd blkdev.floppy.read ; read
     dd blkdev.floppy.write ; write
     ; name

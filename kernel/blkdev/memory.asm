@@ -15,14 +15,84 @@
 ;;======================================================================================================================
 
 struct blkdev.memory.device_data_t
-  data range32_t
+  data       range32_t
+  needs_free db ?
 ends
 
 iglobal
   jump_table blkdev.memory, vftbl, , \
+    destroy, \
     read, \
     write
 endg
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc blkdev.memory.create ;////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> eax ^= data (0 to allocate)
+;> ecx #= size
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax ^= blkdev.memory.device_data_t (0 on error)
+;-----------------------------------------------------------------------------------------------------------------------
+        push    ebx ecx eax
+
+        mov     eax, sizeof.blkdev.memory.device_data_t
+        call    malloc
+        or      eax, eax
+        jz      .cant_alloc_device_data_error
+
+        xchg    eax, ebx
+
+        and     [ebx + blkdev.memory.device_data_t.needs_free], 0
+
+        pop     eax
+        test    eax, eax
+        jnz     .set_data
+
+        push    dword[esp]
+        call    kernel_alloc
+        test    eax, eax
+        jz      .cant_alloc_data_error
+
+        inc     [ebx + blkdev.memory.device_data_t.needs_free]
+
+  .set_data:
+        mov     [ebx + blkdev.memory.device_data_t.data.offset], eax
+        pop     [ebx + blkdev.memory.device_data_t.data.length]
+
+        xchg    eax, ebx
+        pop     ebx
+        ret
+
+  .cant_alloc_data_error:
+        xchg    eax, ebx
+        call    free
+
+        xor     eax, eax
+        push    eax
+
+  .cant_alloc_device_data_error:
+        add     esp, 4
+        pop     ecx ebx
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc blkdev.memory.destroy ;///////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= blkdev.memory.device_data_t
+;-----------------------------------------------------------------------------------------------------------------------
+        cmp     [ebx + blkdev.memory.device_data_t.needs_free], 0
+        je      .free_device_data
+
+        push    [ebx + blkdev.memory.device_data_t.data.offset]
+        call    kernel_free
+
+  .free_device_data:
+        mov     eax, ebx
+        call    free
+        ret
+kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc blkdev.memory.read ;//////////////////////////////////////////////////////////////////////////////////////////////

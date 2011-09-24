@@ -20,6 +20,10 @@ FLOPPY_CTL_MSR  = 0x3f4
 FLOPPY_CTL_FIFO = 0x3f5
 FLOPPY_CTL_CCR  = 0x3f7
 
+FLOPPY_CTL_HEADS_PER_CYLINDER = 2
+FLOPPY_CTL_SECTORS_PER_TRACK  = 18
+FLOPPY_CTL_BYTES_PER_SECTOR   = 512
+
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc blkdev.floppy.ctl.reset ;/////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -70,6 +74,7 @@ kproc blkdev.floppy.ctl.perform_dma_transfer ;//////////////////////////////////
         call    blkdev.floppy.ctl._.out_byte
         mov     al, [ebx + blkdev.floppy.device_data_t.position.head]
         shl     al, 2
+        or      al, [ebx + blkdev.floppy.device_data_t.drive_number]
         call    blkdev.floppy.ctl._.out_byte
         mov     al, [ebx + blkdev.floppy.device_data_t.position.cylinder]
         call    blkdev.floppy.ctl._.out_byte
@@ -79,7 +84,7 @@ kproc blkdev.floppy.ctl.perform_dma_transfer ;//////////////////////////////////
         call    blkdev.floppy.ctl._.out_byte
         mov     al, 2 ; sector size code (512 bytes)
         call    blkdev.floppy.ctl._.out_byte
-        mov     al, 18 ; number of sectors on track
+        mov     al, FLOPPY_CTL_SECTORS_PER_TRACK ; number of sectors on track
         call    blkdev.floppy.ctl._.out_byte
         mov     al, 0x1b ; GPL value
         call    blkdev.floppy.ctl._.out_byte
@@ -143,7 +148,7 @@ kproc blkdev.floppy.ctl.seek ;//////////////////////////////////////////////////
         test    [ebx + blkdev.floppy.device_data_t.status.st0], 0100000b
         je      .error
         ; specified track found?
-        mov     al, [ebx + blkdev.floppy.device_data_t.status.cylinder]
+        mov     al, [ebx + blkdev.floppy.device_data_t.status.position.cylinder]
         cmp     al, [ebx + blkdev.floppy.device_data_t.position.cylinder]
         jne     .error
         ; specified head found?
@@ -388,11 +393,11 @@ kproc blkdev.floppy.ctl._.get_status ;//////////////////////////////////////////
         call    blkdev.floppy.ctl._.in_byte
         mov     [ebx + blkdev.floppy.device_data_t.status.st2], al
         call    blkdev.floppy.ctl._.in_byte
-        mov     [ebx + blkdev.floppy.device_data_t.status.cylinder], al
+        mov     [ebx + blkdev.floppy.device_data_t.status.position.cylinder], al
         call    blkdev.floppy.ctl._.in_byte
-        mov     [ebx + blkdev.floppy.device_data_t.status.head], al
+        mov     [ebx + blkdev.floppy.device_data_t.status.position.head], al
         call    blkdev.floppy.ctl._.in_byte
-        mov     [ebx + blkdev.floppy.device_data_t.status.sector], al
+        mov     [ebx + blkdev.floppy.device_data_t.status.position.sector], al
         call    blkdev.floppy.ctl._.in_byte
         mov     [ebx + blkdev.floppy.device_data_t.status.sector_size], al
         pop     eax
@@ -409,7 +414,7 @@ kproc blkdev.floppy.ctl._.sense_interrupt ;/////////////////////////////////////
         call    blkdev.floppy.ctl._.in_byte
         mov     [ebx + blkdev.floppy.device_data_t.status.st0], al
         call    blkdev.floppy.ctl._.in_byte
-        mov     [ebx + blkdev.floppy.device_data_t.status.cylinder], al
+        mov     [ebx + blkdev.floppy.device_data_t.status.position.cylinder], al
         ret
 kendp
 

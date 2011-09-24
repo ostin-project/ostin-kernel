@@ -27,9 +27,7 @@ struct blkdev.floppy.status_t
   st0         db ?
   st1         db ?
   st2         db ?
-  cylinder    db ?
-  head        db ?
-  sector      db ?
+  position    blkdev.floppy.chs_t
   sector_size db ?
 ends
 
@@ -38,18 +36,33 @@ struct blkdev.floppy.device_data_t
   status             blkdev.floppy.status_t
   drive_number       db ?
   motor_timer        dd ?
-  bytes_per_sector   dw ?
-  sectors_per_track  dw ?
-  heads_per_cylinder dw ?
 ends
 
 iglobal
   jump_table blkdev.floppy, vftbl, , \
+    destroy, \
     read, \
     write
 endg
 
 include "floppy_ctl.asm"
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc blkdev.floppy.create ;////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax ^= blkdev.floppy.device_data_t (0 on error)
+;-----------------------------------------------------------------------------------------------------------------------
+        xor     eax, eax
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc blkdev.floppy.destroy ;///////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= blkdev.floppy.device_data_t
+;-----------------------------------------------------------------------------------------------------------------------
+        ret
+kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc blkdev.floppy.read ;//////////////////////////////////////////////////////////////////////////////////////////////
@@ -64,17 +77,10 @@ kproc blkdev.floppy.read ;//////////////////////////////////////////////////////
         or      edx, edx
         jnz     .overflow_error
 
-        push    ebp
-        movzx   ebp, [ebx + blkdev.floppy.device_data_t.bytes_per_sector]
-
-        dec     ebp
-
-        test    eax, ebp
+        test    eax, FLOPPY_CTL_BYTES_PER_SECTOR - 1
         jnz     .alignment_error
-        test    ecx, ebp
+        test    ecx, FLOPPY_CTL_BYTES_PER_SECTOR - 1
         jnz     .alignment_error
-
-        inc     ebp
 
         push    ecx esi edi
 
@@ -88,15 +94,14 @@ kproc blkdev.floppy.read ;//////////////////////////////////////////////////////
         jnz     .exit
 
         push    ecx
-        mov     ecx, ebp
-        shr     ecx, 2
+        mov     ecx, FLOPPY_CTL_BYTES_PER_SECTOR / 4
         mov     esi, FDD_BUFF
         rep     movsd
         pop     ecx
 
         pop     eax
-        add     eax, ebp
-        sub     ecx, ebp
+        add     eax, FLOPPY_CTL_BYTES_PER_SECTOR
+        sub     ecx, FLOPPY_CTL_BYTES_PER_SECTOR
         jnz     .next_sector
 
         xor     eax, eax
@@ -105,7 +110,6 @@ kproc blkdev.floppy.read ;//////////////////////////////////////////////////////
   .exit:
         add     esp, 4
         pop     edi esi ecx
-        pop     ebp
         ret
 
   .overflow_error:
@@ -131,17 +135,10 @@ kproc blkdev.floppy.write ;/////////////////////////////////////////////////////
         or      edx, edx
         jnz     .overflow_error
 
-        push    ebp
-        movzx   ebp, [ebx + blkdev.floppy.device_data_t.bytes_per_sector]
-
-        dec     ebp
-
-        test    eax, ebp
+        test    eax, FLOPPY_CTL_BYTES_PER_SECTOR - 1
         jnz     .alignment_error
-        test    ecx, ebp
+        test    ecx, FLOPPY_CTL_BYTES_PER_SECTOR - 1
         jnz     .alignment_error
-
-        inc     ebp
 
         push    ecx esi edi
 
@@ -150,8 +147,7 @@ kproc blkdev.floppy.write ;/////////////////////////////////////////////////////
         call    blkdev.floppy._.calculate_chs
 
         push    ecx
-        mov     ecx, ebp
-        shr     ecx, 2
+        mov     ecx, FLOPPY_CTL_BYTES_PER_SECTOR / 4
         mov     edi, FDD_BUFF
         rep     movsd
         pop     ecx
@@ -162,8 +158,8 @@ kproc blkdev.floppy.write ;/////////////////////////////////////////////////////
         jnz     .exit
 
         pop     eax
-        add     eax, ebp
-        sub     ecx, ebp
+        add     eax, FLOPPY_CTL_BYTES_PER_SECTOR
+        sub     ecx, FLOPPY_CTL_BYTES_PER_SECTOR
         jnz     .next_sector
 
         xor     eax, eax
@@ -172,7 +168,6 @@ kproc blkdev.floppy.write ;/////////////////////////////////////////////////////
   .exit:
         add     esp, 4
         pop     edi esi ecx
-        pop     ebp
         ret
 
   .overflow_error:
@@ -284,15 +279,15 @@ kproc blkdev.floppy._.calculate_chs ;///////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax ecx edx
 
-        movzx   ecx, [ebx + blkdev.floppy.device_data_t.bytes_per_sector]
+        mov     ecx, FLOPPY_CTL_BYTES_PER_SECTOR
         xor     edx, edx
         div     ecx ; eax #= LBA
-        movzx   ecx, [ebx + blkdev.floppy.device_data_t.sectors_per_track]
+        mov     ecx, FLOPPY_CTL_SECTORS_PER_TRACK
         div     ecx
         inc     edx
         mov     [ebx + blkdev.floppy.device_data_t.position.sector], dl
         xor     edx, edx
-        movzx   ecx, [ebx + blkdev.floppy.device_data_t.heads_per_cylinder]
+        mov     ecx, FLOPPY_CTL_HEADS_PER_CYLINDER
         div     ecx
         mov     [ebx + blkdev.floppy.device_data_t.position.cylinder], al
         mov     [ebx + blkdev.floppy.device_data_t.position.head], dl

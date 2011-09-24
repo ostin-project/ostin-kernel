@@ -17,8 +17,9 @@
 BLKDEV_MAX_NAME_LEN = 32
 
 struct blkdev.vftbl_t
-  read  dd ?
-  write dd ?
+  destroy dd ?
+  read    dd ?
+  write   dd ?
 ends
 
 struct blkdev.device_t
