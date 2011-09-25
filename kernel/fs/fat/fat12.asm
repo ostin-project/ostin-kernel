@@ -16,10 +16,10 @@
 
 struct fs.fat12.partition_data_t
   label         rb 16
-  is_fat_valid  db ?
   fat           rw (8 * 1024) / 2
-  is_root_valid db ?
   buffer        rb 9 * 1024
+  is_fat_valid  db ?
+  is_root_valid db ?
 ends
 
 uglobal
@@ -1576,23 +1576,19 @@ kproc fs.fat12._.notroot_extend_dir ;///////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         ; find free cluster in FAT
         pusha
-        xor     eax, eax
-        mov     edi, [ebx + fs.partition_t.user_data]
-        add     edi, fs.fat12.partition_data_t.fat
-        mov     ecx, 2849
-        push    edi
-        repnz   scasw
-        pop     edx
-        jnz     .notfound
 
-        mov     word[edi - 2], 0x0fff ; mark as last cluster
-        sub     edi, edx
-        shr     edi, 1
-        dec     edi
-        mov     eax, [esp + regs_context32_t.eax]
-        mov     ecx, [eax]
-        mov     [edx + ecx * 2], di
-        mov     [eax], edi
+        call    fs.fat12._.find_free_cluster
+        jc      .not_found
+
+        mov     word[edi], 0x0fff ; mark as last cluster
+
+        mov     edx, [ebx + fs.partition_t.user_data]
+        add     edx, fs.fat12.partition_data_t.fat
+
+        mov     edi, [esp + regs_context32_t.eax]
+        mov     ecx, [edi]
+        mov     [edx + ecx * 2], ax
+        mov     [edi], eax
 
         xor     eax, eax
         mov     edi, [ebx + fs.partition_t.user_data]
@@ -1607,7 +1603,7 @@ kproc fs.fat12._.notroot_extend_dir ;///////////////////////////////////////////
         clc
         ret
 
-  .notfound:
+  .not_found:
         popa
         stc
         ret
@@ -1655,19 +1651,16 @@ kproc util.string.length ;//////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc fs.fat12.create_directory ;///////////////////////////////////////////////////////////////////////////////////////
+kproc fs.fat12._.find_parent_dir ;//////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> esi ^= path to directory
+;> esi ^= path to file or directory
 ;> ebx ^= fs.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     byte[esi], 0
-        je      .access_denied_error
-
-        call    fs.fat12._.read_fat
-        or      eax, eax
-        jnz     .device_error
-
-        pusha
+;< eax #= error code
+;< ecx ^= fs.fat.dir_handlers_t
+;< ebp #= parent directory start cluster
+;< esi ^= file or directory name
+;-----------------------------------------------------------------------------------------------------------------------
         xor     edi, edi
         push    esi
 
@@ -1689,25 +1682,19 @@ kproc fs.fat12.create_directory ;///////////////////////////////////////////////
 
     @@: call    fs.fat.name_is_legal
         pop     esi
-        jnc     .name_not_legal_error
+        jnc     .file_not_found_error
 
         test    edi, edi
         jnz     .not_root
 
-        call    fs.fat12._.read_root_directory
-        or      eax, eax
-        jnz     .device_error_2
-
         xor     ebp, ebp
+        mov     ecx, fs.fat12._.dir_handlers.root_mem
 
-        push    ebp
-        push    fs.fat12._.dir_handlers.root_mem
-
-        jmp     .check_file_exists
+        jmp     .exit
 
   .not_root:
         cmp     byte[edi + 1], 0
-        je      .access_denied_error_2
+        je      .access_denied_error
 
         ; check parent entry existence
         mov     byte[edi], 0
@@ -1718,8 +1705,8 @@ kproc fs.fat12.create_directory ;///////////////////////////////////////////////
         jc      .file_not_found_error
 
         ; edi ^= parent entry
-        test    [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY ; must be directory
-        jz      .access_denied_error_2
+        cmp     [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY ; must be directory
+        jne     .access_denied_error
 
         movzx   ebp, [edi + fs.fat.dir_entry_t.start_cluster.low] ; ebp #= cluster
         cmp     ebp, 2
@@ -1727,14 +1714,108 @@ kproc fs.fat12.create_directory ;///////////////////////////////////////////////
         cmp     ebp, 2849
         jae     .fat_table_error
 
-        push    ebp
-        push    fs.fat12._.dir_handlers.non_root
+        mov     ecx, fs.fat12._.dir_handlers.non_root
 
         inc     esi
 
-  .check_file_exists:
+  .exit:
+        xor     eax, eax ; ERROR_SUCCESS
+        ret
+
+  .device_error:
+        mov     eax, ERROR_DEVICE_FAIL
+        ret
+
+  .file_not_found_error:
+        mov     eax, ERROR_FILE_NOT_FOUND
+        ret
+
+  .access_denied_error:
+        mov     eax, ERROR_ACCESS_DENIED
+        ret
+
+  .fat_table_error:
+        mov     eax, ERROR_FAT_TABLE
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12._.get_free_clusters_count ;//////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax #= number of free clusters
+;-----------------------------------------------------------------------------------------------------------------------
+        push    ecx edx edi
+
+        mov     ecx, 2849
+        mov     edi, [ebx + fs.partition_t.user_data]
+        add     edi, fs.fat12.partition_data_t.fat
+        xor     eax, eax
+        xor     edx, edx
+
+    @@: repne   scasw
+        jne     .exit
+        inc     edx
+        jmp     @b
+
+  .exit:
+        xchg    eax, edx
+        pop     edi edx ecx
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12._.find_free_cluster ;////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
+;< Cf ~= 0 (ok) or 1 (error)
+;< eax #= free cluster number
+;< edi ^= free cluster in FAT
+;-----------------------------------------------------------------------------------------------------------------------
+        push    ecx
+        mov     ecx, 2849
+        mov     edi, [ebx + fs.partition_t.user_data]
+        add     edi, fs.fat12.partition_data_t.fat
+
+        xor     eax, eax
+        repne   scasw
+        pop     ecx
+        jne     .error
+
+        dec     edi
+        dec     edi
+        lea     eax, [edi - fs.fat12.partition_data_t.fat]
+        sub     eax, [ebx + fs.partition_t.user_data]
+        shr     eax, 1
+
+        clc
+        ret
+
+  .error:
+        stc
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12._.create_dir_entry ;/////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= fs.partition_t
+;> edx #= number of free clusters
+;> esi ^= entry name
+;> [esp + 4] ^= fs.fat.dir_handlers_t
+;> [esp + 8] #= parent directory start cluster
+;-----------------------------------------------------------------------------------------------------------------------
+;< edi ^= fs.fat.dir_entry_t
+;< [esp + 8] #= entry cluster
+;-----------------------------------------------------------------------------------------------------------------------
+        pusha
+
+        push    ebp dword[esp + 4 + sizeof.regs_context32_t + 4]
         call    fs.fat.find_long_name
-        jnc     .access_denied_error_3
+        pop     eax eax
+        jnc     .access_denied_error
 
         ; file is not found; generate short name
         sub     esp, 12
@@ -1744,7 +1825,7 @@ kproc fs.fat12.create_directory ;///////////////////////////////////////////////
   .test_short_name_loop:
         push    esi edi ecx
         mov     esi, edi
-        lea     eax, [esp + 12 + 12 + 4]
+        lea     eax, [esp + 12 + 12 + sizeof.regs_context32_t + 4 + 4]
         mov     [eax], ebp
         stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.first_entry
         jc      .short_name_not_found
@@ -1759,7 +1840,7 @@ kproc fs.fat12.create_directory ;///////////////////////////////////////////////
         je      .short_name_found
 
   .test_short_name_cont:
-        lea     eax, [esp + 12 + 12 + 4]
+        lea     eax, [esp + 12 + 12 + sizeof.regs_context32_t + 4 + 4]
         stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.next_entry
         jc      .short_name_not_found
         jmp     .test_short_name_entry
@@ -1803,7 +1884,7 @@ kproc fs.fat12.create_directory ;///////////////////////////////////////////////
         ; find <eax> successive free entries in directory
         xor     ecx, ecx
         push    eax
-        lea     eax, [esp + 12 + 8 + 12 + 4]
+        lea     eax, [esp + 4 + 8 + 8 + 12 + sizeof.regs_context32_t + 4 + 4]
         mov     [eax], ebp
         stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.first_entry
         pop     eax
@@ -1820,22 +1901,32 @@ kproc fs.fat12.create_directory ;///////////////////////////////////////////////
 
   .scan_cont:
         push    eax
-        lea     eax, [esp + 12 + 8 + 12 + 4]
+        lea     eax, [esp + 4 + 8 + 8 + 12 + sizeof.regs_context32_t + 4 + 4]
+        push    dword[eax]
         stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.next_entry
         jc      .check_for_scan_error
+        add     esp, 4
         pop     eax
         jmp     .scan_dir
 
   .check_for_scan_error:
+        pop     dword[esp + 4 + 8 + 8 + 12 + sizeof.regs_context32_t + 4 + 4]
         or      eax, eax
         pop     eax
         jnz     .device_error_3
 
+        mov     [eax], ecx
+
+        ; are there free clusters left?
+        cmp     [esp + 8 + 8 + 12 + regs_context32_t.edx], 0
+        je      .disk_full_error_2
+
         push    eax
-        lea     eax, [esp + 12 + 8 + 12 + 4]
+        lea     eax, [esp + 4 + 8 + 8 + 12 + sizeof.regs_context32_t + 4 + 4]
         stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.extend_dir
         pop     eax
         jc      .disk_full_error_2
+        dec     [esp + 8 + 8 + 12 + regs_context32_t.edx]
         jmp     .scan_dir
 
   .free:
@@ -1843,7 +1934,7 @@ kproc fs.fat12.create_directory ;///////////////////////////////////////////////
         jnz     @f
 
         mov     [esp], edi ; save first entry pointer
-        mov     ecx, [esp + 8 + 8 + 12 + 4]
+        mov     ecx, [esp + 8 + 8 + 12 + sizeof.regs_context32_t + 4 + 4]
         mov     [esp + 4], ecx ; save first entry sector
         xor     ecx, ecx
 
@@ -1853,7 +1944,7 @@ kproc fs.fat12.create_directory ;///////////////////////////////////////////////
 
         ; found!
         pop     edi ; edi points to first entry in free chunk
-        pop     dword[esp + 4 + 8 + 12 + 4]
+        pop     dword[esp + 8 + 12 + sizeof.regs_context32_t + 4 + 4]
 
         ; calculate name checksum
         mov     eax, [esp]
@@ -1864,7 +1955,7 @@ kproc fs.fat12.create_directory ;///////////////////////////////////////////////
 
         push    esi eax
 
-        lea     eax, [esp + 8 + 8 + 12 + 4]
+        lea     eax, [esp + 8 + 8 + 12 + sizeof.regs_context32_t + 4 + 4]
         stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.begin_write
 
         mov     al, 0x40
@@ -1894,7 +1985,7 @@ kproc fs.fat12.create_directory ;///////////////////////////////////////////////
 
         pop     ecx
 
-        lea     eax, [esp + 8 + 8 + 12 + 4]
+        lea     eax, [esp + 8 + 8 + 12 + sizeof.regs_context32_t + 4 + 4]
         stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.next_write
 
         xor     eax, eax
@@ -1902,17 +1993,16 @@ kproc fs.fat12.create_directory ;///////////////////////////////////////////////
 
         pop     eax esi
 
-;       lea     eax, [esp + 8 + 12 + 4]
-;       stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.end_write
-
   .not_lfn:
         xchg    esi, [esp]
         mov     ecx, 11
         rep     movsb
         sub     edi, 11
-        mov     [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY
         pop     esi ecx
         add     esp, 12
+
+        mov     al, [esp + regs_context32_t.cl]
+        mov     [edi + fs.fat.dir_entry_t.attributes], al
         and     [edi + fs.fat.dir_entry_t.created_at.time_ms], 0
         call    fs.fat.get_time_for_file
         mov     [edi + fs.fat.dir_entry_t.created_at.time], ax
@@ -1921,42 +2011,81 @@ kproc fs.fat12.create_directory ;///////////////////////////////////////////////
         mov     [edi + fs.fat.dir_entry_t.created_at.date], ax
         mov     [edi + fs.fat.dir_entry_t.modified_at.date], ax
         mov     [edi + fs.fat.dir_entry_t.accessed_at.date], ax
+
+        push    edi
+        call    fs.fat12._.find_free_cluster
+        mov     ecx, edi
+        pop     edi
+        jc      .disk_full_error_3
+
+        mov     word[ecx], 0x0fff
+
         and     [edi + fs.fat.dir_entry_t.start_cluster.high], 0
-        and     [edi + fs.fat.dir_entry_t.start_cluster.low], 0 ; to be filled
+        and     [edi + fs.fat.dir_entry_t.start_cluster.low], ax
         and     [edi + fs.fat.dir_entry_t.size], 0
 
-        mov     ecx, 2 * sizeof.fs.fat.dir_entry_t
-        mov     edx, edi
-
-        lea     eax, [esp + 4]
+        lea     eax, [esp + sizeof.regs_context32_t + 4 + 4]
         stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.end_write
+
+        and     [esp + regs_context32_t.eax], 0 ; ERROR_SUCCESS
+        mov     [esp + regs_context32_t.edi], edi
+
+  .exit:
+        popa
+        ret
+
+  .disk_full_error_2:
+        add     esp, 12
+
+  .disk_full_error_3:
+        add     esp, 16
+
+  .disk_full_error:
+        add     esp, sizeof.regs_context32_t
+        mov     eax, ERROR_DISK_FULL
+        ret
+
+  .access_denied_error:
+        add     esp, sizeof.regs_context32_t
+        mov     eax, ERROR_ACCESS_DENIED
+        ret
+
+  .device_error_3:
+        add     esp, 4 + 16
+
+  .device_error_5:
+        add     esp, sizeof.regs_context32_t
+        mov     eax, ERROR_DEVICE_FAIL
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12._.write_file ;///////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= fs.partition_t
+;> edx #= number of free clusters
+;> ecx #= data size
+;> esi ^= data
+;> edi ^= fs.fat.dir_entry_t
+;> [esp + 4] ^= fs.fat.dir_handlers_t
+;> [esp + 8] #= entry cluster
+;-----------------------------------------------------------------------------------------------------------------------
+        xor     eax, eax ; ERROR_SUCCESS
+        test    ecx, ecx
+        jz      .exit
+
+        pusha
 
         push    ecx
         push    edi
-        push    0 ; pointer to previous cluster number in FAT
-        push    0 ; first cluster number
+        push    eax ; pointer to previous cluster number in FAT
+        push    eax ; first cluster number
 
-        mov     esi, edx
-;///        test    ecx, ecx
-;///        jz      .done
-
-        mov     ecx, 2849
-        mov     edi, [ebx + fs.partition_t.user_data]
-        add     edi, fs.fat12.partition_data_t.fat
-
-;///  .write_loop:
+  .write_loop:
         ; allocate new cluster
-        xor     eax, eax
-        repne   scasw
-        mov     al, ERROR_DISK_FULL
-        jne     .ret
-        dec     edi
-        dec     edi
+        call    fs.fat12._.find_free_cluster
+        jc      .disk_full_error
 
-        lea     eax, [edi - fs.fat12.partition_data_t.fat]
-        sub     eax, [ebx + fs.partition_t.user_data]
-
-        shr     eax, 1 ; eax = cluster
         mov     word[edi], 0x0fff ; mark as last cluster
         xchg    edi, [esp + 4]
         cmp     dword[esp], 0
@@ -1967,16 +2096,171 @@ kproc fs.fat12.create_directory ;///////////////////////////////////////////////
   .first:
         mov     [esp], eax
 
-    @@:
-;///        mov     edi, [esp + 4]
-;///        inc     ecx
-        ; write data
-;///        push    ecx edi
-        mov     edi, [ebx + fs.partition_t.user_data]
-        add     edi, fs.fat12.partition_data_t.buffer
+    @@: mov     edi, [esp + 4]
+        inc     ecx
 
-;///  .writedir:
+        ; write data
+        push    ecx edi
+
+        mov     ecx, [esp + 8 + 12]
+        cmp     ecx, 512
+        jbe     @f
+        mov     ecx, 512
+
+    @@: mov     edi, [ebx + fs.partition_t.user_data]
+        add     edi, fs.fat12.partition_data_t.buffer
+        push    ecx
+        rep     movsb
+        pop     ecx
+
+        push    ecx
+        sub     ecx, 512
+        neg     ecx
+
+        push    eax
+        xor     eax, eax
+        rep     stosb
+        pop     eax
+
+        add     eax, 31
+        call    fs.fat12._.write_sector
+        pop     ecx
+        jnz     .device_error
+
+        sub     [esp + 8 + 12], ecx
+        pop     edi ecx
+        jnz     .write_loop
+
+  .done:
+        pop     edx edi edi ecx
+
+        and     [esp + regs_context32_t.eax], 0 ; ERROR_SUCCESS
+
+        lea     eax, [esp + sizeof.regs_context32_t + 4 + 4]
+        stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.begin_write
+
+        mov     [edi + fs.fat.dir_entry_t.start_cluster.low], dx
+
+        cmp     [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY
+        je      @f
+
+        mov_s_  [edi + fs.fat.dir_entry_t.size], [esp + regs_context32_t.ecx]
+
+    @@: lea     eax, [esp + sizeof.regs_context32_t + 4 + 4]
+        stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.end_write
+
+        popa
+
+  .exit:
+        ret
+
+  .disk_full_error:
+        add     esp, 16 + sizeof.regs_context32_t
+        mov     eax, ERROR_DISK_FULL
+        ret
+
+  .device_error:
+        add     esp, 16 + sizeof.regs_context32_t
+        mov     eax, ERROR_DEVICE_FAIL
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12.create_directory ;///////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> esi ^= path to directory
+;> ebx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
+        cmp     byte[esi], 0
+        je      .access_denied_error
+
+        call    fs.fat12._.read_fat
+        test    eax, eax
+        jnz     .device_error
+
+        call    fs.fat12._.get_free_clusters_count
+        dec     eax ; new directory would occupy 1 cluster
+        jb      .disk_full_error
+
+        push    eax
+        call    fs.fat12._.find_parent_dir
+        test    eax, eax
+        pop     edx
+        jnz     .exit
+
+        test    ebp, ebp
+        jnz     @f
+
+        call    fs.fat12._.read_root_directory
+        or      eax, eax
+        jnz     .device_error
+
+    @@: push    ebp ecx
+
+        mov     cl, FS_FAT_ATTR_DIRECTORY
+        call    fs.fat12._.create_dir_entry
+        test    eax, eax
+        jnz     .free_stack_and_exit
+
+        mov     esi, edi
+        call    .get_dir_data
+
+        call    fs.fat12._.write_file
+        test    eax, eax
+        jnz     .free_stack_and_exit
+
+        add     esp, 8
+
+        test    ebp, ebp
+        jnz     @f
+
+        call    fs.fat12._.write_root_directory
+        or      eax, eax
+        jnz     .device_error
+
+    @@: call    fs.fat12._.write_fat
+        or      eax, eax
+        jnz     .device_error
+
+        mov     ebx, ecx
+
+  .exit:
+        ret
+
+  .free_stack_and_exit:
+        add     esp, 8
+        ret
+
+  .access_denied_error:
+        mov     eax, ERROR_ACCESS_DENIED
+        ret
+
+  .device_error:
+        mov     eax, ERROR_DEVICE_FAIL
+        ret
+
+  .disk_full_error:
+        mov     eax, ERROR_DISK_FULL
+        ret
+
+;-----------------------------------------------------------------------------------------------------------------------
+  .get_dir_data: ;::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+;-----------------------------------------------------------------------------------------------------------------------
+;> esi ^= fs.fat.dir_entry_t
+;> eax #= start entry cluster
+;> ebx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
+;< esi ^= data
+;< ecx #= data size
+;-----------------------------------------------------------------------------------------------------------------------
+        push    edi
+
+        mov     edi, [ebx + fs.partition_t.user_data]
+        add     edi, fs.fat12.partition_data_t.buffer + 512
+        push    edi
+
         mov_s_  ecx, sizeof.fs.fat.dir_entry_t / 4
+
         push    ecx esi
         rep     movsd
         pop     esi ecx
@@ -1985,122 +2269,19 @@ kproc fs.fat12.create_directory ;///////////////////////////////////////////////
         mov     dword[edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.name + 4], '    '
         mov     dword[edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.name + 8], '   '
         mov     [edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY
-        mov     [edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.start_cluster.low], ax
 
-        push    esi
         rep     movsd
-        pop     esi
 
         mov     dword[edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.name], '..  '
         mov     dword[edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.name + 4], '    '
         mov     dword[edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.name + 8], '   '
         mov     [edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY
-;///        mov     ecx, [esp + 8 + 8]
-        mov     ecx, [esp + 8]
-        mov     [edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.start_cluster.low], cx
+        mov     [edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.start_cluster.low], bp
 
-;///  .writedircont:
-;///        mov     ecx, [esp + 8 + 12]
-;///        cmp     ecx, 512
-;///        jbe     @f
-;///        mov     ecx, 512
-;///
-;///    @@: push    ecx
-;///        sub     ecx, 512
-;///        neg     ecx
-        mov_s_  ecx, (512 - 2 * sizeof.fs.fat.dir_entry_t) / 4
+        pop     esi
+        mov_s_  ecx, 2 * sizeof.fs.fat.dir_entry_t
 
-        push    eax
-        xor     eax, eax
-        rep     stosd
-        pop     eax
-        add     eax, 31
-        call    fs.fat12._.write_sector
-;///        pop     ecx
-        jnz     .device_error_4
-
-;///        sub     [esp + 8 + 12], ecx
-;///        pop     edi ecx
-;///        jnz     .write_loop
-
-;///  .done:
-;///        xor     eax, eax
-
-  .ret:
-        pop     edx edi edi ecx
-        mov     [esp + 8 + regs_context32_t.eax], eax
-        lea     eax, [esp + 4]
-        stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.begin_write
-        DEBUGF  1, "ret: start_cluster = %u\n", dx, edi
-        mov     [edi + fs.fat.dir_entry_t.start_cluster.low], dx
-;///        mov     ecx, esi
-;///        sub     ecx, edx
-;///        mov     [edi + fs.fat.dir_entry_t.size], ecx
-;///        mov     [esp + 28 + regs_context32_t.ebx], ecx
-        and     [esp + 8 + regs_context32_t.ebx], 0
-        stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.end_write
-
-        test    ebp, ebp
-        jnz     @f
-
-        call    fs.fat12._.write_root_directory
-        or      eax, eax
-        jnz     .device_error_5
-
-    @@: add     esp, 8
-        call    fs.fat12._.write_fat
-        or      eax, eax
-        jnz     .device_error_2
-        popa
-        ret
-
-  .disk_full_error_2:
-        add     esp, 8 + 8 + 12
-
-  .disk_full_error:
-        add     esp, 8 + sizeof.regs_context32_t
-        mov     eax, ERROR_DISK_FULL
-        ret
-
-  .name_not_legal_error:
-        add     esp, sizeof.regs_context32_t
-        mov     eax, ERROR_FILE_NOT_FOUND
-        ret
-
-  .fat_table_error:
-        add     esp, sizeof.regs_context32_t
-        mov     eax, ERROR_FAT_TABLE
-        ret
-
-  .file_not_found_error:
-        add     esp, sizeof.regs_context32_t
-        mov     eax, ERROR_FILE_NOT_FOUND
-        ret
-
-  .access_denied_error_3:
-        add     esp, 8
-
-  .access_denied_error_2:
-        add     esp, sizeof.regs_context32_t
-
-  .access_denied_error:
-        mov     eax, ERROR_ACCESS_DENIED
-        ret
-
-  .device_error_3:
-        add     esp, 4
-
-  .device_error_4:
-        add     esp, 16
-
-  .device_error_5:
-        add     esp, 8
-
-  .device_error_2:
-        add     esp, sizeof.regs_context32_t
-
-  .device_error:
-        mov     eax, ERROR_DEVICE_FAIL
+        pop     edi
         ret
 kendp
 
