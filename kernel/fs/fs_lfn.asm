@@ -89,11 +89,11 @@ iglobal
   fs_RamdiskServices:
     dd 0 ; fs_RamdiskRead
     dd 0 ; fs_RamdiskReadFolder
-    dd fs_RamdiskRewrite
-    dd fs_RamdiskWrite
+    dd 0 ; fs_RamdiskRewrite
+    dd 0 ; fs_RamdiskWrite
     dd fs_RamdiskSetFileEnd
     dd 0 ; fs_RamdiskGetFileInfo
-    dd fs_RamdiskSetFileInfo
+    dd 0 ; fs_RamdiskSetFileInfo
     dd 0
     dd fs_RamdiskDelete
     dd 0 ; fs_RamdiskCreateFolder
@@ -102,11 +102,11 @@ iglobal
   fs_FloppyServices:
     dd 0 ; fs_FloppyRead
     dd 0 ; fs_FloppyReadFolder
-    dd fs_FloppyRewrite
-    dd fs_FloppyWrite
+    dd 0 ; fs_FloppyRewrite
+    dd 0 ; fs_FloppyWrite
     dd fs_FloppySetFileEnd
     dd 0 ; fs_FloppyGetFileInfo
-    dd fs_FloppySetFileInfo
+    dd 0 ; fs_FloppySetFileInfo
     dd 0
     dd fs_FloppyDelete
     dd 0 ; fs_FloppyCreateFolder
@@ -562,11 +562,11 @@ iglobal
   jump_table fs.fat12, services, 0, \
     read_file, \
     read_directory, \
-    -, \
-    -, \
+    create_file, \
+    write_file, \
     -, \
     get_file_info, \
-    -, \
+    set_file_info, \
     -, \
     -, \
     create_directory
@@ -602,6 +602,10 @@ kproc fs_OnRamdisk ;////////////////////////////////////////////////////////////
         jnz     sysfn.file_system_lfn.notfound
 
         mov     eax, [ebx + fs.query_t.function]
+
+        DEBUGF  1, "fs_OnRamdisk(%u): begin\n", eax
+        push    eax
+
         mov     ecx, [ebx + fs.query_t.generic.range.length]
         mov     edx, [ebx + fs.query_t.generic.buffer_ptr]
         add     ebx, fs.query_t.generic
@@ -610,6 +614,10 @@ kproc fs_OnRamdisk ;////////////////////////////////////////////////////////////
 
         mov     [esp + 4 + regs_context32_t.eax], eax
         mov     [esp + 4 + regs_context32_t.ebx], ebx
+
+        pop     eax
+        DEBUGF  1, "fs_OnRamdisk(%u): end\n", eax
+
         ret
 kendp
 
