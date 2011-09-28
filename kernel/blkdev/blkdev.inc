@@ -23,7 +23,7 @@ struct blkdev.vftbl_t
 ends
 
 struct blkdev.device_t
-  vftbl     blkdev.vftbl_t
+  vftbl     dd ? ; ^= blkdev.vftbl_t
   name      rb BLKDEV_MAX_NAME_LEN
   user_data dd ? ; ^= blkdev.?.device_data_t
 ends

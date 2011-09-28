@@ -38,8 +38,10 @@ FA_ARCHIVED = 00100000b
 FA_ANY	    = 00111111b
 
 struct fs.generic_query_params_t
-  range      range64x32_t
-  buffer_ptr dd ?
+  param1 dd ?
+  param2 dd ?
+  param3 dd ?
+  param4 dd ?
 ends
 
 struct fs.read_file_query_params_t

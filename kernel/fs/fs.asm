@@ -80,7 +80,8 @@ kproc fs.read ;/////////////////////////////////////////////////////////////////
         adc     edx, dword[ebx + fs.partition_t.range.offset + 4]
         mov     esi, [ebx + fs.partition_t.device]
         mov     ebx, [esi + blkdev.device_t.user_data]
-        call    [esi + blkdev.device_t.vftbl.read]
+        mov     esi, [esi + blkdev.device_t.vftbl]
+        call    [esi + blkdev.vftbl_t.read]
         pop     esi edx ebx
 
         ret
@@ -114,7 +115,8 @@ kproc fs.write ;////////////////////////////////////////////////////////////////
         adc     edx, dword[ebx + fs.partition_t.range.offset + 4]
         mov     edi, [ebx + fs.partition_t.device]
         mov     ebx, [edi + blkdev.device_t.user_data]
-        call    [edi + blkdev.device_t.vftbl.write]
+        mov     edi, [edi + blkdev.device_t.vftbl]
+        call    [edi + blkdev.vftbl_t.write]
         pop     edi edx ebx
 
         ret

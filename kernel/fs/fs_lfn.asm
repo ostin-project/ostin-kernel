@@ -536,9 +536,7 @@ iglobal
   ; blkdev.device_t
   static_test_ram_device:
     ; vftbl
-    dd blkdev.memory.destroy ; destroy
-    dd blkdev.memory.read ; read
-    dd blkdev.memory.write ; write
+    dd blkdev.memory.vftbl
     ; name
     db 'rd', 30 dup(0)
     ; user_data
@@ -547,6 +545,8 @@ iglobal
   align 4
   ; fs.partition_t
   static_test_ram_partition:
+    ; vftbl
+    dd fs.fat12.vftbl
     ; device
     dd static_test_ram_device
     ; range
@@ -558,18 +558,6 @@ iglobal
     db 1
     ; user_data
     dd static_test_ram_partition_data
-
-  jump_table fs.fat12, services, 0, \
-    read_file, \
-    read_directory, \
-    create_file, \
-    write_file, \
-    -, \
-    get_file_info, \
-    set_file_info, \
-    -, \
-    -, \
-    create_directory
 endg
 
 uglobal
@@ -582,13 +570,17 @@ endg
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs_OnGenericQuery ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
+        mov     edx, static_test_ram_partition
+
         mov     eax, [ebx + fs.query_t.function]
-        mov     eax, [fs.fat12.services + eax * 4]
-        or      eax, eax
+        shl     eax, 2
+        add     eax, [edx + fs.partition_t.vftbl]
+        mov     eax, [eax]
+        test    eax, eax
         jz      fs_OnRamdisk
 
-        lea     edx, [ebx + fs.query_t.generic] ; ^= fs.?_query_params_t
-        mov     ebx, static_test_ram_partition ; ^= fs.partition_t
+        xchg    ebx, edx
+        add     edx, fs.query_t.generic ; ^= fs.?_query_params_t
         call    eax
         mov     [esp + 4 + regs_context32_t.eax], eax
         mov     [esp + 4 + regs_context32_t.ebx], ebx
@@ -606,8 +598,8 @@ kproc fs_OnRamdisk ;////////////////////////////////////////////////////////////
         DEBUGF  1, "fs_OnRamdisk(%u): begin\n", eax
         push    eax
 
-        mov     ecx, [ebx + fs.query_t.generic.range.length]
-        mov     edx, [ebx + fs.query_t.generic.buffer_ptr]
+        mov     ecx, [ebx + fs.query_t.generic.param3]
+        mov     edx, [ebx + fs.query_t.generic.param4]
         add     ebx, fs.query_t.generic
 
         call    dword[fs_RamdiskServices + eax * 4]
@@ -638,9 +630,7 @@ iglobal
   ; blkdev.device_t
   static_test_floppy_device:
     ; vftbl
-    dd blkdev.floppy.destroy ; destroy
-    dd blkdev.floppy.read ; read
-    dd blkdev.floppy.write ; write
+    dd blkdev.floppy.vftbl
     ; name
     db 'fd', 30 dup(0)
     ; user_data
@@ -649,6 +639,8 @@ iglobal
   align 4
   ; fs.partition_t
   static_test_floppy_partition:
+    ; vftbl
+    dd fs.fat12.vftbl
     ; device
     dd static_test_floppy_device
     ; range
@@ -672,13 +664,17 @@ endg
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs_OnGenericQuery2 ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
+        mov     edx, static_test_floppy_partition
+
         mov     eax, [ebx + fs.query_t.function]
-        mov     eax, [fs.fat12.services + eax * 4]
-        or      eax, eax
+        shl     eax, 2
+        add     eax, [edx + fs.partition_t.vftbl]
+        mov     eax, [eax]
+        test    eax, eax
         jz      fs_OnFloppy
 
-        lea     edx, [ebx + fs.query_t.generic] ; ^= fs.?_query_params_t
-        mov     ebx, static_test_floppy_partition ; ^= fs.partition_t
+        xchg    ebx, edx
+        add     edx, fs.query_t.generic ; ^= fs.?_query_params_t
         call    eax
         mov     [esp + 4 + regs_context32_t.eax], eax
         mov     [esp + 4 + regs_context32_t.ebx], ebx
@@ -695,8 +691,8 @@ kproc fs_OnFloppy ;/////////////////////////////////////////////////////////////
         mov     [flp_number], cl
 
         mov     eax, [ebx + fs.query_t.function]
-        mov     ecx, [ebx + fs.query_t.generic.range.length]
-        mov     edx, [ebx + fs.query_t.generic.buffer_ptr]
+        mov     ecx, [ebx + fs.query_t.generic.param3]
+        mov     edx, [ebx + fs.query_t.generic.param4]
         add     ebx, fs.query_t.generic
 
         call    dword[fs_FloppyServices + eax * 4]
@@ -769,8 +765,8 @@ kproc fs_OnHdAndBd
         pop     esi ebx
 
         mov     eax, [ebx + fs.query_t.function]
-        mov     ecx, [ebx + fs.query_t.generic.range.length]
-        mov     edx, [ebx + fs.query_t.generic.buffer_ptr]
+        mov     ecx, [ebx + fs.query_t.generic.param3]
+        mov     edx, [ebx + fs.query_t.generic.param4]
         add     ebx, fs.query_t.generic
 
         call    dword[fs_HdServices + eax * 4]
@@ -1033,8 +1029,8 @@ kproc fs_OnCd
         jmp     .free
 
     @@: mov     eax, [ebx + fs.query_t.function]
-        mov     ecx, [ebx + fs.query_t.generic.range.length]
-        mov     edx, [ebx + fs.query_t.generic.buffer_ptr]
+        mov     ecx, [ebx + fs.query_t.generic.param3]
+        mov     edx, [ebx + fs.query_t.generic.param4]
         add     ebx, fs.query_t.generic
 
         call    dword[fs_CdServices + eax * 4]

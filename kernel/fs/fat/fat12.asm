@@ -36,6 +36,20 @@ uglobal
   flp_label             rb 15 ; Label and ID of inserted floppy disk
 endg
 
+iglobal
+  jump_table fs.fat12, vftbl, 0, \
+    read_file, \
+    read_directory, \
+    create_file, \
+    write_file, \
+    -, \
+    get_file_info, \
+    set_file_info, \
+    -, \
+    -, \
+    create_directory
+endg
+
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs.fat12.calculate_fat_chain ;////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -3737,7 +3751,7 @@ kproc fs_FloppyDelete ;/////////////////////////////////////////////////////////
 
         call    read_flp_fat
         cmp     [FDC_Status], 0
-        jz      @f
+        je      @f
         push    ERROR_DEVICE_FAIL
         jmp     .pop_ret
 
@@ -3754,28 +3768,28 @@ kproc fs_FloppyDelete ;/////////////////////////////////////////////////////////
         ret
 
   .found:
-        cmp     dword[edi], '.   '
-        jz      .access_denied2
-        cmp     dword[edi], '..  '
-        jz      .access_denied2
-        test    byte[edi + 11], 0x10
+        cmp     dword[edi + fs.fat.dir_entry_t.name], '.   '
+        je      .access_denied2
+        cmp     dword[edi + fs.fat.dir_entry_t.name], '..  '
+        je      .access_denied2
+        test    [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY
         jz      .dodel
         ; we can delete only empty folders!
         push    eax
-        movzx   eax, word[edi + 26]
+        movzx   eax, [edi + fs.fat.dir_entry_t.start_cluster.low]
         push    ebx
         pusha
         add     eax, 31
         call    read_chs_sector
         popa
-        mov     ebx, FDD_BUFF + 2 * 0x20
+        mov     ebx, FDD_BUFF + 2 * sizeof.fs.fat.dir_entry_t
 
   .checkempty:
-        cmp     byte[ebx], 0
-        jz      .empty
-        cmp     byte[ebx], 0xe5
-        jnz     .notempty
-        add     ebx, 0x20
+        cmp     [ebx + fs.fat.dir_entry_t.name], 0
+        je      .empty
+        cmp     [ebx + fs.fat.dir_entry_t.name], 0xe5
+        jne     .notempty
+        add     ebx, sizeof.fs.fat.dir_entry_t
         cmp     ebx, FDD_BUFF + 0x200
         jb      .checkempty
         movzx   eax, word[FLOPPY_FAT + eax * 2]
@@ -3803,7 +3817,7 @@ kproc fs_FloppyDelete ;/////////////////////////////////////////////////////////
 
   .dodel:
         push    eax
-        movzx   eax, word[edi + 26]
+        movzx   eax, [edi + fs.fat.dir_entry_t.start_cluster.low]
         xchg    eax, [esp]
         ; delete folder entry
         mov     byte[edi], 0xe5
@@ -3813,10 +3827,9 @@ kproc fs_FloppyDelete ;/////////////////////////////////////////////////////////
         cmp     edi, FDD_BUFF
         ja      @f
         cmp     [fd_prev_sector], 0
-        jz      .lfndone
+        je      .lfndone
         push    [fd_prev_sector]
-        push    [fd_prev_prev_sector]
-        pop     [fd_prev_sector]
+        mov_s_  [fd_prev_sector], [fd_prev_prev_sector]
         and     [fd_prev_prev_sector], 0
         pusha
         call    save_chs_sector
@@ -3827,12 +3840,12 @@ kproc fs_FloppyDelete ;/////////////////////////////////////////////////////////
         popa
         mov     edi, FDD_BUFF + 0x200
 
-    @@: sub     edi, 0x20
-        cmp     byte[edi], 0xe5
-        jz      .lfndone
-        cmp     byte[edi + 11], 0x0f
-        jnz     .lfndone
-        mov     byte[edi], 0xe5
+    @@: sub     edi, sizeof.fs.fat.dir_entry_t
+        cmp     [edi + fs.fat.dir_entry_t.name], 0xe5
+        je      .lfndone
+        cmp     [edi + fs.fat.dir_entry_t.attributes], 0x0f
+        jne     .lfndone
+        mov     [edi + fs.fat.dir_entry_t.name], 0xe5
         jmp     .lfndel
 
   .lfndone:

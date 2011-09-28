@@ -21,7 +21,21 @@ FS_PARTITION_TYPE_NTFS    = 4
 FS_PARTITION_TYPE_EXT2    = 5
 FS_PARTITION_TYPE_ISO9660 = 6
 
+struct fs.vftbl_t
+  read_file        dd ?
+  read_directory   dd ?
+  create_file      dd ?
+  write_file       dd ?
+  truncate_file    dd ?
+  get_file_info    dd ?
+  set_file_info    dd ?
+                   dd ?
+  delete_file      dd ?
+  create_directory dd ?
+ends
+
 struct fs.partition_t
+  vftbl     dd ? ; ^= fs.vftbl_t
   device    dd ? ; ^= blkdev.device_t
   range     range64_t
   type      db ? ; #= one of FS_PARTITION_TYPE_*
