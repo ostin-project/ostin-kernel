@@ -63,8 +63,10 @@ static_assert sizeof.fs.fat.lfn_dir_entry_t = sizeof.fs.fat.dir_entry_t
 struct fs.fat.dir_handlers_t
   first_entry dd ?
   next_entry  dd ?
+  prev_entry  dd ?
   begin_write dd ?
   next_write  dd ?
+  prev_write  dd ?
   end_write   dd ?
   extend_dir  dd ?
 ends

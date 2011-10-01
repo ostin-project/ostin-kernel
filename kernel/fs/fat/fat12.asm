@@ -46,7 +46,7 @@ iglobal
     get_file_info, \
     set_file_info, \
     -, \
-    -, \
+    delete_file, \
     create_directory
 endg
 
@@ -1547,6 +1547,7 @@ kproc fs.fat12._.root_begin_write ;/////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         pusha
         mov     eax, [eax]
+        add     eax, 19
         call    fs.fat12._.read_sector
         popa
         ret
@@ -1559,9 +1560,27 @@ kproc fs.fat12._.root_end_write ;///////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         pusha
         mov     eax, [eax]
+        add     eax, 19
         call    fs.fat12._.write_sector
         popa
         ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12._.root_prev_write ;//////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
+        push    eax
+        mov     eax, [ebx + fs.partition_t.user_data]
+        add     eax, fs.fat12.partition_data_t.buffer
+        cmp     edi, eax
+        pop     eax
+        jb      @f
+        ret
+
+    @@: call    fs.fat12._.root_end_write
+        jmp     fs.fat12._.root_prev
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -1588,6 +1607,23 @@ kproc fs.fat12._.notroot_end_write ;////////////////////////////////////////////
         call    fs.fat12._.write_sector
         popa
         ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12._.notroot_prev_write ;///////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
+        push    eax
+        mov     eax, [ebx + fs.partition_t.user_data]
+        add     eax, fs.fat12.partition_data_t.buffer
+        cmp     edi, eax
+        pop     eax
+        jb      @f
+        ret
+
+    @@: call    fs.fat12._.notroot_end_write
+        jmp     fs.fat12._.notroot_prev
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -3738,6 +3774,162 @@ kproc fs_FloppySetFileInfo ;////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12._.delete_fat_chain ;/////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> eax #= start cluster number
+;> ebx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
+        push    ebp
+        mov     ebp, [ebx + fs.partition_t.user_data]
+        add     ebp, fs.fat12.partition_data_t.fat
+
+  .next_cluster:
+        cmp     eax, 2
+        jb      .exit
+        cmp     eax, 2849
+        jae     .exit
+
+        lea     eax, [ebp + eax * 2]
+        push    dword[eax]
+        and     word[eax], 0
+        pop     eax
+        and     eax, 0x0fff
+        jmp     .next_cluster
+
+  .exit:
+        pop     ebp
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12.delete_file ;////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> esi ^= path to file or directory
+;> ebx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
+        cmp     byte[esi], 0
+        je      .access_denied_error ; cannot delete root
+
+        call    fs.fat12._.read_fat
+        or      eax, eax
+        jnz     .device_error
+
+        call    fs.fat12._.find_file_lfn
+        jc      .file_not_found_error
+
+        push    0 eax ecx
+
+        cmp     dword[edi + fs.fat.dir_entry_t.name], '.   '
+        je      .access_denied_error_2
+        cmp     dword[edi + fs.fat.dir_entry_t.name], '..  '
+        je      .access_denied_error_2
+        test    [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY
+        jz      .delete_entry
+
+        ; can delete empty folders only
+        movzx   eax, [edi + fs.fat.dir_entry_t.start_cluster.low]
+        push    edi eax fs.fat12._.dir_handlers.non_root
+
+        lea     eax, [esp + 4]
+        stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.first_entry
+        jnc     @f
+        or      eax, eax
+        jnz     .device_error_2
+        jmp     .empty
+
+    @@: add     edi, 2 * sizeof.fs.fat.dir_entry_t
+
+  .check_empty:
+        cmp     [edi + fs.fat.dir_entry_t.name], 0
+        je      @f
+        cmp     [edi + fs.fat.dir_entry_t.name], 0xe5
+        jne     .access_denied_error_3
+
+    @@: lea     eax, [esp + 4]
+        stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.next_entry
+        jnc     .check_empty
+        or      eax, eax
+        jnz     .device_error_2
+
+  .empty:
+        add     esp, 8
+        pop     edi
+
+  .delete_entry:
+        lea     eax, [esp + 4]
+        push    edi
+        stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.begin_write
+        pop     edi
+
+        movzx   eax, [edi + fs.fat.dir_entry_t.start_cluster.low]
+        mov     [esp + 8], eax
+
+        ; delete folder entry
+        mov     [edi + fs.fat.dir_entry_t.name], 0xe5
+
+  .delete_lfn_entry:
+        ; delete LFN (if present)
+        add     edi, -sizeof.fs.fat.dir_entry_t
+
+        lea     eax, [esp + 4]
+        stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.prev_write
+        jnc     @f
+
+        test    eax, eax
+        jnz     .device_error_3
+        jmp     .delete_complete_eof
+
+    @@: cmp     [edi + fs.fat.dir_entry_t.name], 0xe5
+        je      .delete_complete
+        cmp     [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_LONG_NAME
+        jne     .delete_complete
+
+        mov     [edi + fs.fat.dir_entry_t.name], 0xe5
+        jmp     .delete_lfn_entry
+
+  .delete_complete:
+        lea     eax, [esp + 4]
+        stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.end_write
+
+  .delete_complete_eof:
+        add     esp, 8
+
+        ; delete FAT chain
+        pop     eax
+        call    fs.fat12._.delete_fat_chain
+
+        call    fs.fat12._.write_fat
+        or      eax, eax
+        jnz     .device_error
+
+        ret
+
+  .access_denied_error_3:
+        add     esp, 12
+
+  .access_denied_error_2:
+        add     esp, 12
+
+  .access_denied_error:
+        mov     eax, ERROR_ACCESS_DENIED
+        ret
+
+  .device_error_2:
+        add     esp, 12
+
+  .device_error_3:
+        add     esp, 12
+
+  .device_error:
+        mov     eax, ERROR_DEVICE_FAIL
+        ret
+
+  .file_not_found_error:
+        mov     eax, ERROR_FILE_NOT_FOUND
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
 kproc fs_FloppyDelete ;/////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? delete file or empty folder from floppy
@@ -3877,22 +4069,28 @@ iglobal
     .root_mem dd \
       fs.fat12._.root_mem_first, \
       fs.fat12._.root_mem_next, \
+      util.noop, \ ; prev_entry
       util.noop, \ ; begin_write
       util.noop, \ ; next_write
+      util.noop, \ ; prev_write
       util.noop, \ ; end_write
       util.raise_cf ; extend_dir
     .root dd \
       fs.fat12._.root_first, \
       fs.fat12._.root_next, \
-      fs.fat12._.root_begin_write, \ ; begin_write
+      fs.fat12._.root_prev, \
+      fs.fat12._.root_begin_write, \
       util.noop, \ ; next_write
-      fs.fat12._.root_end_write, \ ; end_write
+      fs.fat12._.root_prev_write, \
+      fs.fat12._.root_end_write, \
       util.raise_cf ; extend_dir
     .non_root dd \
       fs.fat12._.notroot_first, \
       fs.fat12._.notroot_next, \
+      fs.fat12._.notroot_prev, \
       fs.fat12._.notroot_begin_write, \
       fs.fat12._.notroot_next_write, \
+      fs.fat12._.notroot_prev_write, \
       fs.fat12._.notroot_end_write, \
       fs.fat12._.notroot_extend_dir
 endg
@@ -4105,15 +4303,47 @@ kproc fs.fat12._.find_file_lfn ;////////////////////////////////////////////////
         xor     ebp, ebp
         jmp     .continue
 
-    @@: mov     eax, [esp + 4]
-        add     eax, 31
-        pop     ecx
-        cmp     ecx, fs.fat12._.dir_handlers.root
-        jne     @f
-        add     eax, -31 + 19
-
-    @@: add     esp, 4 + 4 ; CF = 0
+    @@: pop     ecx eax
+        add     esp, 4 ; CF = 0
         pop     esi
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12._.root_prev ;////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
+        push    eax
+        mov     eax, [ebx + fs.partition_t.user_data]
+        add     eax, fs.fat12.partition_data_t.buffer
+        cmp     edi, eax
+        pop     eax
+        jbe     .prev_sector
+
+        sub     edi, sizeof.fs.fat.dir_entry_t
+        ret     ; CF = 0
+
+  .prev_sector:
+        push    ecx
+        mov     ecx, eax
+        mov     eax, [ecx]
+        test    eax, eax
+        jz      .eof
+        dec     eax
+        mov     [ecx], eax
+        pop     ecx
+        call    fs.fat12._.root_read_cluster
+        jc      .exit
+
+        add     edi, 512 - sizeof.fs.fat.dir_entry_t
+
+  .exit:
+        ret
+
+  .eof:
+        pop     ecx
+        stc
         ret
 kendp
 
@@ -4133,7 +4363,22 @@ kproc fs.fat12._.root_next ;////////////////////////////////////////////////////
         ret     ; CF = 0
 
   .next_sector:
-        inc     dword[eax]
+        push    ecx
+        mov     ecx, eax
+        mov     eax, [ecx]
+        cmp     eax, 14 - 1
+        je      .eof
+        inc     eax
+        mov     [ecx], eax
+        pop     ecx
+        call    fs.fat12._.root_read_cluster
+        ret
+
+  .eof:
+        pop     ecx
+        xor     eax, eax
+        stc
+        ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -4142,7 +4387,16 @@ kproc fs.fat12._.root_first ;///////////////////////////////////////////////////
 ;> ebx ^= fs.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, [eax]
+        call    fs.fat12._.root_read_cluster
+        ret
+kendp
 
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12._.root_read_cluster ;////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> eax #= cluster number
+;> ebx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
         cmp     eax, 14
         jae     .error
 
@@ -4155,6 +4409,55 @@ kproc fs.fat12._.root_first ;///////////////////////////////////////////////////
 
   .error:
         stc
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12._.notroot_prev ;/////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
+        push    eax
+        mov     eax, [ebx + fs.partition_t.user_data]
+        add     eax, fs.fat12.partition_data_t.buffer
+        cmp     edi, eax
+        pop     eax
+        jbe     .prev_sector
+
+        sub     edi, sizeof.fs.fat.dir_entry_t
+        ret     ; CF = 0
+
+  .prev_sector:
+        push    ecx edi
+
+        push    eax
+        mov     eax, [eax]
+        mov     edi, [ebx + fs.partition_t.user_data]
+        add     edi, fs.fat12.partition_data_t.fat
+        mov     ecx, 2849
+        repne   scasw
+        pop     eax
+        jne     .eof
+
+        sub     edi, fs.fat12.partition_data_t.fat + 2
+        sub     edi, [ebx + fs.partition_t.user_data]
+        shr     edi, 1
+        xchg    eax, edi
+        stosd
+        pop     edi ecx
+
+        call    fs.fat12._.notroot_read_cluster
+        jc      .exit
+
+        add     edi, 512 - sizeof.fs.fat.dir_entry_t
+        ret     ; CF = 0
+
+  .eof:
+        pop     edi ecx
+        xor     eax, eax
+        stc
+
+  .exit:
         ret
 kendp
 
@@ -4175,13 +4478,24 @@ kproc fs.fat12._.notroot_next ;/////////////////////////////////////////////////
 
   .next_sector:
         push    ecx
-        mov     ecx, [eax]
-        shl     ecx, 1
-        add     ecx, [ebx + fs.partition_t.user_data]
-        movzx   ecx, [fs.fat12.partition_data_t.fat + ecx]
-        and     ecx, 0x0fff
-        mov     [eax], ecx
+        mov     ecx, eax
+        mov     eax, [ecx]
+        shl     eax, 1
+        add     eax, [ebx + fs.partition_t.user_data]
+        movzx   eax, [fs.fat12.partition_data_t.fat + eax]
+        cmp     eax, 0x0fff
+        je      .eof
+        mov     [ecx], eax
         pop     ecx
+
+        call    fs.fat12._.notroot_read_cluster
+        ret
+
+  .eof:
+        pop     ecx
+        xor     eax, eax
+        stc
+        ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -4190,23 +4504,26 @@ kproc fs.fat12._.notroot_first ;////////////////////////////////////////////////
 ;> ebx ^= fs.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, [eax]
+        call    fs.fat12._.notroot_read_cluster
+        ret
+kendp
 
-        cmp     eax, 0x0fff
-        je      .eof_error
-        cmp     eax, 2
-        jb      .error
-        cmp     eax, 2849
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12._.notroot_read_cluster ;/////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> eax #= cluster number
+;> ebx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
+        add     eax, -2
+        cmp     eax, 2849 - 2
         jae     .error
 
-        add     eax, 31
+        add     eax, 31 + 2
         call    fs.fat12._.read_sector
         jnz     .error
 
         clc
         ret
-
-  .eof_error:
-        xor     eax, eax
 
   .error:
         stc
@@ -4232,7 +4549,7 @@ kproc fs.fat12._.read_sector ;//////////////////////////////////////////////////
         add     edi, fs.fat12.partition_data_t.buffer
         call    fs.read
 
-        or      eax, eax
+        test    eax, eax
         pop     edx ecx
         ret
 kendp
@@ -4255,7 +4572,7 @@ kproc fs.fat12._.write_sector ;/////////////////////////////////////////////////
         add     esi, fs.fat12.partition_data_t.buffer
         call    fs.write
 
-        or      eax, eax
+        test    eax, eax
         pop     edx ecx
         ret
 kendp

@@ -95,7 +95,7 @@ iglobal
     dd 0 ; fs_RamdiskGetFileInfo
     dd 0 ; fs_RamdiskSetFileInfo
     dd 0
-    dd fs_RamdiskDelete
+    dd 0 ; fs_RamdiskDelete
     dd 0 ; fs_RamdiskCreateFolder
   fs_NumRamdiskServices = ($ - fs_RamdiskServices) / 4
 
@@ -108,7 +108,7 @@ iglobal
     dd 0 ; fs_FloppyGetFileInfo
     dd 0 ; fs_FloppySetFileInfo
     dd 0
-    dd fs_FloppyDelete
+    dd 0 ; fs_FloppyDelete
     dd 0 ; fs_FloppyCreateFolder
   fs_NumFloppyServices = ($ - fs_FloppyServices) / 4
 

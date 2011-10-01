@@ -88,7 +88,7 @@ struct fs.set_file_info_query_params_t
   buffer_ptr dd ?
 ends
 
-struct fs.start_program_query_params_s
+struct fs.start_program_query_params_t
   flags         dd ?
   arguments_ptr dd ?
                 dd ?
@@ -106,7 +106,7 @@ struct fs.query_t
     truncate_file   fs.truncate_file_query_params_t
     get_file_info   fs.get_file_info_query_params_t
     set_file_info   fs.set_file_info_query_params_t
-    start_program   fs.start_program_query_params_s
+    start_program   fs.start_program_query_params_t
   ends
   union
     file_path       rb 0
