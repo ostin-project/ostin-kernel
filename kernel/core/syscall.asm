@@ -193,7 +193,17 @@ iglobal
     dd 0
     dd 0
     dd 0
+
+if defined COMPATIBILITY_MENUET_SYSFN58
+
     dd sysfn.file_system ; 58
+
+else ; COMPATIBILITY_MENUET_SYSFN58
+
+    dd 0
+
+end if ; COMPATIBILITY_MENUET_SYSFN58
+
     dd 0
     dd 0
     dd 0
