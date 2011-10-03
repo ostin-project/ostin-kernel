@@ -91,7 +91,7 @@ iglobal
     dd 0 ; fs_RamdiskReadFolder
     dd 0 ; fs_RamdiskRewrite
     dd 0 ; fs_RamdiskWrite
-    dd fs_RamdiskSetFileEnd
+    dd 0 ; fs_RamdiskSetFileEnd
     dd 0 ; fs_RamdiskGetFileInfo
     dd 0 ; fs_RamdiskSetFileInfo
     dd 0
@@ -104,7 +104,7 @@ iglobal
     dd 0 ; fs_FloppyReadFolder
     dd 0 ; fs_FloppyRewrite
     dd 0 ; fs_FloppyWrite
-    dd fs_FloppySetFileEnd
+    dd 0 ; fs_FloppySetFileEnd
     dd 0 ; fs_FloppyGetFileInfo
     dd 0 ; fs_FloppySetFileInfo
     dd 0

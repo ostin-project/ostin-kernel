@@ -42,7 +42,7 @@ iglobal
     read_directory, \
     create_file, \
     write_file, \
-    -, \
+    truncate_file, \
     get_file_info, \
     set_file_info, \
     -, \
@@ -1318,7 +1318,6 @@ kproc fs.fat12.read_directory ;/////////////////////////////////////////////////
         mov     eax, [esp + 4 + 12 + 262 * 2 + 4]
         movzx   eax, [ebp + fs.fat12.partition_data_t.fat + (eax - 31 - 1) * 2]
         pop     ebp
-        and     eax, 0x0fff
         cmp     eax, 0x0ff8
         jae     .done ; end of ordinary directory
 
@@ -2252,8 +2251,8 @@ kproc fs.fat12._.write_file ;///////////////////////////////////////////////////
         mov     edx, [ebx + fs.partition_t.user_data]
         lea     edx, [edx + fs.fat12.partition_data_t.fat + ebp * 2]
         movzx   ebp, word[edx]
-        cmp     ebp, 0x0fff
-        je      @f
+        cmp     ebp, 0x0ff8
+        jae     @f
 
         pop     edx eax
         clc
@@ -2412,12 +2411,12 @@ kproc fs.fat12.create_file ;////////////////////////////////////////////////////
 
         call    fs.fat12._.get_free_clusters_count
         mov     ecx, [edx + fs.create_file_query_params_t.length]
-        add     ecx, 511
-        shr     ecx, 9
-        sub     eax, ecx ; new file would occupy <ecx> clusters
+        xchg    eax, ecx
+        call    fs.fat12._.bytes_to_clusters
+        sub     ecx, eax ; new file would occupy <eax> clusters
         jb      .disk_full_error
 
-        push    eax
+        push    ecx
         call    fs.fat12._.find_parent_dir
         test    eax, eax
         pop     edx
@@ -3032,25 +3031,29 @@ kproc fs.fat12.write_file ;/////////////////////////////////////////////////////
         call    fs.fat12._.find_file_lfn
         jc      .file_not_found_error
 
-        push    edx eax ecx
+        push    eax ecx
 
         call    fs.fat12._.get_free_clusters_count
-        mov     ecx, dword[edx + fs.write_file_query_params_t.range.offset]
-        push    ecx
-        sub     ecx, [edi + fs.fat.dir_entry_t.size]
-        add     ecx, [edx + fs.write_file_query_params_t.range.length]
-        add     ecx, 511
-        shr     ecx, 9
-        sub     eax, ecx ; modified file would occupy <ecx> clusters
+        push    eax
+        mov     eax, dword[edx + fs.write_file_query_params_t.range.offset]
+        add     eax, [edx + fs.write_file_query_params_t.range.length]
+        jc      .disk_full_error_3
+        call    fs.fat12._.bytes_to_clusters
+        xchg    eax, ecx
+        mov     eax, [edi + fs.fat.dir_entry_t.size]
+        call    fs.fat12._.bytes_to_clusters
+        sub     ecx, edx
         pop     eax
-        jb      .disk_full_error_2
+        jle     @f
+        sub     eax, ecx ; modified file would occupy <ecx> new clusters
+        jl      .disk_full_error_2
 
-        mov     esi, [esp + 8]
-        mov     ecx, [esi + fs.create_file_query_params_t.length]
-        mov     esi, [esi + fs.create_file_query_params_t.buffer_ptr]
+    @@: mov     eax, dword[edx + fs.write_file_query_params_t.range.offset]
+        mov     ecx, [edx + fs.create_file_query_params_t.length]
+        mov     esi, [edx + fs.create_file_query_params_t.buffer_ptr]
 
         call    fs.fat12._.write_file
-        add     esp, 12
+        add     esp, 8
         test    eax, eax
         jnz     .exit
 
@@ -3071,8 +3074,11 @@ kproc fs.fat12.write_file ;/////////////////////////////////////////////////////
         mov     eax, ERROR_DEVICE_FAIL
         ret
 
+  .disk_full_error_3:
+        add     esp, 4
+
   .disk_full_error_2:
-        add     esp, 12
+        add     esp, 8
 
   .disk_full_error:
         mov     eax, ERROR_DISK_FULL
@@ -3414,6 +3420,165 @@ kproc floppy_extend_file ;//////////////////////////////////////////////////////
         stc
         push    ERROR_DISK_FULL
         pop     eax
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12._.bytes_to_clusters ;////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> eax #= bytes
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax #= clusters
+;-----------------------------------------------------------------------------------------------------------------------
+        push    edx
+        xor     edx, edx
+        add     eax, 511
+        adc     edx, 0
+        shrd    eax, edx, 9
+        pop     edx
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat12.truncate_file ;//////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> esi ^= path to file
+;> edx ^= fs.truncate_file_query_params_t
+;> ebx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
+        cmp     byte[esi], 0
+        je      .access_denied_error
+
+        ; file size must not exceed 4 Gb
+        cmp     dword[edx + fs.truncate_file_query_params_t.new_size + 4], 0
+        jne     .disk_full_error
+
+        call    fs.fat12._.read_fat
+        test    eax, eax
+        jnz     .device_error
+
+        call    fs.fat12._.find_file_lfn
+        jc      .file_not_found_error
+
+        ; must not be directory
+        test    [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY
+        jnz     .access_denied_error
+
+        push    eax ecx
+
+        call    fs.fat12._.get_free_clusters_count
+        push    eax
+        mov     eax, dword[edx + fs.truncate_file_query_params_t.new_size]
+        call    fs.fat12._.bytes_to_clusters
+        xchg    eax, ecx
+        mov     eax, [edi + fs.fat.dir_entry_t.size]
+        call    fs.fat12._.bytes_to_clusters
+        sub     ecx, eax
+        pop     eax
+        jle     @f
+        sub     eax, ecx ; modified file would occupy <ecx> new clusters
+        jl      .disk_full_error_2
+
+    @@: ; set file modification date/time to current
+        call    fs.fat.update_datetime
+
+        mov_s_  [edi + fs.fat.dir_entry_t.size], dword[edx + fs.truncate_file_query_params_t.new_size]
+
+        mov     eax, [edi + fs.fat.dir_entry_t.size]
+        call    fs.fat12._.bytes_to_clusters
+
+        mov     ebp, [ebx + fs.partition_t.user_data]
+        add     ebp, fs.fat12.partition_data_t.fat
+
+        test    ecx, ecx
+        jl      .truncate
+        jg      .expand
+
+        lea     eax, [esp + 4]
+        stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.end_write
+        jc      .device_error_2
+
+        add     esp, 8
+        xor     eax, eax ; ERROR_SUCCESS
+        ret
+
+  .expand:
+        push    ecx
+        mov     ecx, eax
+        movzx   eax, [edi + fs.fat.dir_entry_t.start_cluster.low]
+
+    @@: mov     edx, eax
+        cmp     edx, 0x0ff8
+        jae     .fat_table_error_2
+        movzx   eax, word[ebp + eax * 2]
+        dec     ecx
+        jg      @b
+
+        pop     ecx
+
+    @@: call    fs.fat12._.find_free_cluster
+        jc      .disk_full_error_2
+        mov     [ebp + edx * 2], ax
+        loop    @b
+
+        mov     word[edi], 0x0fff
+        jmp     .exit
+
+  .truncate:
+        add     ecx, eax
+        movzx   eax, [edi + fs.fat.dir_entry_t.start_cluster.low]
+
+    @@: mov     edx, eax
+        cmp     edx, 0x0ff8
+        jae     .fat_table_error
+        movzx   eax, word[ebp + eax * 2]
+        dec     ecx
+        jg      @b
+
+        mov     word[ebp + edx * 2], 0x0fff
+        call    fs.fat12._.delete_fat_chain
+
+  .exit:
+        lea     eax, [esp + 4]
+        stdcall fs.fat.call_dir_handler, fs.fat.dir_handlers_t.end_write
+        jc      .device_error_2
+
+        call    fs.fat12._.write_fat
+        or      eax, eax
+        jnz     .device_error_2
+
+        add     esp, 8
+        xor     eax, eax ; ERROR_SUCCESS
+        ret
+
+  .access_denied_error:
+        mov_s_  eax, ERROR_ACCESS_DENIED
+        ret
+
+  .disk_full_error_2:
+        add     esp, 8
+
+  .disk_full_error:
+        mov_s_  eax, ERROR_DISK_FULL
+        ret
+
+  .device_error_2:
+        add     esp, 8
+
+  .device_error:
+        mov_s_  eax, ERROR_DEVICE_FAIL
+        ret
+
+  .file_not_found_error:
+        mov_s_  eax, ERROR_FILE_NOT_FOUND
+        ret
+
+  .fat_table_error_2:
+        add     esp, 4
+
+  .fat_table_error:
+        add     esp, 8
+        mov_s_  eax, ERROR_FAT_TABLE
         ret
 kendp
 
@@ -4483,8 +4648,8 @@ kproc fs.fat12._.notroot_next ;/////////////////////////////////////////////////
         shl     eax, 1
         add     eax, [ebx + fs.partition_t.user_data]
         movzx   eax, [fs.fat12.partition_data_t.fat + eax]
-        cmp     eax, 0x0fff
-        je      .eof
+        cmp     eax, 0x0ff8
+        jae     .eof
         mov     [ecx], eax
         pop     ecx
 
