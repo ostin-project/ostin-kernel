@@ -455,7 +455,7 @@ kproc hd_timeout_error ;////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;       call    clear_hd_cache
 ;       call    clear_application_table_status
-        DEBUGF  1, "K : FS - HD timeout\n"
+        klog_   LOG_ERROR, "FS - HD timeout\n"
         mov     [hd_error], 1
         pop     eax
         ret
@@ -466,7 +466,7 @@ kproc hd_read_error ;///////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;       call    clear_hd_cache
 ;       call    clear_application_table_status
-        DEBUGF  1, "K : FS - HD read error\n"
+        klog_   LOG_ERROR, "FS - HD read error\n"
         pop     edx eax
         ret
 kendp
@@ -476,7 +476,7 @@ kproc hd_write_error ;//////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;       call    clear_hd_cache
 ;       call    clear_application_table_status
-        DEBUGF  1, "K : FS - HD write error\n"
+        klog_   LOG_ERROR, "FS - HD write error\n"
         ret
 kendp
 
@@ -485,7 +485,7 @@ kproc hd_write_error_dma ;//////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;       call    clear_hd_cache
 ;       call    clear_application_table_status
-        DEBUGF  1, "K : FS - HD read error\n"
+        klog_   LOG_ERROR, "FS - HD read error\n"
         pop     esi
         ret
 kendp
@@ -497,7 +497,7 @@ kproc hd_lba_error ;////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;       call    clear_hd_cache
 ;       call    clear_application_table_status
-        DEBUGF  1, "K : FS - HD LBA error\n"
+        klog_   LOG_ERROR, "FS - HD LBA error\n"
         jmp     LBA_read_ret
 kendp
 

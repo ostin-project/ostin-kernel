@@ -188,7 +188,7 @@ kproc sysfn.file_system ;///////////////////////////////////////////////////////
         jnz     area_in_app_mem
 
   .error_output:
-        DEBUGF  1, "K : Buffer check failed\n"
+        klog_   LOG_ERROR, "Buffer check failed\n"
 ;       mov     eax, 7
         mov     [esp + 8 + regs_context32_t.eax], ERROR_MEMORY_POINTER
         ret

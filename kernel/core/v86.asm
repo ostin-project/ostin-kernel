@@ -373,7 +373,7 @@ endg
         jz      @f
         cmp     [v86_irqhooks + edx * 8], eax
         jz      @f
-        DEBUGF  1, "K : V86 : IRQ already hooked\n"
+        klog_   LOG_WARNING, "V86: IRQ already hooked\n"
         inc     [v86_irqhooks + edx * 8 + 4]
         mov     eax, 3
         jmp     v86_exc_c.exit
@@ -391,9 +391,9 @@ kendp
 ; exception handler, which in turn calls the virtual 8086-mode monitor).
 
 iglobal
-  v86_io_byte  db ' (byte)', 0
-  v86_io_word  db ' (word)', 0
-  v86_io_dword db ' (dword)', 0
+  v86_io_byte  db 'byte', 0
+  v86_io_word  db 'word', 0
+  v86_io_dword db 'dword', 0
 endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -746,7 +746,6 @@ kproc v86_exc_c ;///////////////////////////////////////////////////////////////
         mov     ecx, 4
 
   .invalid_io:
-        DEBUGF  1, "K : V86 : access to disabled i/o port %u", ebx
         mov     esi, v86_io_byte
         cmp     ecx, 1
         jz      @f
@@ -755,7 +754,7 @@ kproc v86_exc_c ;///////////////////////////////////////////////////////////////
         jz      @f
         mov     esi, v86_io_dword
 
-    @@: DEBUGF  1, "%s\n", esi
+    @@: klog_   LOG_ERROR, "V86: access to disabled i/o port %u (%s)\n", ebx, esi
 
 if KCONFIG_DEBUG_SHOW_IO
 
@@ -779,8 +778,8 @@ else
 end if
 
   .nogp:
-        DEBUGF  1, "K : V86 : unexpected exception %u at %x:%x\n", bl, [esp + 32 + 4]:4, [esp + 32]:4
-        DEBUGF  1, "K : V86 : faulted code:"
+        klog_   LOG_ERROR, "V86: unexpected exception %u at %x:%x\n", bl, [esp + 32 + 4]:4, [esp + 32]:4
+        klog_   LOG_ERROR, "V86: faulted code:"
         mov     ecx, 8
         movzx   edx, word[esp + 32 + 4]
         shl     edx, 4
@@ -791,15 +790,15 @@ end if
         call    v86_get_lin_addr
         cmp     eax, 0x1000
         jb      .nopage
-        DEBUGF  1, " %x", [edx]:2
+        klog2_  LOG_ERROR, " %x", [edx]:2
         inc     edx
         loop    @b
         jmp     @f
 
   .nopage:
-        DEBUGF  1, " (unavailable)"
+        klog2_  LOG_ERROR, " (unavailable)"
 
-    @@: DEBUGF  1, "\n"
+    @@: klog2_  LOG_ERROR, "\n"
         mov     eax, 1
         jmp     .exit
 

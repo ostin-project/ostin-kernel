@@ -518,7 +518,7 @@ kproc pcnet32_reset ;///////////////////////////////////////////////////////////
         test    [pcnet32_private.options], PCNET32_PORT_ASEL
         jz      .L9
         mov     ebx, 32
-;       DEBUGF  1, " K : ASEL, enable auto-negotiation\n"
+;       klog_   LOG_DEBUG, "ASEL, enable auto-negotiation\n"
         call    [pcnet32_access.read_bcr]
         and     eax, not 0x98
         or      eax, 0x20
@@ -566,13 +566,13 @@ kproc pcnet32_reset ;///////////////////////////////////////////////////////////
         loop    .L11
 
   .L12:
-;       DEBUGF  1, " K : hardware reset\n"
+;       klog_   LOG_DEBUG, "hardware reset\n"
         xor     ebx, ebx
         mov     eax, 0x0002
         call    [pcnet32_access.write_csr]
         xor     ebx, ebx
         call    [pcnet32_access.read_csr]
-;       DEBUGF  1, " K : PCNET reset complete\n"
+;       klog_   LOG_DEBUG, "PCNET reset complete\n"
         ret
 kendp
 
@@ -635,7 +635,7 @@ kproc pcnet32_probe ;///////////////////////////////////////////////////////////
         call    pcnet32_wio_check
         and     al, al
         jz      .try_dwio
-;       DEBUGF  1, " K : Using WIO\n"
+;       klog_   LOG_DEBUG, "Using WIO\n"
         mov     esi, pcnet32_wio
         jmp     .L1
 
@@ -648,12 +648,12 @@ kproc pcnet32_probe ;///////////////////////////////////////////////////////////
         call    pcnet32_dwio_check
         and     al, al
         jz      .no_dev
-;       DEBUGF  1, " K : Using DWIO\n"
+;       klog_   LOG_DEBUG, "Using DWIO\n"
         mov     esi, pcnet32_dwio
         jmp     .L1
 
   .no_dev:
-        DEBUGF  1, " K : PCNET32 not found\n"
+        klog_   LOG_DEBUG, "PCNET32 not found\n"
         ret
 
   .L1:
@@ -675,7 +675,7 @@ kproc pcnet32_probe ;///////////////////////////////////////////////////////////
         shr     eax, 12
         and     eax, 0xffff
         mov     [pcnet32_private.chip_version], eax
-;       DEBUGF  1, " K : PCNET32 chip version OK\n"
+;       klog_   LOG_DEBUG, "PCNET32 chip version OK\n"
         mov     [pcnet32_private.fdx], 0
         mov     [pcnet32_private.mii], 0
         mov     [pcnet32_private.fset], 0
@@ -698,24 +698,24 @@ kproc pcnet32_probe ;///////////////////////////////////////////////////////////
         je      .L8
         cmp     eax, 0x2627
         je      .L9
-        DEBUGF  1, " K : Invalid chip rev\n"
+        klog_   LOG_ERROR, "Invalid chip rev\n"
         jmp     .no_dev
 
   .L2:
-;       DEBUGF  1, " K : PCnet/PCI 79C970\n"
+;       klog_   LOG_DEBUG, "PCnet/PCI 79C970\n"
         jmp     .L10
 
   .L3:
-;       DEBUGF  1, " K : PCnet/PCI 79C970\n"
+;       klog_   LOG_DEBUG, "PCnet/PCI 79C970\n"
         jmp     .L10
 
   .L4:
-;       DEBUGF  1, " K : PCnet/PCI II 79C970A\n"
+;       klog_   LOG_DEBUG, "PCnet/PCI II 79C970A\n"
         mov     [pcnet32_private.fdx], 1
         jmp     .L10
 
   .L5:
-;       DEBUGF  1, " K : PCnet/FAST 79C971\n"
+;       klog_   LOG_DEBUG, "PCnet/FAST 79C971\n"
         mov     [pcnet32_private.fdx], 1
         mov     [pcnet32_private.mii], 1
         mov     [pcnet32_private.fset], 1
@@ -723,20 +723,20 @@ kproc pcnet32_probe ;///////////////////////////////////////////////////////////
         jmp     .L10
 
   .L6:
-;       DEBUGF  1, " K : PCnet/FAST+ 79C972\n"
+;       klog_   LOG_DEBUG, "PCnet/FAST+ 79C972\n"
         mov     [pcnet32_private.fdx], 1
         mov     [pcnet32_private.mii], 1
         mov     [pcnet32_private.fset], 1
         jmp     .L10
 
   .L7:
-;       DEBUGF  1, " K : PCnet/FAST III 79C973\n"
+;       klog_   LOG_DEBUG, "PCnet/FAST III 79C973\n"
         mov     [pcnet32_private.fdx], 1
         mov     [pcnet32_private.mii], 1
         jmp     .L10
 
   .L8:
-;       DEBUGF  1, " K : PCnet/Home 79C978\n"
+;       klog_   LOG_DEBUG, "PCnet/Home 79C978\n"
         mov     [pcnet32_private.fdx], 1
         mov     ebx, 49
         call    [pcnet32_access.read_bcr]
@@ -744,7 +744,7 @@ kproc pcnet32_probe ;///////////////////////////////////////////////////////////
         jmp     .L10
 
   .L9:
-;       DEBUGF  1, " K : PCnet/FAST III 79C975\n"
+;       klog_   LOG_DEBUG, "PCnet/FAST III 79C975\n"
         mov     [pcnet32_private.fdx], 1
         mov     [pcnet32_private.mii], 1
 
@@ -774,9 +774,9 @@ kproc pcnet32_probe ;///////////////////////////////////////////////////////////
         stosb
         inc     edx
         loop    .Lmac
-;       DEBUGF  1, " K : MAC read\n"
+;       klog_   LOG_DEBUG, "MAC read\n"
         call    pcnet32_adjust_pci_device
-;       DEBUGF  1, " K : PCI done\n"
+;       klog_   LOG_DEBUG, "PCI done\n"
         mov     eax, PCNET32_PORT_ASEL
         mov     [pcnet32_private.options], eax
         mov     [pcnet32_private.mode], 0x0003
@@ -795,7 +795,7 @@ kproc pcnet32_probe ;///////////////////////////////////////////////////////////
         mov     eax, pcnet32_tx_ring
         sub     eax, OS_BASE
         mov     [pcnet32_private.tx_ring], eax
-;       DEBUGF  1, " K : Switching to 32\n"
+;       klog_   LOG_DEBUG, "Switching to 32\n"
         mov     ebx, 20
         mov     eax, 2
         call    [pcnet32_access.write_bcr]
@@ -837,7 +837,7 @@ kproc pcnet32_poll ;////////////////////////////////////////////////////////////
         and     ecx, 0xfff
         sub     ecx, 4
         mov     [eth_rx_data_len], cx
-;       DEBUGF  1, " K : PCNETRX: %ub\n", cx
+;       klog_   LOG_DEBUG, "PCNETRX: %ub\n", cx
         push    ecx
         shr     ecx, 2
         mov     edi, Ether_buffer
@@ -866,7 +866,7 @@ kproc pcnet32_xmit ;////////////////////////////////////////////////////////////
         push    esi
         push    ebx
         push    ecx
-;       DEBUGF  1, " K : PCNETTX\n"
+;       klog_   LOG_DEBUG, "PCNETTX\n"
         mov     esi, edi
         mov     edi, [pcnet32_private.cur_tx]
         imul    edi, PCNET32_PKT_BUF_SZ
@@ -936,7 +936,7 @@ kproc pcnet32_xmit ;////////////////////////////////////////////////////////////
         jnz     .L2
 
   .L4:
-        DEBUGF  1, " K : PCNET: Send timeout\n"
+        klog_   LOG_ERROR, "PCNET: Send timeout\n"
 
   .L3:
         mov     [edi + pcnet32_tx_head.base], 0

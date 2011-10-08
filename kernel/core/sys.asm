@@ -219,7 +219,7 @@ kendp
 kproc show_error_parameters ;///////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     edx, [TASK_BASE] ; not scratched below
-        DEBUGF  1, "K : Process - forced terminate PID: %x\n", [edx + task_data_t.pid]
+        klog_   LOG_ERROR, "Process - forced terminate PID: %x\n", [edx + task_data_t.pid]
         cmp     bl, 0x08
         jb      .l0
         cmp     bl, 0x0e
@@ -230,7 +230,7 @@ kproc show_error_parameters ;///////////////////////////////////////////////////
 
   .l1:
         mov     eax, [msg_fault_sel + ebx * 4 - 0x08 * 4]
-        DEBUGF  1, "K : %s\n", eax
+        klog_   LOG_ERROR, "%s\n", eax
         mov     eax, [reg_cs3 + 4]
         mov     edi, msg_sel_app
         mov     ebx, [reg_esp3 + 4]
@@ -239,12 +239,12 @@ kproc show_error_parameters ;///////////////////////////////////////////////////
         mov     edi, msg_sel_ker
         mov     ebx, [esp + 4 + regs_context32_t.esp]
 
-    @@: DEBUGF  1, "K : EAX : %x EBX : %x ECX : %x\n", [esp + 4 + regs_context32_t.eax], \
+    @@: klog_   LOG_ERROR, "EAX : %x EBX : %x ECX : %x\n", [esp + 4 + regs_context32_t.eax], \
                 [esp + 4 + regs_context32_t.ebx], [esp + 4 + regs_context32_t.ecx]
-        DEBUGF  1, "K : EDX : %x ESI : %x EDI : %x\n", [esp + 4 + regs_context32_t.edx], \
+        klog_   LOG_ERROR, "EDX : %x ESI : %x EDI : %x\n", [esp + 4 + regs_context32_t.edx], \
                 [esp + 4 + regs_context32_t.esi], [esp + 4 + regs_context32_t.edi]
-        DEBUGF  1, "K : EBP : %x EIP : %x ESP : %x\n", [esp + 4 + regs_context32_t.ebp], [reg_eip + 4], ebx
-        DEBUGF  1, "K : Flags : %x CS : %x (%s)\n", [reg_eflags + 4], eax, edi
+        klog_   LOG_ERROR, "EBP : %x EIP : %x ESP : %x\n", [esp + 4 + regs_context32_t.ebp], [reg_eip + 4], ebx
+        klog_   LOG_ERROR, "Flags : %x CS : %x (%s)\n", [reg_eflags + 4], eax, edi
         ret
 kendp
 
@@ -426,12 +426,6 @@ kproc sysfn.resize_app_memory ;/////////////////////////////////////////////////
         ret
 kendp
 
-iglobal
-; process_terminating db 'K : Process - terminating', 13, 10, 0
-; process_terminated  db 'K : Process - done', 13, 10, 0
-  msg_obj_destroy     db 'K : destroy app object', 13, 10, 0
-endg
-
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc terminate ;///////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -493,7 +487,7 @@ kproc terminate ;///////////////////////////////////////////////////////////////
 
         push    esi
         call    [eax + app_object_t.destroy]
-        DEBUGF  1, "%s", msg_obj_destroy
+        klog_   LOG_DEBUG, "destroy app object\n"
         pop     esi
         jmp     @b
 

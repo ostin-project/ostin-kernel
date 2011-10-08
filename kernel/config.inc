@@ -17,7 +17,7 @@
 KCONFIG_LANGUAGE fix en
 
 KCONFIG_DEBUG fix 1
-KCONFIG_DEBUG_LEVEL fix 1
+KCONFIG_DEBUG_LEVEL fix LOG_DEBUG
 KCONFIG_DEBUG_SHOW_IO fix 0
 ; enable serial output console
 ; 0x3f8 is com1, 0x2f8 is com2, 0x3e8 is com3, 0x2e8 is com4, no irq's are used

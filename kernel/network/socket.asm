@@ -71,7 +71,7 @@ proc net_socket_alloc stdcall uses ebx ecx edx edi ;////////////////////////////
 ;< eax = socket_t structure address
 ;-----------------------------------------------------------------------------------------------------------------------
         stdcall kernel_alloc, SOCKETBUFFSIZE
-        DEBUGF  1, "K : net_socket_alloc (0x%x)\n", eax
+        klog_   LOG_DEBUG, "net_socket_alloc (0x%x)\n", eax
         ; check if we can allocate needed amount of memory
         or      eax, eax
         jz      .exit
@@ -135,7 +135,7 @@ proc net_socket_free stdcall uses ebx ecx edx, sockAddr:DWORD ;/////////////////
 ;> [sockAddr] = socket_t structure address
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, [sockAddr]
-        DEBUGF  1, "K : net_socket_free (0x%x)\n", eax
+        klog_   LOG_DEBUG, "net_socket_free (0x%x)\n", eax
         ; check if we got something similar to socket structure address
         or      eax, eax
         jz      .error
@@ -176,7 +176,7 @@ proc net_socket_free stdcall uses ebx ecx edx, sockAddr:DWORD ;/////////////////
         ret
 
   .error:
-        DEBUGF  1, "K :   failed\n"
+        klog_   LOG_ERROR, "net_socket_free (fail)\n"
         ret
 endp
 
@@ -399,7 +399,7 @@ proc socket_open stdcall ;//////////////////////////////////////////////////////
         or      eax, eax
         jz      .error
 
-        DEBUGF  1, "K : socket_open (0x%x)\n", eax
+        klog_   LOG_DEBUG, "socket_open (0x%x)\n", eax
 
         push    eax
 
@@ -419,7 +419,7 @@ proc socket_open stdcall ;//////////////////////////////////////////////////////
         stdcall net_socket_free;, eax
 
   .error:
-        DEBUGF  1, "K : socket_open (fail)\n"
+        klog_   LOG_ERROR, "socket_open (fail)\n"
         or      eax, -1
         ret
 endp
@@ -456,7 +456,7 @@ local sockAddr dd ?
         jne     .next_socket
 
         xchg    al, ah
-        DEBUGF  1, "K : error: port %u is listened by 0x%x\n", ax, ebx
+        klog_   LOG_ERROR, "port %u is listened by 0x%x\n", ax, ebx
         pop     ebx
         jmp     .error
 
@@ -468,7 +468,7 @@ local sockAddr dd ?
         or      eax, eax
         jz      .error
 
-        DEBUGF  1, "K : socket_open_tcp (0x%x)\n", eax
+        klog_   LOG_DEBUG, "socket_open_tcp (0x%x)\n", eax
 
         mov     [sockAddr], eax
 
@@ -534,7 +534,7 @@ local sockAddr dd ?
         stdcall net_socket_free, eax
 
   .error:
-        DEBUGF  1, "K : socket_open_tcp (fail)\n"
+        klog_   LOG_ERROR, "socket_open_tcp (fail)\n"
         or      eax, -1
         ret
 endp
@@ -548,7 +548,7 @@ proc socket_close stdcall ;/////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax = 0 (closed successfully) or -1 (error)
 ;-----------------------------------------------------------------------------------------------------------------------
-        DEBUGF  1, "K : socket_close (0x%x)\n", ebx
+        klog_   LOG_DEBUG, "socket_close (0x%x)\n", ebx
         stdcall net_socket_num_to_addr, ebx
         or      eax, eax
         jz      .error
@@ -559,7 +559,7 @@ proc socket_close stdcall ;/////////////////////////////////////////////////////
         ret
 
   .error:
-        DEBUGF  1, "K : socket_close (fail)\n"
+        klog_   LOG_ERROR, "socket_close (fail)\n"
         or      eax, -1
         ret
 endp
@@ -577,7 +577,7 @@ proc socket_close_tcp stdcall ;/////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 local sockAddr dd ?
 ;-----------------------------------------------------------------------------------------------------------------------
-        DEBUGF  1, "K : socket_close_tcp (0x%x)\n", ebx
+        klog_   LOG_DEBUG, "socket_close_tcp (0x%x)\n", ebx
         ; first, remove any resend entries
         pusha
 
@@ -673,7 +673,7 @@ local sockAddr dd ?
         ret
 
   .error:
-        DEBUGF  1, "K : socket_close_tcp (fail)\n"
+        klog_   LOG_ERROR, "socket_close_tcp (fail)\n"
         or      eax, -1
         ret
 endp
@@ -687,7 +687,7 @@ proc socket_poll stdcall ;//////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax = count or bytes in rx buffer or 0 (error)
 ;-----------------------------------------------------------------------------------------------------------------------
-;       DEBUGF  1, "socket_poll(0x%x)\n", ebx
+;       klog_   LOG_DEBUG, "socket_poll(0x%x)\n", ebx
         stdcall net_socket_num_to_addr, ebx
         or      eax, eax
         jz      .error
@@ -709,7 +709,7 @@ proc socket_status stdcall ;////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax = socket TCB state or 0 (error)
 ;-----------------------------------------------------------------------------------------------------------------------
-;       DEBUGF  1, "socket_status(0x%x)\n", ebx
+;       klog_   LOG_DEBUG, "socket_status(0x%x)\n", ebx
         stdcall net_socket_num_to_addr, ebx
         or      eax, eax
         jz      .error
@@ -735,7 +735,7 @@ proc socket_read stdcall ;//////////////////////////////////////////////////////
 ;< eax = number of bytes left in rx buffer or 0 (error)
 ;< bl = byte read
 ;-----------------------------------------------------------------------------------------------------------------------
-;       DEBUGF  1, "socket_read(0x%x)\n", ebx
+;       klog_   LOG_DEBUG, "socket_read(0x%x)\n", ebx
         stdcall net_socket_num_to_addr, ebx
         or      eax, eax
         jz      .error
@@ -791,7 +791,7 @@ proc socket_read_packet stdcall ;///////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax = number of bytes read or 0 (error)
 ;-----------------------------------------------------------------------------------------------------------------------
-;       DEBUGF  1, "socket_read_packet(0x%x)\n", ebx
+;       klog_   LOG_DEBUG, "socket_read_packet(0x%x)\n", ebx
         stdcall net_socket_num_to_addr, ebx ; get real socket address
         or      eax, eax
         jz      .error
@@ -869,7 +869,7 @@ proc socket_write stdcall ;/////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax = 0 (sent successfully) or -1 (error)
 ;-----------------------------------------------------------------------------------------------------------------------
-;       DEBUGF  1, "socket_write(0x%x)\n", ebx
+;       klog_   LOG_DEBUG, "socket_write(0x%x)\n", ebx
         stdcall net_socket_num_to_addr, ebx ; get real socket address
         or      eax, eax
         jz      .error
@@ -1033,7 +1033,7 @@ proc socket_write_tcp stdcall ;/////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 local sockAddr dd ?
 ;-----------------------------------------------------------------------------------------------------------------------
-;       DEBUGF  1, "socket_write_tcp(0x%x)\n", ebx
+;       klog_   LOG_DEBUG, "socket_write_tcp(0x%x)\n", ebx
         stdcall net_socket_num_to_addr, ebx
         or      eax, eax
         jz      .error

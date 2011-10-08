@@ -786,7 +786,7 @@ endl
         test    eax, eax
         jnz     @f
 
-        DEBUGF  1, "K : unresolved %s\n", edi
+        klog_   LOG_ERROR, "unresolved %s\n", edi
 
         mov     [retval], 0
 
@@ -1086,11 +1086,11 @@ endl
         ret
 
   .ver_fail:
-        DEBUGF  1, "K : incompatible driver version: %s\n", [driver_name]
+        klog_   LOG_ERROR, "incompatible driver version: %s\n", [driver_name]
         jmp     .cleanup
 
   .link_fail:
-        DEBUGF  1, "K : in module %s\n", [driver_name]
+        klog_   LOG_ERROR, "in module %s\n", [driver_name]
 
   .cleanup:
         stdcall kernel_free, [img_base]

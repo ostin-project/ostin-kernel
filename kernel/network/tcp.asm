@@ -87,14 +87,16 @@ proc tcp_tcb_handler stdcall uses ebx ;/////////////////////////////////////////
 
         cmp     [ebx + socket_t.next_ptr], 0
         je      .exit
-;       DEBUGF  1, "K : sockets:\n"
+;       klog_   LOG_DEBUG, "sockets:\n"
 
   .next_socket:
         mov     ebx, [ebx + socket_t.next_ptr]
         or      ebx, ebx
         jz      .exit
 
-;       DEBUGF  1, "K :   %x-%x: %x-%x-%x-%u\n", [ebx + socket_t.pid]:2, [ebx + socket_t.number]:2, [ebx + socket_t.local_port]:4, [ebx + socket_t.remote_ip], [ebx + socket_t.remote_port]:4, [ebx + socket_t.tcb_state]
+;       klog_   LOG_DEBUG, "  %x-%x: %x-%x-%x-%u\n", [ebx + socket_t.pid]:2, [ebx + socket_t.number]:2, \
+;               [ebx + socket_t.local_port]:4, [ebx + socket_t.remote_ip], [ebx + socket_t.remote_port]:4, \
+;               [ebx + socket_t.tcb_state]
 
         cmp     [ebx + socket_t.tcb_timer], 0
         jne     .decrement_tcb
@@ -263,19 +265,21 @@ proc tcp_rx stdcall uses ebx ;//////////////////////////////////////////////////
         or      ebx, ebx
         jz      .next_socket.1.exit
 
-;       DEBUGF  1, "K : tcp_rx - 1.dport: %x - %x\n", [edx + 20 + tcp_packet_t.DestinationPort]:4, [ebx + socket_t.local_port]:4
+;       klog_   LOG_DEBUG, "tcp_rx - 1.dport: %x - %x\n", [edx + 20 + tcp_packet_t.DestinationPort]:4, \
+;               [ebx + socket_t.local_port]:4
 
         mov     ax, [edx + 20 + tcp_packet_t.dst_port] ; get the dest. port from the TCP hdr
         cmp     [ebx + socket_t.local_port], ax ; get the dest. port from the TCP hdr
         jne     .next_socket.1 ; different - try next socket
 
-;       DEBUGF  1, "K : tcp_rx - 1.addr: %x - %x\n", [edx + ip_packet_t.SourceAddress], [ebx + socket_t.remote_ip]
+;       klog_   LOG_DEBUG, "tcp_rx - 1.addr: %x - %x\n", [edx + ip_packet_t.SourceAddress], [ebx + socket_t.remote_ip]
 
         mov     eax, [edx + ip_packet_t.src_ip] ; get the source IP Addr from the IP hdr
         cmp     [ebx + socket_t.remote_ip], eax ; compare with socket's remote IP
         jne     .next_socket.1 ; different - try next socket
 
-;       DEBUGF  1, "K : tcp_rx - 1.sport: %x - %x\n", [edx + 20 + tcp_packet_t.SourcePort]:4, [ebx + socket_t.remote_port]:4
+;       klog_   LOG_DEBUG, "tcp_rx - 1.sport: %x - %x\n", [edx + 20 + tcp_packet_t.SourcePort]:4, \
+;               [ebx + socket_t.remote_port]:4
 
         mov     ax, [edx + 20 + tcp_packet_t.src_port] ; get the source port from the TCP hdr
         cmp     [ebx + socket_t.remote_port], ax ; compare with socket's remote port
@@ -298,19 +302,20 @@ proc tcp_rx stdcall uses ebx ;//////////////////////////////////////////////////
         or      ebx, ebx
         jz      .next_socket.2.exit
 
-;       DEBUGF  1, "K : tcp_rx - 2.dport: %x - %x\n", [edx + 20 + tcp_packet_t.dst_port]:4, [ebx + socket_t.local_port]:4
+;       klog_   LOG_DEBUG, "tcp_rx - 2.dport: %x - %x\n", [edx + 20 + tcp_packet_t.dst_port]:4, \
+;               [ebx + socket_t.local_port]:4
 
         mov     ax, [edx + 20 + tcp_packet_t.dst_port] ; get the dest. port from the TCP hdr
         cmp     [ebx + socket_t.local_port], ax ; compare with socket's local port
         jne     .next_socket.2 ; different - try next socket
 
-;       DEBUGF  1, "K : tcp_rx - 2.addr: %x - %x\n", [edx + ip_packet_t.src_ip], [ebx + socket_t.remote_ip]
+;       klog_   LOG_DEBUG, "tcp_rx - 2.addr: %x - %x\n", [edx + ip_packet_t.src_ip], [ebx + socket_t.remote_ip]
 
         mov     eax, [edx + ip_packet_t.src_ip] ; get the source IP Addr from the IP hdr
         cmp     [ebx + socket_t.remote_ip], eax ; compare with socket's remote IP
         jne     .next_socket.2 ; different - try next socket
 
-;       DEBUGF  1, "K : tcp_rx - 2.sport: 0000 - %x\n", [ebx + socket_t.remote_port]:4
+;       klog_   LOG_DEBUG, "tcp_rx - 2.sport: 0000 - %x\n", [ebx + socket_t.remote_port]:4
 
         cmp     [ebx + socket_t.remote_port], 0 ; only match a remote socket of 0
         jne     .next_socket.2 ; different - try next socket
@@ -332,18 +337,19 @@ proc tcp_rx stdcall uses ebx ;//////////////////////////////////////////////////
         or      ebx, ebx
         jz      .next_socket.3.exit
 
-;       DEBUGF  1, "K : tcp_rx - 3.dport: %x - %x\n", [edx + 20 + tcp_packet_t.dst_port]:4, [ebx + socket_t.local_port]:4
+;       klog_   LOG_DEBUG, "tcp_rx - 3.dport: %x - %x\n", [edx + 20 + tcp_packet_t.dst_port]:4, \
+;               [ebx + socket_t.local_port]:4
 
         mov     ax, [edx + 20 + tcp_packet_t.dst_port] ; get destination port from the TCP hdr
         cmp     [ebx + socket_t.local_port], ax ; compare with socket's local port
         jne     .next_socket.3 ; different - try next socket
 
-;       DEBUGF  1, "K : tcp_rx - 3.addr: 00000000 - %x\n", [ebx + socket_t.remote_ip]
+;       klog_   LOG_DEBUG, "tcp_rx - 3.addr: 00000000 - %x\n", [ebx + socket_t.remote_ip]
 
         cmp     [ebx + socket_t.remote_ip], 0; only match a socket remote IP of 0
         jne     .next_socket.3; different - try next socket
 
-;       DEBUGF  1, "K : tcp_rx - 3.sport: 0000 - %x\n", [ebx + socket_t.remote_port]:4
+;       klog_   LOG_DEBUG, "tcp_rx - 3.sport: 0000 - %x\n", [ebx + socket_t.remote_port]:4
 
         cmp     [ebx + socket_t.remote_port], 0; only match a remote socket of 0
         jne     .next_socket.3; different - try next socket
@@ -354,8 +360,9 @@ proc tcp_rx stdcall uses ebx ;//////////////////////////////////////////////////
   .next_socket.3.exit:
         ; If we got here, we need to reject the packet
 
-        DEBUGF  1, "K : tcp_rx - dumped\n"
-        DEBUGF  1, "K :   --------: %x-%x-%x (flags: %x)\n", [edx + 20 + tcp_packet_t.dst_port]:4, [edx + ip_packet_t.src_ip], [edx + 20 + tcp_packet_t.src_port]:4, [edx + 20 + tcp_packet_t.flags]:2
+        klog_   LOG_WARNING, "tcp_rx - dumped\n"
+        klog_   LOG_WARNING, "  --------: %x-%x-%x (flags: %x)\n", [edx + 20 + tcp_packet_t.dst_port]:4, \
+                [edx + ip_packet_t.src_ip], [edx + 20 + tcp_packet_t.src_port]:4, [edx + 20 + tcp_packet_t.flags]:2
 
         inc     [dumped_rx_count]
         jmp     .exit

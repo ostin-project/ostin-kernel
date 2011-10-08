@@ -264,7 +264,7 @@ kproc map_PE ;//////////////////////////////////////////////////////////////////
         cmp     ebx, [__exports + 24]
         jne     .L37
 
-        DEBUGF  1, "K : unresolved %s\n", [edi + 2]
+        klog_   LOG_ERROR, "unresolved %s\n", [edi + 2]
 
         mov     dword[esp + 40], 1
         jmp     .L37

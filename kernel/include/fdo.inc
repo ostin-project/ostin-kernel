@@ -2,6 +2,7 @@
 ;;///// fdo.inc //////////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
 ;;======================================================================================================================
 ;; (c) 2007-2010 KolibriOS team <http://kolibrios.org/>
+;; (c) 2005-2006 mike.dld <mike.dld@gmail.com>
 ;;======================================================================================================================
 ;; This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
 ;; License as published by the Free Software Foundation, either version 2 of the License, or (at your option) any later
@@ -16,15 +17,15 @@
 
 _esp equ esp
 
-;
-; Formatted Debug Output (FDO)
-; Copyright (c) 2005-2006, mike.dld
-; Created: 2005-01-29, Changed: 2006-11-10
-;
-; For questions and bug reports, mail to mike.dld@gmail.com
-;
 ; Available format specifiers are: %s, %d, %u, %x (with partial width support)
-;
+
+LOG_TRACE   = 1
+LOG_DEBUG   = 2
+LOG_LOG     = 3
+LOG_WARNING = 4
+LOG_ERROR   = 5
+LOG_INFO    = 6
+LOG_NONE    = 7
 
 ; to be defined:
 ;   __DEBUG__ equ 1
@@ -307,8 +308,11 @@ debug_beginf
         ret
 debug_endf
 
+if used __fdo_hexdigits
+__fdo_hexdigits db '0123456789ABCDEF'
+end if
+
 debug_func fdo_debug_outhex
-  __fdo_hexdigits db '0123456789ABCDEF'
 debug_beginf
         mov     cl, dl
         neg     cl
@@ -452,4 +456,16 @@ macro include_debug_strings {
    __include_debug_strings dbg_str
   \}
  end if
+}
+
+macro klog_ _level, _format, [_args]
+{
+  common
+    DEBUGF _level, <"K : ", _format>, _args
+}
+
+macro klog2_ _level, _format, [_args]
+{
+  common
+    DEBUGF _level, _format, _args
 }

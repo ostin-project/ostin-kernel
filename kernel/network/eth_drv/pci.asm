@@ -485,20 +485,23 @@ proc adjust_pci_device ;////////////////////////////////////////////////////////
 ;? Set device to be a busmaster in case BIOS neglected to do so.
 ;? Also adjust PCI latency timer to a reasonable value, 32.
 ;-----------------------------------------------------------------------------------------------------------------------
-;       DEBUGF  1, "K : adjust_pci_device\n"
+;       klog_   LOG_DEBUG, "adjust_pci_device\n"
 
         stdcall pci_read_config_word, PCI_COMMAND
         mov     bx, ax
         or      bx, PCI_COMMAND_MASTER or PCI_COMMAND_IO
         cmp     ax, bx
         je      @f
-;       DEBUGF  1, "K : adjust_pci_device: The PCI BIOS has not enabled this device!\nK :   Updating PCI command %x->%x. pci_bus %x pci_device_fn %x\n", ax, bx, [pci_bus]:2, [pci_dev]:2
+;       klog_   LOG_WARNING, "adjust_pci_device: The PCI BIOS has not enabled this device!\n"
+;       klog_   LOG_WARNING, "Updating PCI command %x->%x. pci_bus %x pci_device_fn %x\n", ax, bx, [pci_bus]:2, \
+;               [pci_dev]:2
         stdcall pci_write_config_word, PCI_COMMAND, ebx
 
     @@: stdcall pci_read_config_byte, PCI_LATENCY_TIMER
         cmp     al, 32
         jae     @f
-;       DEBUGF  1, "K : adjust_pci_device: PCI latency timer (CFLT) is unreasonably low at %d.\nK :   Setting to 32 clocks.\n", al
+;       klog_   LOG_WARNING, "adjust_pci_device: PCI latency timer (CFLT) is unreasonably low at %d.\n", al
+;       klog_   LOG_WARNING, "Setting to 32 clocks.\n", al
         stdcall pci_write_config_byte, PCI_LATENCY_TIMER, 32
 
     @@: ret
@@ -524,7 +527,7 @@ proc pci_bar_start, index:dword ;///////////////////////////////////////////////
         stdcall pci_read_config_dword, eax
         or      eax, eax
         jz      .not64
-;       DEBUGF  1, "K : pci_bar_start: Unhandled 64bit BAR\n"
+;       klog_   LOG_WARNING, "pci_bar_start: Unhandled 64bit BAR\n"
         add     esp, 4
         or      eax, -1
         ret

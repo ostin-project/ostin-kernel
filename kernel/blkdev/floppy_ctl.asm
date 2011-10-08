@@ -274,7 +274,7 @@ kproc blkdev.floppy.ctl._.stop_motor ;//////////////////////////////////////////
         or      al, 00001100b
         out     dx, al
 
-;       DEBUGF  1, "K : floppy motor #%u spin down\n", cl
+        klog_   LOG_DEBUG, "floppy motor #%u spin down\n", cl
 
         mov     [blkdev.floppy.ctl._.data.last_drive_number], cl
         and     [ebx + blkdev.floppy.device_data_t.motor_timer], 0
@@ -312,7 +312,7 @@ kproc blkdev.floppy.ctl._.select_drive ;////////////////////////////////////////
         or      al, 00001100b
         out     dx, al
 
-;       DEBUGF  1, "K : floppy motor #%u spin up\n", cl
+        klog_   LOG_DEBUG, "floppy motor #%u spin up\n", cl
 
         mov     [blkdev.floppy.ctl._.data.last_drive_number], cl
 

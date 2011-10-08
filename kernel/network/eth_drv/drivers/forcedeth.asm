@@ -491,7 +491,7 @@ kproc forcedeth_reset ;/////////////////////////////////////////////////////////
         ; writel((u32) virt_to_le32desc(&rx_ring[0]), base + NvRegRxRingPhysAddr)
         mov     eax, forcedeth_rx_ring
 
-;       DEBUGF 1, " K : FORCEDETH: rx_ring at 0x%x\n", eax
+;       klog_   LOG_DEBUG, "FORCEDETH: rx_ring at 0x%x\n", eax
 
         sub     eax, OS_BASE ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         mov     dword[edi + NvRegRxRingPhysAddr], eax
@@ -541,7 +541,6 @@ kproc forcedeth_reset ;/////////////////////////////////////////////////////////
 
 
         ; printf("%d-Mbs Link, %s-Duplex\n", np->linkspeed & NVREG_LINKSPEED_10 ? 10 : 100, np->duplex ? "Full" : "Half")
-;;;;;;;;;;; DEBUGF
 
         ; 6) continue setup
 
@@ -675,7 +674,7 @@ kproc forcedeth_reset ;/////////////////////////////////////////////////////////
         mov     dword[edi + NvRegMIIStatus], NVREG_MIISTAT_MASK
 
         ; dprintf(("startup: got 0x%hX.\n", miistat));
-;;;     DEBUGF 1, " K : FORCEDETH: startup: got 0x%x\n", eax
+;;;     klog_   LOG_DEBUG, "FORCEDETH: startup: got 0x%x\n", eax
 
 
         ; ret = update_linkspeed(nic)
@@ -697,7 +696,7 @@ kproc forcedeth_reset ;/////////////////////////////////////////////////////////
 
         test    eax, eax
         jnz     .return
-        DEBUGF  1, " K : FORCEDETH: no link during initialization.\n"
+        klog_   LOG_DEBUG, "FORCEDETH: no link during initialization.\n"
 
         mov     dword[forcedeth_nocable], 1
 
@@ -714,7 +713,7 @@ kproc forcedeth_probe ;/////////////////////////////////////////////////////////
 ;? Searches for an ethernet card, enables it and clears the rx buffer
 ;? If a card was found, it enables the ethernet -> TCPIP link
 ;-----------------------------------------------------------------------------------------------------------------------
-;       DEBUGF 1, " K : FORCEDETH: 0x%x 0x%x, 0x%x\n", [io_addr]:8, [pci_bus]:2, [pci_dev]:2
+;       klog_   LOG_DEBUG, "FORCEDETH: 0x%x 0x%x, 0x%x\n", [io_addr]:8, [pci_bus]:2, [pci_dev]:2
 
         mov     dword[forcedeth_needs_mac_reset], 0
 
@@ -731,7 +730,7 @@ kproc forcedeth_probe ;/////////////////////////////////////////////////////////
         cmp     bx, ax
         je      @f
         ; Enabling PCI-device (make card as bus master)
-        DEBUGF  1, " K : FORCEDETH: Updating PCI command 0x%x->0x%x\n", ax, bx
+        klog_   LOG_DEBUG, "FORCEDETH: Updating PCI command 0x%x->0x%x\n", ax, bx
         mov     cx, bx
         mov     al, 1 ;;;;;;;;;;;; 2
         mov     bh, [pci_dev]
@@ -752,8 +751,8 @@ kproc forcedeth_probe ;/////////////////////////////////////////////////////////
         cmp     al, 32
         jge     @f
         ; set latency to 32
-        DEBUGF  1, "K : FORCEDETH: PCI latency timer (CFLT) is unreasonably low at %d.\n", al
-        DEBUGF  1, "K : FORCEDETH: Setting to 32 clocks.\n"
+        klog_   LOG_WARNING, "FORCEDETH: PCI latency timer (CFLT) is unreasonably low at %d.\n", al
+        klog_   LOG_WARNING, "FORCEDETH: Setting to 32 clocks.\n"
         mov     cl, 32
         mov     al, 0 ;;;;;;;1
         mov     bh, [pci_dev]
@@ -784,7 +783,7 @@ kproc forcedeth_probe ;/////////////////////////////////////////////////////////
         call    pci_read_reg
         or      eax, eax
         jz      .not64
-        DEBUGF  1, "K : FORCEDETH: pci_bar_start: Unhandled 64bit BAR\n"
+        klog_   LOG_ERROR, "FORCEDETH: pci_bar_start: Unhandled 64bit BAR\n"
         or      eax, -1
         jmp     .next
 
@@ -846,7 +845,8 @@ kproc forcedeth_probe ;/////////////////////////////////////////////////////////
 
         mov     dword[forcedeth_mmio_size], ecx
 
-        DEBUGF  1, " K : FORCEDETH: mmio_addr= 0x%x [mmio_size= 0x%x]\n", [forcedeth_mmio_addr]:8, [forcedeth_mmio_size]:8
+        klog_   LOG_DEBUG, "FORCEDETH: mmio_addr= 0x%x [mmio_size= 0x%x]\n", [forcedeth_mmio_addr]:8, \
+                [forcedeth_mmio_size]:8
 
         ; Get Vendor and Device ID
         mov     al, 2
@@ -858,7 +858,8 @@ kproc forcedeth_probe ;/////////////////////////////////////////////////////////
         shr     eax, 16
         mov     word[forcedeth_device_id], ax
 
-        DEBUGF  1, " K : FORCEDETH: vendor_id= 0x%x device_id= 0x%x\n", [forcedeth_vendor_id]:4, [forcedeth_device_id]:4
+        klog_   LOG_DEBUG, "FORCEDETH: vendor_id= 0x%x device_id= 0x%x\n", [forcedeth_vendor_id]:4, \
+                [forcedeth_device_id]:4
 
         ; handle different descriptor versions
         mov     eax, dword[forcedeth_device_id]
@@ -905,9 +906,10 @@ kproc forcedeth_probe ;/////////////////////////////////////////////////////////
         mov     byte[node_addr + 3], al
 
   .no_reverse_mac:
-;       DEBUGF  1, " K : FORCEDETH: orig_mac0= 0x%x\n", [forcedeth_orig_mac0]:8
-;       DEBUGF  1, " K : FORCEDETH: orig_mac1= 0x%x\n", [forcedeth_orig_mac1]:8
-        DEBUGF  1, " K : FORCEDETH: MAC = %x-%x-%x-%x-%x-%x\n", [node_addr + 0]:2, [node_addr + 1]:2, [node_addr + 2]:2, [node_addr + 3]:2, [node_addr + 4]:2, [node_addr + 5]:2
+;       klog_   LOG_DEBUG, "FORCEDETH: orig_mac0= 0x%x\n", [forcedeth_orig_mac0]:8
+;       klog_   LOG_DEBUG, "FORCEDETH: orig_mac1= 0x%x\n", [forcedeth_orig_mac1]:8
+        klog_   LOG_DEBUG, "FORCEDETH: MAC = %x-%x-%x-%x-%x-%x\n", [node_addr + 0]:2, [node_addr + 1]:2, \
+                [node_addr + 2]:2, [node_addr + 3]:2, [node_addr + 4]:2, [node_addr + 5]:2
 
         ; disable WOL
         mov     edi, dword[forcedeth_mapio_addr]
@@ -1049,8 +1051,8 @@ kproc forcedeth_probe ;/////////////////////////////////////////////////////////
         jmp     .end_switch
 
   .default_switch:
-        DEBUGF  1, " K : FORCEDETH: Your card was undefined in this driver.\n"
-        DEBUGF  1, " K : FORCEDETH: Review driver_data in Kolibri driver and send a patch\n"
+        klog_   LOG_WARNING, "FORCEDETH: Your card was undefined in this driver.\n"
+        klog_   LOG_WARNING, "FORCEDETH: Review driver_data in Kolibri driver and send a patch\n"
 
   .end_switch:
         ; END of switch (pci->dev_id)
@@ -1098,7 +1100,7 @@ kproc forcedeth_probe ;/////////////////////////////////////////////////////////
         jmp     .end_for
 
   .break_for:
-;;;;    DEBUGF  1, " K : FORCEDETH: id1=0x%x id2=0x%x\n", [forcedeth_tmp_id1]:8, [forcedeth_tmp_id2]:8
+;;;;    klog_   LOG_DEBUG, "FORCEDETH: id1=0x%x id2=0x%x\n", [forcedeth_tmp_id1]:8, [forcedeth_tmp_id2]:8
 
         ; id1 = (id1 & PHYID1_OUI_MASK) << PHYID1_OUI_SHFT
         mov     eax, dword[forcedeth_tmp_id1]
@@ -1112,7 +1114,8 @@ kproc forcedeth_probe ;/////////////////////////////////////////////////////////
         shr     eax, PHYID2_OUI_SHFT
         mov     dword[forcedeth_tmp_id2], eax
 
-        DEBUGF  1, " K : FORCEDETH: Found PHY  0x%x:0x%x at address 0x%x\n", [forcedeth_tmp_id1]:8, [forcedeth_tmp_id2]:8, ebx
+        klog_   LOG_DEBUG, "FORCEDETH: Found PHY  0x%x:0x%x at address 0x%x\n", [forcedeth_tmp_id1]:8, \
+                [forcedeth_tmp_id2]:8, ebx
 
         ; np->phyaddr = phyaddr;
         mov     [forcedeth_phyaddr], ebx
@@ -1129,7 +1132,7 @@ kproc forcedeth_probe ;/////////////////////////////////////////////////////////
         ; PHY in isolate mode? No phy attached and user wants to
         ; test loopback? Very odd, but can be correct.
 
-        DEBUGF  1, " K : FORCEDETH: Could not find a valid PHY.\n"
+        klog_   LOG_WARNING, "FORCEDETH: Could not find a valid PHY.\n"
 
         jmp     .next3
 
@@ -1140,8 +1143,8 @@ kproc forcedeth_probe ;/////////////////////////////////////////////////////////
   .next3:
 ;        dprintf(("%s: forcedeth.c: subsystem: %hX:%hX bound to %s\n",
 ;                 pci->name, pci->vendor, pci->dev_id, pci->name));
-        DEBUGF  1, " K : FORCEDETH: subsystem: 0x%x:0x%x bound to forcedeth\n", [forcedeth_vendor_id]:4, [forcedeth_device_id]:4
-
+        klog_   LOG_DEBUG, "FORCEDETH: subsystem: 0x%x:0x%x bound to forcedeth\n", [forcedeth_vendor_id]:4, \
+                [forcedeth_device_id]:4
 
 ;        if(needs_mac_reset) mac_reset(nic);
         cmp     dword[forcedeth_needs_mac_reset], 0
@@ -1227,7 +1230,7 @@ kproc forcedeth_poll ;//////////////////////////////////////////////////////////
         ; still owned by hardware
         jnz     .return0
 
-;;;;;   DEBUGF  1, "poll: FlagLen = %x\n", eax
+;;;;;   klog_   LOG_DEBUG, "poll: FlagLen = %x\n", eax
 
         ; if (np->desc_ver == DESC_VER_1) {
         cmp     dword[forcedeth_desc_ver], DESC_VER_1
@@ -1267,7 +1270,7 @@ kproc forcedeth_poll ;//////////////////////////////////////////////////////////
         mov     dword[forcedeth_packetlen], eax
         ;
         mov     [eth_rx_data_len], ax
-;;;     DEBUGF 1, "poll: packet len = 0x%x\n", [forcedeth_packetlen]
+;;;     klog_   LOG_DEBUG, "poll: packet len = 0x%x\n", [forcedeth_packetlen]
 
 
         ; memcpy(nic->packet, rxb + (i * RX_NIC_BUFSIZE), nic->packetlen);
@@ -1309,7 +1312,7 @@ kproc forcedeth_poll ;//////////////////////////////////////////////////////////
         ; return 1;
         jmp     .return1
 
-;;;;;   DEBUGF  1, "K : FORCEDETH: poll: ...\n"
+;;;;;   klog_   LOG_DEBUG, "FORCEDETH: poll: ...\n"
 
   .return0:
         mov     eax, 0
@@ -1350,16 +1353,16 @@ kproc forcedeth_transmit ;//////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         ; send the packet to destination
 ;       pusha
-;       DEBUGF  1, "K : FORCEDETH: transmit: packet type = 0x%x\n", ebx
-;       DEBUGF  1, "K : FORCEDETH: transmit: packet len  = 0x%x\n", ecx
+;       klog_   LOG_DEBUG, "FORCEDETH: transmit: packet type = 0x%x\n", ebx
+;       klog_   LOG_DEBUG, "FORCEDETH: transmit: packet len  = 0x%x\n", ecx
 ;       mov     eax, dword[edi]
-;       DEBUGF  1, "K : FORCEDETH: transmit: dest adr    = 0x%x\n", eax
+;       klog_   LOG_DEBUG, "FORCEDETH: transmit: dest adr    = 0x%x\n", eax
 ;       mov     eax, dword[edi + 4]
-;       DEBUGF  1, "K : FORCEDETH: transmit: dest adr2   = 0x%x\n", eax
+;       klog_   LOG_DEBUG, "FORCEDETH: transmit: dest adr2   = 0x%x\n", eax
 ;       mov     eax, dword[node_addr]
-;       DEBUGF  1, "K : FORCEDETH: transmit: src  adr    = 0x%x\n", eax
+;       klog_   LOG_DEBUG, "FORCEDETH: transmit: src  adr    = 0x%x\n", eax
 ;       mov     eax, dword[node_addr + 4]
-;       DEBUGF  1, "K : FORCEDETH: transmit: src adr2    = 0x%x\n", eax
+;       klog_   LOG_DEBUG, "FORCEDETH: transmit: src adr2    = 0x%x\n", eax
 ;       popa
 
         ; int nr = np->next_tx % TX_RING
@@ -1431,8 +1434,8 @@ kproc forcedeth_transmit ;//////////////////////////////////////////////////////
         sub     eax, OS_BASE ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         mov     [ebx + forcedeth_TxDesc.PacketBuffer], eax
 
-;       DEBUGF  1, "K : FORCEDETH: transmit: PacketBuffer = 0x%x\n", eax
-;       DEBUGF  1, "K : FORCEDETH: transmit: txflags = 0x%x\n", [forcedeth_txflags]:8
+;       klog_   LOG_DEBUG, "FORCEDETH: transmit: PacketBuffer = 0x%x\n", eax
+;       klog_   LOG_DEBUG, "FORCEDETH: transmit: txflags = 0x%x\n", [forcedeth_txflags]:8
 
         ; wmb();
         ; tx_ring[nr].FlagLen = cpu_to_le32((s - 1) | np->tx_flags);
@@ -1526,14 +1529,14 @@ kproc forcedeth_mii_rw ;////////////////////////////////////////////////////////
 
         test    eax, eax
         jz      @f
-;;;     DEBUGF  1, "K : FORCEDETH: mii_rw of reg %d at PHY %d timed out.\n", edx, ebx
+;;;     Dklog_   LOG_DEBUG, "FORCEDETH: mii_rw of reg %d at PHY %d timed out.\n", edx, ebx
         mov     eax, 0xffffffff
         jmp     .return
 
     @@: cmp     ecx, MII_READ
         je      @f
         ; it was a write operation - fewer failures are detectable
-;;;     DEBUGF  1, "K : FORCEDETH: mii_rw wrote 0x%x to reg %d at PHY %d\n", ecx, edx, ebx
+;;;     klog_   LOG_DEBUG, "FORCEDETH: mii_rw wrote 0x%x to reg %d at PHY %d\n", ecx, edx, ebx
         mov     eax, 0
         jmp     .return
 
@@ -1541,13 +1544,13 @@ kproc forcedeth_mii_rw ;////////////////////////////////////////////////////////
         mov     eax, dword[edi + NvRegMIIStatus]
         test    eax, NVREG_MIISTAT_ERROR
         jz      @f
-;;;     DEBUGF  1, "K : FORCEDETH: mii_rw of reg %d at PHY %d failed.\n", edx, ebx
+;;;     klog_   LOG_DEBUG, "FORCEDETH: mii_rw of reg %d at PHY %d failed.\n", edx, ebx
         mov     eax, 0xffffffff
         jmp     .return
 
     @@: ; retval = readl(base + NvRegMIIData)
         mov     eax, dword[edi + NvRegMIIData]
-;;;     DEBUGF  1, "K : FORCEDETH: mii_rw read from reg %d at PHY %d: 0x%x.\n", edx, ebx, eax
+;;;     klog_   LOG_DEBUG, "FORCEDETH: mii_rw read from reg %d at PHY %d: 0x%x.\n", edx, ebx, eax
 
   .return:
         pop     ebx
@@ -1775,7 +1778,7 @@ kproc forcedeth_phy_init ;//////////////////////////////////////////////////////
         test    eax, eax
         jz      @f
         ; printf("phy write to advertise failed.\n");
-        DEBUGF  1, " K : FORCEDETH: phy write to advertise failed.\n"
+        klog_   LOG_ERROR, "FORCEDETH: phy write to advertise failed.\n"
 
         ; return PHY_ERROR;
         mov     eax, PHY_ERROR
@@ -1788,7 +1791,7 @@ kproc forcedeth_phy_init ;//////////////////////////////////////////////////////
         mov     dword[forcedeth_tmp_phyinterface], eax
 
         ;;;;;;;;;;;;;;;;;;;;;;;;;
-        DEBUGF  1, " K : FORCEDETH: phy interface type = 0x%x\n", [forcedeth_tmp_phyinterface]:8
+        klog_   LOG_DEBUG, "FORCEDETH: phy interface type = 0x%x\n", [forcedeth_tmp_phyinterface]:8
         ;;;;;;;;;;;;;;;;;;;;;;;;;
 
         ; see if gigabit phy
@@ -1839,7 +1842,7 @@ kproc forcedeth_phy_init ;//////////////////////////////////////////////////////
         jz      .next_if
 
         ; printf("phy init failed.\n");
-        DEBUGF  1, " K : FORCEDETH: phy init failed.\n"
+        klog_   LOG_ERROR, "FORCEDETH: phy init failed.\n"
 
         ; return PHY_ERROR;
         mov     eax, PHY_ERROR
@@ -1852,7 +1855,7 @@ kproc forcedeth_phy_init ;//////////////////////////////////////////////////////
         test    eax, eax
         jz      @f
         ; printf("phy reset failed\n")
-        DEBUGF  1, " K : FORCEDETH: phy reset failed.\n"
+        klog_   LOG_ERROR, "FORCEDETH: phy reset failed.\n"
         ; return PHY_ERROR
         mov     eax, PHY_ERROR
         jmp     .return
@@ -1883,7 +1886,7 @@ kproc forcedeth_phy_init ;//////////////////////////////////////////////////////
         test    eax, eax
         jz      @f
         ; printf("phy init failed.\n")
-        DEBUGF  1, " K : FORCEDETH: phy init failed.\n"
+        klog_   LOG_ERROR, "FORCEDETH: phy init failed.\n"
         ; return PHY_ERROR
         mov     eax, PHY_ERROR
         jmp     .return
@@ -1905,7 +1908,7 @@ kproc forcedeth_phy_init ;//////////////////////////////////////////////////////
         test    eax, eax
         jz      .next_if2
         ; printf("phy init failed.\n")
-        DEBUGF  1, " K : FORCEDETH: phy init failed.\n"
+        klog_   LOG_ERROR, "FORCEDETH: phy init failed.\n"
         ; return PHY_ERROR
         mov     eax, PHY_ERROR
         jmp     .return
@@ -1931,7 +1934,7 @@ kproc forcedeth_phy_init ;//////////////////////////////////////////////////////
         test    eax, eax
         jz      .restart
         ; printf("phy init failed.\n");
-        DEBUGF  1, " K : FORCEDETH: phy init failed.\n"
+        klog_   LOG_ERROR, "FORCEDETH: phy init failed.\n"
         ; return PHY_ERROR;
         jmp     .return
 
@@ -2043,7 +2046,7 @@ kproc forcedeth_mac_reset ;/////////////////////////////////////////////////////
         push    esi edi
 
         ; dprintf("mac_reset\n")
-        DEBUGF  1, " K : FORCEDETH: mac_reset.\n"
+        klog_   LOG_DEBUG, "FORCEDETH: mac_reset.\n"
 
         ; writel(NVREG_TXRXCTL_BIT2 | NVREG_TXRXCTL_RESET | np->desc_ver, base + NvRegTxRxControl)
         mov     edi, dword[forcedeth_mapio_addr]
@@ -2142,7 +2145,7 @@ kproc forcedeth_txrx_reset ;////////////////////////////////////////////////////
         push    eax esi edi
 
         ; dprintf(("txrx_reset\n"))
-        DEBUGF  1, " K : FORCEDETH: txrx_reset.\n"
+        klog_   LOG_DEBUG, "FORCEDETH: txrx_reset.\n"
 
         ; writel(NVREG_TXRXCTL_BIT2 | NVREG_TXRXCTL_RESET | np->desc_ver, base + NvRegTxRxControl)
         mov     edi, dword[forcedeth_mapio_addr]
@@ -2222,7 +2225,7 @@ kproc forcedeth_start_rx ;//////////////////////////////////////////////////////
         push    edi
 
         ; dprintf(("start_rx\n"))
-        DEBUGF  1, " K : FORCEDETH: start_rx.\n"
+        klog_   LOG_DEBUG, "FORCEDETH: start_rx.\n"
 
         ; Already running? Stop it.
         ; if (readl(base + NvRegReceiverControl) & NVREG_RCVCTL_START) {
@@ -2256,7 +2259,7 @@ kproc forcedeth_stop_rx ;///////////////////////////////////////////////////////
         push    esi edi
 
         ; dprintf(("stop_rx\n"))
-        DEBUGF  1, " K : FORCEDETH: stop_rx.\n"
+        klog_   LOG_DEBUG, "FORCEDETH: stop_rx.\n"
 
         ; writel(0, base + NvRegReceiverControl)
         mov     edi, dword[forcedeth_mapio_addr]
@@ -2343,7 +2346,7 @@ kproc forcedeth_update_linkspeed ;//////////////////////////////////////////////
         jnz     @f
 
         ; printf("no link detected by phy - falling back to 10HD.\n")
-        DEBUGF  1, " K : FORCEDETH: update_linkspeed: no link detected by phy - falling back to 10HD.\n"
+        klog_   LOG_WARNING, "FORCEDETH: update_linkspeed: no link detected by phy - falling back to 10HD.\n"
 
         ; newls = NVREG_LINKSPEED_FORCE | NVREG_LINKSPEED_10
         mov     dword[forcedeth_tmp_newls], NVREG_LINKSPEED_FORCE or NVREG_LINKSPEED_10
@@ -2372,7 +2375,7 @@ kproc forcedeth_update_linkspeed ;//////////////////////////////////////////////
         mov     dword[forcedeth_tmp_retval], 0
 
         ; printf("autoneg not completed - falling back to 10HD.\n")
-        DEBUGF  1, " K : FORCEDETH: update_linkspeed: autoneg not completed - falling back to 10HD.\n"
+        klog_   LOG_WARNING, "FORCEDETH: update_linkspeed: autoneg not completed - falling back to 10HD.\n"
 
         ; goto set_speed
         jmp     .set_speed
@@ -2407,7 +2410,7 @@ kproc forcedeth_update_linkspeed ;//////////////////////////////////////////////
         jz      .end_if
 
         ; printf ("update_linkspeed: GBit ethernet detected.\n")
-        DEBUGF  1, " K : FORCEDETH: update_linkspeed: GBit ethernet detected.\n"
+        klog_   LOG_DEBUG, "FORCEDETH: update_linkspeed: GBit ethernet detected.\n"
 
         ; newls = NVREG_LINKSPEED_FORCE | NVREG_LINKSPEED_1000
         mov     dword[forcedeth_tmp_newls], NVREG_LINKSPEED_FORCE or NVREG_LINKSPEED_1000
@@ -2436,7 +2439,8 @@ kproc forcedeth_update_linkspeed ;//////////////////////////////////////////////
         mov     dword[forcedeth_tmp_lpa], eax
 
         ; dprintf(("update_linkspeed: PHY advertises 0x%hX, lpa 0x%hX.\n", adv, lpa));
-        DEBUGF  1, " K : FORCEDETH: update_linkspeed: PHY advertises 0x%x, lpa 0x%x.\n", [forcedeth_tmp_adv]:8, [forcedeth_tmp_lpa]:8
+        klog_   LOG_DEBUG, "FORCEDETH: update_linkspeed: PHY advertises 0x%x, lpa 0x%x.\n", [forcedeth_tmp_adv]:8, \
+                [forcedeth_tmp_lpa]:8
 
         ; FIXME: handle parallel detection properly, handle gigabit ethernet
         ; lpa = lpa & adv
@@ -2482,7 +2486,7 @@ kproc forcedeth_update_linkspeed ;//////////////////////////////////////////////
 
     @@: ; } else {
         ; printf("bad ability %hX - falling back to 10HD.\n", lpa)
-        DEBUGF  1, " K : FORCEDETH: update_linkspeed: bad ability 0x%x - falling back to 10HD.\n", eax
+        klog_   LOG_WARNING, "FORCEDETH: update_linkspeed: bad ability 0x%x - falling back to 10HD.\n", eax
 
         ; newls = NVREG_LINKSPEED_FORCE | NVREG_LINKSPEED_10
         mov     dword[forcedeth_tmp_newls], NVREG_LINKSPEED_FORCE or NVREG_LINKSPEED_10
@@ -2504,7 +2508,8 @@ kproc forcedeth_update_linkspeed ;//////////////////////////////////////////////
   .end_if2:
         ; dprintf(("changing link setting from %d/%s to %d/%s.\n",
         ;    np->linkspeed, np->duplex ? "Full-Duplex": "Half-Duplex", newls, newdup ? "Full-Duplex": "Half-Duplex"))
-        DEBUGF  1, " K : FORCEDETH: update_linkspeed: changing link from %x/XD to %x/XD.\n", [forcedeth_linkspeed]:8, [forcedeth_tmp_newls]:8 ; !!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        klog_   LOG_DEBUG, "FORCEDETH: update_linkspeed: changing link from %x/XD to %x/XD.\n", \
+                [forcedeth_linkspeed]:8, [forcedeth_tmp_newls]:8 ; !!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
         ; np->duplex = newdup
         mov     eax, dword[forcedeth_tmp_newdup]
@@ -2618,7 +2623,7 @@ kproc forcedeth_start_tx ;//////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    edi
         ; dprintf(("start_tx\n"))
-        DEBUGF  1, " K : FORCEDETH: start_tx.\n"
+        klog_   LOG_DEBUG, "FORCEDETH: start_tx.\n"
 
         ; writel(NVREG_XMITCTL_START, base + NvRegTransmitterControl)
         mov     edi, dword[forcedeth_mapio_addr]
@@ -2637,7 +2642,7 @@ kproc forcedeth_int_handler ;///////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Interrupt handler
 ;-----------------------------------------------------------------------------------------------------------------------
-        DEBUGF  1, " K : FORCEDETH: interrupt handler.\n"
+        klog_   LOG_DEBUG, "FORCEDETH: interrupt handler.\n"
 
         ret
 kendp

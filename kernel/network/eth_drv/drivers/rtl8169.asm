@@ -393,7 +393,7 @@ endg
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc rtl8169_init_board ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;       DEBUGF  1, "K : rtl8169_init_board\n"
+;       klog_   LOG_DEBUG, "rtl8169_init_board\n"
 
         call    adjust_pci_device
 
@@ -414,7 +414,7 @@ kproc rtl8169_init_board ;//////////////////////////////////////////////////////
     @@: ; identify config method
         RTL_R32 RTL8169_REG_TxConfig
         and     eax, 0x7c800000
-;       DEBUGF  1, "K : rtl8169_init_board: TxConfig & 0x7c800000 = 0x%x\n", eax
+;       klog_   LOG_DEBUG, "rtl8169_init_board: TxConfig & 0x7c800000 = 0x%x\n", eax
         mov     esi, mac_info - 8
 
     @@: add     esi, 8
@@ -450,9 +450,9 @@ kproc rtl8169_init_board ;//////////////////////////////////////////////////////
         jmp     .match
 
     @@: ; if unknown chip, assume array element #0, original RTL-8169 in this case
-;       DEBUGF  1, "K : rtl8169_init_board: PCI device: unknown chip version, assuming RTL-8169\n"
+;       klog_   LOG_WARNING, "rtl8169_init_board: PCI device: unknown chip version, assuming RTL-8169\n"
         RTL_R32 RTL8169_REG_TxConfig
-;       DEBUGF  1, "K : rtl8169_init_board: PCI device: TxConfig = 0x%x\n", eax
+;       klog_   LOG_DEBUG, "rtl8169_init_board: PCI device: TxConfig = 0x%x\n", eax
 
         mov     [rtl8169_tpc.chipset], 0
 
@@ -468,7 +468,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc rtl8169_hw_PHY_config ;///////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;       DEBUGF  1, "K : rtl8169_hw_PHY_config: priv.mcfg=%d, priv.pcfg=%d\n", [rtl8169_tpc.mcfg], [rtl8169_tpc.pcfg]
+;       klog_   LOG_DEBUG, "rtl8169_hw_PHY_config: priv.mcfg=%d, priv.pcfg=%d\n", [rtl8169_tpc.mcfg], [rtl8169_tpc.pcfg]
 
 ;       DBG_PRINT("priv->mcfg=%d, priv->pcfg=%d\n", tpc->mcfg, tpc->pcfg);
 
@@ -534,7 +534,7 @@ kproc rtl8169_hw_PHY_config ;///////////////////////////////////////////////////
 
   .not_2_or_3:
 ;       DBG_PRINT("tpc->mcfg=%d. Discard hw PHY config.\n", tpc->mcfg);
-;       DEBUGF  1, "K :   tpc.mcfg=%d, discard hw PHY config\n", [rtl8169_tpc.mcfg]
+;       klog_   LOG_DEBUG, "  tpc.mcfg=%d, discard hw PHY config\n", [rtl8169_tpc.mcfg]
 
   .exit:
         ret
@@ -549,7 +549,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 proc RTL8169_WRITE_GMII_REG, RegAddr:byte, value:dword ;////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;;;     DEBUGF  1, "K : RTL8169_WRITE_GMII_REG: 0x%x 0x%x\n", [RegAddr]:2, [value]
+;;;     klog_   LOG_DEBUG, "RTL8169_WRITE_GMII_REG: 0x%x 0x%x\n", [RegAddr]:2, [value]
 
         movzx   eax, [RegAddr]
         shl     eax, 16
@@ -574,7 +574,7 @@ endp
 ;-----------------------------------------------------------------------------------------------------------------------
 proc RTL8169_READ_GMII_REG, RegAddr:byte ;//////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;;;     DEBUGF  1, "K : RTL8169_READ_GMII_REG: 0x%x\n", [RegAddr]:2
+;;;     klog_   LOG_DEBUG, "RTL8169_READ_GMII_REG: 0x%x\n", [RegAddr]:2
 
         push    ecx
         movzx   eax, [RegAddr]
@@ -606,7 +606,7 @@ endp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc rtl8169_set_rx_mode ;/////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;       DEBUGF  1, "K : rtl8169_set_rx_mode\n"
+;       klog_   LOG_DEBUG, "rtl8169_set_rx_mode\n"
 
         ; IFF_ALLMULTI
         ; Too many to filter perfectly -- accept all multicasts
@@ -625,7 +625,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc rtl8169_init_ring ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;       DEBUGF  1, "K : rtl8169_init_ring\n"
+;       klog_   LOG_DEBUG, "rtl8169_init_ring\n"
 
         xor     eax, eax
         mov     [rtl8169_tpc.cur_rx], eax
@@ -677,7 +677,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc rtl8169_hw_start ;////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;       DEBUGF  1, "K : rtl8169_hw_start\n"
+;       klog_   LOG_DEBUG, "rtl8169_hw_start\n"
 
         ; Soft reset the chip
         RTL_W8  RTL8169_REG_ChipCmd, RTL8169_CMD_Reset
@@ -713,11 +713,11 @@ kproc rtl8169_hw_start ;////////////////////////////////////////////////////////
         cmp     [rtl8169_tpc.mcfg], MCFG_METHOD_03
         jne     @f
         or      ax, 1 shl 14
-;       DEBUGF  1, "K :   Set MAC Reg C+CR Offset 0xE0: bit-3 and bit-14\n"
+;       klog_   LOG_DEBUG, "  Set MAC Reg C+CR Offset 0xE0: bit-3 and bit-14\n"
         jmp     .set
 
     @@:
-;       DEBUGF  1, "K :   Set MAC Reg C+CR Offset 0xE0: bit-3\n"
+;       klog_   LOG_DEBUG, "  Set MAC Reg C+CR Offset 0xE0: bit-3\n"
 
   .set:
         RTL_W16 RTL8169_REG_CPlusCmd, ax
@@ -766,7 +766,7 @@ kproc rtl8169_probe ;///////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;# Destroyed registers: eax, ebx, ecx, edx
 ;-----------------------------------------------------------------------------------------------------------------------
-;       DEBUGF  1, "K : rtl8169_probe: 0x%x : 0x%x 0x%x\n", [io_addr]:8, [pci_bus]:2, [pci_dev]:2
+;       klog_   LOG_DEBUG, "rtl8169_probe: 0x%x : 0x%x 0x%x\n", [io_addr]:8, [pci_bus]:2, [pci_dev]:2
 
         call    rtl8169_init_board
 
@@ -782,22 +782,23 @@ kproc rtl8169_probe ;///////////////////////////////////////////////////////////
         inc     ebx
         loop    @b
 
-;       DEBUGF  1, "K : rtl8169_probe: MAC = %x-%x-%x-%x-%x-%x\n", [node_addr+0]:2, [node_addr+1]:2, [node_addr+2]:2, [node_addr+3]:2, [node_addr+4]:2, [node_addr+5]:2
+;       klog_   LOG_DEBUG, "rtl8169_probe: MAC = %x-%x-%x-%x-%x-%x\n", [node_addr+0]:2, [node_addr+1]:2, \
+;               [node_addr+2]:2, [node_addr+3]:2, [node_addr+4]:2, [node_addr+5]:2
 
         ; Config PHY
         stdcall rtl8169_hw_PHY_config
-;       DEBUGF  1, "K :   Set MAC Reg C+CR Offset 0x82h = 0x01h\n"
+;       klog_   LOG_DEBUG, "  Set MAC Reg C+CR Offset 0x82h = 0x01h\n"
         RTL_W8  0x82, 0x01
         cmp     [rtl8169_tpc.mcfg], MCFG_METHOD_03
         jae     @f
-;       DEBUGF  1, "K :   Set PCI Latency=0x40\n"
+;       klog_   LOG_DEBUG, "  Set PCI Latency=0x40\n"
 ;       stdcall pci_write_config_byte, PCI_LATENCY_TIMER, 0x40
 
     @@: cmp     [rtl8169_tpc.mcfg], MCFG_METHOD_02
         jne     @f
-;       DEBUGF  1, "K :   Set MAC Reg C+CR Offset 0x82h = 0x01h\n"
+;       klog_   LOG_DEBUG, "  Set MAC Reg C+CR Offset 0x82h = 0x01h\n"
         RTL_W8  0x82, 0x01
-;       DEBUGF  1, "K :   Set PHY Reg 0x0bh = 0x00h\n"
+;       klog_   LOG_DEBUG, "  Set PHY Reg 0x0bh = 0x00h\n"
         stdcall RTL8169_WRITE_GMII_REG, 0x0b, 0x0000 ; w 0x0b 15 0 0
 
     @@: ; if TBI is not enabled
@@ -840,7 +841,7 @@ kproc rtl8169_reset ;///////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;# Destroyed registers: eax, ebx, ecx, edx
 ;-----------------------------------------------------------------------------------------------------------------------
-;       DEBUGF  1, "K : rtl8169_reset: 0x%x : 0x%x 0x%x\n", [io_addr]:8, [pci_bus]:2, [pci_dev]:2
+;       klog_   LOG_DEBUG, "rtl8169_reset: 0x%x : 0x%x 0x%x\n", [io_addr]:8, [pci_bus]:2, [pci_dev]:2
 
         mov     [rtl8169_tpc.TxDescArrays], rtl8169_tx_ring
         ; Tx Desscriptor needs 256 bytes alignment
@@ -882,7 +883,7 @@ kproc rtl8169_transmit ;////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;# Destroyed registers: eax, edx, esi, edi
 ;-----------------------------------------------------------------------------------------------------------------------
-;       DEBUGF  1, "K : rtl8169_transmit\n" ; : 0x%x : 0x%x 0x%x 0x%x 0x%x\n", [io_addr]:8, edi, bx, ecx, esi
+;       klog_   LOG_DEBUG, "rtl8169_transmit\n" ; : 0x%x : 0x%x 0x%x 0x%x 0x%x\n", [io_addr]:8, edi, bx, ecx, esi
 
         push    ecx edx esi
         mov     eax, MAX_ETH_FRAME_SIZE
@@ -965,7 +966,7 @@ kproc rtl8169_transmit ;////////////////////////////////////////////////////////
         jnz     @f
         stdcall udelay, 10
         loop    @b
-;       DEBUGF  1, "K : rtl8169_transmit: TX Time Out\n"
+;       klog_   LOG_ERROR, "rtl8169_transmit: TX Time Out\n"
 
     @@: ret
 kendp
@@ -979,7 +980,7 @@ kproc rtl8169_poll ;////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;# Destroyed registers: eax, edx, ecx
 ;-----------------------------------------------------------------------------------------------------------------------
-;       DEBUGF  1, "K : rtl8169_poll\n" ; : 0x%x : none\n", [io_addr]:8
+;       klog_   LOG_DEBUG, "rtl8169_poll\n" ; : 0x%x : none\n", [io_addr]:8
 
         mov     [eth_rx_data_len], 0
 
@@ -988,17 +989,17 @@ kproc rtl8169_poll ;////////////////////////////////////////////////////////////
         add     eax, [rtl8169_tpc.RxDescArray]
         mov     ebx, eax
 
-;       DEBUGF  1, "K :   rtl8169_RxDesc.status = 0x%x\n", [ebx + rtl8169_RxDesc.status]
+;       klog_   LOG_DEBUG, "  rtl8169_RxDesc.status = 0x%x\n", [ebx + rtl8169_RxDesc.status]
 
         test    [ebx + rtl8169_RxDesc.status], RTL8169_DSB_OWNbit ; 0x80000600
         jnz     .exit
 
-;       DEBUGF  1, "K :   rtl8169_tpc.cur_rx = %u\n", [rtl8169_tpc.cur_rx]
+;       klog_   LOG_DEBUG, "  rtl8169_tpc.cur_rx = %u\n", [rtl8169_tpc.cur_rx]
 
         ; h/w no longer present (hotplug?) or major error, bail
         RTL_R16 RTL8169_REG_IntrStatus
 
-;       DEBUGF  1, "K :   IntrStatus = 0x%x\n", ax
+;       klog_   LOG_DEBUG, "  IntrStatus = 0x%x\n", ax
 
         cmp     ax, 0xffff
         je      .exit
@@ -1009,7 +1010,7 @@ kproc rtl8169_poll ;////////////////////////////////////////////////////////////
 
         mov     eax, [ebx + rtl8169_RxDesc.status]
 
-;       DEBUGF  1, "K :   RxDesc.status = 0x%x\n", eax
+;       klog_   LOG_DEBUG, "  RxDesc.status = 0x%x\n", eax
 
         test    eax, RTL8169_SD_RxRES
         jnz     .else
@@ -1018,7 +1019,7 @@ kproc rtl8169_poll ;////////////////////////////////////////////////////////////
         add     eax, -4
         mov     [eth_rx_data_len], ax
 
-;       DEBUGF  1, "K : rtl8169_poll: data length = %u\n", ax
+;       klog_   LOG_DEBUG, "rtl8169_poll: data length = %u\n", ax
 
         push    eax
         mov     ecx, eax
@@ -1045,7 +1046,7 @@ kproc rtl8169_poll ;////////////////////////////////////////////////////////////
         jmp     @f
 
   .else:
-;        DEBUGF  1, "K : rtl8169_poll: Rx Error\n"
+;       klog_   LOG_ERROR, "rtl8169_poll: Rx Error\n"
         ; FIXME: shouldn't I reset the status on an error
 
     @@: inc     [rtl8169_tpc.cur_rx]

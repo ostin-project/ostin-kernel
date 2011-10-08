@@ -325,7 +325,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc r6040_probe ;/////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        DEBUGF  1, "Probing r6040\n"
+        klog_   LOG_DEBUG, "Probing r6040\n"
 
         call    adjust_pci_device
 
@@ -358,7 +358,7 @@ kproc r6040_probe ;/////////////////////////////////////////////////////////////
         or      eax, [node_addr]
         test    eax, eax
         jnz     @f
-        DEBUGF  1, "K : MAC address not initialized\n" ; , generating random"
+        klog_   LOG_WARNING, "MAC address not initialized\n" ; , generating random"
         ; TODO: Add here generate function call!
         ;       Temporary workaround: init by constant adress
         mov     dword[node_addr], 0x00006000
@@ -373,7 +373,7 @@ kproc r6040_probe ;/////////////////////////////////////////////////////////////
         stdcall r6040_phy_read, 1, 2
         cmp     ax, 0xffff
         jne     @f
-        DEBUGF  1, "K : Failed to detect an attached PHY\n" ; , generating random"
+        klog_   LOG_ERROR, "Failed to detect an attached PHY\n" ; , generating random"
         mov     eax, -1
         ret
 
@@ -445,7 +445,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc r6040_reset ;/////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        DEBUGF  1, "Resetting r6040\n"
+        klog_   LOG_DEBUG, "Resetting r6040\n"
 
         push    eax ecx edx
         ; Mask off Interrupt
@@ -538,7 +538,7 @@ kproc r6040_reset ;/////////////////////////////////////////////////////////////
 
         pop     edx ecx eax
 
-        DEBUGF  1, "reset ok!\n"
+        klog_   LOG_DEBUG, "reset ok!\n"
 
         ; Indicate that we have successfully reset the card
         mov     eax, [pci_data]
@@ -694,7 +694,7 @@ kproc r6040_transmit ;//////////////////////////////////////////////////////////
         movzx   eax, [r6040_private.cur_tx]
         shl     eax, 5
 
-;       DEBUGF  1, "R6040: TX buffer status: 0x%x, eax=%u\n", [eax + r6040_tx_ring + r6040_x_head.status]:4, eax
+;       klog_   LOG_DEBUG, "R6040: TX buffer status: 0x%x, eax=%u\n", [eax + r6040_tx_ring + r6040_x_head.status]:4, eax
 
         test    [r6040_tx_ring + eax + r6040_x_head.status], 0x8000 ; check if buffer is available
         jz      .l3
@@ -714,7 +714,7 @@ kproc r6040_transmit ;//////////////////////////////////////////////////////////
 
   .l4:
         pop     esi ecx
-        DEBUGF  1, "R6040: Send timeout\n"
+        klog_   LOG_ERROR, "R6040: Send timeout\n"
         jmp     .out
 
   .l5:

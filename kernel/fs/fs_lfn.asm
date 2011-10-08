@@ -595,7 +595,7 @@ kproc fs_OnRamdisk ;////////////////////////////////////////////////////////////
 
         mov     eax, [ebx + fs.query_t.function]
 
-        DEBUGF  1, "fs_OnRamdisk(%u): begin\n", eax
+        klog_   LOG_DEBUG, "fs_OnRamdisk(%u): begin\n", eax
         push    eax
 
         mov     ecx, [ebx + fs.query_t.generic.param3]
@@ -608,7 +608,7 @@ kproc fs_OnRamdisk ;////////////////////////////////////////////////////////////
         mov     [esp + 4 + regs_context32_t.ebx], ebx
 
         pop     eax
-        DEBUGF  1, "fs_OnRamdisk(%u): end\n", eax
+        klog_   LOG_DEBUG, "fs_OnRamdisk(%u): end\n", eax
 
         ret
 kendp

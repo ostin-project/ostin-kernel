@@ -90,7 +90,7 @@ kendp
 kproc sysfn.not_implemented ;///////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         ; TODO: kill offensive process
-        DEBUGF  1, "K : unknown sysfn: %u:%u:%u\n", [esp + 4 + regs_context32_t.eax], \
+        klog_   LOG_ERROR, "unknown sysfn: %u:%u:%u\n", [esp + 4 + regs_context32_t.eax], \
                 [esp + 4 + regs_context32_t.ebx], [esp + 4 + regs_context32_t.ecx]
         or      [esp + 4 + regs_context32_t.eax], -1
         ret
@@ -100,7 +100,7 @@ kendp
 kproc sysfn.not_implemented_cross_order ;///////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         ; TODO: kill offensive process
-        DEBUGF  1, "K : unknown sysfn (xo): %u:%u:%u\n", [esp + 8 + regs_context32_t.eax], \
+        klog_   LOG_ERROR, "unknown sysfn (xo): %u:%u:%u\n", [esp + 8 + regs_context32_t.eax], \
                 [esp + 8 + regs_context32_t.ebx], [esp + 8 + regs_context32_t.ecx]
         or      [esp + 8 + regs_context32_t.eax], -1
         ret
