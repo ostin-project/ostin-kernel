@@ -990,7 +990,13 @@ osloop:
         call    checkVga_N13
         call    stack_handler
         call    checkidle
-        call    check_fdd_motor_status
+
+if KCONFIG_BLKDEV_FLOPPY
+
+        call    blkdev.floppy.ctl.process_events
+
+end if ; KCONFIG_BLKDEV_FLOPPY
+
         call    check_ATAPI_device_event
         jmp     osloop
 

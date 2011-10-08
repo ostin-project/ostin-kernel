@@ -199,6 +199,15 @@ kproc blkdev.floppy.ctl.recalibrate ;///////////////////////////////////////////
         ret
 kendp
 
+;-----------------------------------------------------------------------------------------------------------------------
+kproc blkdev.floppy.ctl.process_events ;////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        ; TODO: make use of dynamic device data (not yet implemented)
+        mov     ebx, static_test_floppy_device_data
+        call    blkdev.floppy.ctl._.check_motor_timer
+        ret
+kendp
+
 ;;======================================================================================================================
 ;;///// private functions //////////////////////////////////////////////////////////////////////////////////////////////
 ;;======================================================================================================================
@@ -226,6 +235,51 @@ kproc blkdev.floppy.ctl._.update_motor_timer ;//////////////////////////////////
         mov     [fdd_motor_status], al
         mov_s_  [timer_fdd_motor], [timer_ticks]
         pop     eax
+
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc blkdev.floppy.ctl._.check_motor_timer ;///////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Check for FDD motor spindown delay
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= blkdev.floppy.device_data_t
+;-----------------------------------------------------------------------------------------------------------------------
+        mov     eax, [timer_ticks]
+        sub     eax, [ebx + blkdev.floppy.device_data_t.motor_timer]
+        cmp     eax, 2 * 18 ; ~2 sec
+        jb      .exit
+
+        call    blkdev.floppy.ctl._.stop_motor
+
+  .exit:
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc blkdev.floppy.ctl._.stop_motor ;//////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Turn FDD motor off
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= blkdev.floppy.device_data_t
+;-----------------------------------------------------------------------------------------------------------------------
+        mov     cl, [ebx + blkdev.floppy.device_data_t.drive_number]
+
+        mov     dx, FLOPPY_CTL_DOR
+        mov     al, cl
+        or      al, 00001100b
+        out     dx, al
+
+        mov     [blkdev.floppy.ctl._.data.last_drive_number], cl
+        and     [ebx + blkdev.floppy.device_data_t.motor_timer], 0
+
+        ; TODO: remove this
+        and     [fdd_motor_status], 0
+        and     [flp_status], 0
+        ; reset cache flags due to stale info
+        and     [root_read], 0
+        and     [flp_fat], 0
 
         ret
 kendp
@@ -259,11 +313,11 @@ kproc blkdev.floppy.ctl._.select_drive ;////////////////////////////////////////
         mov     ecx, [timer_ticks]
 
   .wait_for_motor:
-        ; wait for ~3 sec
+        ; wait for ~1/3 sec
         call    change_task
         mov     eax, [timer_ticks]
         sub     eax, ecx
-        cmp     eax, 3 * 18
+        cmp     eax, (1 * 18) / 3
         jb      .wait_for_motor
 
   .exit:
