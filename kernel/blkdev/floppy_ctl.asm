@@ -246,10 +246,13 @@ kproc blkdev.floppy.ctl._.check_motor_timer ;///////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> ebx ^= blkdev.floppy.device_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, [timer_ticks]
-        sub     eax, [ebx + blkdev.floppy.device_data_t.motor_timer]
-        cmp     eax, 2 * 18 ; ~2 sec
-        jb      .exit
+        mov     eax, [ebx + blkdev.floppy.device_data_t.motor_timer]
+        test    eax, eax
+        jz      .exit
+
+        sub     eax, [timer_ticks]
+        add     eax, 2 * 100 ; ~2 sec
+        jg      .exit
 
         call    blkdev.floppy.ctl._.stop_motor
 
@@ -270,6 +273,8 @@ kproc blkdev.floppy.ctl._.stop_motor ;//////////////////////////////////////////
         mov     al, cl
         or      al, 00001100b
         out     dx, al
+
+;       DEBUGF  1, "K : floppy motor #%u spin down\n", cl
 
         mov     [blkdev.floppy.ctl._.data.last_drive_number], cl
         and     [ebx + blkdev.floppy.device_data_t.motor_timer], 0
@@ -307,6 +312,8 @@ kproc blkdev.floppy.ctl._.select_drive ;////////////////////////////////////////
         or      al, 00001100b
         out     dx, al
 
+;       DEBUGF  1, "K : floppy motor #%u spin up\n", cl
+
         mov     [blkdev.floppy.ctl._.data.last_drive_number], cl
 
         ; reset timer tick counter
@@ -317,7 +324,7 @@ kproc blkdev.floppy.ctl._.select_drive ;////////////////////////////////////////
         call    change_task
         mov     eax, [timer_ticks]
         sub     eax, ecx
-        cmp     eax, (1 * 18) / 3
+        cmp     eax, 1 * 100 / 3
         jb      .wait_for_motor
 
   .exit:
@@ -511,7 +518,7 @@ kproc blkdev.floppy.ctl._.wait_for_interrupt ;//////////////////////////////////
         ; check for timeout (~3 sec)
         mov     eax, [timer_ticks]
         sub     eax, ecx
-        cmp     eax, 3 * 18
+        cmp     eax, 3 * 100
         jb      .check_flag
 
         ; timeout error
