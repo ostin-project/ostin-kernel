@@ -36,7 +36,11 @@ kproc fdc_init ;////////////////////////////////////////////////////////////////
 
         call    fdc_reset
 
+if KCONFIG_BLKDEV_FLOPPY
+
         or      [blkdev.floppy.ctl._.data.last_drive_number], -1
+
+end if ; KCONFIG_BLKDEV_FLOPPY
 
         ret
 kendp
