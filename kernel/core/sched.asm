@@ -36,9 +36,9 @@ kproc irq0 ;////////////////////////////////////////////////////////////////////
         mov     eax, [timer_ticks]
         call    playNote ; <<<--- Speaker driver
         sub     eax, [next_usage_update]
-        cmp     eax, 100
+        cmp     eax, 1 * KCONFIG_SYS_TIMER_FREQ
         jb      .nocounter
-        add     [next_usage_update], 100
+        add     [next_usage_update], 1 * KCONFIG_SYS_TIMER_FREQ
         call    updatecputimes
 
   .nocounter:

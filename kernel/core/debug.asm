@@ -474,7 +474,7 @@ kproc debugger_notify ;/////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         xchg    ebp, eax
         mov     edi, [timer_ticks]
-        add     edi, 500 ; 5 sec timeout
+        add     edi, 5 * KCONFIG_SYS_TIMER_FREQ ; 5 sec timeout
 
   .1:
         mov     eax, ebp

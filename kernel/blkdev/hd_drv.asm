@@ -432,7 +432,7 @@ kproc save_hd_wait_timeout ;////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax
         mov     eax, [timer_ticks]
-        add     eax, 300 ; 3 sec timeout
+        add     eax, 3 * KCONFIG_SYS_TIMER_FREQ ; 3 sec timeout
         mov     [hd_wait_timeout], eax
         pop     eax
         ret

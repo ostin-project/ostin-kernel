@@ -20,7 +20,7 @@
 ;;======================================================================================================================
 
 MaxRetr        equ 10       ; maximum retry count
-BSYWaitTime    equ 1000     ; maximum wait time for busy -> ready transition (in ticks)
+BSYWaitTime    = 10 * KCONFIG_SYS_TIMER_FREQ ; maximum wait time for busy -> ready transition (in ticks)
 NoTickWaitTime equ 0x000fffff
 CDBlockSize    equ 2048
 
@@ -230,9 +230,9 @@ kproc ReadCDWRetr_1 ;///////////////////////////////////////////////////////////
         jz      .NextRetr
         jmp     .wait
 
-    @@: ; delay for 2.5 sec
+    @@: ; delay for 0.5 sec
 ;       mov     eax, [timer_ticks]
-;       add     eax, 50 ; 250
+;       add     eax, KCONFIG_SYS_TIMER_FREQ / 2
 ;
 ; .Wait:
 ;       call    change_task
@@ -249,7 +249,7 @@ kendp
 ; Universal procedures providing packet commands execution in PIO mode
 
 ; Maximum allowed time to wait for device reaction to packet command (in ticks)
-MaxCDWaitTime equ 1000 ; 200 ; 10 seconds
+MaxCDWaitTime = 10 * KCONFIG_SYS_TIMER_FREQ ; 10 seconds
 
 uglobal
   PacketCommand     rb 12   ; packet command buffer
@@ -817,7 +817,7 @@ kproc check_ATAPI_device_event ;////////////////////////////////////////////////
         pusha
         mov     eax, [timer_ticks]
         sub     eax, [timer_ATAPI_check]
-        cmp     eax, 100
+        cmp     eax, 1 * KCONFIG_SYS_TIMER_FREQ
         jb      .end_1
 
         mov     al, [DRIVE_DATA + 1]

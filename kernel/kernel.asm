@@ -557,13 +557,13 @@ high_code:
         ; Initialize system V86 machine
         call    init_sys_v86
 
-        ; TIMER SET TO 1/100 S
-        mov     al, 0x34 ; set to 100Hz
+        ; TIMER SETUP
+        mov     al, 0x34 ; pack[2(counter #0), 2(2 reads/writes), 3(rate generator), 1(binary value)]
         out     0x43, al
-        mov     al, 0x9b ; lsb 1193180 / 1193
-        out     0x40, al
-        mov     al, 0x2e ; msb
-        out     0x40, al
+        mov     ax, 1193180 / KCONFIG_SYS_TIMER_FREQ ; should fit in word
+        out     0x40, al ; lsb (bits 0..7)
+        xchg    al, ah
+        out     0x40, al ; msb (bits 8..15)
 
         ; Enable timer IRQ (IRQ0) and hard drives IRQs (IRQ14, IRQ15)
         ; they are used: when partitions are scanned, hd_read relies on timer

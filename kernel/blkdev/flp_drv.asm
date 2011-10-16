@@ -274,7 +274,7 @@ kproc WaitFDCInterrupt ;////////////////////////////////////////////////////////
         call    change_task
         mov     eax, [timer_ticks]
         sub     eax, [TickCounter]
-        cmp     eax, 3 * 18 ; 25 ; 5 ; wait for 5 ticks
+        cmp     eax, 3 * KCONFIG_SYS_TIMER_FREQ ; wait for 3 sec
 ;       jl      .TestRS_2
         jb      .TestRS_2
         ; timeout error
@@ -334,7 +334,7 @@ kproc FDDMotorON ;//////////////////////////////////////////////////////////////
         call    change_task
         mov     eax, [timer_ticks]
         sub     eax, [TickCounter]
-        cmp     eax, 50 ; 10
+        cmp     eax, KCONFIG_SYS_TIMER_FREQ / 2
         jb      .dT
         cmp     [flp_number], 1
         jne     .fdd_motor_on_B
@@ -369,7 +369,7 @@ kproc check_fdd_motor_status ;//////////////////////////////////////////////////
         je      .end_check_fdd_motor_status_1
         mov     eax, [timer_ticks]
         sub     eax, [timer_fdd_motor]
-        cmp     eax, 500
+        cmp     eax, 5 * KCONFIG_SYS_TIMER_FREQ
         jb      .end_check_fdd_motor_status
         call    FDDMotorOFF
         mov     [fdd_motor_status], 0

@@ -923,7 +923,7 @@ kproc pcnet32_xmit ;////////////////////////////////////////////////////////////
         mov     [pcnet32_private.cur_tx], 0
         ; wait for TX to complete
         mov     ecx, [timer_ticks] ; [0xfdf0]
-        add     ecx, 100
+        add     ecx, 1 * KCONFIG_SYS_TIMER_FREQ
 
   .L2:
         mov     ax, [edi + pcnet32_tx_head.status]

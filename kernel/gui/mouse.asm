@@ -221,7 +221,7 @@ kproc mouse._.left_button_press_handler ;///////////////////////////////////////
         mov     ebx, eax
         xchg    ebx, [mouse.active_sys_window.last_ticks]
         sub     eax, ebx
-        cmp     eax, 50
+        cmp     eax, KCONFIG_SYS_TIMER_FREQ / 2
         jg      @f
 
         mov     [mouse.active_sys_window.last_ticks], 0

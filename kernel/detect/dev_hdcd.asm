@@ -221,7 +221,7 @@ kproc SendCommandToHDD ;////////////////////////////////////////////////////////
         jz     .Err1
 ;       mov     eax, [timer_ticks]
 ;       sub     eax, [TickCounter_1]
-;       cmp     eax, 300 ; wait for 300 ticks
+;       cmp     eax, 3 * KCONFIG_SYS_TIMER_FREQ ; wait for 3 sec
 ;       ja      .Err1 ; timeout error
         ; read status register
         in      al, dx

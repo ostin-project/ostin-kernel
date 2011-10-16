@@ -701,7 +701,7 @@ kproc r6040_transmit ;//////////////////////////////////////////////////////////
 
         push    ecx esi
         mov     ecx, [timer_ticks]
-        add     ecx, 100
+        add     ecx, 1 * KCONFIG_SYS_TIMER_FREQ
 
   .l2:
         test    [r6040_tx_ring + eax + r6040_x_head.status], 0x8000

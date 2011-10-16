@@ -38,7 +38,7 @@ TH_URG  = 0x20
 TWOMSL           equ 10 ; # of secs to wait before closing socket
 
 TCP_RETRIES      equ 5  ; Number of times to resend a packet
-TCP_TIMEOUT      equ 20 ; resend if not replied to in x hs
+TCP_TIMEOUT      = KCONFIG_SYS_TIMER_FREQ / 5 ; resend if not replied to in x hs
 
 ; TCP Payload ( Data field in IP datagram )
 ;
@@ -181,7 +181,7 @@ proc tcp_tx_handler stdcall ;///////////////////////////////////////////////////
 
     @@: ; Mark it to expire in 10ms - 1 tick
         mov     byte[esi + 1], 1
-        mov     word[esi + 2], 1
+        mov     word[esi + 2], KCONFIG_SYS_TIMER_FREQ / 100
         jmp     .tth005
 
   .tth004z:

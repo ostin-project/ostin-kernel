@@ -26,6 +26,9 @@ KCONFIG_DEBUG_COM_BASE fix 0
 ; make irq 3 and irq 4 available for PCI devices
 KCONFIG_USE_COM_IRQ fix 1
 
+; system timer frequency, in Hz
+KCONFIG_SYS_TIMER_FREQ fix 100
+
 KCONFIG_GREEDY_KERNEL fix 0
 
 ; don't start immediately after bootlog

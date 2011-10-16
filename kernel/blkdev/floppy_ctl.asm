@@ -251,7 +251,7 @@ kproc blkdev.floppy.ctl._.check_motor_timer ;///////////////////////////////////
         jz      .exit
 
         sub     eax, [timer_ticks]
-        add     eax, 2 * 100 ; ~2 sec
+        add     eax, 2 * KCONFIG_SYS_TIMER_FREQ ; ~2 sec
         jg      .exit
 
         call    blkdev.floppy.ctl._.stop_motor
@@ -324,7 +324,7 @@ kproc blkdev.floppy.ctl._.select_drive ;////////////////////////////////////////
         call    change_task
         mov     eax, [timer_ticks]
         sub     eax, ecx
-        cmp     eax, 1 * 100 / 3
+        cmp     eax, KCONFIG_SYS_TIMER_FREQ / 3
         jb      .wait_for_motor
 
   .exit:
@@ -518,7 +518,7 @@ kproc blkdev.floppy.ctl._.wait_for_interrupt ;//////////////////////////////////
         ; check for timeout (~3 sec)
         mov     eax, [timer_ticks]
         sub     eax, ecx
-        cmp     eax, 3 * 100
+        cmp     eax, 3 * KCONFIG_SYS_TIMER_FREQ
         jb      .check_flag
 
         ; timeout error

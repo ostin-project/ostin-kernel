@@ -375,7 +375,7 @@ kproc __sys_draw_pointer ;//////////////////////////////////////////////////////
     @@: push    eax
         mov     eax, [timer_ticks]
         sub     eax, [MouseTickCounter]
-        cmp     eax, 1
+        cmp     eax, KCONFIG_SYS_TIMER_FREQ / 100
         ja      @f
         pop     eax
         ret

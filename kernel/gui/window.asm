@@ -1520,7 +1520,7 @@ kproc window._.sys_set_window ;/////////////////////////////////////////////////
 
         ; NOTE: commented out since doesn't provide necessary functionality anyway, to be reworked
 ;       mov     eax, [timer_ticks] ; [0xfdf0]
-;       add     eax, 100
+;       add     eax, 1 * KCONFIG_SYS_TIMER_FREQ
 ;       mov     [new_window_starting], eax
 
         ; no it wasn't, performing initial window definition
