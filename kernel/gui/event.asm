@@ -310,16 +310,32 @@ kproc Wait_events_ex ;//////////////////////////////////////////////////////////
         mov     [esp + regs_context32_t.eax], eax
         popad
         or      eax, eax
-        jnz     @f ; RET
+        jnz     .exit
+
         mov     [esi + app_data_t.wait_test], edx
-        mov     [esi + app_data_t.wait_timeout], ebx
-        Mov     [esi + app_data_t.wait_begin], eax, [timer_ticks]
+
+        push    edx
+        mov     eax, ebx
+        cdq
+        cmp     eax, -1
+        je      @f
+
+        xor     edx, edx
+        call    hs_to_ticks
+        add     eax, [timer_ticks]
+        adc     edx, [timer_ticks + 4]
+
+    @@: mov     dword[esi + app_data_t.wait_timeout], eax
+        mov     dword[esi + app_data_t.wait_timeout + 4], edx
+        pop     edx
+
         mov     eax, [TASK_BASE]
         mov     [eax + task_data_t.state], TSTATE_WAITING
         call    change_task
         mov     eax, [esi + app_data_t.wait_param]
 
-    @@: ret
+  .exit:
+        ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------

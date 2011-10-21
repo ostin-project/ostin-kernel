@@ -32,7 +32,8 @@ kproc irq0 ;////////////////////////////////////////////////////////////////////
         pushad
         Mov     ds, ax, app_data
         mov     es, ax
-        inc     [timer_ticks]
+        add     [timer_ticks], 1
+        adc     [timer_ticks + 4], 0
         mov     eax, [timer_ticks]
         call    playNote ; <<<--- Speaker driver
         sub     eax, [next_usage_update]
@@ -99,7 +100,7 @@ align 4
 ;   .sel  dw ?
   context_counter   dd 0
   next_usage_update dd 0
-  timer_ticks       dd 0
+  timer_ticks       rd 2 ; NOTE: not 'dq' intentionally, to not break things for now
 ; prev_slot         dd ?
 ; event_sched       dd ?
 endg
@@ -170,10 +171,14 @@ kproc find_next_task ;//////////////////////////////////////////////////////////
         popad
         or      eax, eax
         jnz     @f
+
         ; testing for timeout
-        mov     ecx, [timer_ticks]
-        sub     ecx, [ebx + app_data_t.wait_begin]
-        cmp     ecx, [ebx + app_data_t.wait_timeout]
+        push    eax edx
+        mov     eax, [timer_ticks]
+        mov     edx, [timer_ticks + 4]
+        push    dword[ebx + app_data_t.wait_timeout + 4] dword[ebx + app_data_t.wait_timeout]
+        call    util.64bit.compare
+        pop     edx eax
         jb      .loop
 
     @@: mov     [ebx + app_data_t.wait_param], eax ; retval for wait

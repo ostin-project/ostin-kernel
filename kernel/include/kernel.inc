@@ -325,9 +325,8 @@ struct app_data_t
   io_map          rd 2
   dbg_state       dd ?
   cur_dir         dd ?
-  wait_timeout    dd ?
   saved_esp0      dd ?
-  wait_begin      dd ?
+  wait_timeout    dq ?
   wait_test       dd ?
   wait_param      dd ?
   tls_base        dd ?
