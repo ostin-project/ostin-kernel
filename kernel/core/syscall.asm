@@ -115,7 +115,17 @@ iglobal
     dd sysfn.get_time ; 3
     dd sysfn.draw_text ; 4
     dd sysfn.delay_hs ; 5
+
+if KCONFIG_BLKDEV_MEMORY
+
     dd sysfn.read_rd_file ; 6
+
+else
+
+    dd sysfn.not_implemented
+
+end if ; KCONFIG_BLKDEV_MEMORY
+
     dd sysfn.put_image ; 7
     dd sysfn.define_button ; 8
     dd sysfn.get_process_info ; 9
@@ -129,6 +139,10 @@ iglobal
 if KCONFIG_BLKDEV_FLOPPY
 
     dd sysfn.flush_floppy_cache ; 16
+
+else
+
+    dd sysfn.not_implemented
 
 end if ; KCONFIG_BLKDEV_FLOPPY
 

@@ -38,4 +38,6 @@ include "flp_drv.asm"
 match =1, KCONFIG_BLKDEV_MEMORY
 {
 include "memory.asm"
+; legacy implementation
+include "rd.asm"
 }

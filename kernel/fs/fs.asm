@@ -298,6 +298,8 @@ kproc sysfn.file_system ;///////////////////////////////////////////////////////
         push    edi ; dir start
         push    ebx ; name of file start
 
+if KCONFIG_BLKDEV_MEMORY
+
         mov     eax, [edi + 1]
         cmp     eax, 'RD  '
         je      fs_yesramdisk
@@ -344,6 +346,8 @@ kproc sysfn.file_system ;///////////////////////////////////////////////////////
 
   fs_noramdisk_read:
   fs_noramdisk:
+
+end if ; KCONFIG_BLKDEV_MEMORY
 
 if KCONFIG_BLKDEV_FLOPPY
 

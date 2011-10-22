@@ -70,10 +70,21 @@ end if ; KCONFIG_BLKDEV_FLOPPY
     db 0
 
   virtual_root_query:
+
+if KCONFIG_BLKDEV_MEMORY
+
     dd fs_HasRamdisk
     db 'rd', 0
+
+end if ; KCONFIG_BLKDEV_MEMORY
+
+if KCONFIG_BLKDEV_FLOPPY
+
     dd fs_HasFloppy
     db 'fd', 0
+
+end if ; KCONFIG_BLKDEV_FLOPPY
+
     dd fs_HasHd0
     db 'hd0', 0
     dd fs_HasHd1
@@ -96,32 +107,6 @@ end if ; KCONFIG_BLKDEV_FLOPPY
     dd biosdisk_handler, biosdisk_enum_root
     ; add new handlers here
     dd 0
-
-  fs_RamdiskServices:
-    dd 0 ; fs_RamdiskRead
-    dd 0 ; fs_RamdiskReadFolder
-    dd 0 ; fs_RamdiskRewrite
-    dd 0 ; fs_RamdiskWrite
-    dd 0 ; fs_RamdiskSetFileEnd
-    dd 0 ; fs_RamdiskGetFileInfo
-    dd 0 ; fs_RamdiskSetFileInfo
-    dd 0
-    dd 0 ; fs_RamdiskDelete
-    dd 0 ; fs_RamdiskCreateFolder
-  fs_NumRamdiskServices = ($ - fs_RamdiskServices) / 4
-
-  fs_FloppyServices:
-    dd 0 ; fs_FloppyRead
-    dd 0 ; fs_FloppyReadFolder
-    dd 0 ; fs_FloppyRewrite
-    dd 0 ; fs_FloppyWrite
-    dd 0 ; fs_FloppySetFileEnd
-    dd 0 ; fs_FloppyGetFileInfo
-    dd 0 ; fs_FloppySetFileInfo
-    dd 0
-    dd 0 ; fs_FloppyDelete
-    dd 0 ; fs_FloppyCreateFolder
-  fs_NumFloppyServices = ($ - fs_FloppyServices) / 4
 
   fs_HdServices:
     dd fs_HdRead
@@ -175,7 +160,7 @@ kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////
 ;#   8 - delete file
 ;#   9 - create directory
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     [ebx + fs.query_t.function], fs_NumRamdiskServices
+        cmp     [ebx + fs.query_t.function], fs_NumHdServices
         jae     sysfn.not_implemented
 
         ; parse file name
@@ -533,6 +518,27 @@ kendp
 ;< [image_of_ebx] = image of ebx
 ;-----------------------------------------------------------------------------------------------------------------------
 
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.generic_query_handler ;////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= fs.query_t
+;> edx ^= fs.partition_t
+;-----------------------------------------------------------------------------------------------------------------------
+        mov     eax, [ebx + fs.query_t.function]
+        shl     eax, 2
+        add     eax, [edx + fs.partition_t.vftbl]
+        mov     eax, [eax]
+        test    eax, eax
+        jz      sysfn.not_implemented
+
+        xchg    ebx, edx
+        add     edx, fs.query_t.generic ; ^= fs.?_query_params_t
+        call    eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
+        mov     [esp + 4 + regs_context32_t.ebx], ebx
+        ret
+kendp
+
 iglobal
   if KCONFIG_BLKDEV_MEMORY
 
@@ -592,46 +598,7 @@ if KCONFIG_BLKDEV_MEMORY
 kproc fs_OnGenericQuery ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     edx, static_test_ram_partition
-
-        mov     eax, [ebx + fs.query_t.function]
-        shl     eax, 2
-        add     eax, [edx + fs.partition_t.vftbl]
-        mov     eax, [eax]
-        test    eax, eax
-        jz      fs_OnRamdisk
-
-        xchg    ebx, edx
-        add     edx, fs.query_t.generic ; ^= fs.?_query_params_t
-        call    eax
-        mov     [esp + 4 + regs_context32_t.eax], eax
-        mov     [esp + 4 + regs_context32_t.ebx], ebx
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc fs_OnRamdisk ;////////////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        cmp     ecx, 1
-        jnz     sysfn.file_system_lfn.notfound
-
-        mov     eax, [ebx + fs.query_t.function]
-
-        klog_   LOG_DEBUG, "fs_OnRamdisk(%u): begin\n", eax
-        push    eax
-
-        mov     ecx, [ebx + fs.query_t.generic.param3]
-        mov     edx, [ebx + fs.query_t.generic.param4]
-        add     ebx, fs.query_t.generic
-
-        call    dword[fs_RamdiskServices + eax * 4]
-
-        mov     [esp + 4 + regs_context32_t.eax], eax
-        mov     [esp + 4 + regs_context32_t.ebx], ebx
-
-        pop     eax
-        klog_   LOG_DEBUG, "fs_OnRamdisk(%u): end\n", eax
-
-        ret
+        jmp     fs.generic_query_handler
 kendp
 
 end if ; KCONFIG_BLKDEV_MEMORY
@@ -698,43 +665,7 @@ if KCONFIG_BLKDEV_FLOPPY
 kproc fs_OnGenericQuery2 ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     edx, static_test_floppy_partition
-
-        mov     eax, [ebx + fs.query_t.function]
-        shl     eax, 2
-        add     eax, [edx + fs.partition_t.vftbl]
-        mov     eax, [eax]
-        test    eax, eax
-        jz      fs_OnFloppy
-
-        xchg    ebx, edx
-        add     edx, fs.query_t.generic ; ^= fs.?_query_params_t
-        call    eax
-        mov     [esp + 4 + regs_context32_t.eax], eax
-        mov     [esp + 4 + regs_context32_t.ebx], ebx
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc fs_OnFloppy ;/////////////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        cmp     ecx, 2
-        ja      sysfn.file_system_lfn.notfound
-
-        call    reserve_flp
-        mov     [flp_number], cl
-
-        mov     eax, [ebx + fs.query_t.function]
-        mov     ecx, [ebx + fs.query_t.generic.param3]
-        mov     edx, [ebx + fs.query_t.generic.param4]
-        add     ebx, fs.query_t.generic
-
-        call    dword[fs_FloppyServices + eax * 4]
-
-        mov     [esp + 4 + regs_context32_t.eax], eax
-        mov     [esp + 4 + regs_context32_t.ebx], ebx
-
-        and     [flp_status], 0
-        ret
+        jmp     fs.generic_query_handler
 kendp
 
 end if ; KCONFIG_BLKDEV_FLOPPY

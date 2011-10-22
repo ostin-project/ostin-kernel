@@ -21,7 +21,6 @@ include "blkdev/cd_drv.asm"
 include "blkdev/cdrom.asm"
 include "blkdev/hd_drv.asm"
 include "blkdev/ide_cache.asm"
-include "blkdev/rd.asm"
 
 include "bus/pci/pci.asm"
 
