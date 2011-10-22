@@ -202,7 +202,7 @@ virtual at OS_BASE
   CDDataBuf:            rb 0x1000
   FLOPPY_BUFF           rb 0x2400
                         rb OS_BASE + 0x0000d000 - $
-  FDD_BUFF              rb 0x200
+  FDC_DMA_BUFFER        rb FLOPPY_CTL_BYTES_PER_SECTOR
                         rb OS_BASE + 0x00010000 - $
   KERNEL_CODE           rb 371 * 1024
                         rb OS_BASE + 0x0006dbf0 - $

@@ -270,7 +270,7 @@ kproc floppy_fileread ;/////////////////////////////////////////////////////////
         cmp     [FDC_Status], 0
         jne     .fdc_status_error_3_1
         mov     dl, 16
-        mov     edi, FDD_BUFF
+        mov     edi, FDC_DMA_BUFFER
         inc     [FDD_Sector]
 
   .l.21_1:
@@ -495,7 +495,7 @@ kproc check_label ;/////////////////////////////////////////////////////////////
         cmp     [FDC_Status], 0
         jne     .fdc_status_error
         mov     esi, flp_label
-        mov     edi, FDD_BUFF + 39
+        mov     edi, FDC_DMA_BUFFER + 39
         mov     ecx, 15
         cld
         rep     cmpsb
@@ -504,7 +504,7 @@ kproc check_label ;/////////////////////////////////////////////////////////////
         mov     [flp_fat], 0
 
   .same_label:
-        mov     esi, FDD_BUFF + 39
+        mov     esi, FDC_DMA_BUFFER + 39
         mov     edi, flp_label
         mov     ecx, 15
         cld

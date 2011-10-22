@@ -60,7 +60,7 @@ if defined COMPATIBILITY_MENUET_SYSFN58
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc give_back_application_data_1 ;////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     esi, FDD_BUFF ; FDD_DataBuffer ; 0x40000
+        mov     esi, FDC_DMA_BUFFER
         xor     ecx, ecx
         mov     cx, 128
         cld
@@ -83,20 +83,13 @@ end if ; COMPATIBILITY_MENUET_SYSFN58
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc take_data_from_application_1 ;////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     edi, FDD_BUFF ; FDD_DataBuffer ; 0x40000
+        mov     edi, FDC_DMA_BUFFER
         xor     ecx, ecx
         mov     cx, 128
         cld
         rep     movsd
         ret
 kendp
-
-; Controller operation error code (FDC_Status)
-FDC_Normal         = 0 ; ok
-FDC_TimeOut        = 1 ; timeout
-FDC_DiskNotFound   = 2 ; no disk in drive
-FDC_TrackNotFound  = 3 ; track not found
-FDC_SectorNotFound = 4 ; sector not found
 
 ; Maximum sector coordinates values (these correspond to standard 3'' 1.44 MB disk)
 MAX_Track   equ 79
@@ -172,7 +165,7 @@ kproc FDCDataOutput ;///////////////////////////////////////////////////////////
         push    eax ecx edx
         mov     ah, al ; save byte in AH
         ; reset controller error code
-        mov     [FDC_Status], FDC_Normal
+        mov     [FDC_Status], FLOPPY_CTL_ERROR_SUCCESS
         ; check if controller is ready to transfer data
         mov     dx, 0x3f4 ; (FDC status port)
         mov     ecx, 0x10000 ; set timeout counter
@@ -184,7 +177,7 @@ kproc FDCDataOutput ;///////////////////////////////////////////////////////////
         je      .OutByteToFDC
         loop    .TestRS
         ; timeout error
-        mov     [FDC_Status], FDC_TimeOut
+        mov     [FDC_Status], FLOPPY_CTL_ERROR_TIMEOUT
         jmp     .End_5
 
   .OutByteToFDC:
@@ -209,7 +202,7 @@ kproc FDCDataInput ;////////////////////////////////////////////////////////////
         push    ecx
         push    dx
         ; reset controller error code
-        mov     [FDC_Status], FDC_Normal
+        mov     [FDC_Status], FLOPPY_CTL_ERROR_SUCCESS
         ; check if controller is ready to transfer data
         mov     dx, 0x3f4 ; (FDC status port)
         mov     ecx, 0x10000 ; set timeout counter
@@ -221,7 +214,7 @@ kproc FDCDataInput ;////////////////////////////////////////////////////////////
         je      .GetByteFromFDC
         loop    .TestRS_1
         ; timeout error
-        mov     [FDC_Status], FDC_TimeOut
+        mov     [FDC_Status], FLOPPY_CTL_ERROR_TIMEOUT
         jmp     .End_6
 
   .GetByteFromFDC:
@@ -262,7 +255,7 @@ kproc WaitFDCInterrupt ;////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         pusha
         ; reset controller error code
-        mov     [FDC_Status], FDC_Normal
+        mov     [FDC_Status], FLOPPY_CTL_ERROR_SUCCESS
         ; reset timer tick counter
         mov     eax, [timer_ticks]
         mov     [TickCounter], eax
@@ -279,7 +272,7 @@ kproc WaitFDCInterrupt ;////////////////////////////////////////////////////////
         jb      .TestRS_2
         ; timeout error
 ;       mov     [flp_status], 0
-        mov     [FDC_Status], FDC_TimeOut
+        mov     [FDC_Status], FLOPPY_CTL_ERROR_TIMEOUT
 
   .End_7:
         mov     [fdc_irq_func], util.noop
@@ -482,7 +475,7 @@ kproc SeekTrack ;///////////////////////////////////////////////////////////////
 
         call    WaitFDCInterrupt
 
-        cmp     [FDC_Status], FDC_Normal
+        cmp     [FDC_Status], FLOPPY_CTL_ERROR_SUCCESS
         jne     .Exit
 
         ; save seek result
@@ -503,13 +496,13 @@ kproc SeekTrack ;///////////////////////////////////////////////////////////////
         cmp     al, [FDD_Head]
         jne     .Err
         ; operation completed successfully
-        mov     [FDC_Status], FDC_Normal
+        mov     [FDC_Status], FLOPPY_CTL_ERROR_SUCCESS
         jmp     .Exit
 
   .Err:
         ; track not found
 ;       mov     [flp_status], 0
-        mov     [FDC_Status], FDC_TrackNotFound
+        mov     [FDC_Status], FLOPPY_CTL_ERROR_TRACK_NOT_FOUND
 
   .Exit:
         call    save_timer_fdd_motor
@@ -572,7 +565,7 @@ kproc ReadSector ;//////////////////////////////////////////////////////////////
         ; wait for operation completion
         call    WaitFDCInterrupt
 
-        cmp     [FDC_Status], FDC_Normal
+        cmp     [FDC_Status], FLOPPY_CTL_ERROR_SUCCESS
         jne     .Exit_1
         mov     dx, 0x3f4 ; (FDC status port)
         mov     ecx, 0x10000 ; set timeout counter
@@ -581,7 +574,7 @@ kproc ReadSector ;//////////////////////////////////////////////////////////////
         cmp     al, 0xc0 ; check bits 6 and 7
         je      @f
         loop    @b
-        mov     [FDC_Status], FDC_TimeOut
+        mov     [FDC_Status], FLOPPY_CTL_ERROR_TIMEOUT
         jmp     .Exit_1
     @@:
 
@@ -590,12 +583,12 @@ kproc ReadSector ;//////////////////////////////////////////////////////////////
 
         test    [FDC_ST0], 11011000b
         jnz     .Err_1
-        mov     [FDC_Status], FDC_Normal
+        mov     [FDC_Status], FLOPPY_CTL_ERROR_SUCCESS
         jmp     .Exit_1
 
   .Err_1:
 ;       mov     [flp_status], 0
-        mov     [FDC_Status], FDC_SectorNotFound
+        mov     [FDC_Status], FLOPPY_CTL_ERROR_SECTOR_NOT_FOUND
 
   .Exit_1:
         call    save_timer_fdd_motor
@@ -706,17 +699,17 @@ kproc WriteSector ;/////////////////////////////////////////////////////////////
         ; wait for operation completion
         call    WaitFDCInterrupt
 
-        cmp     [FDC_Status], FDC_Normal
+        cmp     [FDC_Status], FLOPPY_CTL_ERROR_SUCCESS
         jne     .Exit_3
         ; get operation status
         call    GetStatusInfo
         test    [FDC_ST0], 11000000b ; 11011000b
         jnz     .Err_2
-        mov     [FDC_Status], FDC_Normal
+        mov     [FDC_Status], FLOPPY_CTL_ERROR_SUCCESS
         jmp     .Exit_3
 
   .Err_2:
-        mov     [FDC_Status], FDC_SectorNotFound
+        mov     [FDC_Status], FLOPPY_CTL_ERROR_SECTOR_NOT_FOUND
 
   .Exit_3:
         call    save_timer_fdd_motor
