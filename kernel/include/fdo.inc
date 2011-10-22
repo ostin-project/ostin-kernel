@@ -469,3 +469,29 @@ macro klog2_ _level, _format, [_args]
   common
     DEBUGF _level, _format, _args
 }
+
+macro cond_klog_begin _name, _cond_var
+{
+  macro _name#_ _level, _format, [_args]
+  \{
+    common
+      match =1, _cond_var
+      \\{
+        klog_ _level, _format, _args
+      \\}
+  \}
+  macro _name#2_ _level, _format, [_args]
+  \{
+    common
+      match =1, _cond_var
+      \\{
+        klog2_ _level, _format, _args
+      \\}
+  \}
+}
+
+macro cond_klog_end _name
+{
+  purge _name#_
+  purge _name#2_
+}

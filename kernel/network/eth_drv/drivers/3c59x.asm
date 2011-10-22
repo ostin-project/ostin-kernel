@@ -326,22 +326,9 @@ endg
 
 if KCONFIG_NET_DRIVER_E3C59X_DEBUG
 
-e3c59x_hw_type_str:   db "Detected hardware type  : ", 0
-e3c59x_device_str:    db "Device ID               : 0x"
-e3c59x_device_id_str: db "ffff", 13, 10, 0
-e3c59x_vendor_str:    db "Vendor ID               : 0x"
-e3c59x_vendor_id_str: db "ffff", 13, 10, 0
-e3c59x_io_info_str:   db "IO address              : 0x"
-e3c59x_io_addr_str:   db "ffff", 13, 10, 0
-e3c59x_mac_info_str:  db "MAC address             : "
-e3c59x_mac_addr_str:  db "ff:ff:ff:ff:ff:ff", 13, 10, 0
-e3c59x_boomerang_str: db " (boomerang)", 13, 10, 0
-e3c59x_vortex_str:    db " (vortex)", 13, 10, 0
-e3c59x_link_type_str: db "Established link type   : ", 0
-e3c59x_new_line_str:  db 13, 10, 0
+e3c59x_boomerang_str: db "boomerang", 0
+e3c59x_vortex_str:    db "vortex", 0
 e3c59x_link_type:     dd 0
-
-e3c59x_charset:       db '0123456789abcdef'
 
 strtbl e3c59x_link_str, \
   "No valid link type detected", \
@@ -408,115 +395,36 @@ kproc e3c59x_debug ;////////////////////////////////////////////////////////////
 ;# Destroyed registers: eax, ebx, ecx, edx, edi, esi
 ;-----------------------------------------------------------------------------------------------------------------------
         pushad
+
         ; print device type
-        mov     esi, e3c59x_hw_type_str
-        call    sys_msg_board_str
         movzx   ecx, byte[e3c59x_ver_id]
-        mov     esi, [e3c59x_hw_str + ecx * 4]
-        call    sys_msg_board_str
         mov     esi, e3c59x_boomerang_str
         cmp     dword[e3c59x_transmit_function], e3c59x_boomerang_transmit
-        jz      .boomerang
+        jz      @f
         mov     esi, e3c59x_vortex_str
 
-  .boomerang:
-        call    sys_msg_board_str
-        ; print device/vendor
-        mov     ax, [pci_data + 2]
-        mov     cl, 2
-        mov     ebx, e3c59x_device_id_str
-        call    e3c59x_print_hex
-        mov     esi, e3c59x_device_str
-        call    sys_msg_board_str
-        mov     ax, [pci_data]
-        mov     cl, 2
-        mov     ebx, e3c59x_vendor_id_str
-        call    e3c59x_print_hex
-        mov     esi, e3c59x_vendor_str
-        call    sys_msg_board_str
-        ; print io address
-        mov     ax, [io_addr]
-        mov     ebx, e3c59x_io_addr_str
-        mov     cl, 2
-        call    e3c59x_print_hex
-        mov     esi, e3c59x_io_info_str
-        call    sys_msg_board_str
-        ; print MAC address
-        mov     ebx, e3c59x_mac_addr_str
-        xor     ecx, ecx
+    @@: klog_   LOG_DEBUG, "Detected hardware type: %s (%s)\n", [e3c59x_hw_str + ecx * 4], esi
 
-  .mac_loop:
-        push    ecx
-        mov     al, [node_addr + ecx]
-        mov     cl, 1
-        call    e3c59x_print_hex
-        inc     ebx
-        pop     ecx
-        inc     cl
-        cmp     cl, 6
-        jne     .mac_loop
-        mov     esi, e3c59x_mac_info_str
-        call    sys_msg_board_str
+        ; print device/vendor
+        klog_   LOG_DEBUG, "Device ID: 0x%x\n", [pci_data + 2]:4
+        klog_   LOG_DEBUG, "Vendor ID: 0x%x\n", [pci_data]:4
+
+        ; print io address
+        klog_   LOG_DEBUG, "IO address: 0x%x\n", [io_addr]:4
+
+        ; print MAC address
+        klog_   LOG_DEBUG, "MAC address: %x:%x:%x:%x:%x:%x\n", [node_addr]:2, [node_addr + 1]:2, [node_addr + 2]:2, \
+                [node_addr + 3]:2, [node_addr + 4]:2, [node_addr + 5]:2
+
         ; print link type
-        mov     esi, e3c59x_link_type_str
-        call    sys_msg_board_str
         xor     eax, eax
         bsr     ax, word[e3c59x_link_type]
         jz      @f
         sub     ax, 4
 
-    @@: mov     esi, [e3c59x_link_str + eax * 4]
-        call    sys_msg_board_str
-        mov     esi, e3c59x_new_line_str
-        call    sys_msg_board_str
+    @@: klog_   LOG_DEBUG, "Established link type: %s\n", [e3c59x_link_str + eax * 4]
+
         popad
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc e3c59x_print_hex ;////////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;? prints a hexadecimal value
-;-----------------------------------------------------------------------------------------------------------------------
-;> eax = value to be printed out
-;> ebx = where to print
-;> cl = value size (1, 2, 4)
-;-----------------------------------------------------------------------------------------------------------------------
-;< ebx = end address after the print
-;-----------------------------------------------------------------------------------------------------------------------
-;# Destroyed registers: eax, ebx
-;-----------------------------------------------------------------------------------------------------------------------
-        cmp     cl, 1
-        je      .print_byte
-        cmp     cl, 2
-        jz      .print_word
-
-  .print_dword:
-        push    eax
-        bswap   eax
-        xchg    ah, al
-        call    .print_word
-        pop     eax
-
-  .print_word:
-        push    eax
-        xchg    ah, al
-        call    .print_byte
-        pop     eax
-
-  .print_byte:
-        movzx   eax, al
-        push    eax
-        and     al, 0xf0
-        shr     al, 4
-        mov     al, byte[eax + e3c59x_charset]
-        mov     [ebx], al
-        inc     ebx
-        pop     eax
-        and     al, 0x0f
-        mov     al, byte[eax + e3c59x_charset]
-        mov     [ebx], al
-        inc     ebx
         ret
 kendp
 

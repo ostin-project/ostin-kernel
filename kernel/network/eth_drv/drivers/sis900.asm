@@ -193,11 +193,7 @@ sis900_get_mac_func  dd 0
 sis900_special_func  dd 0
 sis900_table_entries db 8
 
-if KCONFIG_NET_DRIVER_SIS900_DEBUG
-
-SIS900_Debug_Str_Unsupported db 'Sorry your card is unsupported ', 13, 10, 0
-
-end if
+cond_klog_begin klogc, KCONFIG_NET_DRIVER_SIS900_DEBUG
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc SIS900_probe ;////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -270,13 +266,7 @@ kproc SIS900_probe ;////////////////////////////////////////////////////////////
         ret
 
   .unsupported:
-
-if KCONFIG_NET_DRIVER_SIS900_DEBUG
-
-        mov     esi, SIS900_Debug_Str_Unsupported
-        call    sys_msg_board_str
-
-end if
+        klogc_  LOG_DEBUG, "Sorry your card is unsupported\n"
 
         ret
 kendp
@@ -297,12 +287,6 @@ kproc sis900_init ;/////////////////////////////////////////////////////////////
 ;       call    SIS900_check_mode
         ret
 kendp
-
-if KCONFIG_NET_DRIVER_SIS900_DEBUG
-
-SIS900_Debug_Reset_Failed db 'Reset Failed ', 0
-
-end if
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc SIS900_reset ;////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -340,13 +324,7 @@ kproc SIS900_reset ;////////////////////////////////////////////////////////////
         jmp     .wait
 
   .doneWait_e:
-
-if KCONFIG_NET_DRIVER_SIS900_DEBUG
-
-        mov     esi, SIS900_Debug_Reset_Failed
-        call    sys_msg_board_str
-
-end if
+        klogc_  LOG_DEBUG, "Reset Failed\n"
 
   .doneWait:
         ; Set Configuration Register depending on Card Revision
@@ -560,15 +538,6 @@ kproc SIS900_set_rx_mode ;//////////////////////////////////////////////////////
         ret
 kendp
 
-if KCONFIG_NET_DRIVER_SIS900_DEBUG
-
-SIS900_Debug_Str_GetMac_Start    db 'Attempting to get SIS900 Mac ID: ', 13, 10, 0
-SIS900_Debug_Str_GetMac_Failed   db 'Access to EEprom Failed', 13, 10, 0
-SIS900_Debug_Str_GetMac_Address  db 'Your Mac ID is: ', 0
-SIS900_Debug_Str_GetMac_Address2 db 'Your SIS96x Mac ID is: ', 0
-
-end if
-
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc SIS960_get_mac_addr ;/////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -602,13 +571,7 @@ kproc SIS960_get_mac_addr ;/////////////////////////////////////////////////////
         jl      .Get_Mac_Wait ; if not ask again
         xor     eax, eax ; return zero in eax indicating failure
 
-if KCONFIG_NET_DRIVER_SIS900_DEBUG
-
-        ; Debug
-        mov     esi, SIS900_Debug_Str_GetMac_Failed
-        call    sys_msg_board_str
-
-end if
+        klogc_  LOG_DEBUG, "Access to EEprom Failed\n"
 
         jmp     .get_mac_addr_done
 
@@ -629,15 +592,8 @@ end if
         jns     .mac_read_loop ; if more read more
         mov     eax, 1 ; return non-zero indicating success
 
-if KCONFIG_NET_DRIVER_SIS900_DEBUG
-
-        ; Debug Print MAC ID to debug window
-        mov     esi, SIS900_Debug_Str_GetMac_Address2
-        call    sys_msg_board_str
-        mov     edx, node_addr
-        call    Create_Mac_String
-
-end if
+        klogc_  LOG_DEBUG, "Your SIS96x Mac ID is: %x:%x:%x:%x:%x:%x\n", [node_addr]:2, [node_addr + 1]:2, \
+                [node_addr + 2]:2, [node_addr + 3]:2, [node_addr + 4]:2, [node_addr + 5]:2
 
         ; Tell EEPROM We are Done Accessing It
 
@@ -660,13 +616,7 @@ kproc SIS900_get_mac_addr ;/////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;# Older SiS900 and friends, use EEPROM to store MAC address.
 ;-----------------------------------------------------------------------------------------------------------------------
-if KCONFIG_NET_DRIVER_SIS900_DEBUG
-
-        ; Debug
-        mov     esi, SIS900_Debug_Str_GetMac_Start
-        call    sys_msg_board_str
-
-end if
+        klogc_  LOG_DEBUG, "Attempting to get SIS900 Mac ID\n"
 
         ; check to see if we have sane EEPROM
         mov     eax, SIS900_EEPROMSignature ; Base Eeprom Signature
@@ -691,28 +641,15 @@ end if
         jns     .mac_read_loop ; if more read more
         mov     eax, 1 ; return non-zero indicating success
 
-if KCONFIG_NET_DRIVER_SIS900_DEBUG
-
-        ; Debug Print MAC ID to debug window
-        mov     esi, SIS900_Debug_Str_GetMac_Address
-        call    sys_msg_board_str
-        mov     edx, node_addr
-        call    Create_Mac_String
-
-end if
+        klogc_  LOG_DEBUG, "Your Mac ID is: %x:%x:%x:%x:%x:%x\n", [node_addr]:2, [node_addr + 1]:2, [node_addr + 2]:2, \
+                [node_addr + 3]:2, [node_addr + 4]:2, [node_addr + 5]:2
 
         ret
 
   .Bad_Eeprom:
         xor     eax, eax
 
-if KCONFIG_NET_DRIVER_SIS900_DEBUG
-
-        ; Debug
-        mov     esi, SIS900_Debug_Str_GetMac_Failed
-        call    sys_msg_board_str
-
-end if
+        klogc_   LOG_DEBUG, "Access to EEprom Failed\n"
 
         ret
 kendp
@@ -722,12 +659,7 @@ kproc Get_Mac_SIS635_900_REV ;//////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Get MAC address for model 635
 ;-----------------------------------------------------------------------------------------------------------------------
-if KCONFIG_NET_DRIVER_SIS900_DEBUG
-
-        mov     esi, SIS900_Debug_Str_GetMac_Start
-        call    sys_msg_board_str
-
-end if
+        klogc_  LOG_DEBUG, "Attempting to get SIS900 Mac ID\n"
 
         mov     ebp, [io_addr]
         lea     edx, [ebp + SIS900_rfcr]
@@ -765,15 +697,8 @@ end if
 ;       or      eax, SIS900_RFEN
 ;       out     dx, eax
 
-if KCONFIG_NET_DRIVER_SIS900_DEBUG
-
-        ; Debug Print MAC ID to debug window
-        mov     esi, SIS900_Debug_Str_GetMac_Address
-        call    sys_msg_board_str
-        mov     edx, node_addr
-        call    Create_Mac_String
-
-end if
+        klogc_  LOG_DEBUG, "Your Mac ID is: %x:%x:%x:%x:%x:%x\n", [node_addr]:2, [node_addr + 1]:2, [node_addr + 2]:2, \
+                [node_addr + 3]:2, [node_addr + 4]:2, [node_addr + 5]:2
 
         ret
 kendp
@@ -876,14 +801,6 @@ kproc SIS900_Eeprom_Delay_1 ;///////////////////////////////////////////////////
         ret
 kendp
 
-if KCONFIG_NET_DRIVER_SIS900_DEBUG
-
-SIS900_Debug_Pull_Packet_good       db 'Good Packet Waiting: ', 13, 10, 0
-SIS900_Debug_Pull_Bad_Packet_Status db 'Bad Packet Waiting: Status', 13, 10, 0
-SIS900_Debug_Pull_Bad_Packet_Size   db 'Bad Packet Waiting: Size', 13, 10, 0
-
-end if
-
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc SIS900_poll ;/////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -932,36 +849,20 @@ kproc SIS900_poll ;/////////////////////////////////////////////////////////////
         rep
         movsb
 
-if KCONFIG_NET_DRIVER_SIS900_DEBUG
-
-        ; Debug, tell user we have a good packet
-        mov     esi, SIS900_Debug_Pull_Packet_good
-        call    sys_msg_board_str
-
-end if
+        klogc_  LOG_DEBUG, "Good Packet Waiting\n"
 
         jmp     .Cnt
 
   .Error_Status:
         ; Error occured let user know through debug window
 
-if KCONFIG_NET_DRIVER_SIS900_DEBUG
-
-        mov     esi, SIS900_Debug_Pull_Bad_Packet_Status
-        call    sys_msg_board_str
-
-end if
+        klogc_  LOG_DEBUG, "Bad Packet Waiting: Status\n"
 
         jmp     .Cnt
 
   .Error_Size:
 
-if KCONFIG_NET_DRIVER_SIS900_DEBUG
-
-        mov     esi, SIS900_Debug_Pull_Bad_Packet_Size
-        call    sys_msg_board_str
-
-end if
+        klogc_  LOG_DEBUG, "Bad Packet Waiting: Size\n"
 
         ; Increment to next available descriptor
   .Cnt:
@@ -978,16 +879,6 @@ end if
         out     dx, eax
         ret
 kendp
-
-if KCONFIG_NET_DRIVER_SIS900_DEBUG
-
-SIS900_Debug_Transmit_Packet     db 'Transmitting Packet: ', 13, 10, 0
-SIS900_Debug_Transmit_Packet_Err db 'Transmitting Packet Error: ', 13, 10, 0
-
-end if
-
-str1 db 'Transmitting packet:', 13, 10, 0
-str2 db ' ', 0
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc SIS900_transmit ;/////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1051,12 +942,7 @@ kproc SIS900_transmit ;/////////////////////////////////////////////////////////
         mov     [txd + 4], 0x80000000 ; card owns descriptor
         or      [txd + 4], ecx ; set size of packet
 
-if KCONFIG_NET_DRIVER_SIS900_DEBUG
-
-        mov     esi, SIS900_Debug_Transmit_Packet
-        call    sys_msg_board_str
-
-end if
+        klogc_  LOG_DEBUG, "Transmitting Packet\n"
 
         ; restart the transmitter
         lea     edx, [ebp + SIS900_cr]
@@ -1071,12 +957,7 @@ end if
         jz      .OK
         ; Tell user there was an error through debug window
 
-if KCONFIG_NET_DRIVER_SIS900_DEBUG
-
-        mov     esi, SIS900_Debug_Transmit_Packet_Err
-        call    sys_msg_board_str
-
-end if
+        klogc_  LOG_DEBUG, "Transmitting Packet Error\n"
 
   .OK:
         ; Disable interrupts by clearing the interrupt mask
@@ -1085,56 +966,6 @@ end if
         out     dx, eax
         ret
 kendp
-
-if KCONFIG_NET_DRIVER_SIS900_DEBUG
-
-SIS900_Char_String db '0123456789ABCDEF'
-Mac_str_build:     times 20 db 0
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc Create_Mac_String ;///////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;? Converts the 48 bit value to a string for display
-;-----------------------------------------------------------------------------------------------------------------------
-;> edx = location of 48 bit MAC ID
-;-----------------------------------------------------------------------------------------------------------------------
-;< Returns:   Prints string to general debug window
-;-----------------------------------------------------------------------------------------------------------------------
-;# String Format: XX:XX:XX:XX:XX:XX
-;-----------------------------------------------------------------------------------------------------------------------
-        pusha
-        xor     ecx, ecx
-
-  .loop:
-        mov     al, [edx+ecx] ; [node_addr+ecx]
-        push    eax
-        shr     eax, 4
-        and     eax, 0x0f
-        mov     bl, [SIS900_Char_String + eax]
-        mov     [Mac_str_build + ecx * 3], bl
-        pop     eax
-        and     eax, 0x0f
-        mov     bl, [SIS900_Char_String + eax]
-        mov     [Mac_str_build + 1 + ecx * 3], bl
-        cmp     ecx, 5
-        je      .done
-        mov     bl, ':'
-        mov     [Mac_str_build + 2 + ecx * 3], bl
-        inc     ecx
-        jmp     .loop
-
-  .done:
-        ; Insert CR and Zero Terminate
-        mov     byte[Mac_str_build + 2 + ecx * 3], 13
-        mov     byte[Mac_str_build + 3 + ecx * 3], 10
-        mov     byte[Mac_str_build + 4 + ecx * 3], 0
-        mov     esi, Mac_str_build
-        call    sys_msg_board_str ; Print String to message board
-        popa
-        ret
-kendp
-
-end if
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc SIS900_adjust_pci_device ;////////////////////////////////////////////////////////////////////////////////////////
@@ -1185,3 +1016,5 @@ kproc SIS900_adjust_pci_device ;////////////////////////////////////////////////
   .Done:
         ret
 kendp
+
+cond_klog_end klogc
