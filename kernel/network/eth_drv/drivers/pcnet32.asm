@@ -424,7 +424,6 @@ kproc pcnet32_init_ring ;///////////////////////////////////////////////////////
         mov     [pcnet32_private.tlen_rlen], PCNET32_TX_RING_LEN_BITS or PCNET32_RX_RING_LEN_BITS
         mov     esi, node_addr
         mov     edi, pcnet32_private.phys_addr
-        cld
         movsd
         movsw
         mov     eax, pcnet32_rx_ring
@@ -659,8 +658,8 @@ kproc pcnet32_probe ;///////////////////////////////////////////////////////////
   .L1:
         mov     edi, pcnet32_access
         mov     ecx, 7
-        cld
-        rep     movsd
+        rep
+        movsd
         mov     ebx, 88
         call    [pcnet32_access.read_csr]
         mov     ecx, eax
@@ -783,7 +782,6 @@ kproc pcnet32_probe ;///////////////////////////////////////////////////////////
         mov     [pcnet32_private.tlen_rlen], PCNET32_TX_RING_LEN_BITS or PCNET32_RX_RING_LEN_BITS
         mov     esi, node_addr
         mov     edi, pcnet32_private.phys_addr
-        cld
         movsd
         movsw
         mov     [pcnet32_private.filter], 0
@@ -841,11 +839,12 @@ kproc pcnet32_poll ;////////////////////////////////////////////////////////////
         push    ecx
         shr     ecx, 2
         mov     edi, Ether_buffer
-        cld
-        rep     movsd
+        rep
+        movsd
         pop     ecx
         and     ecx, 3
-        rep     movsb
+        rep
+        movsb
         mov     [ebx + pcnet32_rx_head.buf_length], PCNET32_PKT_BUF_SZ_NEG
         or      [ebx + pcnet32_rx_head.status], 0x8000
         inc     [pcnet32_private.cur_rx]
@@ -872,11 +871,9 @@ kproc pcnet32_xmit ;////////////////////////////////////////////////////////////
         imul    edi, PCNET32_PKT_BUF_SZ
         add     edi, pcnet32_txb ; edi=ptxb
         mov     eax, edi
-        cld     ; copy MAC
-        movsd
+        movsd   ; copy MAC
         movsw
         mov     esi, node_addr
-        cld
         movsd
         movsw
         mov     [edi], bx
@@ -885,11 +882,12 @@ kproc pcnet32_xmit ;////////////////////////////////////////////////////////////
         mov     ecx, [esp]
         push    ecx
         shr     ecx, 2
-        cld
-        rep     movsd
+        rep
+        movsd
         pop     ecx
         and     ecx, 3
-        rep     movsb
+        rep
+        movsb
 ;       mov     ecx, [esp]
 ;       add     ecx, 14 ; ETH_HLEN
 ;       xor     eax, eax
@@ -897,8 +895,8 @@ kproc pcnet32_xmit ;////////////////////////////////////////////////////////////
 ;       cmp     ecx, 60
 ;       jae     .L1
 ;       sub     ecx, 60
-;       cld
-;       rep     stosb
+;       rep
+;       stosb
 
 ; .L1:
         mov     edi, pcnet32_tx_ring + 0 ; entry=0

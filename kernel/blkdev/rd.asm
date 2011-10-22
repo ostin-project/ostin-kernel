@@ -29,10 +29,10 @@ kproc ramdisk_free_space ;//////////////////////////////////////////////////////
         xor     ax, ax ; Free cluster = 0x0000 in FAT
         xor     ebx, ebx ; counter
         mov     ecx, 2849 ; 2849 clusters
-        cld
 
   .rdfs1:
-        repne   scasw
+        repne
+        scasw
         jnz     .rdfs2 ; if last cluster not 0
         inc     ebx
         test    ecx, ecx
@@ -97,8 +97,8 @@ kproc fileread ;////////////////////////////////////////////////////////////////
         mov     esi, RAMDISK + 512 * 19
         add     esi, ebx
         shl     ecx, 7
-        cld
-        rep     movsd
+        rep
+        movsd
         popf
         pop     edx
         jae     .fr_do2
@@ -194,12 +194,12 @@ kproc rd_findfile ;/////////////////////////////////////////////////////////////
 ;<   edi = filestring + 11
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     edi, RAMDISK + 512 * 18 + 512 ; Point at directory
-        cld
 
   .rd_newsearch:
         mov     esi, eax
         mov     ecx, 11
-        rep     cmpsb
+        rep
+        cmpsb
         je      .rd_ff
         add     cl, 21
         add     edi, ecx

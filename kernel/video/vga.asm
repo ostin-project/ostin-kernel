@@ -192,7 +192,6 @@ kproc checkVga_N13 ;////////////////////////////////////////////////////////////
         mov     edi, VGABasePtr
         mov     edx, 200
         mov     ecx, 320
-        cld
 
   .m13pix:
         lodsd

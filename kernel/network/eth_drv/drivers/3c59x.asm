@@ -1416,7 +1416,6 @@ kproc e3c59x_reset ;////////////////////////////////////////////////////////////
         ; write MAC addres back into the station address registers
         lea     edx, [ebp + E3C59X_REG_STATION_ADDRESS_LO]
         mov     esi, node_addr
-        cld
         outsw
         add     edx, 2
         outsw
@@ -2028,7 +2027,6 @@ kproc e3c59x_vortex_transmit ;//////////////////////////////////////////////////
         mov     esi, edi
         mov     edi, e3c59x_tx_buff
         zero_to_virt edi
-        cld
         ; copy destination address
         movsd
         movsw
@@ -2043,10 +2041,12 @@ kproc e3c59x_vortex_transmit ;//////////////////////////////////////////////////
         pop     esi
         push    ecx
         shr     ecx, 2
-        rep     movsd
+        rep
+        movsd
         pop     ecx
         and     ecx, 3
-        rep     movsb
+        rep
+        movsb
         mov     ecx, eax
         ; program frame address to be sent
         lea     edx, [ebp + E3C59X_REG_MASTER_ADDRESS]
@@ -2121,7 +2121,6 @@ kproc e3c59x_boomerang_transmit ;///////////////////////////////////////////////
     @@: add     edi, E3C59X_MAX_ETH_FRAME_SIZE
         zero_to_virt edi
         mov     eax, edi
-        cld
         ; copy destination address
         movsd
         movsw
@@ -2136,11 +2135,13 @@ kproc e3c59x_boomerang_transmit ;///////////////////////////////////////////////
         pop     esi
         push    ecx
         shr     ecx, 2
-        rep     movsd
+        rep
+        movsd
         pop     ecx
         push    ecx
         and     ecx, 3
-        rep     movsb
+        rep
+        movsb
         ; padding, do we really need it?
         pop     ecx
         add     ecx, ETH_HLEN
@@ -2379,11 +2380,12 @@ kproc e3c59x_boomerang_poll ;///////////////////////////////////////////////////
         dma_to_virt esi
         mov     edi, Ether_buffer
         shr     ecx, 2 ; first copy dword-wise
-        cld
-        rep     movsd ; copy the dwords
+        rep
+        movsd   ; copy the dwords
         pop     ecx
         and     ecx, 3
-        rep     movsb ; copy the rest bytes
+        rep
+        movsb   ; copy the rest bytes
         mov     eax, [e3c59x_curr_upd]
         and     dword[eax + E3C59X_UPD_PKT_STATUS], 0
         virt_to_zero eax

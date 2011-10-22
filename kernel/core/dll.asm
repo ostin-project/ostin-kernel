@@ -199,6 +199,7 @@ align 16
         mov     bx, app_data ; os_data
         mov     ds, bx
         mov     es, bx
+        cld
 
         cmp     [v86_irqhooks + eax * 8], 0
         jnz     v86_irq
@@ -701,8 +702,8 @@ endl
         jz      @f
         sub     ecx, ebx
         xor     eax, eax
-        cld
-        rep     stosb
+        rep
+        stosb
 
     @@: mov     ebx, [file_size]
         pop     eax
@@ -997,8 +998,8 @@ endl
         add     ecx, 4095
         and     ecx, not 4095
         shr     ecx, 2
-        cld
-        rep     stosd
+        rep
+        stosd
 
         mov     edx, [coff]
         movzx   ebx, [edx + coff_header_t.sections_cnt]
@@ -1015,8 +1016,8 @@ endl
   .copy:
         add     esi, edx
         mov     ecx, [eax + coff_section_t.raw_data_size]
-        cld
-        rep     movsb
+        rep
+        movsb
 
   .next:
         add     edi, 15
@@ -1231,7 +1232,8 @@ endl
         mov     esi, edi
         mov     ecx, -1
         xor     eax, eax
-        repnz   scasb
+        repnz
+        scasb
         not     ecx
         lea     eax, [ecx + sizeof.dll_descriptor_t]
         push    ecx
@@ -1241,7 +1243,8 @@ endl
         jz      .fail_and_free_coff
         ; save timestamp
         lea     edi, [eax + dll_descriptor_t.name]
-        rep     movsb
+        rep
+        movsb
         mov     esi, eax
         mov     eax, dword[fileinfo + 24]
         mov     dword[esi + dll_descriptor_t.timestamp], eax
@@ -1300,7 +1303,6 @@ endl
         movzx   ebx, [edx + coff_header_t.sections_cnt]
         mov     edi, eax
         add     edx, 20
-        cld
 
     @@: call    coff_get_align
         add     ecx, eax
@@ -1316,12 +1318,14 @@ endl
         test    esi, esi
         jnz     .copy
         xor     eax, eax
-        rep     stosb
+        rep
+        stosb
         jmp     .next
 
   .copy:
         add     esi, [coff]
-        rep     movsb
+        rep
+        movsb
 
   .next:
         pop     ecx
@@ -1362,7 +1366,8 @@ endl
         push    esi
         mov     esi, edx
         mov     edi, eax
-        rep     movsd
+        rep
+        movsd
         pop     esi
         mov     [esi + dll_descriptor_t.symbols_ptr], edi
         push    esi
@@ -1370,7 +1375,8 @@ endl
         mov     [esi + dll_descriptor_t.symbols_num], ecx
         mov     ecx, [esi + dll_descriptor_t.symbols_lim]
         mov     esi, ebx
-        rep     movsb
+        rep
+        movsb
         pop     esi
         mov     ebx, [esi + dll_descriptor_t.coff_hdr]
         push    esi
@@ -1384,9 +1390,11 @@ endl
         sub     [edx + coff_section_t.relocs_ptr], ebx
         add     esi, [coff]
         shr     ecx, 1
-        rep     movsd
+        rep
+        movsd
         adc     ecx, ecx
-        rep     movsw
+        rep
+        movsw
         add     edx, sizeof.coff_section_t
         dec     eax
         jnz     @b

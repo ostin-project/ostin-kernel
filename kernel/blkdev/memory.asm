@@ -125,7 +125,8 @@ kproc blkdev.memory.read ;//////////////////////////////////////////////////////
         push    esi edi
         mov     esi, [ebx + blkdev.memory.device_data_t.data.offset]
         add     esi, eax
-        rep     movsb
+        rep
+        movsb
         pop     edi esi
 
         xor     eax, eax
@@ -163,7 +164,8 @@ kproc blkdev.memory.write ;/////////////////////////////////////////////////////
         push    esi edi
         mov     edi, [ebx + blkdev.memory.device_data_t.data.offset]
         add     edi, eax
-        rep     movsb
+        rep
+        movsb
         pop     edi esi
 
         xor     eax, eax

@@ -535,8 +535,8 @@ kproc rtl8029_probe ;///////////////////////////////////////////////////////////
         mov     esi, test_buffer
         mov     edi, test_data
         mov     ecx, 13
-        cld
-        rep     cmpsb
+        rep
+        cmpsb
 
         je      .ep_set_vendor
 
@@ -583,8 +583,8 @@ kproc rtl8029_probe ;///////////////////////////////////////////////////////////
         mov     esi, test_buffer
         mov     edi, test_data
         mov     ecx, 13
-        cld
-        rep     cmpsb
+        rep
+        cmpsb
 
   .ep_set_vendor:
         ; this bit is odd - probably left over from my hacking

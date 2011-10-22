@@ -131,8 +131,8 @@ kproc fs_CdRead ;///////////////////////////////////////////////////////////////
         push    edi esi ecx
         mov     edi, edx
         lea     esi, [CDDataBuf + ebx]
-        cld
-        rep     movsb
+        rep
+        movsb
         pop     ecx esi edi
         add     edx, ecx
         sub     [esp], ecx
@@ -201,7 +201,8 @@ kproc fs_CdReadFolder ;/////////////////////////////////////////////////////////
         mov     edi, edx
         mov     ecx, 32 / 4
         xor     eax, eax
-        rep     stosd
+        rep
+        stosd
         pop     ecx eax
         mov     byte[edx], 1 ; version
         mov     [cd_mem_location], edx
@@ -263,11 +264,9 @@ kproc fs_CdReadFolder ;/////////////////////////////////////////////////////////
   .ansi:
         cmp     [cd_counter_block], 2
         jbe     .ansi_parent_directory
-        cld
         lodsw
         xchg    ah, al
         call    uni2ansi_char
-        cld
         stosb
         ; check for filename end
         mov     ax, [esi]
@@ -305,7 +304,6 @@ kproc fs_CdReadFolder ;/////////////////////////////////////////////////////////
   .unicode:
         cmp     [cd_counter_block], 2
         jbe     .unicode_parent_directory
-        cld
         movsw
         ; check for end of filename
         mov     ax, [esi]
@@ -655,7 +653,6 @@ kproc cd_compare_name ;/////////////////////////////////////////////////////////
         mov     edi, ebp
 
   .loop:
-        cld
         lodsb
         push    eax
         call    char_todown

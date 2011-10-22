@@ -293,8 +293,8 @@ kproc analyze_directory ;///////////////////////////////////////////////////////
         mov     edi, ebx
         push    ecx
         mov     ecx, 11
-        cld
-        rep     cmpsb ; compare 8+3 filename
+        rep
+        cmpsb   ; compare 8+3 filename
         pop     ecx
         je      .adr_found
 
@@ -1058,7 +1058,8 @@ kproc fat32_HdReadFolder ;//////////////////////////////////////////////////////
         mov     edi, edx
         mov     ecx, 32 / 4
         xor     eax, eax
-        rep     stosd
+        rep
+        stosd
         pop     ecx eax
         mov     byte[edx], 1 ; version
         mov     esi, edi ; esi points to BDFE
@@ -1408,7 +1409,8 @@ kproc fat_notroot_extend_dir ;//////////////////////////////////////////////////
         mov     edi, buffer
         push    edi
         xor     eax, eax
-        rep     stosd
+        rep
+        stosd
         pop     edi
         pop     ecx
         mov     eax, [esp + 4]
@@ -1631,7 +1633,8 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         jz      .test_short_name_cont
         mov     ecx, 11
         push    esi edi
-        repz    cmpsb
+        repz
+        cmpsb
         pop     edi esi
         jz      .short_name_found
 
@@ -1658,7 +1661,8 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         mov     al, '~'
         push    ecx edi
         mov     ecx, 8
-        repnz   scasb
+        repnz
+        scasb
         push    1
         pop     eax ; 1 entry
         jnz     .notilde
@@ -1786,7 +1790,8 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
   .nolfn:
         xchg    esi, [esp]
         mov     ecx, 11
-        rep     movsb
+        rep
+        movsb
         mov     word[edi], 0x20 ; attributes
         sub     edi, 11
         pop     esi ecx
@@ -1866,14 +1871,16 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         push    ecx
         mov     edi, buffer
         mov     ebx, edi
-        rep     movsb
+        rep
+        movsb
 
   .writedircont:
         mov     ecx, buffer + 0x200
         sub     ecx, edi
         push    eax
         xor     eax, eax
-        rep     stosb
+        rep
+        stosb
         pop     eax
         pop     ecx
 
@@ -1953,7 +1960,8 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         dec     dword[esp + 16]
         push    esi
         mov     ecx, 32 / 4
-        rep     movsd
+        rep
+        movsd
         pop     esi
         mov     dword[edi - 32], '.   '
         mov     dword[edi - 32 + 4], '    '
@@ -1961,7 +1969,8 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         mov     byte[edi - 32 + 11], 0x10
         push    esi
         mov     ecx, 32 / 4
-        rep     movsd
+        rep
+        movsd
         pop     esi
         mov     dword[edi - 32], '..  '
         mov     dword[edi - 32 + 4], '    '
@@ -2169,7 +2178,8 @@ kproc fat32_HdWrite ;///////////////////////////////////////////////////////////
         jbe     @f
         mov     edi, buffer
         add     edi, [esp + 4 + 12]
-        rep     stosb
+        rep
+        stosb
 
     @@: ; zero uninitialized data in the last sector
         mov     ecx, 0x200
@@ -2177,7 +2187,8 @@ kproc fat32_HdWrite ;///////////////////////////////////////////////////////////
         jbe     @f
         mov     edi, buffer
         add     edi, esi
-        rep     stosb
+        rep
+        stosb
 
     @@: pop     edi ecx
         ; copy new data
@@ -2472,7 +2483,8 @@ kproc fat32_HdSetFileEnd ;//////////////////////////////////////////////////////
         push    eax
         xor     eax, eax
         mov     [esp + 12], eax
-        rep     stosb
+        rep
+        stosb
         pop     eax
         pop     edi
         call    hd_write
@@ -2578,7 +2590,8 @@ kproc fat32_HdSetFileEnd ;//////////////////////////////////////////////////////
         mov     ecx, 0x200
         sub     ecx, eax
         xor     eax, eax
-        rep     stosb
+        rep
+        stosb
         pop     eax
         call    hd_write
         pop     ebx

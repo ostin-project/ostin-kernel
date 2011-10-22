@@ -484,7 +484,6 @@ kproc rtl8139_transmit ;////////////////////////////////////////////////////////
         mov     esi, edi
         lea     edi, [rtl8139_tx_buff + eax]
         mov     eax, edi
-        cld
         ; copy destination address
         movsd
         movsw
@@ -499,11 +498,13 @@ kproc rtl8139_transmit ;////////////////////////////////////////////////////////
         pop     esi edx ecx
         push    ecx
         shr     ecx, 2
-        rep     movsd
+        rep
+        movsd
         pop     ecx
         push    ecx
         and     ecx, 3
-        rep     movsb
+        rep
+        movsb
         ; set address
         sub     eax, OS_BASE
         add     edx, RTL8139_REG_TSAD0 - RTL8139_REG_TSD0
@@ -556,11 +557,12 @@ kproc rtl8139_poll ;////////////////////////////////////////////////////////////
         shr     ecx, 2 ; first copy dword-wise
         lea     esi, [eax + 4] ; don't copy the packet header
         mov     edi, Ether_buffer
-        cld
-        rep     movsd ; copy the dwords
+        rep
+        movsd   ; copy the dwords
         pop     ecx
         and     ecx, 3
-        rep     movsb ; copy the rest bytes
+        rep
+        movsb   ; copy the rest bytes
         ; update rtl8139_rx_buff_offset
         movzx   eax, word[eax + 2] ; packet length
         add     eax, [rtl8139_rx_buff_offset]

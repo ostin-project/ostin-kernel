@@ -190,7 +190,8 @@ kproc ext2_setup ;//////////////////////////////////////////////////////////////
         mov     esi, ebx
         mov     edi, eax
         mov     ecx, 512 / 4
-        rep     movsd ; copy sb to reserved mem
+        rep
+        movsd   ; copy sb to reserved mem
         mov     ebx, eax
         mov     [ext2_data.sb], eax
 
@@ -397,7 +398,8 @@ kproc ext2_get_inode ;//////////////////////////////////////////////////////////
         mov     esi, edx ; add the "remainder"
         add     esi, ebx ; to the address
 ;       mov     ecx, [ext2_data.inode_size]
-        rep     movsb ; copy inode
+        rep
+        movsb   ; copy inode
         popad
         ret
 kendp
@@ -510,7 +512,8 @@ kproc ext2_HdReadFolder ;///////////////////////////////////////////////////////
     @@: xor     eax, eax
         mov     edi, edx
         mov     ecx, 32 / 4
-        rep     stosd ; fill header zero
+        rep
+        stosd   ; fill header zero
         pop     edi ; edi = number of blocks to read
         push    edx ebx
 
@@ -596,7 +599,8 @@ kproc ext2_HdReadFolder ;///////////////////////////////////////////////////////
         push    eax ecx
         xor     eax, eax
         mov     ecx, 40 / 4
-        rep     stosd
+        rep
+        stosd
         pop     ecx eax
 
         push    eax esi edx ; get the inode
@@ -682,7 +686,8 @@ kproc ext2_HdReadFolder ;///////////////////////////////////////////////////////
         mov     [edx + 8], ecx
         lea     edi, [edx + 12]
         mov     ecx, 20 / 4
-        rep     stosd
+        rep
+        stosd
         ret
 kendp
 
@@ -778,7 +783,8 @@ kproc ext2_HdRead ;/////////////////////////////////////////////////////////////
         mov     ecx, edx
 
         mov     esi, ebx
-        rep     movsb ; 1st block part
+        rep
+        movsb   ; 1st block part
         jmp     @f
 
   .zero_start:
@@ -821,7 +827,8 @@ kproc ext2_HdRead ;/////////////////////////////////////////////////////////////
 
   .only_one_block:
         mov     esi, ebx
-        rep     movsb ; part of last block
+        rep
+        movsb   ; part of last block
 
   .end_read:
         pop     ebx
@@ -918,7 +925,8 @@ kproc ext2_HdGetFileInfo ;//////////////////////////////////////////////////////
     @@: xor     eax, eax
         mov     edi, edx
         mov     ecx, 40 / 4
-        rep     stosd ; fill zero
+        rep
+        stosd   ; fill zero
 
         cmp     byte[ebx], '.'
         jnz     @f
@@ -1008,7 +1016,8 @@ kproc ext2_HdCreateFolder ;/////////////////////////////////////////////////////
         dec     ecx ; threw out '/' from parent name
         mov     esi, ebx
         mov     edi, EXT2_parent_name
-        rep     movsb
+        rep
+        movsb
         ; esi - pointer to last slash
 
         mov     edx, esi
@@ -1082,7 +1091,8 @@ kproc ext2_HdCreateFolder ;/////////////////////////////////////////////////////
         shr     ecx, 5 ; dividing by 32
         mov     ebp, ecx ; saving total in ebp
         or      eax, -1 ; searching for first free inode (!= -1)
-        repne   scasd
+        repne
+        scasd
         jnz     .test_last_dword ; found or not
         mov     eax, [esi - 4]
 
@@ -1131,7 +1141,8 @@ kproc ext2_HdCreateFolder ;/////////////////////////////////////////////////////
         mov     ecx, [ext2_data.inode_size]
         shr     ecx, 2
         xor     eax, eax
-        rep     stosd
+        rep
+        stosd
 
         mov     edi, edx
         mov     eax, EXT2_S_IFDIR or EXT2_777_MODE
@@ -1207,7 +1218,8 @@ kproc ext2_balloc ;/////////////////////////////////////////////////////////////
         shr     ecx, 5 ; dividing by 32
         mov     ebp, ecx ; saving total in ebp
         or      eax, -1 ; searching for first free inode (!= -1)
-        repe    scasd
+        repe
+        scasd
         jz     .test_last_dword ; found or not
 
         mov     eax, [edi - 4]

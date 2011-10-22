@@ -177,18 +177,21 @@ kproc restart_kernel_4000 ;/////////////////////////////////////////////////////
         pop     ds
         xor     si, si
         xor     di, di
-        rep     movsw
+        rep
+        movsw
         pop     cx
         mov     ds, cx
         push    0x2000
         pop     es
-        rep     movsw
+        rep
+        movsw
         push    0x9000
         pop     ds
         push    0x3000
         pop     es
         mov     cx, 0xe000 / 2
-        rep     movsw
+        rep
+        movsw
 
         wbinvd  ; write and invalidate cache
 

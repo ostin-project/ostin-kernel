@@ -78,7 +78,6 @@ kproc playNote ;////////////////////////////////////////////////////////////////
         mov     [mem8253r42], ax ; Save counter channel 2 timer chip 8253
 
   .NewLoadNote@Delay:
-        cld
 ;       lodsb   ; load AL - counter Delay
         call    ReadNoteByte
         or      al, al ; THE END ?

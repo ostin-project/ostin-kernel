@@ -104,13 +104,14 @@ proc init_kernel_heap ;/////////////////////////////////////////////////////////
         mov     ecx, 64
         mov     edi, mem_block_list
         xor     eax, eax
-        cld
-        rep     stosd
+        rep
+        stosd
 
         mov     ecx, 512 / 4
         mov     edi, mem_block_map
         not     eax
-        rep     stosd
+        rep
+        stosd
 
         mov     [mem_block_start], mem_block_map
         mov     [mem_block_end], mem_block_map + 512
@@ -1189,8 +1190,8 @@ kproc user_realloc ;////////////////////////////////////////////////////////////
         mov     eax, 2
         sub     ebx, edx
         mov     ecx, ebx
-        cld
-        rep     stosd
+        rep
+        stosd
         pop     edi
         mov     edx, [current_slot]
         shl     ebx, 12
@@ -1347,7 +1348,8 @@ kproc destroy_smap ;////////////////////////////////////////////////////////////
         test    esi, esi
         jz      .done
 
-        lock    dec [esi + smem_t.refcount]
+        lock
+        dec     [esi + smem_t.refcount]
         jnz     .done
 
         mov     ecx, [esi + smem_t.prev_ptr]

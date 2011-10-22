@@ -228,8 +228,8 @@ kproc clear_ide_cache ;/////////////////////////////////////////////////////////
         push    eax
         shl     ecx, 1
         xor     eax, eax
-        cld
-        rep     stosd
+        rep
+        stosd
         pop     eax
         ret
 kendp

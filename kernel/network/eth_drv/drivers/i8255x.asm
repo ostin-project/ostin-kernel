@@ -617,8 +617,8 @@ kproc I8255x_poll ;/////////////////////////////////////////////////////////////
         mov     esi, rxfd_packet
         mov     edi, Ether_buffer
         mov     ecx, 1518
-        cld
-        rep     movsb
+        rep
+        movsb
 
         mov     ax, [rxfd_count]
         and     ax, 0x3fff

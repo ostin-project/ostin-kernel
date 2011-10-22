@@ -557,7 +557,6 @@ kproc terminate ;///////////////////////////////////////////////////////////////
   bnewba2:
         mov     edi, [BTN_ADDR]
         mov     eax, edi
-        cld
         movzx   ebx, word[edi]
         inc     bx
 
@@ -580,7 +579,6 @@ kproc terminate ;///////////////////////////////////////////////////////////////
 
   bnmba:
         pusha   ; save window coordinates for window restoring
-        cld
         shl     esi, 5
         add     esi, window_data
         mov     eax, [esi + window_data_t.box.left]
@@ -603,7 +601,8 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         mov     dword[esi + window_data_t.reserved], eax ; clear all flags: wstate, redraw, wdrawn
         lea     edi, [esi - window_data + draw_data]
         mov     ecx, 32 / 4
-        rep     stosd
+        rep
+        stosd
         popa
 
         ; debuggee test
@@ -655,7 +654,8 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         stosd
         mov     ecx, (sizeof.app_data_t - 12) / 4
         xor     eax, eax
-        rep     stosd
+        rep
+        stosd
 
         ; activate window
         movzx   eax, [WIN_STACK + esi * 2]
@@ -765,8 +765,8 @@ end if ; KCONFIG_BLKDEV_FLOPPY
 
         mov     esi, edi
         add     esi, 16
-        cld
-        rep     movsb
+        rep
+        movsb
 
         dec     dword[RESERVED_PORTS]
 

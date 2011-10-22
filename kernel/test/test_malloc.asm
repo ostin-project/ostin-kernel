@@ -28,7 +28,8 @@ start: ;////////////////////////////////////////////////////////////////////////
         mov     ecx, (zeroend - zerostart + 3) / 4
         xor     eax, eax
         mov     edi, zerostart
-        rep     stosd
+        rep
+        stosd
         ; Initialize small heap (as in kernel at boot)
         call    init_malloc
         ; Run tests
@@ -111,7 +112,8 @@ run_test3: ;////////////////////////////////////////////////////////////////////
         push    edi
         mov     edi, eax
         mov     eax, esi
-        rep     stosb
+        rep
+        stosb
         pop     edi
         jmp     .common
 .free:
@@ -131,7 +133,8 @@ run_test3: ;////////////////////////////////////////////////////////////////////
         push    edi eax
         mov     edi, eax
         mov     al, [edi]
-        repz    scasb
+        repz
+        scasb
         jnz     memory_destroyed
         pop     eax edi
         push    ebx edx

@@ -106,7 +106,8 @@ kproc blkdev.floppy.read ;//////////////////////////////////////////////////////
         push    ecx
         mov     ecx, FLOPPY_CTL_BYTES_PER_SECTOR / 4
         mov     esi, FDC_DMA_BUFFER
-        rep     movsd
+        rep
+        movsd
         pop     ecx
 
         pop     eax
@@ -164,7 +165,8 @@ kproc blkdev.floppy.write ;/////////////////////////////////////////////////////
         push    ecx
         mov     ecx, FLOPPY_CTL_BYTES_PER_SECTOR / 4
         mov     edi, FDC_DMA_BUFFER
-        rep     movsd
+        rep
+        movsd
         pop     ecx
 
         ; write sector

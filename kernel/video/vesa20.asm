@@ -1043,7 +1043,8 @@ kproc vesa20_drawbackground_stretch ;///////////////////////////////////////////
         mov     edi, bgr_cur_line
         mov     ecx, [Screen_Max_X]
         inc     ecx
-        rep     movsd
+        rep
+        movsd
         jmp     .bgr_resmooth1
 
   .sdpdone:

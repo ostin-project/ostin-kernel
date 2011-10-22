@@ -129,7 +129,8 @@ kproc ReadHDD_ID ;//////////////////////////////////////////////////////////////
         mov     edi, Sector512 ; offset of Sector512
         mov     dx, [ATABasePortAddr] ; data register
         mov     cx, 256 ; number of words to read
-        rep     insw ; receive data block
+        rep
+        insw    ; receive data block
         ret
 
   .Error1:
@@ -336,7 +337,8 @@ kproc ReadCD_ID ;///////////////////////////////////////////////////////////////
         mov     edi, Sector512  ; offset of Sector512
         mov     dx, [ATABasePortAddr] ; port 1x0h
         mov     cx, 256 ; number of words to read
-        rep     insw
+        rep
+        insw
         ret
 
   .Error1_1:

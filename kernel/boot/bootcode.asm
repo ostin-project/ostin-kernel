@@ -123,7 +123,8 @@ kproc boot.clear_screen ;///////////////////////////////////////////////////////
 
         mov     ax, 0x0720 ; pack[4(bg color), 4(fg color), 8(char)]
         shl     di, 1
-        rep     stosw
+        rep
+        stosw
 
         pop     cx ax es
         ret
@@ -151,7 +152,8 @@ kproc boot.set_status_line ;////////////////////////////////////////////////////
         mov_s_  es, 0xb800
         mov     cx, 80 * 1
         mov     di, 80 * 24 * 2
-        rep     stosw
+        rep
+        stosw
         pop     es di cx
 
         or      si, si
@@ -578,13 +580,16 @@ end if
         mov     ax, 0x0220 ; pack[4(bg color), 4(fg color), 8(char)]
         mov     cx, 80 * (boot.data.s_logo.height + 2)
         xor     di, di
-        rep     stosw
+        rep
+        stosw
         mov     ax, 0x2020
         mov     cx, 80 * 1
-        rep     stosw
+        rep
+        stosw
         mov     ax, 0x0720
         mov     cx, 80 * (25 - boot.data.s_logo.height - 3)
-        rep     stosw
+        rep
+        stosw
         pop     es
 
         ; print header

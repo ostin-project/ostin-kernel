@@ -193,18 +193,17 @@ proc arp_table_manager stdcall uses ebx esi edi ecx edx, Opcode:DWORD, Index:DWO
         cmp     edi, EXTRA_IS_ARP_PACKET_PTR
         je      .arp_packet_to_entry
 
-        cld
         ; esi already has been loaded
         mov     edi, esp ; ebx + eax=ARPTable_base + ARP-entry_base(where we will add)
         mov     ecx, sizeof.arp_entry_t / 2 ; ARP_ENTRY_SIZE must be even number!!!
-        rep     movsw ; copy
+        rep
+        movsw   ; copy
         jmp     .search
 
   .arp_packet_to_entry:
         mov     edx, dword[esi + arp_packet_t.sender_ip] ; esi=base of ARP_PACKET
         mov     [esp + arp_entry_t.ip], edx
 
-        cld
         lea     esi, [esi + arp_packet_t.sender_mac]
         lea     edi, [esp + arp_entry_t.mac]
         movsd
@@ -234,11 +233,11 @@ proc arp_table_manager stdcall uses ebx esi edi ecx edx, Opcode:DWORD, Index:DWO
         inc     dword[NumARP] ; increase ARP-entries counter
 
   .replace:
-        cld
         mov     esi, esp ; esp=base of ARP-entry, that will be added
         lea     edi, [ebx + eax] ; ebx + eax=ARPTable_base + ARP-entry_base(where we will add)
         mov     ecx, sizeof.arp_entry_t / 2 ; ARP_ENTRY_SIZE must be even number!!!
-        rep     movsw
+        rep
+        movsw
 
         mov     ecx, sizeof.arp_entry_t
         xor     edx, edx ; "div" takes operand from EDX:EAX
@@ -270,8 +269,8 @@ proc arp_table_manager stdcall uses ebx esi edi ecx edx, Opcode:DWORD, Index:DWO
         lea     esi, [edi + sizeof.arp_entry_t] ; esi=ptr to next entry
 
         shr     ecx, 1 ; ecx/2 => sizeof.arp_entry_t MUST BE EVEN NUMBER!
-        cld
-        rep     movsw
+        rep
+        movsw
 
         dec     dword[NumARP] ; decrease arp-entries counter
         jmp     .exit
@@ -292,8 +291,8 @@ proc arp_table_manager stdcall uses ebx esi edi ecx edx, Opcode:DWORD, Index:DWO
         imul    esi, sizeof.arp_entry_t ; esi=ptr to required ARP_ENTRY
         mov     edi, [Extra] ; edi=buffer for reading
         mov     ecx, sizeof.arp_entry_t / 2 ; must be even number!!!
-        cld
-        rep     movsw
+        rep
+        movsw
         jmp     .exit
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -320,7 +319,6 @@ proc arp_table_manager stdcall uses ebx esi edi ecx edx, Opcode:DWORD, Index:DWO
   .ip_to_mac:
         xor     eax, eax
         mov     edi, [Extra]
-        cld
         stosd
         stosw
 
@@ -358,7 +356,6 @@ proc arp_table_manager stdcall uses ebx esi edi ecx edx, Opcode:DWORD, Index:DWO
         movzx   eax, word[ebx + esi + arp_entry_t.status]
 
         ; esi holds index
-        cld
         lea     esi, [ebx + esi + arp_entry_t.mac]
         mov     edi, [Extra] ; edi=ptr to buffer for write MAC
         movsd
@@ -422,7 +419,6 @@ kproc arp_handler ;/////////////////////////////////////////////////////////////
 
         mov     word[ETH_FRAME.data + arp_packet_t.opcode], ARP_REP_OPCODE
 
-        cld
         mov     esi, ETH_FRAME.data + arp_packet_t.sender_mac
         mov     edi, ETH_FRAME.data + arp_packet_t.target_mac
         movsd
@@ -475,7 +471,6 @@ proc arp_request stdcall uses ebx esi edi, TargetIP:DWORD, SenderIP_ptr:DWORD, S
         mov     byte[esp + arp_packet_t.protocol_size], 0x04 ; IP-addr length
         mov     word[esp + arp_packet_t.opcode], 0x0100 ; Request
 
-        cld
         mov     esi, [SenderMAC_ptr]
         lea     edi, [esp + arp_packet_t.sender_mac] ; Our MAC-addr
         movsd

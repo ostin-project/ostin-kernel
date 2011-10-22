@@ -34,7 +34,8 @@ kproc read_skin_file ;//////////////////////////////////////////////////////////
         shr     ecx, 2
         mov     esi, eax
         mov     edi, skin_data
-        rep     movsd
+        rep
+        movsd
         stdcall kernel_free, eax
 
         call    parse_skin_data
@@ -100,8 +101,8 @@ kproc parse_skin_data ;/////////////////////////////////////////////////////////
         mov     edi, skin_udata
         mov     ecx, (skin_udata.end - skin_udata) / 4
         xor     eax, eax
-        cld
-        rep     stosd
+        rep
+        stosd
 
         mov     ebx, [ebp + skin_header_t.params]
         add     ebx, skin_data
@@ -123,7 +124,8 @@ kproc parse_skin_data ;/////////////////////////////////////////////////////////
         mov     edi, common_colours
         mov     ecx, [ebx + skin_params_t.dtp.size]
         and     ecx, 127
-        rep     movsb
+        rep
+        movsb
         mov     eax, dword[ebx + skin_params_t.margin.right]
         mov     dword[_skinmargins + 0], eax
         mov     eax, dword[ebx + skin_params_t.margin.bottom]

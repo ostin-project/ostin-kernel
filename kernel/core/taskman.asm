@@ -46,8 +46,8 @@ ends
 macro _clear_ op
 {  mov ecx, op/4
    xor eax, eax
-   cld
-   rep stosd
+   rep
+   stosd
 }
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -228,8 +228,8 @@ if ~KCONFIG_GREEDY_KERNEL
         jna     @f
 
         xor     eax, eax
-        cld
-        rep     stosb
+        rep
+        stosb
 
     @@:
 
@@ -419,12 +419,13 @@ end if
         mov     edi, [tmp_task_pdir]
         mov     ecx, (OS_BASE shr 20) / 4
         xor     eax, eax
-        cld
-        rep     stosd
+        rep
+        stosd
 
         mov     ecx, (OS_BASE shr 20) / 4
         mov     esi, sys_pgdir + (OS_BASE shr 20)
-        rep     movsd
+        rep
+        movsd
 
         mov     eax, [dir_addr]
         or      eax, PG_SW
@@ -452,7 +453,8 @@ end if
         mov     ecx, [app_tabs]
         shl     ecx, 10
         xor     eax, eax
-        rep     stosd
+        rep
+        stosd
 
         mov     ecx, [img_pages]
         mov     ebx, PG_UW
@@ -480,7 +482,8 @@ end if
 if KCONFIG_GREEDY_KERNEL
 
         mov     eax, 0x02
-        rep     stosd
+        rep
+        stosd
 
 else
 
@@ -818,7 +821,8 @@ endl
     @@: add     esi, [proc_mem_map]
         mov     edi, [buff]
         mov     edx, ecx
-        rep     movsb
+        rep
+        movsb
         add     [r_count], edx
 
         add     [offset], edx
@@ -891,7 +895,8 @@ endl
     @@: add     edi, [proc_mem_map]
         mov     esi, [buff]
         mov     edx, ecx
-        rep     movsb
+        rep
+        movsb
 
         add     [w_count], edx
         add     [offset], edx
@@ -955,12 +960,13 @@ endl
         mov     edx, edi ; edx=edi - pointer to extended infomation about new thread
         mov     ecx, sizeof.app_data_t / 4
         xor     eax, eax
-        cld
-        rep     stosd ; clean extended information about new thread
+        rep
+        stosd   ; clean extended information about new thread
         mov     esi, ebx
         mov     edi, edx
         mov     ecx, 11
-        rep     movsb ; copy process name
+        rep
+        movsb   ; copy process name
 
         mov     eax, [ebx + app_data_t.heap_base]
         mov     [edx + app_data_t.heap_base], eax
@@ -1078,7 +1084,8 @@ endl
 
         mov     esi, fpu_data
         mov     ecx, 512 / 4
-        rep     movsd
+        rep
+        movsd
 
         cmp     ebx, [TASK_COUNT]
         jle     .noinc
@@ -1109,7 +1116,8 @@ endl
         mov     ecx, 0x1000 / 4
         mov     edi, eax
         mov     [SLOT_BASE + ebx + app_data_t.cur_dir], eax
-        rep     movsd
+        rep
+        movsd
 
         shr     ebx, 3
         mov     eax, new_app_base

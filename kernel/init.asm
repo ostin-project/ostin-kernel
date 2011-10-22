@@ -140,8 +140,8 @@ kproc init_mem ;////////////////////////////////////////////////////////////////
         xor     eax, eax
         mov     edi, sys_pgdir - OS_BASE
         mov     ecx, 4096 / 4
-        cld
-        rep     stosd
+        rep
+        stosd
 
         mov     edx, (sys_pgdir - OS_BASE) + 0x0800 ; (OS_BASE shr 20)
         bt      [cpu_caps - OS_BASE], CAPS_PSE
@@ -176,7 +176,8 @@ kproc init_mem ;////////////////////////////////////////////////////////////////
         mov     ecx, [pg_data.kernel_tables - OS_BASE]
         shl     ecx, 10
         xor     eax, eax
-        rep     stosd
+        rep
+        stosd
 
         mov     ecx, [pg_data.kernel_tables - OS_BASE]
         mov     eax, [tmp_page_tabs]
@@ -206,8 +207,8 @@ kproc init_page_map ;///////////////////////////////////////////////////////////
         mov     ecx, [pg_data.pagemap_size - OS_BASE]
         shr     ecx, 2
         xor     eax, eax
-        cld
-        rep     stosd
+        rep
+        stosd
 
         ; scan through memory map and mark free areas as available
         mov     ebx, BOOT_VAR - OS_BASE + BOOT_PHOENIX_SMAP
@@ -240,7 +241,8 @@ kproc init_page_map ;///////////////////////////////////////////////////////////
         push    ecx
         shr     ecx, 5
         or      eax, -1
-        rep     stosd
+        rep
+        stosd
         pop     ecx
         and     ecx, 31
         neg     eax
@@ -274,7 +276,8 @@ kproc init_page_map ;///////////////////////////////////////////////////////////
         mov     ebx, ecx
         shr     ecx, 5
         xor     eax, eax
-        rep     stosd
+        rep
+        stosd
 
         not     eax
         mov     ecx, ebx
@@ -313,7 +316,6 @@ kproc init_BIOS32 ;/////////////////////////////////////////////////////////////
         shl     ecx, 4
         mov     esi, edi
         xor     eax, eax
-        cld     ; paranoia
 
     @@: lodsb
         add     ah, al

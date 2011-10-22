@@ -90,8 +90,8 @@ kproc fpu_save ;////////////////////////////////////////////////////////////////
         shl     esi, 8
         mov     esi, [SLOT_BASE + esi + app_data_t.fpu_state]
         mov     ecx, 512 / 4
-        cld
-        rep     movsd
+        rep
+        movsd
         fninit
 
   .exit:
@@ -154,8 +154,8 @@ kproc fpu_restore ;/////////////////////////////////////////////////////////////
         shl     eax, 8
         mov     edi, [SLOT_BASE + eax + app_data_t.fpu_state]
         mov     ecx, 512 / 4
-        cld
-        rep     movsd
+        rep
+        movsd
         popfd
         pop     esi
         pop     ecx
@@ -172,6 +172,7 @@ kproc except_7 ;////////////////////////////////////////////////////////////////
         mov     ax, app_data
         mov     ds, ax
         mov     es, ax
+        cld
 
         mov     ebx, [fpu_owner]
         cmp     ebx, [CURRENT_TASK]

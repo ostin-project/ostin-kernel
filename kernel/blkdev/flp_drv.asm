@@ -63,8 +63,8 @@ kproc give_back_application_data_1 ;////////////////////////////////////////////
         mov     esi, FDC_DMA_BUFFER
         xor     ecx, ecx
         mov     cx, 128
-        cld
-        rep     movsd
+        rep
+        movsd
         ret
 kendp
 
@@ -86,8 +86,8 @@ kproc take_data_from_application_1 ;////////////////////////////////////////////
         mov     edi, FDC_DMA_BUFFER
         xor     ecx, ecx
         mov     cx, 128
-        cld
-        rep     movsd
+        rep
+        movsd
         ret
 kendp
 

@@ -233,13 +233,14 @@ kproc sysfn.file_system ;///////////////////////////////////////////////////////
 ;       add     edi, std_application_base_address
         mov     ecx, 11
         push    ecx
-;       cld     ; already is
-        rep     movsb
+        rep
+        movsb
         mov     al, 0x10
         stosb
         add     edi, 32 - 11 - 1
         pop     ecx
-        rep     movsb
+        rep
+        movsb
         stosb
         and     [esp + 8 + regs_context32_t.eax], 0 ; ok read
         mov     [esp + 8 + regs_context32_t.ebx], 32 * 2 ; size of root
@@ -605,8 +606,8 @@ kproc fs_give_dir1 ;////////////////////////////////////////////////////////////
 
   .fs_d1_new:
         mov     ecx, 11
-;       cld
-        rep     movsb
+        rep
+        movsb
         stosb
         add     edi, 32 - 11 - 1
         dec     ebx
@@ -649,8 +650,8 @@ kproc LBA_read_ramdisk ;////////////////////////////////////////////////////////
         shl     esi, 9
         add     esi, RAMDISK
         mov     ecx, 512 / 4
-;       cld
-        rep     movsd
+        rep
+        movsd
 
         popad
 
@@ -752,8 +753,8 @@ kproc LBA_read ;////////////////////////////////////////////////////////////////
         mov     edi, [esp + 0]
         mov     ecx, 256
         sub     edx, 7
-        cld
-        rep     insw
+        rep
+        insw
 
         sti
 
@@ -787,8 +788,8 @@ kproc expand_pathz ;////////////////////////////////////////////////////////////
         inc     edi
         mov     al, 32
         mov     ecx, 11
-        cld
-        rep     stosb ; clear filename area
+        rep
+        stosb   ; clear filename area
         sub     edi, 11
         mov     ebx, edi ; start of dir/file name
 

@@ -241,7 +241,8 @@ kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////
         mov     edi, edx
         push    ecx
         mov     ecx, 32 / 4
-        rep     stosd
+        rep
+        stosd
         pop     ecx
         mov     byte[edx], 1 ; version
 
@@ -261,7 +262,8 @@ kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////
         add     edi, 8
         push    ecx
         mov     ecx, 40 / 4 - 2
-        rep     stosd
+        rep
+        stosd
         pop     ecx
         pop     eax
         push    eax edx
@@ -333,7 +335,8 @@ kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////
         ; eax=0, [esp]=first block, ebx=flags, ebp=number of blocks, edx=return area
         mov     edi, edx
         mov     ecx, 32 / 4
-        rep     stosd
+        rep
+        stosd
         mov     byte[edx], 1 ; version
 
   .readroot_loop:
@@ -347,7 +350,8 @@ kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////
   .readroot_next:
         or      ecx, -1
         xchg    esi, edi
-        repnz   scasb
+        repnz
+        scasb
         xchg    esi, edi
         jmp     .readroot_loop
 
@@ -362,7 +366,8 @@ kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////
         mov     dword[edi + 4], ebx ; name type: UNICODE
         add     edi, 8
         mov     ecx, 40 / 4 - 2
-        rep     stosd
+        rep
+        stosd
         push    edi
 
     @@: lodsb
@@ -411,7 +416,8 @@ kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////
         mov     dword[edi + 4], ebx
         add     edi, 8
         mov     ecx, 40 / 4 - 2
-        rep     stosd
+        rep
+        stosd
         push    esi edi
         lea     esi, [esp + 12]
 
@@ -1462,7 +1468,8 @@ kproc sysfn.current_directory_ctl.get ;/////////////////////////////////////////
         xor     eax, eax
         mov     ecx, max_cur_dir
 
-        repne   scasb ; find zerro at and string
+        repne
+        scasb   ; find zerro at and string
         jnz     .error ; no zero in cur_dir: internal error, should not happen
 
         sub     edi, ebx ; lenght for copy
@@ -1483,7 +1490,8 @@ kproc sysfn.current_directory_ctl.get ;/////////////////////////////////////////
         mov     al, '/' ; start string with '/'
         stosb
         mov     ecx, edx
-        rep     movsb ; copy string
+        rep
+        movsb   ; copy string
 
   .ret:
         ret
@@ -1571,7 +1579,8 @@ kproc get_full_file_name ;//////////////////////////////////////////////////////
   .set_ok.copy:
         mov     ecx, esi
         mov     esi, edx
-        rep     movsb
+        rep
+        movsb
         mov     byte[edi], 0
 
   .ret.ok:
@@ -1592,7 +1601,8 @@ kproc get_full_file_name ;//////////////////////////////////////////////////////
         mov     ecx, esi
         mov     esi, edx
         mov     edx, edi
-        rep     movsb
+        rep
+        movsb
         jmp     .doset_relative.copy
 
   .doset_relative.cur_dir:

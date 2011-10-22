@@ -328,7 +328,8 @@ kproc boot.load_vmode_to_menu ;/////////////////////////////////////////////////
         mov     di, boot.params.vmode
         xchg_s_ es, ds
         mov     cx, sizeof.boot_vmode_t / 2
-        rep     movsw
+        rep
+        movsw
         mov_s_  ds, es
 
         pop     es
@@ -383,7 +384,8 @@ kproc boot.save_vmode_from_menu ;///////////////////////////////////////////////
         mov     di, boot.params.vmode
         xchg_s_ es, ds
         mov     cx, sizeof.boot_vmode_t / 2
-        rep     movsw
+        rep
+        movsw
         mov_s_  ds, es
 
         pop     es

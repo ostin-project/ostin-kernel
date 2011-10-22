@@ -32,6 +32,7 @@ kproc irq0 ;////////////////////////////////////////////////////////////////////
         pushad
         Mov     ds, ax, app_data
         mov     es, ax
+        cld
         add     [timer_ticks], 1
         adc     [timer_ticks + 4], 0
         mov     eax, [timer_ticks]
@@ -253,7 +254,6 @@ kproc do_change_task ;//////////////////////////////////////////////////////////
         xor     eax, eax
         mov     dr6, eax
         lea     esi, [ebx + ecx + app_data_t.dbg_regs - app_data_t.dir_table] ; offset>0x7F
-        cld
 
 macro lodsReg [reg]
 {

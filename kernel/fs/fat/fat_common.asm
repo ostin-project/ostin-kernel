@@ -303,13 +303,15 @@ kproc fs.fat.fat_entry_to_bdfe ;////////////////////////////////////////////////
         jz      .ansi
 
         mov     ecx, 260 / 2
-        rep     movsd
+        rep
+        movsd
         mov     [edi - 2], ax
         jmp     @f
 
   .ansi:
         mov     ecx, 264 / 4
-        rep     movsd
+        rep
+        movsd
         mov     [edi - 1], al
 
     @@: mov     esi, edi
@@ -437,7 +439,8 @@ kproc fs.fat.next_short_name ;//////////////////////////////////////////////////
         std
         push    edi
         add     edi, 7
-        repnz   scasb
+        repnz
+        scasb
         pop     edi
         cld
         jz      .tilde

@@ -131,7 +131,8 @@ kproc fs.fat12.restore_fat_chain ;//////////////////////////////////////////////
         pop     esi
         mov     edi, ebp
         mov     ecx, 0x1200 / 4
-        rep     movsd
+        rep
+        movsd
 
         popad
         ret
@@ -224,8 +225,8 @@ kproc floppy_fileread ;/////////////////////////////////////////////////////////
         mov     esi, FLOPPY_BUFF
         add     esi, ebx
         shl     ecx, 9
-        cld
-        rep     movsb
+        rep
+        movsb
         xor     eax, eax
         xor     ebx, ebx
 ;       mov     eax, 0 ; ok read
@@ -278,8 +279,8 @@ kproc floppy_fileread ;/////////////////////////////////////////////////////////
   .l.21_1:
         mov     esi, eax ; Name of file we want
         mov     ecx, 11
-        cld
-        rep     cmpsb ; Found the file?
+        rep
+        cmpsb   ; Found the file?
         je      .fifound_1 ; Yes
         add     ecx, 21
         add     edi, ecx ; Advance to next entry
@@ -499,8 +500,8 @@ kproc check_label ;/////////////////////////////////////////////////////////////
         mov     esi, flp_label
         mov     edi, FDC_DMA_BUFFER + 39
         mov     ecx, 15
-        cld
-        rep     cmpsb
+        rep
+        cmpsb
         je      .same_label
         mov     [root_read], 0
         mov     [flp_fat], 0
@@ -509,8 +510,8 @@ kproc check_label ;/////////////////////////////////////////////////////////////
         mov     esi, FDC_DMA_BUFFER + 39
         mov     edi, flp_label
         mov     ecx, 15
-        cld
-        rep     movsb
+        rep
+        movsb
         popad
         ret
 
@@ -635,10 +636,10 @@ kproc analyze_directory_flp ;///////////////////////////////////////////////////
   .adr1_analyze_flp:
         mov     esi, edx ; [esp+16]
         mov     edi, ebx
-        cld
         push    ecx
         mov     ecx, 11
-        rep     cmpsb
+        rep
+        cmpsb
         pop     ecx
         je      .found_file_analyze_flp
 
@@ -826,7 +827,8 @@ kproc fs.fat12.read_directory ;/////////////////////////////////////////////////
         xor     eax, eax
         mov     ecx, sizeof.fs.file_info_header_t / 4
         mov     edi, [edx + fs.read_directory_query_params_t.buffer_ptr]
-        rep     stosd
+        rep
+        stosd
 
         sub     esp, 262 * 2 ; reserve space for LFN
         mov     ebp, esp
@@ -1093,7 +1095,8 @@ kproc fs.fat12._.notroot_extend_dir ;///////////////////////////////////////////
         mov     edi, [ebx + fs.partition_t.user_data]
         add     edi, fs.fat12.partition_data_t.buffer
         mov     ecx, 512 / 4
-        rep     stosd
+        rep
+        stosd
 
         popa
         call    fs.fat12._.notroot_end_write
@@ -1253,7 +1256,8 @@ kproc fs.fat12._.get_free_clusters_count ;//////////////////////////////////////
         xor     eax, eax
         xor     edx, edx
 
-    @@: repne   scasw
+    @@: repne
+        scasw
         jne     .exit
         inc     edx
         jmp     @b
@@ -1279,7 +1283,8 @@ kproc fs.fat12._.find_free_cluster ;////////////////////////////////////////////
         add     edi, fs.fat12.partition_data_t.fat
 
         xor     eax, eax
-        repne   scasw
+        repne
+        scasw
         pop     ecx
         jne     .error
 
@@ -1334,7 +1339,8 @@ kproc fs.fat12._.create_dir_entry ;/////////////////////////////////////////////
         je      .test_short_name_cont
         mov     ecx, 11
         push    esi edi
-        repe    cmpsb
+        repe
+        cmpsb
         pop     edi esi
         je      .short_name_found
 
@@ -1362,7 +1368,8 @@ kproc fs.fat12._.create_dir_entry ;/////////////////////////////////////////////
         mov     al, '~'
         push    ecx edi
         mov     ecx, 8
-        repne   scasb
+        repne
+        scasb
         mov_s_  eax, 1 ; 1 entry
         jne     .notilde
 
@@ -1495,7 +1502,8 @@ kproc fs.fat12._.create_dir_entry ;/////////////////////////////////////////////
   .not_lfn:
         xchg    esi, [esp]
         mov     ecx, 11
-        rep     movsb
+        rep
+        movsb
         sub     edi, 11
         pop     esi ecx
         add     esp, 12
@@ -1610,7 +1618,8 @@ kproc fs.fat12._.write_file ;///////////////////////////////////////////////////
         add     eax, 512
         add     edi, eax
         push    ecx
-        rep     movsb
+        rep
+        movsb
 
         lea     eax, [ebp + 31]
         push    esi
@@ -1794,7 +1803,8 @@ kproc fs.fat12.create_directory ;///////////////////////////////////////////////
         mov_s_  ecx, sizeof.fs.fat.dir_entry_t / 4
 
         push    ecx esi
-        rep     movsd
+        rep
+        movsd
         pop     esi ecx
 
         mov     dword[edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.name], '.   '
@@ -1802,7 +1812,8 @@ kproc fs.fat12.create_directory ;///////////////////////////////////////////////
         mov     dword[edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.name + 8], '   '
         mov     [edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY
 
-        rep     movsd
+        rep
+        movsd
 
         mov     dword[edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.name], '..  '
         mov     dword[edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.name + 4], '    '
@@ -1812,7 +1823,8 @@ kproc fs.fat12.create_directory ;///////////////////////////////////////////////
 
         xor     eax, eax
         mov     ecx, (512 - 2 * sizeof.fs.fat.dir_entry_t) / 4
-        rep     stosd
+        rep
+        stosd
 
         pop     esi
         mov     ecx, 512
@@ -2444,7 +2456,8 @@ kproc fs.fat12._.check_partition_label ;////////////////////////////////////////
         add     edi, 39
         mov     ecx, 15
         push    esi edi
-        rep     cmpsb
+        rep
+        cmpsb
         pop     edi esi
         je      .exit ; eax = 0
 
@@ -2453,7 +2466,8 @@ kproc fs.fat12._.check_partition_label ;////////////////////////////////////////
 
         xchg    esi, edi
         mov     ecx, 15
-        rep     movsb
+        rep
+        movsb
 
   .exit:
         pop     edi esi ecx
@@ -2768,7 +2782,8 @@ kproc fs.fat12._.notroot_prev ;/////////////////////////////////////////////////
         mov     edi, [ebx + fs.partition_t.user_data]
         add     edi, fs.fat12.partition_data_t.fat
         mov     ecx, 2849
-        repne   scasw
+        repne
+        scasw
         pop     eax
         jne     .eof
 

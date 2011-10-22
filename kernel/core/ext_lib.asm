@@ -112,8 +112,8 @@ endl
   .copy:
         add     esi, edx
         mov     ecx, [eax + coff_section_t.raw_data_size]
-        cld
-        rep     movsb
+        rep
+        movsb
 
   .next:
         add     edi, 15
@@ -318,8 +318,8 @@ proc mem.ReAlloc mptr, size;////////////////////////////////////////////////////
 
     @@: add     ecx, 3
         shr     ecx, 2
-        cld
-        rep     movsd
+        rep
+        movsd
         xchg    eax, [esp]
         call    mem.Free
 

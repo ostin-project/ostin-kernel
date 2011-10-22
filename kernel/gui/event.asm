@@ -126,8 +126,8 @@ kproc set_event ;///////////////////////////////////////////////////////////////
         jz      RemoveEventTo
         lea     edi, [eax + event_t.code]
         mov     ecx, sizeof.event_code_t / 4
-        cld
-        rep     movsd
+        rep
+        movsd
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -197,8 +197,8 @@ kproc raise_event ;/////////////////////////////////////////////////////////////
         jz      @f
         lea     edi, [ebx + event_t.code]
         mov     ecx, sizeof.event_code_t / 4
-        cld
-        rep     movsd
+        rep
+        movsd
 
     @@: test    byte[ebx + event_t.state + 3], EVENT_SIGNALED shr 24
         jnz     RemoveEventTo.break ; POPF+RET
@@ -382,8 +382,8 @@ kproc get_event_ex ;////////////////////////////////////////////////////////////
         call    Wait_events ; timeout ignored
         lea     esi, [eax + event_t.code]
         mov     ecx, sizeof.event_code_t / 4
-        cld
-        rep     movsd
+        rep
+        movsd
         mov     [edi - sizeof.event_code_t + 2], cl ; clear priority field
 
 wait_finish:

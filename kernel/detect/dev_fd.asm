@@ -19,8 +19,8 @@
         xor     eax, eax
         mov     edi, DRIVE_DATA
         mov     ecx, 16384
-        cld
-        rep     stosd
+        rep
+        stosd
 
         mov     al, 0x10
         out     0x70, al

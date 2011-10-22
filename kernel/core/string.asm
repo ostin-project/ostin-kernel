@@ -31,13 +31,14 @@ proc strncat stdcall, s1:dword, s2:dword, n:dword ;/////////////////////////////
 
         mov     ecx, -1
         xor     al, al ; Null byte
-        cld
-        repne   scasb ; Look for the zero byte in s1
+        repne
+        scasb   ; Look for the zero byte in s1
         dec     edi ; Back one up (and clear 'Z' flag)
         push    edi ; Save end of s1
         mov     edi, [s2] ; edi = string s2
         mov     ecx, edx ; Maximum count
-        repne   scasb ; Look for the end of s2
+        repne
+        scasb   ; Look for the end of s2
         jne     @f
         inc     ecx ; Exclude null byte
 
@@ -45,7 +46,8 @@ proc strncat stdcall, s1:dword, s2:dword, n:dword ;/////////////////////////////
         mov     ecx, edx
         mov     esi, [s2] ; esi = string s2
         pop     edi ; edi = end of string s1
-        rep     movsb ; Copy bytes
+        rep
+        movsb   ; Copy bytes
         stosb   ; Add a terminating null
         mov     eax, [s1] ; Return s1
         pop     edi
@@ -69,7 +71,6 @@ proc strncmp stdcall, s1:dword, s2:dword, n:dword ;/////////////////////////////
 
         mov     esi, [s1] ; esi = string s1
         mov     edi, [s2] ; edi = string s2
-        cld
 
   .compare:
         cmpsb   ; Compare two bytes
@@ -104,16 +105,18 @@ proc strncpy stdcall, s1:dword, s2:dword, n:dword ;/////////////////////////////
         mov     edi, [s2] ; edi = string s2
         xor     al, al ; Look for a zero byte
         mov     edx, ecx ; Save maximum count
-        cld
-        repne   scasb ; Look for end of s2
+        repne
+        scasb   ; Look for end of s2
         sub     edx, ecx ; Number of bytes in s2 including null
         xchg    ecx, edx
         mov     esi, [s2] ; esi = string s2
         mov     edi, [s1] ; edi = string s1
-        rep     movsb ; Copy bytes
+        rep
+        movsb   ; Copy bytes
 
         mov     ecx, edx ; Number of bytes not copied
-        rep     stosb ; strncpy always copies n bytes by null padding
+        rep
+        stosb   ; strncpy always copies n bytes by null padding
         mov     eax, [s1] ; Return s1
         pop     edi
         pop     esi
@@ -133,8 +136,8 @@ proc strnlen stdcall, s:dword, n:dword ;////////////////////////////////////////
         xor     al, al ; Look for a zero byte
         mov     edx, ecx ; Save maximum count
         cmp     cl, 1 ; 'Z' bit must be clear if ecx = 0
-        cld
-        repne   scasb ; Look for zero
+        repne
+        scasb   ; Look for zero
         jne     @f
         inc     ecx ; Don't count zero byte
 
@@ -151,7 +154,6 @@ proc strchr stdcall, s:dword, c:dword ;/////////////////////////////////////////
 ;# char *strchr(const char *s, int c)
 ;-----------------------------------------------------------------------------------------------------------------------
         push    edi
-        cld
         mov     edi, [s] ; edi = string
         mov     edx, 16 ; Look at small chunks of the string
 
@@ -159,13 +161,15 @@ proc strchr stdcall, s:dword, c:dword ;/////////////////////////////////////////
         shl     edx, 1 ; Chunks become bigger each time
         mov     ecx, edx
         xor     al, al ; Look for the zero at the end
-        repne   scasb
+        repne
+        scasb
         pushf   ; Remember the flags
         sub     ecx, edx
         neg     ecx ; Some or all of the chunk
         sub     edi, ecx ; Step back
         mov     eax, [c] ; The character to look for
-        repne   scasb
+        repne
+        scasb
         je      .found
         popf    ; Did we find the end of string earlier?
         jne     .next ; No, try again
@@ -191,13 +195,14 @@ proc strrchr stdcall, s:dword, c:dword ;////////////////////////////////////////
         mov     edi, [s] ; edi = string
         mov     ecx, -1
         xor     al, al
-        cld
-        repne   scasb ; Look for the end of the string
+        repne
+        scasb   ; Look for the end of the string
         not     ecx ; -1 - ecx = Length of the string + null
         dec     edi ; Put edi back on the zero byte
         mov     eax, [c] ; The character to look for
         std     ; Downwards search
-        repne   scasb
+        repne
+        scasb
         cld     ; Direction bit back to default
         jne     .fail
         lea     eax, [edi + 1] ; Found it

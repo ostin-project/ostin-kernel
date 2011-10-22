@@ -359,7 +359,8 @@ kproc calculatebackground ;/////////////////////////////////////////////////////
         mov     eax, 0x01010101
         mov     ecx, [_WinMapSize]
         shr     ecx, 2
-        rep     stosd
+        rep
+        stosd
 
         mov     [REDRAW_BACKGROUND], 0 ; do not draw background!
         mov     [BACKGROUND_CHANGED], 0

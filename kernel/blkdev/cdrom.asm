@@ -208,7 +208,6 @@ kproc sys_cdtracklist ;/////////////////////////////////////////////////////////
         mov      cx, 1000
         mov      dx, [cdbase]
         add      dx, 7
-        cld
 
   .cdtrnwewait:
         mov     esi, 10

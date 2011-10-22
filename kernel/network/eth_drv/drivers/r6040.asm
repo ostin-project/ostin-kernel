@@ -658,11 +658,12 @@ kproc r6040_poll ;//////////////////////////////////////////////////////////////
         push    ecx
         shr     ecx, 2
         mov     edi, Ether_buffer
-        cld
-        rep     movsd
+        rep
+        movsd
         pop     ecx
         and     ecx, 3
-        rep     movsb
+        rep
+        movsb
 
         or      [ebx + r6040_rx_ring + r6040_x_head.status], DSC_OWNER_MAC
 
@@ -747,10 +748,12 @@ kproc r6040_transmit ;//////////////////////////////////////////////////////////
         ; copy the packet data
         push    ecx
         shr     ecx, 2
-        rep     movsd
+        rep
+        movsd
         pop     ecx
         and     ecx, 3
-        rep     movsb
+        rep
+        movsb
 
         pop     edi
 

@@ -80,9 +80,9 @@ proc net_socket_alloc stdcall uses ebx ecx edx edi ;////////////////////////////
         push    eax
         mov     edi, eax
         mov     ecx, SOCKETBUFFSIZE / 4
-        cld
         xor     eax, eax
-        rep     stosd
+        rep
+        stosd
         pop     eax
 
         ; add socket to the list by changing pointers
@@ -756,13 +756,14 @@ proc socket_read stdcall ;//////////////////////////////////////////////////////
         mov     ecx, SOCKETBUFFSIZE - socket_t.rx_data - 1
         lea     edi, [esi + socket_t.rx_data]
         lea     esi, [edi + 1]
-        cld
         push    ecx
         shr     ecx, 2
-        rep     movsd
+        rep
+        movsd
         pop     ecx
         and     ecx, 3
-        rep     movsb
+        rep
+        movsb
 
         mov     [ebx + socket_t.lock], 0
         mov     ebx, eax
@@ -822,11 +823,12 @@ proc socket_read_packet stdcall ;///////////////////////////////////////////////
         pop     ecx ; count of bytes we have left
         push    ecx ; push it again so we can re-use it later
         shr     ecx, 2 ; divide eax by 4
-        cld
-        rep     movsd ; copy all full dwords
+        rep
+        movsd   ; copy all full dwords
         pop     ecx
         and     ecx, 3
-        rep     movsb ; copy remaining bytes
+        rep
+        movsb   ; copy remaining bytes
 
   .exit:
         mov     [ebx + socket_t.lock], 0
@@ -850,11 +852,12 @@ proc socket_read_packet stdcall ;///////////////////////////////////////////////
         mov     ecx, eax ; eax is count of bytes
         push    ecx
         shr     ecx, 2 ; divide eax by 4
-        cld     ; copy all full dwords
-        rep     movsd
+        rep
+        movsd   ; copy all full dwords
         pop     ecx
         and     ecx, 3
-        rep     movsb ; copy the rest bytes
+        rep
+        movsb   ; copy the rest bytes
         retn    ; exit, or go back to shift remaining bytes if any
 endp
 
@@ -951,8 +954,8 @@ proc socket_write stdcall ;/////////////////////////////////////////////////////
 
         mov     edi, edx
         add     edi, 28
-        cld
-        rep     movsb ; copy the data across
+        rep
+        movsb   ; copy the data across
 
         ; we have edx as IPbuffer ptr.
         ; Fill in the UDP checksum
@@ -1140,8 +1143,8 @@ local sockAddr dd ?
 
         ; do copy
         mov     ecx, IPBUFFSIZE
-        cld
-        rep     movsb
+        rep
+        movsb
 
   .exit:
         xor     eax, eax

@@ -1288,11 +1288,12 @@ kproc forcedeth_poll ;//////////////////////////////////////////////////////////
 
         mov     esi, eax
         mov     edi, Ether_buffer
-        cld     ; set to increment
-        rep     movsd ; mov dword from [esi++] to [edi++]
+        rep
+        movsd   ; mov dword from [esi++] to [edi++]
         pop     ecx
         and     ecx, 3 ; copy rest 1-3 bytes
-        rep     movsb
+        rep
+        movsb
 
         ; wmb();
         ; ???
@@ -1380,7 +1381,6 @@ kproc forcedeth_transmit ;//////////////////////////////////////////////////////
         push    esi
         mov     esi, edi ; dst MAC
         mov     edi, eax ; packet buffer
-        cld     ; set to increment
 
         ; copy the packet to ring buffer
         ; memcpy(ptxb, d, ETH_ALEN);      /* dst */
@@ -1402,11 +1402,13 @@ kproc forcedeth_transmit ;//////////////////////////////////////////////////////
         pop     ecx
         push    ecx
         shr     ecx, 2 ; count in dwords
-        rep     movsd ; copy dwords from [esi+=4] to [edi+=4]
+        rep
+        movsd   ; copy dwords from [esi+=4] to [edi+=4]
         pop     ecx
         push    ecx
         and     ecx, 3 ; copy rest 1-3 bytes
-        rep     movsb ; copy bytess from [esi++] to [edi++]
+        rep
+        movsb   ; copy bytess from [esi++] to [edi++]
 
 
         ; s += ETH_HLEN;
@@ -1422,7 +1424,8 @@ kproc forcedeth_transmit ;//////////////////////////////////////////////////////
         sub     eax, ecx
         xchg    eax, ecx
         mov     al, 0
-        rep     stosb ; copy byte from al to [edi++]
+        rep
+        stosb   ; copy byte from al to [edi++]
 
     @@: ; tx_ring[nr].PacketBuffer = (u32) virt_to_le32desc(ptxb);
         mov     eax, dword[forcedeth_tmp_nr]

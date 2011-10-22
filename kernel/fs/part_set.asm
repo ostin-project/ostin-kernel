@@ -520,8 +520,8 @@ kproc scan_partition_types ;////////////////////////////////////////////////////
         push    ecx
         mov     edi, partition_types
         mov     ecx, partition_types_end - partition_types
-        cld
-        repne   scasb ; is partition type ok?
+        repne
+        scasb   ; is partition type ok?
         pop     ecx
         ret
 kendp
@@ -532,8 +532,8 @@ kproc scan_extended_types ;/////////////////////////////////////////////////////
         push    ecx
         mov     edi, extended_types
         mov     ecx, extended_types_end - extended_types
-        cld
-        repne   scasb ; is it extended partition?
+        repne
+        scasb   ; is it extended partition?
         pop     ecx
         ret
 kendp

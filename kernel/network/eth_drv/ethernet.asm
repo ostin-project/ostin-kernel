@@ -328,7 +328,6 @@ local MACAddress dp ? ; allocate 6 bytes in the stack
 
         ; If the destination address is 255.255.255.255,
         ; set the MACAddress to all ones ( broadcast )
-        cld
         mov     esi, broadcast_add
         lea     edi, [MACAddress]
         movsd
@@ -411,8 +410,8 @@ kproc ether_IP_handler ;////////////////////////////////////////////////////////
 
         ; Now store it all away
         mov     ecx, IPBUFFSIZE / 4 ; Copy all of the available data across - worse case
-        cld
-        rep     movsd
+        rep
+        movsd
 
 ;       inc     [ether_IP_handler_cnt]
 ;       klog_   LOG_DEBUG, "ether_IP_handler (%u)\n", [ether_IP_handler_cnt]

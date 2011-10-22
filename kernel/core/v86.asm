@@ -60,11 +60,13 @@ kproc v86_create ;//////////////////////////////////////////////////////////////
         ; initialize tables
         mov     ecx, 0x2000 / 4
         xor     eax, eax
-        rep     stosd
+        rep
+        stosd
         mov     [ebx + v86_machine_t.iopm], edi
         dec     eax
         mov     ecx, 0x2000 / 4
-        rep     stosd
+        rep
+        stosd
         pop     eax
         ; page directory: first entry is page table...
         mov     edi, eax
@@ -79,7 +81,8 @@ kproc v86_create ;//////////////////////////////////////////////////////////////
         push    esi
         mov     esi, (OS_BASE shr 20) + sys_pgdir
         mov     ecx, 0x80000000 shr 22
-        rep     movsd
+        rep
+        movsd
 
         mov     eax, [ebx + v86_machine_t.pagedir] ; root dir also is used as page table
         call    get_pg_addr
@@ -273,7 +276,8 @@ if ~KCONFIG_DEBUG_SHOW_IO
         xor     eax, eax
         mov     edi, ecx
         mov     ecx, 0x10000 / 8 / 4
-        rep     stosd
+        rep
+        stosd
 
 end if
 
@@ -360,7 +364,8 @@ kproc v86_start ;///////////////////////////////////////////////////////////////
         mov     esi, ebx
         mov     edi, esp
         mov     ecx, sizeof.v86_regs_t / 4
-        rep     movsd
+        rep
+        movsd
 
         cmp     edx, -1
         jz      .noirqhook
@@ -820,7 +825,8 @@ end if
         mov     edi, [esi + sizeof.v86_regs_t + 0x10 + v86_regs_t.ebx]
         add     edi, sizeof.v86_regs_t
         mov     ecx, sizeof.v86_regs_t / 4
-        rep     movsd
+        rep
+        movsd
         mov     esp, esi
 
         cli
@@ -890,7 +896,8 @@ kproc v86_irq ;/////////////////////////////////////////////////////////////////
         lea     edi, [esi + 4]
         mov     ecx, 8
         std
-        rep     movsd
+        rep
+        movsd
         cld
         mov     edi, eax
         pop     eax

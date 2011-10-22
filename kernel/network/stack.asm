@@ -120,8 +120,8 @@ macro _memset_dw adr, value, amount
 
   end if
 
-        cld
-        rep     stosd
+        rep
+        stosd
 }
 
 ; Below, the main network layer source code is included
@@ -207,10 +207,8 @@ proc checksum_jb stdcall uses ebx esi ecx, buf_ptr:DWORD, buf_size:DWORD ;//////
         mov     esi, dword[buf_ptr]
         mov     ecx, dword[buf_size]
         shr     ecx, 1 ; ecx=ecx/2
-        jnc     @f ; if CF==0 then size is even number
+        jnc     .loop ; if CF==0 then size is even number
         mov     bh, byte[esi + ecx * 2]
-
-    @@: cld
 
   .loop:
         lodsw   ; eax=word[esi],esi=esi+2
@@ -781,8 +779,8 @@ kproc stack_get_packet ;////////////////////////////////////////////////////////
 
         mov     ecx, 1500 ; should get the actual number of bytes to write
         mov     esi, eax
-        cld
-        rep     movsb ; copy the data across
+        rep
+        movsb   ; copy the data across
 
         ; And finally, return the buffer to the free queue
         pop     eax
@@ -837,8 +835,8 @@ kproc stack_insert_packet ;/////////////////////////////////////////////////////
         mov     esi, eax
 
         mov     edi, edx
-        cld
-        rep     movsb ; copy the data across
+        rep
+        movsb   ; copy the data across
 
         pop     ebx
 

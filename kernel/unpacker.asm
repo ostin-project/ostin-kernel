@@ -184,7 +184,8 @@ kproc unpack ;//////////////////////////////////////////////////////////////////
         mov     ecx, .Literal + (.LZMA_LIT_SIZE shl (.lc + .lp))
         mov     eax, .kBitModelTotal/2
         mov     edi, [.p]
-        rep     stosd
+        rep
+        stosd
         ; RangeDecoderInit
         ; rd->ExtraBytes = 0
         ; rd->Buffer = stream
@@ -373,7 +374,8 @@ end if
         push    esi
         mov     esi, edi
         sub     esi, [.rep0]
-        rep     movsb
+        rep
+        movsb
         pop     esi
         mov     al, [edi - 1]
         mov     [.previousByte], al

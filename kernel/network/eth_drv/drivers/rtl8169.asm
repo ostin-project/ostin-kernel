@@ -633,11 +633,12 @@ kproc rtl8169_init_ring ;///////////////////////////////////////////////////////
 
         mov     edi, [rtl8169_tpc.TxDescArray]
         mov     ecx, (NUM_TX_DESC * sizeof.rtl8169_TxDesc) / 4
-        cld
-        rep     stosd
+        rep
+        stosd
         mov     edi, [rtl8169_tpc.RxDescArray]
         mov     ecx, (NUM_RX_DESC * sizeof.rtl8169_RxDesc) / 4
-        rep     stosd
+        rep
+        stosd
 
         mov     edi, rtl8169_tpc.Tx_skbuff
         mov     eax, rtl8169_txb
@@ -858,8 +859,8 @@ kproc rtl8169_reset ;///////////////////////////////////////////////////////////
         mov     edi, rtl8169_txb
         or      al, -1
         mov     ecx, 192
-        cld
-        rep     stosb
+        rep
+        stosb
 
         mov     esi, node_addr
         mov     edi, rtl8169_txb
@@ -892,7 +893,6 @@ kproc rtl8169_transmit ;////////////////////////////////////////////////////////
         ; point to the current txb incase multiple tx_rings are used
         mov     edi, [rtl8169_tpc.Tx_skbuff + eax * 4]
         mov     eax, edi
-        cld
         ; copy destination address
         movsd
         movsw
@@ -907,11 +907,13 @@ kproc rtl8169_transmit ;////////////////////////////////////////////////////////
         pop     esi edx ecx
         push    ecx
         shr     ecx, 2
-        rep     movsd
+        rep
+        movsd
         pop     ecx
         push    ecx
         and     ecx, 3
-        rep     movsb
+        rep
+        movsb
 
         ;!!!    s += ETH_HLEN;
         ;!!!    s &= 0x0FFF;
@@ -1028,11 +1030,12 @@ kproc rtl8169_poll ;////////////////////////////////////////////////////////////
         mov     edx, [rtl8169_tpc.RxBufferRing + eax * 4]
         mov     esi, edx
         mov     edi, Ether_buffer
-        cld
-        rep     movsd
+        rep
+        movsd
         pop     ecx
         and     ecx, 3
-        rep     movsb
+        rep
+        movsb
 
         mov     eax, RTL8169_DSB_OWNbit or RX_BUF_SIZE
         cmp     [rtl8169_tpc.cur_rx], NUM_RX_DESC - 1

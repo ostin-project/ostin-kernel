@@ -95,7 +95,8 @@ proc load_file_parse_table ;////////////////////////////////////////////////////
         mov     edi, eax
         mov     esi, sysdir_name
         mov     ecx, 128 / 4
-        rep     movsd
+        rep
+        movsd
 
         invoke  ini.enum_keys, conf_fname, conf_path_sect, get_every_key
 
@@ -144,7 +145,8 @@ proc get_every_key stdcall, f_name, sec_name, key_name ;////////////////////////
         lea     esi, [ebx + 1]
         mov     edi, ebx
         mov     ecx, 63
-        rep     movsb
+        rep
+        movsb
 
     @@: push    ebp
         mov     ebp, [tmp_file_name_table]

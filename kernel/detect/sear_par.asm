@@ -162,7 +162,8 @@ kproc partition_data_transfer ;/////////////////////////////////////////////////
         mov     edi, [transfer_adress]
         mov     esi, PARTITION_START ; start of file_system_data
         mov     ecx, (file_system_data_size + 3) / 4
-        rep     movsd
+        rep
+        movsd
         ret
 kendp
 
@@ -174,7 +175,8 @@ kproc partition_data_transfer_1 ;///////////////////////////////////////////////
         mov     edi, PARTITION_START
         mov     esi, [transfer_adress]
         mov     ecx, (file_system_data_size + 3) / 4
-        rep     movsd
+        rep
+        movsd
         pop     edi
 ;       sti
         ret

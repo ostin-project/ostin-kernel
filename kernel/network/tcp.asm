@@ -203,8 +203,8 @@ proc tcp_tx_handler stdcall ;///////////////////////////////////////////////////
 
         ; copy data across
         push    edi
-        cld
-        rep     movsb
+        rep
+        movsb
         pop     edi
 
         ; queue packet
@@ -468,8 +468,8 @@ proc build_tcp_packet stdcall, sockAddr:DWORD ;/////////////////////////////////
 
         mov     edi, edx
         add     edi, 40
-        cld
-        rep     movsb ; copy the data across
+        rep
+        movsb   ; copy the data across
 
     @@: ; we have edx as IPbuffer ptr.
         ; Fill in the TCP checksum
@@ -943,8 +943,8 @@ proc stateTCB_ESTABLISHED stdcall, sockAddr:DWORD ;/////////////////////////////
         add     edx, 40 ; edx now points to the data
         mov     esi, edx
 
-        cld
-        rep     movsb ; copy the data across
+        rep
+        movsb   ; copy the data across
         mov     [ebx + socket_t.lock], 0 ; release mutex
 
         ; flag an event to the application

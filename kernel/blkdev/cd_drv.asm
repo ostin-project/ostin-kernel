@@ -158,8 +158,8 @@ kproc ReadCDWRetr ;/////////////////////////////////////////////////////////////
         pop     eax
         mov     edi, ebx ; [CDDataBuf_pointer]
         mov     ecx, 512 ; /4
-        cld
-        rep     movsd ; move data
+        rep
+        movsd   ; move data
 
   .exit:
         popad
@@ -379,8 +379,8 @@ kproc SendPacketDatCommand ;////////////////////////////////////////////////////
         shr     cx, 1 ; divide block size by 2
         ; receive data block
         cli
-        cld
-        rep     insw
+        rep
+        insw
         sti
 
   .End_8:

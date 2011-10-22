@@ -199,8 +199,8 @@ kproc hd_read ;/////////////////////////////////////////////////////////////////
 
         mov     edi, ebx
         mov     ecx, 512 / 4
-        cld
-        rep     movsd ; move data
+        rep
+        movsd   ; move data
 
   .return_01:
         pop     edi esi ecx
@@ -260,8 +260,8 @@ kproc hd_read_pio ;/////////////////////////////////////////////////////////////
 
         mov     ecx, 256
         mov     edx, [hdbase]
-        cld
-        rep     insw
+        rep
+        insw
         pop     edi
         sti
 
@@ -348,8 +348,8 @@ kproc hd_write ;////////////////////////////////////////////////////////////////
 
         mov     esi, ebx
         mov     ecx, 512 / 4
-        cld
-        rep     movsd ; move data
+        rep
+        movsd   ; move data
 
   .hd_write_access_denied:
         pop     edi esi ecx
@@ -413,8 +413,8 @@ kproc cache_write_pio ;/////////////////////////////////////////////////////////
 
         mov     ecx, 256
         mov     edx, [hdbase]
-        cld
-        rep     outsw
+        rep
+        outsw
         sti
 
 ;       call    enable_ide_int
@@ -734,8 +734,8 @@ kproc hd_read_dma ;/////////////////////////////////////////////////////////////
         pop     eax
 
         mov     ecx, 512 / 4
-        cld
-        rep     movsd
+        rep
+        movsd
         pop     edi esi ecx
         pop     edx
         pop     eax
@@ -856,8 +856,8 @@ kproc write_cache_chain ;///////////////////////////////////////////////////////
         shl     ecx, 9
         mov     word[edx + 4], cx
         shr     ecx, 2
-        cld
-        rep     movsd
+        rep
+        movsd
         popa
         sub     eax, OS_BASE
         mov     dx, [IDEContrRegsBaseAddr]
@@ -979,8 +979,8 @@ kproc bd_read ;/////////////////////////////////////////////////////////////////
         pop     eax
 
         mov     ecx, 512 / 4
-        cld
-        rep     movsd
+        rep
+        movsd
         pop     edi esi ecx
         pop     edx
         pop     eax
@@ -1022,7 +1022,8 @@ kproc bd_write_cache_chain ;////////////////////////////////////////////////////
         movzx   ecx, [cache_chain_size]
         push    ecx
         shl     ecx, 9 - 2
-        rep     movsd
+        rep
+        movsd
         pop     ecx
         mov     dl, 0x43
         mov     eax, [cache_chain_ptr]
@@ -1063,7 +1064,8 @@ kproc int13_call ;//////////////////////////////////////////////////////////////
         mov     edi, ebx
         mov     ecx, sizeof.v86_regs_t / 4
         xor     eax, eax
-        rep     stosd
+        rep
+        stosd
         mov     byte[ebx + v86_regs_t.eax + 1], dl
         mov     eax, [hdpos]
         lea     eax, [BiosDisksData + (eax - 0x80) * 4]

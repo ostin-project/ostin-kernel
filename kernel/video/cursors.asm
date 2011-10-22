@@ -406,8 +406,8 @@ kproc create_cursor ;///////////////////////////////////////////////////////////
 
         xchg    edi, eax
         mov     ecx, 1024
-        cld
-        rep     movsd
+        rep
+        movsd
         jmp     .check_hw
 kendp
 
@@ -540,7 +540,8 @@ proc restore_24 stdcall, x:dword, y:dword ;/////////////////////////////////////
         add     ebx, [BytesPerScanLine]
 
         mov     ecx, [esp]
-        rep     movsb
+        rep
+        movsb
         dec     edx
         jnz     @b
 
@@ -573,7 +574,8 @@ proc restore_32 stdcall, x:dword, y:dword ;/////////////////////////////////////
         add     ebx, [BytesPerScanLine]
 
         mov     ecx, [cur.w]
-        rep     movsd
+        rep
+        movsd
         dec     edx
         jnz     @b
 
@@ -656,7 +658,8 @@ endl
         add     edx, [BytesPerScanLine]
         mov     ecx, [cur.w]
         lea     ecx, [ecx + ecx * 2]
-        rep     movsb
+        rep
+        movsb
         dec     eax
         jnz     @B
 
@@ -763,7 +766,8 @@ endl
     @@: mov     esi, edx
         add     edx, [BytesPerScanLine]
         mov     ecx, [cur.w]
-        rep     movsd
+        rep
+        movsd
         dec     eax
         jnz     @B
 

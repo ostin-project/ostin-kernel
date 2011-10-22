@@ -925,11 +925,12 @@ kproc SIS900_poll ;/////////////////////////////////////////////////////////////
         mov     esi, [rxd + eax + 8] ; set source
         add     esi, OS_BASE ; get linear address
         mov     edi, Ether_buffer ; set destination
-        cld     ; clear direction
-        rep     movsd ; copy the dwords
+        rep
+        movsd   ; copy the dwords
         pop     ecx
         and     ecx, 3
-        rep     movsb
+        rep
+        movsb
 
 if KCONFIG_NET_DRIVER_SIS900_DEBUG
 
@@ -1014,7 +1015,6 @@ kproc SIS900_transmit ;/////////////////////////////////////////////////////////
         push    esi
         mov     esi, edi ; copy destination addess
         mov     edi, txb
-        cld
         movsd
         movsw
         mov     esi, node_addr ; copy my mac address
@@ -1025,11 +1025,13 @@ kproc SIS900_transmit ;/////////////////////////////////////////////////////////
         pop     esi ; restore pointer to source of packet
         push    ecx ; save packet size
         shr     ecx, 2 ; divide by 4, size in bytes send in dwords
-        rep     movsd ; copy data to decriptor
+        rep
+        movsd   ; copy data to decriptor
         pop     ecx ; restore packet size
         push    ecx ; save packet size
         and     ecx, 3 ; last three bytes if not a multiple of 4
-        rep     movsb
+        rep
+        movsb
         ; set length tag
         pop     ecx ; restore packet size
         add     ecx, SIS900_ETH_HLEN ; add header to length
@@ -1041,7 +1043,8 @@ kproc SIS900_transmit ;/////////////////////////////////////////////////////////
 ;       mov     ebx, SIS900_ETH_ZLEN
 ;       sub     ebx, ecx
 ;       mov     ecx, ebx
-;       rep     movsb
+;       rep
+;       movsb
 ;       pop     ecx
 
   .Size_Ok:

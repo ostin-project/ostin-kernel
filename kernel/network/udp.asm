@@ -102,8 +102,8 @@ proc udp_rx stdcall ;///////////////////////////////////////////////////////////
         lea     edi, [ebx + eax + SOCKETHEADERSIZE]
         mov     esi, edx
 
-        cld
-        rep     movsb ; copy the data across
+        rep
+        movsb   ; copy the data across
 
         ; flag an event to the application
         mov     eax, [ebx + socket_t.pid] ; get socket owner PID

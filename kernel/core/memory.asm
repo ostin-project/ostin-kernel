@@ -136,7 +136,8 @@ proc alloc_pages stdcall, count:dword ;/////////////////////////////////////////
         push    esi
         mov     esi, edi
         xor     eax, eax
-        rep     stosb
+        rep
+        stosb
         sub     esi, sys_pgmap
         shl     esi, 3 + 12
         mov     eax, esi
@@ -446,7 +447,6 @@ endl
         mov     edi, page_tabs + (LFB_BASE shr 10)
         or      eax, PG_UW
         mov     ecx, [pg_count]
-        cld
 
     @@: stosd
         add     eax, 0x1000
@@ -535,8 +535,8 @@ proc new_mem_resize stdcall, new_size:dword ;///////////////////////////////////
         add     edi, page_tabs
         mov     ecx, 1024
         xor     eax, eax
-        cld
-        rep     stosd
+        rep
+        stosd
         pop     edi
 
         add     edi, 0x00400000
@@ -564,8 +564,8 @@ proc new_mem_resize stdcall, new_size:dword ;///////////////////////////////////
         mov     edi, esi
         xor     eax, eax
         mov     ecx, 1024
-        cld
-        rep     stosd
+        rep
+        stosd
         pop     edi
 
         add     esi, 0x1000
@@ -712,8 +712,8 @@ end if
         and     edi, 0xfffff000
         mov     ecx, 1024
         xor     eax, eax
-;       cld     ; caller is duty for this
-        rep     stosd
+        rep
+        stosd
 
   .exit:
         ; iret with repeat fault instruction
@@ -756,7 +756,8 @@ end if
         mov     esi, [esi + dll_handle_t.parent]
         mov     esi, [esi + dll_descriptor_t.data]
         add     esi, ebx
-        rep     movsd
+        rep
+        movsd
         jmp     .exit
 
   .kernel_space:
@@ -796,8 +797,8 @@ end if
 
         add     esi, [default_io_map]
         mov     ecx, 4096 / 4
-;       cld     ; caller is duty for this
-        rep     movsd
+        rep
+        movsd
         jmp     .exit
 endp
 
@@ -967,7 +968,6 @@ proc safe_map_page stdcall, slot:dword, req_access:dword, ofs:dword ;///////////
         ; find control structure for this page
         pushf
         cli
-        cld
         push    ebx ecx
         mov     eax, [slot]
         shl     eax, 8
@@ -1006,7 +1006,8 @@ proc safe_map_page stdcall, slot:dword, req_access:dword, ofs:dword ;///////////
         push    esi edi
         mov     esi, ebx
         mov     ecx, 4096 / 4
-        rep     movsd
+        rep
+        movsd
         pop     edi esi
         pop     ecx ebx
         popf
@@ -1167,8 +1168,8 @@ endl
         add     edi, 8
         mov     esi, [msg_addr]
 ;       add     esi, new_app_base
-        cld
-        rep     movsb
+        rep
+        movsb
 
         mov     ebx, [ipc_tmp]
         mov     edx, ebx

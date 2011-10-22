@@ -32,7 +32,8 @@ kproc fdc_init ;////////////////////////////////////////////////////////////////
         mov     edi, OS_BASE + 0xd201
         mov     al, 0
         mov     ecx, 160
-        rep     stosb
+        rep
+        stosb
 
         call    fdc_reset
 

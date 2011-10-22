@@ -93,7 +93,6 @@ include "detect/biosdisk.asm"
         sidt    [cs:old_ints_h]
 
         cli     ; disable all irqs
-        cld
 
         mov     al, 255 ; mask all irqs
         out     0xa1, al
@@ -162,32 +161,37 @@ B32:
         mov     gs, ax
         mov     ss, ax
         mov     esp, KERNEL_STACK_TOP - OS_BASE ; Set stack
+        cld
 
         ; CLEAR 0x280000 - HEAP_BASE
         xor     eax, eax
         mov     edi, CLEAN_ZONE
         mov     ecx, (HEAP_BASE - OS_BASE - CLEAN_ZONE) / 4
-        cld
-        rep     stosd
+        rep
+        stosd
 
 ;///        mov     edi, 0x40000
 ;///        mov     ecx, (0x90000 - 0x40000) / 4
-;///        rep     stosd
+;///        rep
+;///        stosd
 
         ; CLEAR KERNEL UNDEFINED GLOBALS
         mov     edi, endofcode - OS_BASE
 ;///        mov     ecx, (uglobals_size / 4) + 4
         mov     ecx, (0xa0000 - (endofcode - OS_BASE)) / 4
-        rep     stosd
+        rep
+        stosd
 
         ; SAVE & CLEAR 0-0xffff
         xor     esi, esi
         mov     edi, BOOT_VAR - OS_BASE
         mov     ecx, 0x10000 / 4
-        rep     movsd
+        rep
+        movsd
         mov     edi, 0x1000
         mov     ecx, 0xf000 / 4
-        rep     stosd
+        rep
+        stosd
 
         call    test_cpu
         bts     [cpu_caps - OS_BASE], CAPS_TSC ; force use rdtsc
@@ -241,6 +245,7 @@ high_code:
         mov     es, bx
         mov     fs, cx
         mov     gs, bx
+        cld
 
         bt      [cpu_caps], CAPS_PGE
         jnc     @f
@@ -335,7 +340,8 @@ high_code:
         movzx   ecx, byte[esi - 1]
         mov     [NumBiosDisks], ecx
         mov     edi, BiosDisksData
-        rep     movsd
+        rep
+        movsd
 
         ; GRAPHICS ADDRESSES
         and     [BOOT_VAR + BOOT_DIRECT_LFB], 0
@@ -459,7 +465,8 @@ high_code:
         xor     eax, eax
         not     eax
         mov     ecx, 8192 / 4
-        rep     stosd ; access to 4096*8=65536 ports
+        rep
+        stosd   ; access to 4096*8=65536 ports
 
         mov     ax, tss0
         ltr     ax
@@ -516,7 +523,8 @@ high_code:
         mov     edi, irq_tab
         xor     eax, eax
         mov     ecx, 16
-        rep     stosd
+        rep
+        stosd
 
         ; Set base of graphic segment to linear address of LFB
         mov     eax, [LFBAddress] ; set for gs
@@ -549,7 +557,8 @@ high_code:
         mov     [network_free_ports], eax
         or      eax, -1
         mov     ecx, 0x10000 / 32
-        rep     stosd
+        rep
+        stosd
 
         ; REDIRECT ALL IRQ'S TO INT'S 0x20-0x2f
         call    rerouteirqs
@@ -689,8 +698,8 @@ end if
 
         mov     esi, fpu_data
         mov     ecx, 512 / 4
-        cld
-        rep     movsd
+        rep
+        movsd
 
         mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.exc_handler], eax
         mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.except_mask], eax
@@ -1241,7 +1250,6 @@ kproc sysfn.write_to_port ;/////////////////////////////////////////////////////
         mov     edx, [TASK_BASE]
         mov     edx, [edx + task_data_t.pid]
 ;       and     ecx,65535
-;       cld     ; set on interrupt 0x40
 
   .sopl1:
         mov     esi, eax
@@ -2446,8 +2454,8 @@ kproc sysfn.system_ctl.get_disks_info ;/////////////////////////////////////////
   .small_table:
         call    .for_all_tables
         mov     ecx, 10
-        cld
-        rep     movsb
+        rep
+        movsb
         ret
 
   .full_table:
@@ -2456,8 +2464,8 @@ kproc sysfn.system_ctl.get_disks_info ;/////////////////////////////////////////
         jnz     exit_for_anyone
         call    .for_all_tables
         mov     ecx, 16384
-        cld
-        rep     movsd
+        rep
+        movsd
         ret
 
   .for_all_tables:
@@ -2474,7 +2482,8 @@ kproc sysfn.system_ctl.get_kernel_version ;/////////////////////////////////////
         mov     edi, ecx
         mov     esi, version_inf
         mov     ecx, version_end - version_inf
-        rep     movsb
+        rep
+        movsb
         ret
 kendp
 
@@ -3455,7 +3464,6 @@ kproc delay_ms ;////////////////////////////////////////////////////////////////
         in      al, 0x61
         and     al, 0x10
         mov     ah, al
-        cld
 
   .cnt1:
         in      al, 0x61
@@ -3537,12 +3545,14 @@ kproc memmove ;/////////////////////////////////////////////////////////////////
 
         push    ecx
         shr     ecx, 2
-        rep     movsd
+        rep
+        movsd
         pop     ecx
         and     ecx, 011b
         jz      .finish
 
-    @@: rep     movsb
+    @@: rep
+        movsb
 
   .finish:
         pop     ecx edi esi
@@ -3577,8 +3587,8 @@ kproc sysfn.program_irq ;///////////////////////////////////////////////////////
         push    16
         pop     ecx
 
-        cld
-        rep     movsd
+        rep
+        movsd
 
   .end:
         mov     [esp + 4 + regs_context32_t.eax], ecx
@@ -3626,7 +3636,6 @@ kproc sysfn.get_irq_data ;//////////////////////////////////////////////////////
         xor     ebx, ebx
 
     @@: lea     esi, [ebx + edx] ; calculate data size and offset
-        cld
         cmp     esi, ecx ; if greater than the buffer size, begin cycle again
         jbe     @f
 
@@ -3634,7 +3643,8 @@ kproc sysfn.get_irq_data ;//////////////////////////////////////////////////////
         sub     edx, ecx
 
         lea     esi, [eax + ebx + 0x10]
-        rep     movsb
+        rep
+        movsb
 
         xor     ebx, ebx
 
@@ -3642,7 +3652,8 @@ kproc sysfn.get_irq_data ;//////////////////////////////////////////////////////
         mov     ecx, edx
         add     ebx, edx
 
-        rep     movsb
+        rep
+        movsb
         mov     edx, [eax]
         mov     [eax], ecx ; set data size to zero
         mov     [eax + 0x4], ebx ; set data offset
@@ -3811,8 +3822,7 @@ kproc r_f_port_area ;///////////////////////////////////////////////////////////
         shl     ecx, 4
         mov     esi, edi
         add     esi, 16
-        cld
-        rep     movsb
+        movsb
 
         dec     dword[RESERVED_PORTS]
 ;       popad
@@ -4474,7 +4484,6 @@ kproc rerouteirqs ;/////////////////////////////////////////////////////////////
         call    .pic_delay
 
         mov     ecx, 0x1000
-        cld
 
   .picl1:
         call    .pic_delay
@@ -5363,13 +5372,14 @@ end if
         mov     esi, restart_kernel_4000 + OS_BASE + 0x10000 ; move kernel re-starter to 0x4000:0
         mov     edi, OS_BASE + 0x40000
         mov     ecx, 1000
-        rep     movsb
+        rep
+        movsb
 
         mov     esi, BOOT_VAR ; restore 0x0 - 0xffff
         mov     edi, OS_BASE
         mov     ecx, 0x10000 / 4
-        cld
-        rep     movsd
+        rep
+        movsd
 
         mov     esi, RAMDISK_FAT
         mov     edi, RAMDISK + 512

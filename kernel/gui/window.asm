@@ -180,7 +180,8 @@ kproc sysfn.display_settings_ctl.set_system_color_palette ;/////////////////////
         and     edx, 127
         mov     edi, common_colours
         mov     ecx, edx
-        rep     movsb
+        rep
+        movsb
         mov     [windowtypechanged], ebx
         ret
 kendp
@@ -198,7 +199,8 @@ kproc sysfn.display_settings_ctl.get_system_color_palette ;/////////////////////
         and     edx, 127
         mov     esi, common_colours
         mov     ecx, edx
-        rep     movsb
+        rep
+        movsb
         ret
 kendp
 
@@ -1375,7 +1377,8 @@ if window_data_t.box
 end if
 
         mov     ecx, 4
-        repz    cmpsd
+        repz
+        cmpsd
         pop     edi
         jz      .exit
 
@@ -1766,10 +1769,12 @@ end virtual
   .next_line:
         push    ecx
         shr     ecx, 2
-        rep     stosd
+        rep
+        stosd
         mov     ecx, [esp]
         and     ecx, 3
-        rep     stosb
+        rep
+        stosb
         pop     ecx
         add     edi, esi
         sub     edi, ecx
