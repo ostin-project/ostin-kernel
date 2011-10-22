@@ -48,6 +48,192 @@ uglobal
   hotkey_buffer    rd 120 * 2 ; buffer for 120 hotkeys
 endg
 
+;-----------------------------------------------------------------------------------------------------------------------
+kproc sysfn.keyboard_ctl ;//////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? System function 66
+;-----------------------------------------------------------------------------------------------------------------------
+iglobal
+  jump_table sysfn.keyboard_ctl, subfn, sysfn.not_implemented, \
+    set_input_mode, \ ; 1
+    get_input_mode, \ ; 2
+    get_modifiers_state, \ ; 3
+    register_hotkey, \ ; 4
+    unregister_hotkey ; 5
+endg
+;-----------------------------------------------------------------------------------------------------------------------
+        dec     ebx
+        cmp     ebx, .countof.subfn
+        jae     sysfn.not_implemented
+
+        mov     edi, [CURRENT_TASK]
+        jmp     [.subfn + ebx * 4]
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc sysfn.keyboard_ctl.set_input_mode ;///////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? System function 66.1: set keyboard mode
+;-----------------------------------------------------------------------------------------------------------------------
+        shl     edi, 8
+        mov     [SLOT_BASE + edi + app_data_t.keyboard_mode], cl
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc sysfn.keyboard_ctl.get_input_mode ;///////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? System function 66.2: get keyboard mode
+;-----------------------------------------------------------------------------------------------------------------------
+        shl     edi, 8
+        movzx   eax, [SLOT_BASE + edi + app_data_t.keyboard_mode]
+        mov     [esp + 4 + regs_context32_t.eax], eax
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc sysfn.keyboard_ctl.get_modifiers_state ;//////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? System function 66.3: get keyboard ctrl, alt, shift
+;-----------------------------------------------------------------------------------------------------------------------
+;       xor     eax, eax
+;       movzx   eax, byte[shift]
+;       movzx   ebx, byte[ctrl]
+;       shl     ebx, 2
+;       add     eax, ebx
+;       movzx   ebx, byte[alt]
+;       shl     ebx, 3
+;       add     eax, ebx
+        mov     eax, [kb_state]
+        mov     [esp + 4 + regs_context32_t.eax], eax
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc sysfn.keyboard_ctl.register_hotkey ;//////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? System function 66.4
+;-----------------------------------------------------------------------------------------------------------------------
+        mov     eax, hotkey_list
+
+    @@: cmp     dword[eax + 8], 0
+        jz      .found_free
+        add     eax, 16
+        cmp     eax, hotkey_list + 16 * 256
+        jb      @b
+        mov     [esp + 4 + regs_context32_t.eax], 1
+        ret
+
+  .found_free:
+        mov     [eax + 8], edi
+        mov     [eax + 4], edx
+        movzx   ecx, cl
+        lea     ecx, [hotkey_scancodes + ecx * 4]
+        mov     edx, [ecx]
+        mov     [eax], edx
+        mov     [ecx], eax
+        mov     [eax + 12], ecx
+        jecxz   @f
+        mov     [edx + 12], eax
+
+    @@: and     [esp + 4 + regs_context32_t.eax], 0
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc sysfn.keyboard_ctl.unregister_hotkey ;////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? System function 66.5
+;-----------------------------------------------------------------------------------------------------------------------
+        movzx   ebx, cl
+        lea     ebx, [hotkey_scancodes + ebx * 4]
+        mov     eax, [ebx]
+
+  .scan:
+        test    eax, eax
+        jz      .notfound
+        cmp     [eax + 8], edi
+        jnz     .next
+        cmp     [eax + 4], edx
+        jz      .found
+
+  .next:
+        mov     eax, [eax]
+        jmp     .scan
+
+  .notfound:
+        mov     [esp + 4 + regs_context32_t.eax], 1
+        ret
+
+  .found:
+        mov     ecx, [eax]
+        jecxz   @f
+        mov     edx, [eax + 12]
+        mov     [ecx + 12], edx
+
+    @@: mov     ecx, [eax + 12]
+        mov     edx, [eax]
+        mov     [ecx], edx
+        xor     edx, edx
+        mov     [eax + 4], edx
+        mov     [eax + 8], edx
+        mov     [eax + 12], edx
+        mov     [eax], edx
+        mov     [esp + 4 + regs_context32_t.eax], edx
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc sysfn.get_key ;///////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? System function 2
+;-----------------------------------------------------------------------------------------------------------------------
+        mov     [esp + 4 + regs_context32_t.eax], 1
+        ; test main buffer
+        mov     ebx, [CURRENT_TASK] ; TOP OF WINDOW STACK
+        movzx   ecx, [WIN_STACK + ebx * 2]
+        mov     edx, [TASK_COUNT]
+        cmp     ecx, edx
+        jne     .finish
+        cmp     [KEY_COUNT], 0
+        je      .finish
+        movzx   eax, [KEY_BUFF]
+        shl     eax, 8
+        push    eax
+        dec     [KEY_COUNT]
+        and     [KEY_COUNT], 127
+        movzx   ecx, [KEY_COUNT]
+        add     ecx, 2
+        mov     eax, KEY_BUFF + 1
+        mov     ebx, KEY_BUFF
+        call    memmove
+        pop     eax
+
+  .ret_eax:
+        mov     [esp + 4 + regs_context32_t.eax], eax
+        ret
+
+  .finish:
+        ; test hotkeys buffer
+        mov     ecx, hotkey_buffer
+
+    @@: cmp     [ecx], ebx
+        jz      .found
+        add     ecx, 8
+        cmp     ecx, hotkey_buffer + 120 * 8
+        jb      @b
+        ret
+
+  .found:
+        mov     ax, [ecx + 6]
+        shl     eax, 16
+        mov     ah, [ecx + 4]
+        mov     al, 2
+        and     dword[ecx + 4], 0
+        and     dword[ecx], 0
+        jmp     .ret_eax
+kendp
+
 iglobal
   hotkey_tests dd \
     hotkey_do_test.test0, \

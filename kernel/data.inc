@@ -276,10 +276,6 @@ LFBSize           rd 1
 
 stall_mcs         rd 1
 
-; device addresses
-mididp            rd 1
-midisp            rd 1
-
 ; CPUID information
 cpu_vendor        rd 3
 cpu_sign          rd 1

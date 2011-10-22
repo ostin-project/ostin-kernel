@@ -21,6 +21,245 @@ uglobal
 endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
+kproc sysfn.draw_text ;/////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? System function 4
+;-----------------------------------------------------------------------------------------------------------------------
+        mov     eax, [TASK_BASE]
+        mov     ebp, [eax - twdw + window_data_t.box.left]
+        push    esi
+        mov     esi, [current_slot]
+        add     ebp, [esi + app_data_t.wnd_clientbox.left]
+        shl     ebp, 16
+        add     ebp, [eax - twdw + window_data_t.box.top]
+        add     bp, word[esi + app_data_t.wnd_clientbox.top]
+        pop     esi
+        add     ebx, ebp
+        mov     eax, edi
+        xor     edi, edi
+        jmp     dtext
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc sysfn.draw_number ;///////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? System function 47
+;-----------------------------------------------------------------------------------------------------------------------
+;> eax = pack[10(reserved), 6(number of digits to display), 8(number base), 8(number type)]
+;>   al = 0 -> ebx is number
+;>   al = 1 -> ebx is pointer
+;>   ah = 0 -> display decimal
+;>   ah = 1 -> display hexadecimal
+;>   ah = 2 -> display binary
+;> ebx = number or pointer
+;> ecx = pack[16(x), 16(y)]
+;> edx = color
+;-----------------------------------------------------------------------------------------------------------------------
+;# arguments are being shifted to match the description
+;-----------------------------------------------------------------------------------------------------------------------
+        ; It is not optimization
+        mov     eax, ebx
+        mov     ebx, ecx
+        mov     ecx, edx
+        mov     edx, esi
+        mov     esi, edi
+
+        xor     edi, edi
+
+  .force:
+        push    eax
+        and     eax, 0x3fffffff
+        cmp     eax, 0x0000ffff ; length > 0 ?
+        pop     eax
+        jge     .cont_displ
+        ret
+
+  .cont_displ:
+        push    eax
+        and     eax, 0x3fffffff
+        cmp     eax, 61 shl 16 ; length <= 60 ?
+        pop     eax
+        jb      .cont_displ2
+        ret
+
+  .cont_displ2:
+        pushad
+
+        cmp     al, 1 ; ecx is a pointer ?
+        jne     .displnl1
+        mov     ebp, ebx
+        add     ebp, 4
+        mov     ebp, [ebp + std_application_base_address]
+        mov     ebx, [ebx + std_application_base_address]
+
+  .displnl1:
+        sub     esp, 64
+
+        test    ah, ah ; DECIMAL
+        jnz     .no_display_desnum
+        shr     eax, 16
+        and     eax, 0xc03f
+;       and     eax, 0x3f
+        push    eax
+        and     eax, 0x3f
+        mov     edi, esp
+        add     edi, 4 + 64 - 1
+        mov     ecx, eax
+        mov     eax, ebx
+        mov     ebx, 10
+
+  .d_desnum:
+        xor     edx, edx
+        call    division_64_bits
+        div     ebx
+        add     dl, 48
+        mov     [edi], dl
+        dec     edi
+        loop    .d_desnum
+
+        pop     eax
+        call    normalize_number
+        call    draw_num_text
+        add     esp, 64
+        popad
+        ret
+
+  .no_display_desnum:
+        cmp     ah, 0x01 ; HEXADECIMAL
+        jne     .no_display_hexnum
+        shr     eax, 16
+        and     eax, 0xc03f
+;       and     eax, 0x3f
+        push    eax
+        and     eax, 0x3f
+        mov     edi, esp
+        add     edi, 4 + 64 - 1
+        mov     ecx, eax
+        mov     eax, ebx
+        mov     ebx, 16
+
+  .d_hexnum:
+        xor     edx, edx
+        call    division_64_bits
+        div     ebx
+
+hexletters = __fdo_hexdigits
+
+        add     edx, hexletters
+        mov     dl, [edx]
+        mov     [edi], dl
+        dec     edi
+        loop    .d_hexnum
+
+        pop     eax
+        call    normalize_number
+        call    draw_num_text
+        add     esp, 64
+        popad
+        ret
+
+  .no_display_hexnum:
+        cmp     ah, 0x02 ; BINARY
+        jne     .no_display_binnum
+        shr     eax, 16
+        and     eax, 0xc03f
+;       and     eax, 0x3f
+        push    eax
+        and     eax, 0x3f
+        mov     edi, esp
+        add     edi, 4 + 64 - 1
+        mov     ecx, eax
+        mov     eax, ebx
+        mov     ebx, 2
+
+  .d_binnum:
+        xor     edx, edx
+        call    division_64_bits
+        div     ebx
+        add     dl, 48
+        mov     [edi], dl
+        dec     edi
+        loop    .d_binnum
+
+        pop     eax
+        call    normalize_number
+        call    draw_num_text
+        add     esp, 64
+        popad
+        ret
+
+  .no_display_binnum:
+        add     esp, 64
+        popad
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc normalize_number ;////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        test    ah, 0x080
+        jz      .continue
+        mov     ecx, 48
+        and     eax, 0x3f
+
+    @@: inc     edi
+        cmp     [edi], cl
+        jne     .continue
+        dec     eax
+        cmp     eax, 1
+        ja      @b
+
+        mov     al, 1
+
+  .continue:
+        and   eax, 0x3f
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc division_64_bits ;////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        test    byte[esp + 1 + 4], 0x40
+        jz      .continue
+        push    eax
+        mov     eax, ebp
+        div     ebx
+        mov     ebp, eax
+        pop     eax
+
+  .continue:
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc draw_num_text ;///////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        mov     esi, eax
+        mov     edx, 64 + 4
+        sub     edx, eax
+        add     edx, esp
+        mov     ebx, [esp + 64 + 32 - 8 + 4]
+
+        ; add window start x & y
+        mov     ecx, [TASK_BASE]
+
+        mov     edi, [CURRENT_TASK]
+        shl     edi, 8
+
+        mov     eax, [ecx - twdw + window_data_t.box.left]
+        add     eax, [SLOT_BASE + edi + app_data_t.wnd_clientbox.left]
+        shl     eax, 16
+        add     eax, [ecx - twdw + window_data_t.box.top]
+        add     eax, [SLOT_BASE + edi + app_data_t.wnd_clientbox.top]
+        add     ebx, eax
+        mov     ecx, [esp + 64 + 32 - 12 + 4]
+        and     ecx, not 0x80000000 ; force counted string
+        mov     eax, [esp + 64 + 8] ; background color (if given)
+        mov     edi, [esp + 64 + 4]
+        jmp     dtext
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
 kproc dtext_asciiz_esi ;////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;# for skins title out

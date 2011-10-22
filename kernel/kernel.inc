@@ -53,6 +53,7 @@ include "gui/background.asm"
 include "gui/button.asm"
 include "gui/event.asm"
 include "gui/font.asm"
+include "gui/image.asm"
 include "gui/mouse.asm"
 include "gui/skincode.asm"
 include "gui/window.asm"
@@ -65,6 +66,7 @@ include "imports.inc"
 
 include "network/stack.asm"
 
+include "sound/mpu.asm"
 include "sound/playnote.asm"
 
 include "video/blitter.asm"
