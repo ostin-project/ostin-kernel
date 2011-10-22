@@ -344,6 +344,9 @@ kproc sysfn.file_system ;///////////////////////////////////////////////////////
 
   fs_noramdisk_read:
   fs_noramdisk:
+
+if KCONFIG_BLKDEV_FLOPPY
+
         mov     eax, [edi + 1]
         cmp     eax, 'FD  '
         je      fs_yesflpdisk
@@ -393,6 +396,9 @@ kproc sysfn.file_system ;///////////////////////////////////////////////////////
 
   fs_noflpdisk_read:
   fs_noflpdisk:
+
+end if ; KCONFIG_BLKDEV_FLOPPY
+
         mov     eax, [edi + 1]
         cmp     eax, 'HD0 '
         je      fs_yesharddisk_IDE0

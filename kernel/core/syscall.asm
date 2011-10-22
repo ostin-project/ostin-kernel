@@ -125,7 +125,13 @@ iglobal
     dd sysfn.draw_rect ; 13
     dd sysfn.get_screen_size ; 14
     dd sysfn.set_background_ctl ; 15
+
+if KCONFIG_BLKDEV_FLOPPY
+
     dd sysfn.flush_floppy_cache ; 16
+
+end if ; KCONFIG_BLKDEV_FLOPPY
+
     dd sysfn.get_clicked_button_id ; 17
     dd sysfn.system_ctl ; 18
     dd sysfn.not_implemented ; 19

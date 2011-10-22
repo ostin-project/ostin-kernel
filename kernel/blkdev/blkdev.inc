@@ -31,6 +31,9 @@ ends
 match =1, KCONFIG_BLKDEV_FLOPPY
 {
 include "floppy.asm"
+; legacy implementation
+include "fdc.asm"
+include "flp_drv.asm"
 }
 match =1, KCONFIG_BLKDEV_MEMORY
 {

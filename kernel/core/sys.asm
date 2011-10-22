@@ -697,9 +697,15 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         call    free_cd_channel
         and     [cd_status], 0
 
-    @@: cmp     [flp_status], esi
+    @@:
+
+if KCONFIG_BLKDEV_FLOPPY
+
+        cmp     [flp_status], esi
         jnz     @f
         and     [flp_status], 0
+
+end if ; KCONFIG_BLKDEV_FLOPPY
 
     @@: pop     esi
         cmp     [bgrlockpid], esi

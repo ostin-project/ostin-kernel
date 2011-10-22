@@ -24,7 +24,7 @@ ends
 
 uglobal
   n_sector              dd 0  ; temporary save for sector value
-; clust_tmp_flp         dd 0  ; used by analyze_directory and analyze_directory_to_write
+  clust_tmp_flp         dd 0  ; used by analyze_directory and analyze_directory_to_write
   path_pointer_flp      dd 0
   pointer_file_name_flp dd 0
 ; save_root_flag        db 0
@@ -180,6 +180,8 @@ kproc fs.fat12.expand_filename ;////////////////////////////////////////////////
         pop     ebx edi esi
         ret
 kendp
+
+if KCONFIG_BLKDEV_FLOPPY
 
 if defined COMPATIBILITY_MENUET_SYSFN58
 
@@ -603,8 +605,76 @@ kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc analyze_directory_flp ;///////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> eax = first cluster of the directory
+;> ebx = pointer to filename
+;-----------------------------------------------------------------------------------------------------------------------
+;< if CF = 0, eax = sector where th file is found
+;<            ebx = pointer in buffer [buffer .. buffer+511]
+;<            ecx, edx, esi, edi not changed
+;< if CF = 1, ...
+;-----------------------------------------------------------------------------------------------------------------------
+        push    ebx ; [esp+16]
+        push    ecx
+        push    edx
+        push    esi
+        push    edi
+
+  .adr56_flp:
+        mov     [clust_tmp_flp], eax
+        add     eax, 31
+        pusha
+        call    read_chs_sector
+        popa
+        cmp     [FDC_Status], 0
+        jne     .not_found_file_analyze_flp
+
+        mov     ecx, 512 / 32
+        mov     ebx, FDC_DMA_BUFFER
+
+  .adr1_analyze_flp:
+        mov     esi, edx ; [esp+16]
+        mov     edi, ebx
+        cld
+        push    ecx
+        mov     ecx, 11
+        rep     cmpsb
+        pop     ecx
+        je      .found_file_analyze_flp
+
+        add     ebx, 32
+        loop    .adr1_analyze_flp
+
+        mov     eax, [clust_tmp_flp]
+        shl     eax, 1 ; find next cluster from FAT
+        add     eax, FLOPPY_FAT
+        mov     eax, [eax]
+        and     eax, 4095
+        cmp     eax, 0x0ff8
+        jb      .adr56_flp
+
+  .not_found_file_analyze_flp:
+        pop     edi
+        pop     esi
+        pop     edx
+        pop     ecx
+        add     esp, 4
+        stc     ; file not found
+        ret
+
+  .found_file_analyze_flp:
+        pop     edi
+        pop     esi
+        pop     edx
+        pop     ecx
+        add     esp, 4
+        clc     ; file found
+        ret
+kendp
 
 end if ; COMPATIBILITY_MENUET_SYSFN58
+
+end if ; KCONFIG_BLKDEV_FLOPPY
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs.fat12.read_file ;//////////////////////////////////////////////////////////////////////////////////////////////
