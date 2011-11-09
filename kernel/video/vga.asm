@@ -471,8 +471,8 @@ kproc VGA_draw_bar_1 ;//////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     [temp.cx], eax
         mov     eax, [TASK_BASE]
-        add     ebx, [eax - twdw + 4]
-        mov     eax, [eax - twdw + 0]
+        add     ebx, [eax - twdw + window_data_t.box.top]
+        mov     eax, [eax - twdw + window_data_t.box.left]
         add     eax, [temp.cx]
         and     eax, 0xfff8
         shl     ebx, 9

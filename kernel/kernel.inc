@@ -14,63 +14,18 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-include "include/sync.inc"
-
-include "blkdev/blkdev.inc"
-include "blkdev/cd_drv.asm"
-include "blkdev/cdrom.asm"
-include "blkdev/hd_drv.asm"
-include "blkdev/ide_cache.asm"
-
-include "bus/pci/pci.asm"
-
 include "charset.asm"
 
-include "core/conf_lib.asm"
-include "core/dll.asm"
-include "core/exports.inc"
-include "core/ext_lib.asm"
-include "core/fpu.asm"
-include "core/heap.asm"
-include "core/malloc.asm"
-include "core/memory.asm"
-include "core/peload.asm"
-include "core/sched.asm"
-include "core/string.asm"
-include "core/sys.asm"
-include "core/syscall.asm"
-include "core/taskman.asm"
-include "core/v86.asm"
+;///include "include/sync.inc"
 
-include "fs/ext2.asm"
+include "blkdev/blkdev.inc"
+include "bus/bus.inc"
+include "core/core.inc"
 include "fs/fs.inc"
-include "fs/fs_lfn.asm"
-include "fs/iso9660.asm"
-include "fs/ntfs.asm"
-include "fs/parse_fn.asm"
-
-include "gui/background.asm"
-include "gui/button.asm"
-include "gui/event.asm"
-include "gui/font.asm"
-include "gui/image.asm"
-include "gui/mouse.asm"
-include "gui/skincode.asm"
-include "gui/window.asm"
-
-include "hid/keyboard.asm"
-include "hid/mousedrv.asm"
-include "hid/set_dtc.asm"
+include "gui/gui.inc"
+include "hid/hid.inc"
+include "network/network.inc"
+include "sound/sound.inc"
+include "video/video.inc"
 
 include "imports.inc"
-
-include "network/stack.asm"
-
-include "sound/mpu.asm"
-include "sound/playnote.asm"
-
-include "video/blitter.asm"
-include "video/cursors.asm"
-include "video/vesa12.asm"
-include "video/vesa20.asm"
-include "video/vga.asm"

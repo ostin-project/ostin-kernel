@@ -106,7 +106,9 @@ close@proc equ
 
 macro define@proc name,statement
  { local params,flag,regs,parmbytes,localbytes,current
-   if used name
+   if ~used name
+     display "unused proc: ", `name, 13, 10
+   else
    name:
    match =stdcall args, statement \{ params equ args
                                      flag = 11b \}

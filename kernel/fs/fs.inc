@@ -49,3 +49,9 @@ match =1, KCONFIG_FS_FAT
 {
 include "fat/fat.inc"
 }
+
+include "ext2.asm"
+include "fs_lfn.asm"
+include "iso9660.asm"
+include "ntfs.asm"
+include "parse_fn.asm"

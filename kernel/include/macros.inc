@@ -153,7 +153,7 @@ common
 macro kproc name
 {
   if ~used name
-    display "unused proc: ", `name, 13, 10
+    display "unused proc: ", `name, ' [k]', 13, 10
   end if
   align 4
   name:

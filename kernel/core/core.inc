@@ -1,5 +1,5 @@
 ;;======================================================================================================================
-;;///// blkdev.inc ///////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
+;;///// core.inc /////////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
 ;;======================================================================================================================
 ;; (c) 2011 Ostin project <http://ostin.googlecode.com/>
 ;;======================================================================================================================
@@ -14,35 +14,18 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-BLKDEV_MAX_NAME_LEN = 32
-
-struct blkdev.vftbl_t
-  destroy dd ?
-  read    dd ?
-  write   dd ?
-ends
-
-struct blkdev.device_t
-  vftbl     dd ? ; ^= blkdev.vftbl_t
-  name      rb BLKDEV_MAX_NAME_LEN
-  user_data dd ? ; ^= blkdev.?.device_data_t
-ends
-
-match =1, KCONFIG_BLKDEV_FLOPPY
-{
-include "floppy.asm"
-; legacy implementation
-include "fdc.asm"
-include "flp_drv.asm"
-}
-match =1, KCONFIG_BLKDEV_MEMORY
-{
+include "conf_lib.asm"
+include "dll.asm"
+include "exports.inc"
+include "ext_lib.asm"
+include "fpu.asm"
+include "heap.asm"
+include "malloc.asm"
 include "memory.asm"
-; legacy implementation
-include "rd.asm"
-}
-
-include "cd_drv.asm"
-include "cdrom.asm"
-include "hd_drv.asm"
-include "ide_cache.asm"
+include "peload.asm"
+include "sched.asm"
+include "string.asm"
+include "sys.asm"
+include "syscall.asm"
+include "taskman.asm"
+include "v86.asm"

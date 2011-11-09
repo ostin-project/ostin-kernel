@@ -1,5 +1,5 @@
 ;;======================================================================================================================
-;;///// blkdev.inc ///////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
+;;///// gui.inc //////////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
 ;;======================================================================================================================
 ;; (c) 2011 Ostin project <http://ostin.googlecode.com/>
 ;;======================================================================================================================
@@ -14,35 +14,11 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-BLKDEV_MAX_NAME_LEN = 32
-
-struct blkdev.vftbl_t
-  destroy dd ?
-  read    dd ?
-  write   dd ?
-ends
-
-struct blkdev.device_t
-  vftbl     dd ? ; ^= blkdev.vftbl_t
-  name      rb BLKDEV_MAX_NAME_LEN
-  user_data dd ? ; ^= blkdev.?.device_data_t
-ends
-
-match =1, KCONFIG_BLKDEV_FLOPPY
-{
-include "floppy.asm"
-; legacy implementation
-include "fdc.asm"
-include "flp_drv.asm"
-}
-match =1, KCONFIG_BLKDEV_MEMORY
-{
-include "memory.asm"
-; legacy implementation
-include "rd.asm"
-}
-
-include "cd_drv.asm"
-include "cdrom.asm"
-include "hd_drv.asm"
-include "ide_cache.asm"
+include "background.asm"
+include "button.asm"
+include "event.asm"
+include "font.asm"
+include "image.asm"
+include "mouse.asm"
+include "skincode.asm"
+include "window.asm"

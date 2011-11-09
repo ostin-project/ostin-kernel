@@ -72,7 +72,7 @@ pci_data_sel    equ (pci_data_32 - gdts)
 ;;----------------------------------------------------------------------------------------------------------------------
 
 use16
-org 0x0
+org 0
 
         jmp   boot.start
 
@@ -98,26 +98,23 @@ include "detect/biosdisk.asm"
         out     0xa1, al
         out     0x21, al
 
-l.5:
-        in      al, 0x64 ; Enable A20
+    @@: in      al, 0x64 ; Enable A20
         test    al, 2
-        jnz     l.5
+        jnz     @b
 
         mov     al, 0xd1
         out     0x64, al
 
-l.6:
-        in      al, 0x64
+    @@: in      al, 0x64
         test    al, 2
-        jnz     l.6
+        jnz     @b
 
         mov     al, 0xdf
         out     0x60, al
 
-l.7:
-        in      al, 0x64
+    @@: in      al, 0x64
         test    al, 2
-        jnz     l.7
+        jnz     @b
 
         mov     al, 0xff
         out     0x64, al
@@ -150,7 +147,7 @@ tmp_gdt:
 include "data16.inc"
 
 use32
-org $ + 0x10000
+org $ + (KERNEL_CODE - OS_BASE)
 
 align 4
 B32:
@@ -219,19 +216,19 @@ bios32_entry  dd ?
 tmp_page_tabs dd ?
 
 use16
-org $ - 0x10000
+org $ - (KERNEL_CODE - OS_BASE)
 
 include "boot/shutdown.asm"
 
 use32
-org $ + 0x10000
+org $ + (KERNEL_CODE - OS_BASE)
 
 __DEBUG__ equ KCONFIG_DEBUG
 __DEBUG_LEVEL__ equ KCONFIG_DEBUG_LEVEL
 
 include "init.asm"
 
-org OS_BASE + $
+org $ + OS_BASE
 
 align 4
 high_code:
@@ -742,14 +739,9 @@ end if
         shl     eax, 2
         mov     [CPU_FREQ], eax ; save tsc / sec
 
-        ; actually, performance in this particular place is not critical, but just to shut optimizing HLL compiler
-        ; fans up...
-;       mov     ebx, 1000000
-;       div     ebx
-        mov     edx, 2251799814
-        mul     edx
-        shr     edx, 19
-        mov     [stall_mcs], edx
+        mov     ebx, 1000000
+        div     ebx
+        mov     [stall_mcs], eax
 
         ; PRINT CPU FREQUENCY
         mov     esi, boot_cpufreq
@@ -806,7 +798,7 @@ no_pal_ega:
         stdcall map_page, tss.io_map_1, [SLOT_BASE + sizeof.app_data_t + app_data_t.io_map + 4], PG_MAP
 
         mov     ax, [OS_BASE + 0x10000 + bx_from_load]
-        cmp     ax, 'r1' ; if not rused ram disk - load network configuration from files
+        cmp     ax, 'r1' ; if not used ram disk - load network configuration from files
         je      no_st_network
         call    set_network_conf
 
@@ -872,7 +864,6 @@ first_app_found:
 ;       call    kb_read
         call    set_lights
 
-
         ; Setup serial output console (if enabled)
 
 if KCONFIG_DEBUG_COM_BASE
@@ -901,7 +892,7 @@ if KCONFIG_DEBUG_COM_BASE
         mov     al, 0
         out     dx, al
 
-        ; clear +  enable fifo (64 bits)
+        ; clear + enable fifo (64 bits)
         mov     dx, KCONFIG_DEBUG_COM_BASE + 2
         mov     al, 0x7 + (1 shl 5)
         out     dx, al
