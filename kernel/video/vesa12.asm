@@ -15,9 +15,9 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-TRIDENT     equ 0
-S3_VIDEO    equ 0
-INTEL_VIDEO equ 0
+TRIDENT     = 0
+S3_VIDEO    = 0
+INTEL_VIDEO = 0
 
 if TRIDENT
   if S3_VIDEO or INTEL_VIDEO

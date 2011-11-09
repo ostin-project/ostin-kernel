@@ -15,10 +15,10 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-ARP_NO_ENTRY          equ 0
-ARP_VALID_MAPPING     equ 1
-ARP_AWAITING_RESPONSE equ 2
-ARP_RESPONSE_TIMEOUT  equ 3
+ARP_NO_ENTRY          = 0
+ARP_VALID_MAPPING     = 1
+ARP_AWAITING_RESPONSE = 2
+ARP_RESPONSE_TIMEOUT  = 3
 
 struct arp_entry_t ; =14 bytes
   ip       dd ? ; +00
@@ -43,8 +43,8 @@ ends
 ; changes are made to it.
 ; Empty entries are filled with zeros
 
-ARP_TABLE_SIZE    equ 20 ; Size of table
-ARP_TABLE_ENTRIES equ 0  ; Number of static entries in the table
+ARP_TABLE_SIZE    = 20 ; Size of table
+ARP_TABLE_ENTRIES = 0  ; Number of static entries in the table
 
 ; TO ADD A STATIC ENTRY, DONT FORGET, PUT "ARPTable" from "uglobal" to "iglobal"!!!
 ; AND ALSO - IP and MAC have net byte-order, BUT STATUS AND TTL HAVE A MIRROR BYTE-ORDER!!!
@@ -59,8 +59,8 @@ iglobal
   ARPTable_ptr dd ARPTable ; pointer to ARPTable
 endg
 
-ARP_REQ_OPCODE equ 0x0100 ; request
-ARP_REP_OPCODE equ 0x0200 ; reply
+ARP_REQ_OPCODE = 0x0100 ; request
+ARP_REP_OPCODE = 0x0200 ; reply
 
 struct arp_packet_t
   hardware_type dw ? ; +00
@@ -75,16 +75,16 @@ struct arp_packet_t
 ends
 
 ; Opcode's constants
-ARP_TABLE_ADD                equ 1
-ARP_TABLE_DEL                equ 2
-ARP_TABLE_GET                equ 3
-ARP_TABLE_GET_ENTRIES_NUMBER equ 4
-ARP_TABLE_IP_TO_MAC          equ 5
-ARP_TABLE_TIMER              equ 6
+ARP_TABLE_ADD                = 1
+ARP_TABLE_DEL                = 2
+ARP_TABLE_GET                = 3
+ARP_TABLE_GET_ENTRIES_NUMBER = 4
+ARP_TABLE_IP_TO_MAC          = 5
+ARP_TABLE_TIMER              = 6
 
 ; Index's constants
-EXTRA_IS_ARP_PACKET_PTR      equ 0  ; if Extra contain pointer to ARP_PACKET
-EXTRA_IS_ARP_ENTRY_PTR       equ -1 ; if Extra contain pointer to ARP_ENTRY
+EXTRA_IS_ARP_PACKET_PTR      = 0  ; if Extra contain pointer to ARP_PACKET
+EXTRA_IS_ARP_ENTRY_PTR       = -1 ; if Extra contain pointer to ARP_ENTRY
 
 align 4
 ;-----------------------------------------------------------------------------------------------------------------------

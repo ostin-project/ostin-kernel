@@ -92,9 +92,9 @@ kproc take_data_from_application_1 ;////////////////////////////////////////////
 kendp
 
 ; Maximum sector coordinates values (these correspond to standard 3'' 1.44 MB disk)
-MAX_Track   equ 79
-MAX_Head    equ 1
-MAX_Sector  equ 18
+MAX_Track  = 79
+MAX_Head   = 1
+MAX_Sector = 18
 
 uglobal
   TickCounter      dd ?   ; timer tick counter

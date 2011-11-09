@@ -16,9 +16,9 @@
 ;;======================================================================================================================
 
 ; IP underlying protocols numbers
-PROTOCOL_ICMP equ 1
-PROTOCOL_TCP  equ 6
-PROTOCOL_UDP  equ 17
+PROTOCOL_ICMP = 1
+PROTOCOL_TCP  = 6
+PROTOCOL_UDP  = 17
 
 struct ip_packet_t
   version_and_ihl           db ? ; +00 - Version[0-3 bits] and IHL(header length)[4-7 bits]

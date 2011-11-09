@@ -18,11 +18,11 @@
 ; If you're planning to write your own video driver I suggest
 ; you replace the VESA12.INC file and see those instructions.
 
-;Screen_Max_X            equ     0xfe00
-;Screen_Max_Y            equ     0xfe04
-;BytesPerScanLine        equ     0xfe08
-;LFBAddress              equ     0xfe80
-;ScreenBPP               equ     0xfbf1
+;Screen_Max_X     = 0xfe00
+;Screen_Max_Y     = 0xfe04
+;BytesPerScanLine = 0xfe08
+;LFBAddress       = 0xfe80
+;ScreenBPP        = 0xfbf1
 
 uglobal
   PUTPIXEL dd ?
@@ -71,27 +71,15 @@ kendp
 
 virtual at esp
   putimg:
-   .real_sx        dd ?
-   .real_sy        dd ?
-   .image_sx       dd ?
-   .image_sy       dd ?
-   .image_cx       dd ?
-   .image_cy       dd ?
+   .real_size      size32_t
+   .image_box      box32_t
    .pti            dd ?
-   .abs_cx         dd ?
-   .abs_cy         dd ?
+   .abs_pos        point32_t
    .line_increment dd ?
    .winmap_newline dd ?
    .screen_newline dd ?
    .stack_data = 4 * 12
-   .edi            dd ?
-   .esi            dd ?
-   .ebp            dd ?
-   .esp            dd ?
-   .ebx            dd ?
-   .edx            dd ?
-   .ecx            dd ?
-   .eax            dd ?
+   .context        regs_context32_t
    .ret_addr       dd ?
    .arg_0          dd ?
 end virtual
@@ -116,56 +104,56 @@ kproc vesa20_putimage ;/////////////////////////////////////////////////////////
         mov     eax, ecx
         and     ecx, 0xffff
         shr     eax, 16
-        mov     [putimg.image_sx], eax
-        mov     [putimg.image_sy], ecx
+        mov     [putimg.image_box.width], eax
+        mov     [putimg.image_box.height], ecx
         ; unpack the coordinates
         mov     eax, edx
         and     edx, 0xffff
         shr     eax, 16
-        mov     [putimg.image_cx], eax
-        mov     [putimg.image_cy], edx
+        mov     [putimg.image_box.left], eax
+        mov     [putimg.image_box.top], edx
         ; calculate absolute (i.e. screen) coordinates
         mov     eax, [TASK_BASE]
         mov     ebx, [eax - twdw + window_data_t.box.left]
-        add     ebx, [putimg.image_cx]
-        mov     [putimg.abs_cx], ebx
+        add     ebx, [putimg.image_box.left]
+        mov     [putimg.abs_pos.x], ebx
         mov     ebx, [eax - twdw + window_data_t.box.top]
-        add     ebx, [putimg.image_cy]
-        mov     [putimg.abs_cy], ebx
+        add     ebx, [putimg.image_box.top]
+        mov     [putimg.abs_pos.y], ebx
         ; real_sx = MIN(wnd_sx-image_cx, image_sx);
         mov     ebx, [eax - twdw + window_data_t.box.width] ; ebx = wnd_sx
         ; note that window_data_t.box.width is one pixel less than real window x-size
         inc     ebx
-        sub     ebx, [putimg.image_cx]
+        sub     ebx, [putimg.image_box.left]
         ja      @f
         add     esp, putimg.stack_data
         popad
         ret
 
-    @@: cmp     ebx, [putimg.image_sx]
+    @@: cmp     ebx, [putimg.image_box.width]
         jbe     .end_x
-        mov     ebx, [putimg.image_sx]
+        mov     ebx, [putimg.image_box.width]
 
   .end_x:
-        mov     [putimg.real_sx], ebx
+        mov     [putimg.real_size.width], ebx
         ; init real_sy
         mov     ebx, [eax - twdw + window_data_t.box.height] ; ebx = wnd_sy
         inc     ebx
-        sub     ebx, [putimg.image_cy]
+        sub     ebx, [putimg.image_box.top]
         ja      @f
         add     esp, putimg.stack_data
         popad
         ret
 
-    @@: cmp     ebx, [putimg.image_sy]
+    @@: cmp     ebx, [putimg.image_box.height]
         jbe     .end_y
-        mov     ebx, [putimg.image_sy]
+        mov     ebx, [putimg.image_box.height]
 
   .end_y:
-        mov     [putimg.real_sy], ebx
+        mov     [putimg.real_size.height], ebx
         ; line increment
-        mov     eax, [putimg.image_sx]
-        mov     ecx, [putimg.real_sx]
+        mov     eax, [putimg.image_box.width]
+        mov     ecx, [putimg.real_size.width]
         sub     eax, ecx
 ;;      imul    eax, [putimg.source_bpp]
 ;       lea     eax, [eax + eax * 2]
@@ -175,7 +163,7 @@ kproc vesa20_putimage ;/////////////////////////////////////////////////////////
         ; winmap new line increment
         mov     eax, [Screen_Max_X]
         inc     eax
-        sub     eax, [putimg.real_sx]
+        sub     eax, [putimg.real_size.width]
         mov     [putimg.winmap_newline], eax
         ; screen new line increment
         mov     eax, [BytesPerScanLine]
@@ -187,18 +175,18 @@ kproc vesa20_putimage ;/////////////////////////////////////////////////////////
         ; pointer to image
         mov     esi, [putimg.pti]
         ; pointer to screen
-        mov     edx, [putimg.abs_cy]
+        mov     edx, [putimg.abs_pos.y]
         imul    edx, [BytesPerScanLine]
-        mov     eax, [putimg.abs_cx]
+        mov     eax, [putimg.abs_pos.x]
         movzx   ebx, [ScreenBPP]
         shr     ebx, 3
         imul    eax, ebx
         add     edx, eax
         ; pointer to pixel map
-        mov     eax, [putimg.abs_cy]
+        mov     eax, [putimg.abs_pos.y]
         imul    eax, [Screen_Max_X]
-        add     eax, [putimg.abs_cy]
-        add     eax, [putimg.abs_cx]
+        add     eax, [putimg.abs_pos.y]
+        add     eax, [putimg.abs_pos.x]
         add     eax, [_WinMapAddress]
         xchg    eax, ebp
         ; get process number
@@ -207,17 +195,17 @@ kproc vesa20_putimage ;/////////////////////////////////////////////////////////
         je      put_image_end_32
 
 ;put_image_end_24:
-        mov     edi, [putimg.real_sy]
+        mov     edi, [putimg.real_size.height]
 
 align 4
   .new_line:
-        mov     ecx, [putimg.real_sx]
+        mov     ecx, [putimg.real_size.width]
 ;       push    ebp edx
 
 align 4
   .new_x:
-        push    [putimg.edi]
-        mov     eax, [putimg.ebp + 4]
+        push    [putimg.context.edi]
+        mov     eax, [putimg.context.ebp + 4]
         call    eax
         cmp     [ebp], bl
         jne     .skip
@@ -237,15 +225,15 @@ align 4
         add     edx, [putimg.screen_newline] ; [BytesPerScanLine]
         add     ebp, [putimg.winmap_newline] ; [Screen_Max_X]
 ;       inc     ebp
-        cmp     [putimg.ebp], putimage_get1bpp
+        cmp     [putimg.context.ebp], putimage_get1bpp
         jz      .correct
-        cmp     [putimg.ebp], putimage_get2bpp
+        cmp     [putimg.context.ebp], putimage_get2bpp
         jz      .correct
-        cmp     [putimg.ebp], putimage_get4bpp
+        cmp     [putimg.context.ebp], putimage_get4bpp
         jnz     @f
 
   .correct:
-        mov     eax, [putimg.edi]
+        mov     eax, [putimg.context.edi]
         mov     byte[eax], 0x80
 
     @@: dec     edi
@@ -257,17 +245,17 @@ align 4
         ret
 
 put_image_end_32:
-        mov     edi, [putimg.real_sy]
+        mov     edi, [putimg.real_size.height]
 
 align 4
   .new_line:
-        mov     ecx, [putimg.real_sx]
+        mov     ecx, [putimg.real_size.width]
 ;       push    ebp edx
 
 align 4
   .new_x:
-        push    [putimg.edi]
-        mov     eax, [putimg.ebp + 4]
+        push    [putimg.context.edi]
+        mov     eax, [putimg.context.ebp + 4]
         call    eax
         cmp     [ebp], bl
         jne     .skip
@@ -285,15 +273,15 @@ align 4
         add     edx, [putimg.screen_newline] ; [BytesPerScanLine]
         add     ebp, [putimg.winmap_newline] ; [Screen_Max_X]
 ;       inc     ebp
-        cmp     [putimg.ebp], putimage_get1bpp
+        cmp     [putimg.context.ebp], putimage_get1bpp
         jz      .correct
-        cmp     [putimg.ebp], putimage_get2bpp
+        cmp     [putimg.context.ebp], putimage_get2bpp
         jz      .correct
-        cmp     [putimg.ebp], putimage_get4bpp
+        cmp     [putimg.context.ebp], putimage_get4bpp
         jnz     @f
 
   .correct:
-        mov     eax, [putimg.edi]
+        mov     eax, [putimg.context.edi]
         mov     byte[eax], 0x80
 
     @@: dec     edi

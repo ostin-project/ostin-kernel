@@ -16,17 +16,17 @@
 ;;======================================================================================================================
 
 ; TCP TCB states
-TCB_LISTEN       equ 1
-TCB_SYN_SENT     equ 2
-TCB_SYN_RECEIVED equ 3
-TCB_ESTABLISHED  equ 4
-TCB_FIN_WAIT_1   equ 5
-TCB_FIN_WAIT_2   equ 6
-TCB_CLOSE_WAIT   equ 7
-TCB_CLOSING      equ 8
-TCB_LAST_ACK     equ 9
-TCB_TIMED_WAIT   equ 10
-TCB_CLOSED       equ 11
+TCB_LISTEN       = 1
+TCB_SYN_SENT     = 2
+TCB_SYN_RECEIVED = 3
+TCB_ESTABLISHED  = 4
+TCB_FIN_WAIT_1   = 5
+TCB_FIN_WAIT_2   = 6
+TCB_CLOSE_WAIT   = 7
+TCB_CLOSING      = 8
+TCB_LAST_ACK     = 9
+TCB_TIMED_WAIT   = 10
+TCB_CLOSED       = 11
 
 TH_FIN  = 0x01
 TH_SYN  = 0x02
@@ -35,9 +35,9 @@ TH_PUSH = 0x08
 TH_ACK  = 0x10
 TH_URG  = 0x20
 
-TWOMSL           equ 10 ; # of secs to wait before closing socket
+TWOMSL           = 10 ; # of secs to wait before closing socket
 
-TCP_RETRIES      equ 5  ; Number of times to resend a packet
+TCP_RETRIES      = 5  ; Number of times to resend a packet
 TCP_TIMEOUT      = KCONFIG_SYS_TIMER_FREQ / 5 ; resend if not replied to in x hs
 
 ; TCP Payload ( Data field in IP datagram )

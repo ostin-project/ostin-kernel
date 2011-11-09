@@ -19,10 +19,10 @@
 ;# * "Programming on the hardware level" book by V.G. Kulakov
 ;;======================================================================================================================
 
-MaxRetr        equ 10       ; maximum retry count
+MaxRetr        = 10       ; maximum retry count
 BSYWaitTime    = 10 * KCONFIG_SYS_TIMER_FREQ ; maximum wait time for busy -> ready transition (in ticks)
-NoTickWaitTime equ 0x000fffff
-CDBlockSize    equ 2048
+NoTickWaitTime = 0x000fffff
+CDBlockSize    = 2048
 
 uglobal
   cdpos              rd 1

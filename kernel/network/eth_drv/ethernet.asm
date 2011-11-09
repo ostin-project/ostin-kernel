@@ -18,9 +18,9 @@
 ;# * PCI bus scanning code - etherboot 5.0.6 project
 ;;======================================================================================================================
 
-ETHER_IP   equ 0x0008 ; Reversed from 0800 for intel
-ETHER_ARP  equ 0x0608 ; Reversed from 0806 for intel
-ETHER_RARP equ 0x3580
+ETHER_IP   = 0x0008 ; Reversed from 0800 for intel
+ETHER_ARP  = 0x0608 ; Reversed from 0806 for intel
+ETHER_RARP = 0x3580
 
 struct eth_frame_t
   dst_mac dp ? ; destination MAC-address [6 bytes]
@@ -121,7 +121,7 @@ include "drivers/sis900.asm"
 ; be several lines which refer to the same functions.
 ; The first driver found on the PCI bus will be the one used.
 
-PCICARDS_ENTRY_SIZE equ 24 ; Size of each PCICARDS entry
+PCICARDS_ENTRY_SIZE = 24 ; Size of each PCICARDS entry
 
 iglobal
   PCICards:

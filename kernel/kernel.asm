@@ -31,18 +31,18 @@ include "include/const.inc"
 include "include/kglobals.inc"
 include "include/fs.inc"
 
-max_processes   equ 255
-tss_step        equ (128 + 8192) ; tss & i/o - 65535 ports, * 256 = 557056 * 4
+max_processes   = 255
+tss_step        = 128 + 8192 ; tss & i/o - 65535 ports, * 256 = 557056 * 4
 
-os_stack        equ (os_data_l - gdts) ; GDTs
-os_code         equ (os_code_l - gdts)
-graph_data      equ (3 + graph_data_l - gdts)
-tss0            equ (tss0_l - gdts)
-app_code        equ (3 + app_code_l - gdts)
-app_data        equ (3 + app_data_l - gdts)
-app_tls         equ (3 + tls_data_l - gdts)
-pci_code_sel    equ (pci_code_32 - gdts)
-pci_data_sel    equ (pci_data_32 - gdts)
+os_stack        = os_data_l - gdts ; GDTs
+os_code         = os_code_l - gdts
+graph_data      = 3 + graph_data_l - gdts
+tss0            = tss0_l - gdts
+app_code        = 3 + app_code_l - gdts
+app_data        = 3 + app_data_l - gdts
+app_tls         = 3 + tls_data_l - gdts
+pci_code_sel    = pci_code_32 - gdts
+pci_data_sel    = pci_data_32 - gdts
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

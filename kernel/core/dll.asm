@@ -14,11 +14,11 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-DRV_COMPAT  equ 5 ; minimal required drivers version
-DRV_CURRENT equ 5 ; current drivers model version
+DRV_COMPAT  = 5 ; minimal required drivers version
+DRV_CURRENT = 5 ; current drivers model version
 
-DRV_VERSION equ (DRV_COMPAT shl 16) or DRV_CURRENT
-PID_KERNEL  equ 1 ; os_idle thread
+DRV_VERSION = (DRV_COMPAT shl 16) or DRV_CURRENT
+PID_KERNEL  = 1 ; os_idle thread
 
 MAX_DEFAULT_DLL_ADDR = 0x20000000
 MIN_DEFAULT_DLL_ADDR = 0x10000000

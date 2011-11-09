@@ -44,61 +44,61 @@ uglobal
 endg
 
 ; socket buffers
-SOCKETBUFFSIZE      equ 4096 ; state + config + buffer.
-SOCKETHEADERSIZE    equ socket_t.rx_data ; thus 4096 - SOCKETHEADERSIZE bytes data
+SOCKETBUFFSIZE      = 4096 ; state + config + buffer.
+SOCKETHEADERSIZE    = socket_t.rx_data ; thus 4096 - SOCKETHEADERSIZE bytes data
 
-;NUM_SOCKETS        equ 16 ; Number of open sockets supported. Was 20
+;NUM_SOCKETS        = 16 ; Number of open sockets supported. Was 20
 
 ; IPBUFF status values
-BUFF_EMPTY          equ 0
-BUFF_RX_FULL        equ 1
-BUFF_ALLOCATED      equ 2
-BUFF_TX_FULL        equ 3
+BUFF_EMPTY          = 0
+BUFF_RX_FULL        = 1
+BUFF_ALLOCATED      = 2
+BUFF_TX_FULL        = 3
 
-NUM_IPBUFFERS       equ 20 ; buffers allocated for TX/RX
+NUM_IPBUFFERS       = 20 ; buffers allocated for TX/RX
 
-NUMQUEUES           equ 4
+NUMQUEUES           = 4
 
-EMPTY_QUEUE         equ 0
-IPIN_QUEUE          equ 1
-IPOUT_QUEUE         equ 2
-NET1OUT_QUEUE       equ 3
+EMPTY_QUEUE         = 0
+IPIN_QUEUE          = 1
+IPOUT_QUEUE         = 2
+NET1OUT_QUEUE       = 3
 
-NO_BUFFER           equ 0x0ffff
-IPBUFFSIZE          equ 1500          ; MTU of an ethernet packet
-NUMQUEUEENTRIES     equ NUM_IPBUFFERS
-NUMRESENDENTRIES    equ 18            ; Buffers for TCP resend packets
+NO_BUFFER           = 0x0ffff
+IPBUFFSIZE          = 1500          ; MTU of an ethernet packet
+NUMQUEUEENTRIES     = NUM_IPBUFFERS
+NUMRESENDENTRIES    = 18            ; Buffers for TCP resend packets
 
 ; These are the 0x40 function codes for application access to the stack
-STACK_DRIVER_STATUS equ 52
-SOCKET_INTERFACE    equ 53
+STACK_DRIVER_STATUS = 52
+SOCKET_INTERFACE    = 53
 
 ; 128KB allocated for the stack and network driver buffers and other data requirements
-;stack_data_start   equ 0x700000
-;eth_data_start     equ 0x700000
-;stack_data         equ 0x704000
-;stack_data_end     equ 0x71ffff
+;stack_data_start   = 0x700000
+;eth_data_start     = 0x700000
+;stack_data         = 0x704000
+;stack_data_end     = 0x71ffff
 
 ; receive and transmit IP buffer allocation
-;sockets            equ stack_data + 62
-Next_free2          equ stack_data + 62
-;                   equ sockets + (SOCKETBUFFSIZE * NUM_SOCKETS)
+;sockets            = stack_data + 62
+Next_free2          = stack_data + 62
+;                   = sockets + (SOCKETBUFFSIZE * NUM_SOCKETS)
 ; 1560 byte buffer for rx / tx ethernet packets
-Ether_buffer        equ Next_free2
-Next_free3          equ Ether_buffer + 1518
-last_1sTick         equ Next_free3
-IPbuffs             equ Next_free3 + 1
-queues              equ IPbuffs + (NUM_IPBUFFERS * IPBUFFSIZE)
-queueList           equ queues + (2 * NUMQUEUES)
-last_1hsTick        equ queueList + (2 * NUMQUEUEENTRIES)
+Ether_buffer        = Next_free2
+Next_free3          = Ether_buffer + 1518
+last_1sTick         = Next_free3
+IPbuffs             = Next_free3 + 1
+queues              = IPbuffs + (NUM_IPBUFFERS * IPBUFFSIZE)
+queueList           = queues + (2 * NUMQUEUES)
+last_1hsTick        = queueList + (2 * NUMQUEUEENTRIES)
 
-;resendQ            equ queueList + ( 2 * NUMQUEUEENTRIES )
-;resendBuffer       equ resendQ + ( 4 * NUMRESENDENTRIES ) ; for TCP
-;                   equ resendBuffer + ( IPBUFFSIZE * NUMRESENDENTRIES )
+;resendQ            = queueList + ( 2 * NUMQUEUEENTRIES )
+;resendBuffer       = resendQ + ( 4 * NUMRESENDENTRIES ) ; for TCP
+;                   = resendBuffer + ( IPBUFFSIZE * NUMRESENDENTRIES )
 
-;resendQ            equ 0x770000
-;resendBuffer       equ resendQ + ( 4 * NUMRESENDENTRIES ) ; for TCP ; XTODO: validate size
-resendBuffer        equ resendQ + ( 8 * NUMRESENDENTRIES ) ; for TCP
+;resendQ            = 0x770000
+;resendBuffer       = resendQ + ( 4 * NUMRESENDENTRIES ) ; for TCP ; XTODO: validate size
+resendBuffer        = resendQ + ( 8 * NUMRESENDENTRIES ) ; for TCP
 
 uglobal
   net_sockets rd 2

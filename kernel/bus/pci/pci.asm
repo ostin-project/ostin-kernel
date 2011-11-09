@@ -15,7 +15,7 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-;mmio_pci_addr  equ  0x400 ; set actual PCI address here to activate user-MMIO
+;mmio_pci_addr = 0x400 ; set actual PCI address here to activate user-MMIO
 
 uglobal
   align 4

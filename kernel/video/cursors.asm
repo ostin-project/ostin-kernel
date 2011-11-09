@@ -14,10 +14,10 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-LOAD_FROM_FILE equ 0
-LOAD_FROM_MEM  equ 1
-LOAD_INDIRECT  equ 2
-LOAD_SYSTEM    equ 3
+LOAD_FROM_FILE = 0
+LOAD_FROM_MEM  = 1
+LOAD_INDIRECT  = 2
+LOAD_SYSTEM    = 3
 
 struct bitmap_info_header_t
   size            dd ? ; DWORD

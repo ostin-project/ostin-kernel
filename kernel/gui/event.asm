@@ -61,10 +61,10 @@ kproc init_events ;/////////////////////////////////////////////////////////////
         ret
 kendp
 
-EVENT_WATCHED  equ 0x10000000 ; bit 28
-EVENT_SIGNALED equ 0x20000000 ; bit 29
-MANUAL_RESET   equ 0x40000000 ; bit 30
-MANUAL_DESTROY equ 0x80000000 ; bit 31
+EVENT_WATCHED  = 0x10000000 ; bit 28
+EVENT_SIGNALED = 0x20000000 ; bit 29
+MANUAL_RESET   = 0x40000000 ; bit 30
+MANUAL_DESTROY = 0x80000000 ; bit 31
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc create_event ;////////////////////////////////////////////////////////////////////////////////////////////////////

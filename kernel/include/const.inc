@@ -273,7 +273,7 @@ new_app_base        = 0
 
 twdw                = 0x2000 ; CURRENT_TASK - window_data
 
-std_application_base_address   equ new_app_base
+std_application_base_address = new_app_base
 RING0_STACK_SIZE    = 0x2000 - 512 ; 512 bytes for FPU context
 
 REG_SS              = RING0_STACK_SIZE - 4

@@ -28,7 +28,7 @@
 ;;======================================================================================================================
 
 ; forcing full duplex mode makes sense at some cards and link types
-E3C59X_FORCE_FD equ 1
+E3C59X_FORCE_FD = 1
 
 macro virt_to_dma reg
 {

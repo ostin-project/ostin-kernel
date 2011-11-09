@@ -691,7 +691,7 @@ endp
 
 ;;;;;;;;;;;;;;      USER     ;;;;;;;;;;;;;;;;;
 
-HEAP_TOP  equ 0x5fc00000
+HEAP_TOP = 0x5fc00000
 
 align 4
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -1373,21 +1373,21 @@ kproc destroy_smap ;////////////////////////////////////////////////////////////
         ret
 kendp
 
-E_NOTFOUND      equ 5
-E_ACCESS        equ 10
-E_NOMEM         equ 30
-E_PARAM         equ 33
+E_NOTFOUND      = 5
+E_ACCESS        = 10
+E_NOMEM         = 30
+E_PARAM         = 33
 
-SHM_READ        equ 0
-SHM_WRITE       equ 1
+SHM_READ        = 0
+SHM_WRITE       = 1
 
-SHM_ACCESS_MASK equ 3
+SHM_ACCESS_MASK = 3
 
-SHM_OPEN        equ (0 shl 2)
-SHM_OPEN_ALWAYS equ (1 shl 2)
-SHM_CREATE      equ (2 shl 2)
+SHM_OPEN        = (0 shl 2)
+SHM_OPEN_ALWAYS = (1 shl 2)
+SHM_CREATE      = (2 shl 2)
 
-SHM_OPEN_MASK   equ (3 shl 2)
+SHM_OPEN_MASK   = (3 shl 2)
 
 align 4
 ;-----------------------------------------------------------------------------------------------------------------------
