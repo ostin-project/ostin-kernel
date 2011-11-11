@@ -26,8 +26,8 @@ kproc sysfn.set_config.video_ctl ;//////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 21.13: call videomode driver functions
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov_s_  [old_screen_height], [Screen_Max_Y]
-        mov_s_  [old_screen_width], [Screen_Max_X]
+        mov_s_  [old_screen_height], [Screen_Max_Pos.y]
+        mov_s_  [old_screen_width], [Screen_Max_Pos.x]
 
         or      eax, -1 ; If driver is absent then eax does not change
 
@@ -40,13 +40,13 @@ kproc sysfn.set_config.video_ctl ;//////////////////////////////////////////////
 
         mov     eax, [old_screen_width]
         mov     ebx, [old_screen_height]
-        sub     eax, [Screen_Max_X]
+        sub     eax, [Screen_Max_Pos.x]
         jnz     @f
-        sub     ebx, [Screen_Max_Y]
+        sub     ebx, [Screen_Max_Pos.y]
         jz      .resolution_wasnt_changed
         jmp     .lp1
 
-    @@: sub     ebx, [Screen_Max_Y]
+    @@: sub     ebx, [Screen_Max_Pos.y]
 
   .lp1:
         sub     [screen_workarea.right], eax
@@ -55,8 +55,8 @@ kproc sysfn.set_config.video_ctl ;//////////////////////////////////////////////
         call    repos_windows
         xor     eax, eax
         xor     ebx, ebx
-        mov     ecx, [Screen_Max_X]
-        mov     edx, [Screen_Max_Y]
+        mov     ecx, [Screen_Max_Pos.x]
+        mov     edx, [Screen_Max_Pos.y]
         call    calculatescreen
 
   .resolution_wasnt_changed:

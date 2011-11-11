@@ -1195,9 +1195,9 @@ endl
         xor     eax, eax
         mov     [ecx + 0], eax
         mov     [ecx + 4], eax
-        mov     eax, [Screen_Max_X]
+        mov     eax, [Screen_Max_Pos.x]
         mov     [ecx + 8], eax
-        mov     eax, [Screen_Max_Y]
+        mov     eax, [Screen_Max_Pos.y]
         mov     [ecx + 12], eax
 
         mov     ebx, [pl0_stack]

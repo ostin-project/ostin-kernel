@@ -631,13 +631,13 @@ endl
         add     edx, eax
         mov     [cur_saved_base], edx
 
-        cmp     ebx, [Screen_Max_X]
+        cmp     ebx, [Screen_Max_Pos.x]
         jbe     @f
-        mov     ebx, [Screen_Max_X]
+        mov     ebx, [Screen_Max_Pos.x]
 
-    @@: cmp     edi, [Screen_Max_Y]
+    @@: cmp     edi, [Screen_Max_Pos.y]
         jbe     @f
-        mov     edi, [Screen_Max_Y]
+        mov     edi, [Screen_Max_Pos.y]
 
     @@: mov     [cur.right], ebx
         mov     [cur.bottom], edi
@@ -740,13 +740,13 @@ endl
         lea     edx, [LFB_BASE + eax + ecx * 4]
         mov     [cur_saved_base], edx
 
-        cmp     ebx, [Screen_Max_X]
+        cmp     ebx, [Screen_Max_Pos.x]
         jbe     @f
-        mov     ebx, [Screen_Max_X]
+        mov     ebx, [Screen_Max_Pos.x]
 
-    @@: cmp     edi, [Screen_Max_Y]
+    @@: cmp     edi, [Screen_Max_Pos.y]
         jbe     @f
-        mov     edi, [Screen_Max_Y]
+        mov     edi, [Screen_Max_Pos.y]
 
     @@: mov     [cur.right], ebx
         mov     [cur.bottom], edi

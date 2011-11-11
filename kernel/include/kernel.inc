@@ -102,6 +102,40 @@ struct range64x32_t
 ends
 
 ;;----------------------------------------------------------------------------------------------------------------------
+;;///// memory range ///////////////////////////////////////////////////////////////////////////////////////////////////
+;;----------------------------------------------------------------------------------------------------------------------
+
+struct memory_range16_t
+  address dw ?
+  size    dw ?
+ends
+
+struct memory_range16x8_t
+  address dw ?
+  size    db ?
+ends
+
+struct memory_range32_t
+  address dd ?
+  size    dd ?
+ends
+
+struct memory_range32x16_t
+  address dd ?
+  size    dw ?
+ends
+
+struct memory_range64_t
+  address dq ?
+  size    dq ?
+ends
+
+struct memory_range64x32_t
+  address dq ?
+  size    dd ?
+ends
+
+;;----------------------------------------------------------------------------------------------------------------------
 ;;///// rect //////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;;----------------------------------------------------------------------------------------------------------------------
 
@@ -260,20 +294,24 @@ WSTATE_WNDDRAWN  = 00000010b
 WSTYLE_HASCAPTION     = 00010000b
 WSTYLE_CLIENTRELATIVE = 00100000b
 
-struct task_data_t
-  event_mask  dd ?
-  pid         dd ?
-              dw ?
-  state       db ?
-              db ?
-              dw ?
-  wnd_number  db ?
-              db ?
-  mem_start   dd ?
+struct task_stats_t
   counter_sum dd ?
   counter_add dd ?
   cpu_usage   dd ?
 ends
+
+struct task_data_t
+  pid        dd ?
+  mem_start  dd ?
+  state      db ?
+  wnd_number db ?
+             dw ?
+  event_mask dd ?
+  stats      task_stats_t
+             dd ?
+ends
+
+static_assert sizeof.task_data_t = 32
 
 TSTATE_RUNNING        = 0
 TSTATE_RUN_SUSPENDED  = 1
@@ -337,7 +375,7 @@ struct app_data_t
                   dd ?
   mem_size        dd ?
   saved_box       box32_t
-  ipc             range32_t
+  ipc             memory_range32_t
   event_mask      dd ?
   debugger_slot   dd ?
                   dd ?

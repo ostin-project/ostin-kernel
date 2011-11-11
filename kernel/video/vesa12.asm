@@ -254,8 +254,8 @@ kproc vesa12_drawbackground ;///////////////////////////////////////////////////
         push    edx
 
         xor     edx, edx
-        mov     eax, [BgrDataWidth]
-        mov     ebx, [BgrDataHeight]
+        mov     eax, [BgrDataSize.width]
+        mov     ebx, [BgrDataSize.height]
         mul     ebx
         mov     ebx, 3
         mul     ebx
@@ -274,12 +274,12 @@ kproc vesa12_drawbackground ;///////////////////////////////////////////////////
         push    edx
 
         xor     edx, edx
-        div     [BgrDataWidth]
+        div     [BgrDataSize.width]
 
         push    edx
         mov     eax, ebx
         xor     edx, edx
-        div     [BgrDataHeight]
+        div     [BgrDataSize.height]
         mov     ebx, edx
         pop     eax
 
@@ -291,15 +291,15 @@ kproc vesa12_drawbackground ;///////////////////////////////////////////////////
 
         push    edx
 
-        mul     [BgrDataWidth]
-        mov     ecx, [Screen_Max_X]
+        mul     [BgrDataSize.width]
+        mov     ecx, [Screen_Max_Pos.x]
         inc     ecx
         div     ecx
 
         push    eax
         mov     eax, ebx
-        mul     [BgrDataHeight]
-        mov     ecx, [Screen_Max_Y]
+        mul     [BgrDataSize.height]
+        mov     ecx, [Screen_Max_Pos.y]
         inc     ecx
         div     ecx
         mov     ebx, eax
@@ -309,7 +309,7 @@ kproc vesa12_drawbackground ;///////////////////////////////////////////////////
 
   .no_vesa12_stretched_bgr:
         mov     esi, ebx
-        imul    esi, [BgrDataWidth]
+        imul    esi, [BgrDataSize.width]
         add     esi, eax
         lea     esi, [esi * 3]
         add     esi, [img_background] ; IMG_BACKGROUND
@@ -323,10 +323,10 @@ kproc vesa12_drawbackground ;///////////////////////////////////////////////////
         pusha
         mov     esi, eax
         mov     edi, ebx
-        mov     eax, [Screen_Max_X]
+        mov     eax, [Screen_Max_Pos.x]
         add     eax, 1
         mul     ebx
-        add     eax, [_WinMapAddress]
+        add     eax, [_WinMapRange.address]
         cmp     byte[eax + esi], 1
         jnz     .v12nbgp
         mov     eax, [BytesPerScanLine]
@@ -438,10 +438,10 @@ kproc vesa12_drawbar ;//////////////////////////////////////////////////////////
         cmp     ecx, 0
         jnz     .dbcblimitlset12
         mov     ecx, [eax + draw_data - CURRENT_TASK + rect32_t.right]
-        cmp     ecx, [Screen_Max_X]
+        cmp     ecx, [Screen_Max_Pos.x]
         jnz     .dbcblimitlset12
         mov     ecx, [eax + draw_data - CURRENT_TASK + rect32_t.bottom]
-        cmp     ecx, [Screen_Max_Y]
+        cmp     ecx, [Screen_Max_Pos.y]
         jnz     .dbcblimitlset12
         pop     ecx
         pop     eax
@@ -485,7 +485,7 @@ kproc dbpi24bit12 ;/////////////////////////////////////////////////////////////
         sub     eax, VGABasePtr
         mov     ebx, 3
         div     ebx
-        add     eax, [_WinMapAddress]
+        add     eax, [_WinMapRange.address]
         mov     ebx, [CURRENT_TASK]
 
   .dbnp2412:
@@ -565,7 +565,7 @@ kproc dbpi32bit12 ;/////////////////////////////////////////////////////////////
         mov     eax, edi
         sub     eax, VGABasePtr
         shr     eax, 2
-        add     eax, [_WinMapAddress]
+        add     eax, [_WinMapRange.address]
         mov     ebx, [CURRENT_TASK]
 
   .dbnp3212:
@@ -774,10 +774,10 @@ kproc vesa12_putimage ;/////////////////////////////////////////////////////////
         cmp     [eax + draw_data - CURRENT_TASK + rect32_t.top], 0
         jnz     .dbcblimitlset212
         mov     ecx, [eax + draw_data - CURRENT_TASK + rect32_t.right]
-        cmp     ecx, [Screen_Max_X]
+        cmp     ecx, [Screen_Max_Pos.x]
         jnz     .dbcblimitlset212
         mov     ecx, [eax + draw_data - CURRENT_TASK + rect32_t.bottom]
-        cmp     ecx, [Screen_Max_Y]
+        cmp     ecx, [Screen_Max_Pos.y]
         jnz     .dbcblimitlset212
         pop     ecx
         push    0
@@ -804,7 +804,7 @@ kproc pi24bit12 ;///////////////////////////////////////////////////////////////
         sub     edx, VGABasePtr
         mov     ebx, 3
         div     ebx
-        add     edx, [_WinMapAddress]
+        add     edx, [_WinMapRange.address]
         mov     ebx, [CURRENT_TASK]
         mov     bh, [esp + 4 * 3]
 
@@ -879,7 +879,7 @@ kproc pi32bit12 ;///////////////////////////////////////////////////////////////
         mov     edx, edi
         sub     edx, VGABasePtr
         shr     edx, 2
-        add     edx, [_WinMapAddress]
+        add     edx, [_WinMapRange.address]
         mov     ebx, [CURRENT_TASK]
         mov     bh, [esp + 4 * 3]
 

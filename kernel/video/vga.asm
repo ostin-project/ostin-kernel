@@ -187,7 +187,7 @@ kproc checkVga_N13 ;////////////////////////////////////////////////////////////
         sub     eax, 160
         shl     eax, 2
         add     ecx, eax
-        mov     esi, [LFBAddress]
+        mov     esi, [LFBRange.address]
         add     esi, ecx
         mov     edi, VGABasePtr
         mov     edx, 200
@@ -228,7 +228,7 @@ kproc VGA_drawbackground ;//////////////////////////////////////////////////////
         cmp     [SCR_MODE], 0x12
         jne     .end
         pushad
-        mov     esi, [LFBAddress]
+        mov     esi, [LFBRange.address]
         mov     edi, VGABasePtr
         mov     ebx, 640 / 32 ; 640 * 480 / (8 * 4)
         mov     edx, 480
@@ -368,7 +368,7 @@ kproc VGA_putpixel ;////////////////////////////////////////////////////////////
         lea     ebx, [ebx + ebx * 4] ; * 5
         lea     edx, [ebx + ecx * 4] ; + x*BytesPerPixel (Vesa2.0 32)
         mov     edi, edx
-        add     edi, [LFBAddress] ; + LFB address
+        add     edi, [LFBRange.address] ; + LFB address
         mov     [edi], eax ; write to LFB for Vesa2.0
         shr     edx, 5 ; change BytesPerPixel to 1/8
         mov     edi, edx
@@ -479,7 +479,7 @@ kproc VGA_draw_bar_1 ;//////////////////////////////////////////////////////////
         lea     ebx, [ebx + ebx * 4] ; * 5
         lea     ebx, [ebx + eax * 4] ; + x*BytesPerPixel (Vesa2.0 32)
         mov     esi, ebx
-        add     esi, [LFBAddress] ; + LFB address
+        add     esi, [LFBRange.address] ; + LFB address
         shr     ebx, 5 ; change BytesPerPixel to 1/8
         mov     edi, ebx
         add     edi, VGABasePtr ; address of pixel in VGA area

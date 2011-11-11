@@ -401,7 +401,7 @@ kproc drawwindow_IV ;///////////////////////////////////////////////////////////
         ;* close button
         mov     edi, [BTN_ADDR]
         movzx   eax, word[edi]
-        cmp     eax, 1000
+        cmp     eax, GUI_BUTTON_MAX_COUNT
         jge     .no_skin_add_button
         inc     eax
         mov     [edi], ax
@@ -410,12 +410,10 @@ kproc drawwindow_IV ;///////////////////////////////////////////////////////////
         add     eax, edi
 
         mov     ebx, [CURRENT_TASK]
-        mov     [eax], bx
+        mov     [eax + sys_button_t.pslot], ebx
 
-        add     eax, 2 ; save button id number
-        mov     bx, 1
-        mov     [eax], bx
-        add     eax, 2 ; x start
+        mov     ebx, 1
+        mov     [eax + sys_button_t.id], ebx
         xor     ebx, ebx
         cmp     [skin_btn_close.left], 0
         jge     ._bCx_at_right
@@ -425,23 +423,20 @@ kproc drawwindow_IV ;///////////////////////////////////////////////////////////
 
   ._bCx_at_right:
         add     ebx, [skin_btn_close.left]
-        mov     [eax], bx
-        add     eax, 2 ; x size
+        mov     [eax + sys_button_t.box.left], bx
         mov     ebx, [skin_btn_close.width]
         dec     ebx
-        mov     [eax], bx
-        add     eax, 2 ; y start
+        mov     [eax + sys_button_t.box.width], bx
         mov     ebx, [skin_btn_close.top]
-        mov     [eax], bx
-        add     eax, 2 ; y size
+        mov     [eax + sys_button_t.box.top], bx
         mov     ebx, [skin_btn_close.height]
         dec     ebx
-        mov     [eax], bx
+        mov     [eax + sys_button_t.box.height], bx
 
         ;* minimize button
         mov     edi, [BTN_ADDR]
         movzx   eax, word[edi]
-        cmp     eax, 1000
+        cmp     eax, GUI_BUTTON_MAX_COUNT
         jge     .no_skin_add_button
         inc     eax
         mov     [edi], ax
@@ -450,12 +445,10 @@ kproc drawwindow_IV ;///////////////////////////////////////////////////////////
         add     eax, edi
 
         mov     ebx, [CURRENT_TASK]
-        mov     [eax], bx
+        mov     [eax + sys_button_t.pslot], ebx
 
-        add     eax, 2 ; save button id number
-        mov     bx, 65535 ; 999
-        mov     [eax], bx
-        add     eax, 2 ; x start
+        mov     ebx, 65535 ; 999
+        mov     [eax + sys_button_t.id], ebx
         xor     ebx, ebx
         cmp     [skin_btn_minimize.left], 0
         jge     ._bMx_at_right
@@ -465,18 +458,15 @@ kproc drawwindow_IV ;///////////////////////////////////////////////////////////
 
   ._bMx_at_right:
         add     ebx, [skin_btn_minimize.left]
-        mov     [eax], bx
-        add     eax, 2 ; x size
+        mov     [eax + sys_button_t.box.left], bx
         mov     ebx, [skin_btn_minimize.width]
         dec     ebx
-        mov     [eax], bx
-        add     eax, 2 ; y start
+        mov     [eax + sys_button_t.box.width], bx
         mov     ebx, [skin_btn_minimize.top]
-        mov     [eax], bx
-        add     eax, 2 ; y size
+        mov     [eax + sys_button_t.box.top], bx
         mov     ebx, [skin_btn_minimize.height]
         dec     ebx
-        mov     [eax], bx
+        mov     [eax + sys_button_t.box.height], bx
 
   .no_skin_add_button:
         pop     edi

@@ -19,18 +19,22 @@
 ;;///// public functions ///////////////////////////////////////////////////////////////////////////////////////////////
 ;;======================================================================================================================
 
-button.MAX_BUTTONS = 4095
+GUI_BUTTON_MAX_COUNT = 4095
+GUI_BUTTON_ID_MASK   = 0x00ffffff
 
 struct sys_button_t
-  pslot  dw ?
-  id_lo  dw ?
-  left   dw ?
-  width  dw ?
-  top    dw ?
-  height dw ?
-  id_hi  dw ?
-         dw ?
+  pslot     dd ?
+  union
+    id      dd ?
+    struct
+            rb 3
+      flags db ?
+    ends
+  ends
+  box       box16_t
 ends
+
+;static_assert sizeof.sys_button_t = 16
 
 uglobal
   BTN_ADDR dd ?
@@ -63,7 +67,7 @@ kproc sysfn.define_button ;/////////////////////////////////////////////////////
         ; do we have free button slots available?
         mov     edi, [BTN_ADDR]
         mov     eax, [edi]
-        cmp     eax, button.MAX_BUTTONS
+        cmp     eax, GUI_BUTTON_MAX_COUNT
         jge     .exit
 
         ; does it have positive size? (otherwise it doesn't have sense)
@@ -89,21 +93,20 @@ kproc sysfn.define_button ;/////////////////////////////////////////////////////
         mov     [edi], ax
         shl     eax, 4
         add     edi, eax
-        ; NOTE: this code doesn't rely on sys_button_t struct, please revise it
-        ;       if you change something
+        ; NOTE: this code doesn't rely on sys_button_t struct, please revise it if you change something
         mov     eax, [CURRENT_TASK]
-        stosw
-        mov     ax, dx
-        stosw   ; button id number: bits 0-15
-        mov     eax, ebx
-        rol     eax, 16
-        stosd   ; x start | x size
-        mov     eax, ecx
-        rol     eax, 16
-        stosd   ; y start | y size
+        stosd
         mov     eax, edx
-        shr     eax, 16
-        stosw   ; button id number: bits 16-31
+        stosd   ; button id number and flags
+        mov     eax, ecx
+        rol     ebx, 16
+        mov     ax, bx
+        stosd   ; box left | box top
+        mov     eax, ecx
+        shl     eax, 16
+        rol     ebx, 16
+        mov     ax, bx
+        stosd   ; box width | box height
         pop     edx ecx ebx
 
         ; do we also need to draw the button?
@@ -216,7 +219,7 @@ kproc sysfn.define_button ;/////////////////////////////////////////////////////
 
 ; FIXME: mutex needed
 sysfn.define_button.remove_button:
-        and     edx, 0x00ffffff
+        and     edx, GUI_BUTTON_ID_MASK
         mov     edi, [BTN_ADDR]
         mov     ebx, [edi]
         inc     ebx
@@ -235,13 +238,12 @@ sysfn.define_button.remove_button:
 
         ; does it belong to our process?
         mov     eax, [CURRENT_TASK]
-        cmp     ax, [esi + sys_button_t.pslot]
+        cmp     eax, [esi + sys_button_t.pslot]
         jne     .next_button
 
         ; does the identifier match?
-        mov     eax, dword[esi + sys_button_t.id_hi - 2]
-        mov     ax, [esi + sys_button_t.id_lo]
-        and     eax, 0x00ffffff
+        mov     eax, [esi + sys_button_t.id]
+        and     eax, GUI_BUTTON_ID_MASK
         cmp     edx, eax
         jne     .next_button
 
@@ -295,7 +297,7 @@ kproc sys_button_activate_handler ;/////////////////////////////////////////////
         or      eax, eax
         jz      .exit
 
-        mov     ebx, dword[eax + sys_button_t.id_hi - 2]
+        mov     bl, [eax + sys_button_t.flags]
         call    button._.negative_button
 
   .exit:
@@ -315,7 +317,7 @@ kproc sys_button_deactivate_handler ;///////////////////////////////////////////
         or      eax, eax
         jz      .exit
 
-        mov     ebx, dword[eax + sys_button_t.id_hi - 2]
+        mov     bl, [eax + sys_button_t.flags]
         call    button._.negative_button
 
   .exit:
@@ -364,7 +366,7 @@ kproc button._.find_button ;////////////////////////////////////////////////////
 
         mov     edx, eax
         shr     edx, 24
-        and     eax, 0x00ffffff
+        and     eax, GUI_BUTTON_ID_MASK
 
         mov     edi, [BTN_ADDR]
         mov     ecx, [edi]
@@ -380,19 +382,18 @@ kproc button._.find_button ;////////////////////////////////////////////////////
         add     esi, -sizeof.sys_button_t
 
         ; does it belong to our process?
-        cmp     dx, [esi + sys_button_t.pslot]
+        cmp     edx, [esi + sys_button_t.pslot]
         jne     .next_button
 
         ; does id match?
-        mov     edi, dword[esi + sys_button_t.id_hi - 2]
-        mov     di, [esi + sys_button_t.id_lo]
-        and     edi, 0x00ffffff
+        mov     edi, [esi + sys_button_t.id]
+        and     edi, GUI_BUTTON_ID_MASK
         cmp     eax, edi
         jne     .next_button
 
-        ; does coordinates match?
-        mov     edi, dword[esi + sys_button_t.left - 2]
-        mov     di, [esi + sys_button_t.top]
+        ; do coordinates match?
+        mov     edi, dword[esi + sys_button_t.box.left - 2]
+        mov     di, [esi + sys_button_t.box.top]
         cmp     ebx, edi
         jne     .next_button
 
@@ -515,21 +516,23 @@ kproc button._.negative_button ;////////////////////////////////////////////////
 ;? Invert system button border
 ;-----------------------------------------------------------------------------------------------------------------------
         ; if requested, do not display button border on press.
-        test    ebx, 0x20000000
+        test    bl, 0x20
         jnz     .exit
 
         pushad
 
         xchg    esi, eax
 
-        movzx   ecx, [esi + sys_button_t.pslot]
+        mov     ecx, [esi + sys_button_t.pslot]
         shl     ecx, 5
         add     ecx, window_data
 
-        mov     eax, dword[esi + sys_button_t.left]
-        mov     ebx, dword[esi + sys_button_t.top]
-        add     eax, [ecx + window_data_t.box.left]
-        add     ebx, [ecx + window_data_t.box.top]
+        mov     eax, dword[esi + sys_button_t.box.width - 2]
+        mov     ax, [esi + sys_button_t.box.left]
+        mov     ebx, dword[esi + sys_button_t.box.height - 2]
+        mov     bx, [esi + sys_button_t.box.top]
+        add     ax, word[ecx + window_data_t.box.left]
+        add     bx, word[ecx + window_data_t.box.top]
         push    eax ebx
         pop     edx ecx
         rol     eax, 16

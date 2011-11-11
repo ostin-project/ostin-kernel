@@ -361,7 +361,7 @@ kproc sysfn.blit_32 ;///////////////////////////////////////////////////////////
         imul    edi, [_display.pitch]
         imul    ebp, [_display.box.width]
         add     ebp, ebx
-        add     ebp, [_WinMapAddress]
+        add     ebp, [_WinMapRange.address]
 
         mov     eax, [esp + blitter_t.src.y]
         imul    eax, [esp + blitter_t.stride]

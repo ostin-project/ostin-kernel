@@ -21,8 +21,7 @@ uglobal
   mem_BACKGROUND         rd 1
   static_background_data rd 1
   BgrDrawMode            dd ?
-  BgrDataWidth           dd ?
-  BgrDataHeight          dd ?
+  BgrDataSize            size32_t
   bgrlockpid             dd ?
   bgrlock                db ?
   REDRAW_BACKGROUND      db ?
@@ -54,9 +53,9 @@ kproc sysfn.get_background_ctl.get_size ;///////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 39.1
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, [BgrDataWidth]
+        mov     eax, [BgrDataSize.width]
         shl     eax, 16
-        mov     ax, word[BgrDataHeight]
+        mov     ax, word[BgrDataSize.height]
         mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
@@ -138,8 +137,8 @@ kproc sysfn.set_background_ctl.set_size ;///////////////////////////////////////
         call    change_task
         jmp     @b
 
-    @@: mov     [BgrDataWidth], ecx
-        mov     [BgrDataHeight], edx
+    @@: mov     [BgrDataSize.width], ecx
+        mov     [BgrDataSize.height], edx
 ;       mov     [bgrchanged], 1
 
         pushad
@@ -153,16 +152,16 @@ kproc sysfn.set_background_ctl.set_size ;///////////////////////////////////////
     @@: ; calculate RAW size
         xor     eax, eax
         inc     eax
-        cmp     [BgrDataWidth], eax
+        cmp     [BgrDataSize.width], eax
         jae     @f
-        mov     [BgrDataWidth], eax
+        mov     [BgrDataSize.width], eax
 
-    @@: cmp     [BgrDataHeight], eax
+    @@: cmp     [BgrDataSize.height], eax
         jae     @f
-        mov     [BgrDataHeight], eax
+        mov     [BgrDataSize.height], eax
 
-    @@: mov     eax, [BgrDataWidth]
-        imul    eax, [BgrDataHeight]
+    @@: mov     eax, [BgrDataSize.width]
+        imul    eax, [BgrDataSize.height]
         lea     eax, [eax * 3]
         mov     [mem_BACKGROUND], eax
         ; get memory for new background
@@ -177,8 +176,8 @@ kproc sysfn.set_background_ctl.set_size ;///////////////////////////////////////
         mov     [img_background], static_background_data
         xor     eax, eax
         inc     eax
-        mov     [BgrDataWidth], eax
-        mov     [BgrDataHeight], eax
+        mov     [BgrDataSize.width], eax
+        mov     [BgrDataSize.height], eax
         mov     [mem_BACKGROUND], 4
 
   .exit:
@@ -355,9 +354,9 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc calculatebackground ;/////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     edi, [_WinMapAddress] ; set os to use all pixels
+        mov     edi, [_WinMapRange.address] ; set os to use all pixels
         mov     eax, 0x01010101
-        mov     ecx, [_WinMapSize]
+        mov     ecx, [_WinMapRange.size]
         shr     ecx, 2
         rep
         stosd
@@ -406,8 +405,8 @@ kproc force_redraw_background ;/////////////////////////////////////////////////
         and     [draw_data + sizeof.rect32_t + rect32_t.left], 0
         and     [draw_data + sizeof.rect32_t + rect32_t.top], 0
         push    eax ebx
-        mov     eax, [Screen_Max_X]
-        mov     ebx, [Screen_Max_Y]
+        mov     eax, [Screen_Max_Pos.x]
+        mov     ebx, [Screen_Max_Pos.y]
         mov     [draw_data + sizeof.rect32_t + rect32_t.right], eax
         mov     [draw_data + sizeof.rect32_t + rect32_t.bottom], ebx
         pop     ebx eax

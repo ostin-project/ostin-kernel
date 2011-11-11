@@ -258,10 +258,10 @@ kproc save_draw_mouse ;/////////////////////////////////////////////////////////
         push    eax
         push    ebx
 
-        mov     ecx, [Screen_Max_X]
+        mov     ecx, [Screen_Max_Pos.x]
         inc     ecx
         mul     ecx
-        add     eax, [_WinMapAddress]
+        add     eax, [_WinMapRange.address]
         movzx   edx, byte[ebx + eax]
         shl     edx, 8
         mov     esi, [SLOT_BASE + edx + app_data_t.cursor]
@@ -441,20 +441,20 @@ kproc __sys_disable_mouse ;/////////////////////////////////////////////////////
         add     edx, window_data
         movzx   eax, [MOUSE_X]
         movzx   ebx, [MOUSE_Y]
-        mov     ecx, [Screen_Max_X]
+        mov     ecx, [Screen_Max_Pos.x]
         inc     ecx
         imul    ecx, ebx
         add     ecx, eax
-        add     ecx, [_WinMapAddress]
+        add     ecx, [_WinMapRange.address]
         mov     eax, [CURRENT_TASK]
         cmp     al, [ecx]
         je      .yes_mouse_disable
         cmp     al, [ecx + 16]
         je      .yes_mouse_disable
         add     ebx, 10
-        cmp     ebx, [Screen_Max_Y]
+        cmp     ebx, [Screen_Max_Pos.y]
         jae     .no_mouse_disable
-        mov     ebx, [Screen_Max_X]
+        mov     ebx, [Screen_Max_Pos.x]
         inc     ebx
         imul    ebx, 10
         add     ecx, ebx
@@ -572,9 +572,9 @@ proc set_mouse_data stdcall, BtnState:dword, XMoving:dword, YMoving:dword, VScro
         jmp     .M2
 
   .M1:
-        cmp     ax, word[Screen_Max_X] ; ScreenLength
+        cmp     ax, word[Screen_Max_Pos.x] ; ScreenLength
         jl      .M2
-        mov     ax, word[Screen_Max_X] ; ScreenLength-1
+        mov     ax, word[Screen_Max_Pos.x] ; ScreenLength-1
 
   .M2:
         mov     [MOUSE_X], ax ; [XCoordinate]
@@ -590,9 +590,9 @@ proc set_mouse_data stdcall, BtnState:dword, XMoving:dword, YMoving:dword, VScro
         jmp     .M4
 
   .M3:
-        cmp     ax, word[Screen_Max_Y] ; ScreenHeigth
+        cmp     ax, word[Screen_Max_Pos.y] ; ScreenHeigth
         jl      .M4
-        mov     ax, word[Screen_Max_Y] ; ScreenHeigth-1
+        mov     ax, word[Screen_Max_Pos.y] ; ScreenHeigth-1
 
   .M4:
         mov     [MOUSE_Y], ax ; [YCoordinate]

@@ -397,9 +397,9 @@ kproc mouse._.move_handler ;////////////////////////////////////////////////////
         mov     [mouse.active_sys_window.new_box.left], eax
 
     @@: add     eax, [mouse.active_sys_window.new_box.width]
-        cmp     eax, [Screen_Max_X]
+        cmp     eax, [Screen_Max_Pos.x]
         jl      @f
-        sub     eax, [Screen_Max_X]
+        sub     eax, [Screen_Max_Pos.x]
         sub     [mouse.active_sys_window.new_box.left], eax
 
     @@: mov     eax, [mouse.active_sys_window.new_box.top]
@@ -409,9 +409,9 @@ kproc mouse._.move_handler ;////////////////////////////////////////////////////
         mov     [mouse.active_sys_window.new_box.top], eax
 
     @@: add     eax, [mouse.active_sys_window.new_box.height]
-        cmp     eax, [Screen_Max_Y]
+        cmp     eax, [Screen_Max_Pos.y]
         jle     .call_window_handler
-        sub     eax, [Screen_Max_Y]
+        sub     eax, [Screen_Max_Pos.y]
         sub     [mouse.active_sys_window.new_box.top], eax
         jmp     .call_window_handler
 
@@ -461,12 +461,12 @@ kproc mouse._.move_handler ;////////////////////////////////////////////////////
         mov     [mouse.active_sys_window.new_box.height], eax
 
     @@: add     eax, [mouse.active_sys_window.new_box.top]
-        cmp     eax, [Screen_Max_Y]
+        cmp     eax, [Screen_Max_Pos.y]
         jle     .check_resize_e
-        sub     eax, [Screen_Max_Y]
+        sub     eax, [Screen_Max_Pos.y]
         neg     eax
         add     [mouse.active_sys_window.new_box.height], eax
-        mov     ecx, [Screen_Max_Y]
+        mov     ecx, [Screen_Max_Pos.y]
         cmp     ecx, eax
         jge     .check_resize_e
         mov     [mouse.active_sys_window.new_box.height], ecx
@@ -487,12 +487,12 @@ kproc mouse._.move_handler ;////////////////////////////////////////////////////
         mov     [mouse.active_sys_window.new_box.width], eax
 
     @@: add     eax, [mouse.active_sys_window.new_box.left]
-        cmp     eax, [Screen_Max_X]
+        cmp     eax, [Screen_Max_Pos.x]
         jle     .call_window_handler
-        sub     eax, [Screen_Max_X]
+        sub     eax, [Screen_Max_Pos.x]
         neg     eax
         add     [mouse.active_sys_window.new_box.width], eax
-        mov     ecx, [Screen_Max_X]
+        mov     ecx, [Screen_Max_Pos.x]
         cmp     ecx, eax
         jge     .call_window_handler
         mov     [mouse.active_sys_window.new_box.width], ecx
@@ -526,10 +526,10 @@ kproc mouse._.find_sys_window_under_cursor ;////////////////////////////////////
 ;< esi = process slot
 ;< edi = pointer to window_data_t struct
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     esi, [Screen_Max_X]
+        mov     esi, [Screen_Max_Pos.x]
         inc     esi
         imul    esi, [mouse.state.pos.y]
-        add     esi, [_WinMapAddress]
+        add     esi, [_WinMapRange.address]
         add     esi, [mouse.state.pos.x]
         movzx   esi, byte[esi]
         mov     edi, esi
@@ -579,31 +579,30 @@ kproc mouse._.find_sys_button_under_cursor ;////////////////////////////////////
         add     esi, -sizeof.sys_button_t
 
         ; does it belong to our process?
-        cmp     dx, [esi + sys_button_t.pslot]
+        cmp     edx, [esi + sys_button_t.pslot]
         jne     .next_button
 
         ; does it contain cursor coordinates?
         mov     eax, [mouse.state.pos.x]
         sub     eax, [edi + window_data_t.box.left]
-        sub     ax, [esi + sys_button_t.left]
+        sub     ax, [esi + sys_button_t.box.left]
         jl      .next_button
-        sub     ax, [esi + sys_button_t.width]
+        sub     ax, [esi + sys_button_t.box.width]
         jge     .next_button
         mov     eax, [mouse.state.pos.y]
         sub     eax, [edi + window_data_t.box.top]
-        sub     ax, [esi + sys_button_t.top]
+        sub     ax, [esi + sys_button_t.box.top]
         jl      .next_button
-        sub     ax, [esi + sys_button_t.height]
+        sub     ax, [esi + sys_button_t.box.height]
         jge     .next_button
 
         ; okay, return it
         shl     edx, 24
-        mov     eax, dword[esi + sys_button_t.id_hi - 2]
-        mov     ax, [esi + sys_button_t.id_lo]
-        and     eax, 0x00ffffff
+        mov     eax, [esi + sys_button_t.id]
+        and     eax, GUI_BUTTON_ID_MASK
         or      eax, edx
-        mov     ebx, dword[esi + sys_button_t.left - 2]
-        mov     bx, [esi + sys_button_t.top]
+        mov     ebx, dword[esi + sys_button_t.box.left - 2]
+        mov     bx, [esi + sys_button_t.box.top]
         jmp     .exit
 
   .not_found:

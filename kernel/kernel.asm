@@ -309,12 +309,12 @@ high_code:
         movzx   eax, [BOOT_VAR + BOOT_X_RES] ; X max
         mov     [_display.box.width], eax
         dec     eax
-        mov     [Screen_Max_X], eax
+        mov     [Screen_Max_Pos.x], eax
         mov     [screen_workarea.right], eax
         movzx   eax, [BOOT_VAR + BOOT_Y_RES] ; Y max
         mov     [_display.box.height], eax
         dec     eax
-        mov     [Screen_Max_Y], eax
+        mov     [Screen_Max_Pos.y], eax
         mov     [screen_workarea.bottom], eax
         mov     ax, [BOOT_VAR + BOOT_VESA_MODE] ; screen mode
         mov     [SCR_MODE], ax
@@ -331,7 +331,7 @@ high_code:
 
     @@: mov     eax, [_display.box.width]
         mul     [_display.box.height]
-        mov     [_WinMapSize], eax
+        mov     [_WinMapRange.size], eax
 
         mov     esi, BOOT_VAR + BOOT_BIOS_DISKS
         movzx   ecx, byte[esi - 1]
@@ -343,7 +343,7 @@ high_code:
         ; GRAPHICS ADDRESSES
         and     [BOOT_VAR + BOOT_DIRECT_LFB], 0
         mov     eax, [BOOT_VAR + BOOT_LFB]
-        mov     [LFBAddress], eax
+        mov     [LFBRange.address], eax
 
         cmp     [SCR_MODE], 0100000000000000b
         jge     .setvesa20
@@ -468,7 +468,7 @@ high_code:
         mov     ax, tss0
         ltr     ax
 
-        mov     [LFBSize], 0x00800000
+        mov     [LFBRange.size], 0x00800000
         call    init_LFB
         call    init_fpu
         call    init_malloc
@@ -524,14 +524,14 @@ high_code:
         stosd
 
         ; Set base of graphic segment to linear address of LFB
-        mov     eax, [LFBAddress] ; set for gs
+        mov     eax, [LFBRange.address] ; set for gs
         mov     [graph_data_l + 2], ax
         shr     eax, 16
         mov     [graph_data_l + 4], al
         mov     [graph_data_l + 7], ah
 
-        stdcall kernel_alloc, [_WinMapSize]
-        mov     [_WinMapAddress], eax
+        stdcall kernel_alloc, [_WinMapRange.size]
+        mov     [_WinMapRange.address], eax
 
         xor     eax, eax
         inc     eax
@@ -542,8 +542,8 @@ high_code:
 
         ; set background
         mov     [BgrDrawMode], eax
-        mov     [BgrDataWidth], eax
-        mov     [BgrDataHeight], eax
+        mov     [BgrDataSize.width], eax
+        mov     [BgrDataSize.height], eax
         mov     [mem_BACKGROUND], 4
         mov     [img_background], static_background_data
 
@@ -2031,10 +2031,10 @@ kproc sysfn.system_ctl.move_mouse_cursor_to_center ;////////////////////////////
 ;? System function 18.15: set mouse cursor position to screen center
 ;-----------------------------------------------------------------------------------------------------------------------
 ;       push    eax
-        mov     eax, [Screen_Max_X]
+        mov     eax, [Screen_Max_Pos.x]
         shr     eax, 1
         mov     [MOUSE_X], ax
-        mov     eax, [Screen_Max_Y]
+        mov     eax, [Screen_Max_Pos.y]
         shr     eax, 1
         mov     [MOUSE_Y], ax
         xor     eax, eax
@@ -2107,11 +2107,11 @@ kproc sysfn.system_ctl.mouse_ctl.set_cursor_position ;//////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 18.19.4
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     dx, word[Screen_Max_Y]
+        cmp     dx, word[Screen_Max_Pos.y]
         ja      .exit
 
         rol     edx, 16
-        cmp     dx, word[Screen_Max_X]
+        cmp     dx, word[Screen_Max_Pos.x]
         ja      .exit
 
         mov     dword[MOUSE_X], edx
@@ -2249,7 +2249,7 @@ kproc sysfn.get_process_info ;//////////////////////////////////////////////////
         shl     ecx, 5
 
         ; +0: dword: memory usage
-        mov     eax, [TASK_DATA + ecx - sizeof.task_data_t + task_data_t.cpu_usage]
+        mov     eax, [TASK_DATA + ecx - sizeof.task_data_t + task_data_t.stats.cpu_usage]
         mov     [ebx], eax
         ; +10: 11 bytes: name of the process
         push    ecx
@@ -2517,8 +2517,8 @@ kproc checkmisc ;///////////////////////////////////////////////////////////////
         jz      .nobackgr
 ;       mov     [draw_data + sizeof.rect32_t + rect32_t.left], 0
 ;       mov     [draw_data + sizeof.rect32_t + rect32_t.top], 0
-;       mov     eax, [Screen_Max_X]
-;       mov     ebx, [Screen_Max_Y]
+;       mov     eax, [Screen_Max_Pos.x]
+;       mov     ebx, [Screen_Max_Pos.y]
 ;       mov     [draw_data + sizeof.rect32_t + rect32_t.right], eax
 ;       mov     [draw_data + sizeof.rect32_t + rect32_t.bottom], ebx
 
@@ -3507,9 +3507,9 @@ kproc sysfs.direct_screen_access.get_screen_resolution ;////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 61.1: get screen resolution
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, [Screen_Max_X]
+        mov     eax, [Screen_Max_Pos.x]
         shl     eax, 16
-        mov     ax, word[Screen_Max_Y]
+        mov     ax, word[Screen_Max_Pos.y]
         add     eax, 0x00010001
         mov     [esp + 4 + regs_context32_t.eax], eax
         ret
@@ -3591,9 +3591,9 @@ kproc sysfn.get_screen_size ;///////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 14
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     ax, word[Screen_Max_X]
+        mov     ax, word[Screen_Max_Pos.x]
         shl     eax, 16
-        mov     ax, word[Screen_Max_Y]
+        mov     ax, word[Screen_Max_Pos.y]
         mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
@@ -3715,7 +3715,7 @@ kproc sysfn.get_pixel ;/////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 35
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     ecx, [Screen_Max_X]
+        mov     ecx, [Screen_Max_Pos.x]
         inc     ecx
         xor     edx, edx
         mov     eax, ebx
@@ -3875,10 +3875,10 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc set_screen ;//////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     eax, [Screen_Max_X]
+        cmp     eax, [Screen_Max_Pos.x]
         jne     .set
 
-        cmp     edx, [Screen_Max_Y]
+        cmp     edx, [Screen_Max_Pos.y]
         jne     .set
         ret
 
@@ -3886,8 +3886,8 @@ kproc set_screen ;//////////////////////////////////////////////////////////////
         pushfd
         cli
 
-        mov     [Screen_Max_X], eax
-        mov     [Screen_Max_Y], edx
+        mov     [Screen_Max_Pos.x], eax
+        mov     [Screen_Max_Pos.y], edx
         mov     [BytesPerScanLine], ecx
 
         mov     [screen_workarea.right], eax
@@ -3899,14 +3899,14 @@ kproc set_screen ;//////////////////////////////////////////////////////////////
 
         pushad
 
-        stdcall kernel_free, [_WinMapAddress]
+        stdcall kernel_free, [_WinMapRange.address]
 
         mov     eax, [_display.box.width]
         mul     [_display.box.height]
-        mov     [_WinMapSize], eax
+        mov     [_WinMapRange.size], eax
 
         stdcall kernel_alloc, eax
-        mov     [_WinMapAddress], eax
+        mov     [_WinMapRange.address], eax
         test    eax, eax
         jz      .epic_fail
 
@@ -3915,8 +3915,8 @@ kproc set_screen ;//////////////////////////////////////////////////////////////
         call    repos_windows
         xor     eax, eax
         xor     ebx, ebx
-        mov     ecx, [Screen_Max_X]
-        mov     edx, [Screen_Max_Y]
+        mov     ecx, [Screen_Max_Pos.x]
+        mov     edx, [Screen_Max_Pos.y]
         call    calculatescreen
         pop     edi
         pop     esi

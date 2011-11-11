@@ -90,7 +90,7 @@ ends
 
 static_assert sizeof.boot_vmode_t mod 2 = 0
 
-struct phoenix_smap_addr_range_t range64_t
+struct phoenix_smap_addr_range_t memory_range64_t
   type   dd ?
 ends
 

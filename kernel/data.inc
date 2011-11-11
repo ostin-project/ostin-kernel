@@ -267,12 +267,9 @@ align 16
 
 _display          display_t
 
-_WinMapAddress    rd 1
-_WinMapSize       rd 1
+_WinMapRange      memory_range32_t
 
 default_io_map    rd 1
-
-LFBSize           rd 1
 
 stall_mcs         rd 1
 
@@ -295,12 +292,11 @@ CPU_FREQ          dd ?
 
 ScreenBPP         db ?
                   rb 3
-Screen_Max_X      dd ?
-Screen_Max_Y      dd ?
+Screen_Max_Pos    point32_t
 BytesPerScanLine  dd ?
 SCR_MODE          dw ?
                   rb 2
-LFBAddress        dd ?
+LFBRange          memory_range32_t
 MEM_AMOUNT        dd ?
 SYS_SHUTDOWN      db ?
 

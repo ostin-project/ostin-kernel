@@ -118,8 +118,8 @@ kproc update_counters ;/////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     edi, [TASK_BASE]
         rdtsc
-        sub     eax, [edi + task_data_t.counter_add] ; time stamp counter add
-        add     [edi + task_data_t.counter_sum], eax ; counter sum
+        sub     eax, [edi + task_data_t.stats.counter_add] ; time stamp counter add
+        add     [edi + task_data_t.stats.counter_sum], eax ; counter sum
         ret
 kendp
 
@@ -134,8 +134,8 @@ kproc updatecputimes ;//////////////////////////////////////////////////////////
 
   .newupdate:
         xor     eax, eax
-        xchg    eax, [edi + task_data_t.counter_sum]
-        mov     [edi + task_data_t.cpu_usage], eax
+        xchg    eax, [edi + task_data_t.stats.counter_sum]
+        mov     [edi + task_data_t.stats.cpu_usage], eax
         add     edi, sizeof.task_data_t
         loop    .newupdate
         ret
@@ -197,7 +197,7 @@ kproc find_next_task ;//////////////////////////////////////////////////////////
         mov     [TASK_BASE], edi
 ;       call    _rdtsc
         rdtsc
-        mov     [edi + task_data_t.counter_add], eax ; for next using update_counters
+        mov     [edi + task_data_t.stats.counter_add], eax ; for next using update_counters
         cmp     ebx, esi ; esi - previous slot-base
         ret
 kendp

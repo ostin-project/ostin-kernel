@@ -229,7 +229,7 @@ end if ; KCONFIG_BLKDEV_FLOPPY
                         rb OS_BASE + 0x00298000 - $
   BgrAuxTable           rb 32 * 1024
                         rb OS_BASE + 0x002c0000 - $
-  BUTTON_INFO:          rb 0x10 + button.MAX_BUTTONS * sizeof.sys_button_t
+  BUTTON_INFO:          rb 0x10 + GUI_BUTTON_MAX_COUNT * sizeof.sys_button_t
                         rb OS_BASE + 0x002d0000 - $
   RESERVED_PORTS:       rb 0x10 + 256 * sizeof.app_io_ports_range_t
                         rb OS_BASE + 0x002e0000 - $
@@ -255,6 +255,8 @@ end if ; KCONFIG_BLKDEV_FLOPPY
                         rb OS_BASE + 0x00800000 - $
   HEAP_BASE:
 end virtual
+
+static_assert (SLOT_BASE and 0x0000ff00) = 0
 
 CLEAN_ZONE          = 0x284000
 

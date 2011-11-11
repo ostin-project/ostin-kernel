@@ -15,7 +15,7 @@
 ;;======================================================================================================================
 
 struct blkdev.memory.device_data_t
-  data       range32_t
+  data       memory_range32_t
   needs_free db ?
 ends
 
@@ -59,8 +59,8 @@ kproc blkdev.memory.create ;////////////////////////////////////////////////////
         inc     [ebx + blkdev.memory.device_data_t.needs_free]
 
   .set_data:
-        mov     [ebx + blkdev.memory.device_data_t.data.offset], eax
-        pop     [ebx + blkdev.memory.device_data_t.data.length]
+        mov     [ebx + blkdev.memory.device_data_t.data.address], eax
+        pop     [ebx + blkdev.memory.device_data_t.data.size]
 
         xchg    eax, ebx
         pop     ebx
@@ -89,7 +89,7 @@ kproc blkdev.memory.destroy ;///////////////////////////////////////////////////
         cmp     [ebx + blkdev.memory.device_data_t.needs_free], 0
         je      .free_device_data
 
-        push    [ebx + blkdev.memory.device_data_t.data.offset]
+        push    [ebx + blkdev.memory.device_data_t.data.address]
         call    kernel_free
 
   .free_device_data:
@@ -118,12 +118,12 @@ kproc blkdev.memory.read ;//////////////////////////////////////////////////////
         mov     edx, eax
         add     edx, ecx
         jc      .overflow_error
-        cmp     edx, [ebx + blkdev.memory.device_data_t.data.length]
+        cmp     edx, [ebx + blkdev.memory.device_data_t.data.size]
         ja      .overflow_error
 
         ; copy data to the supplied buffer
         push    esi edi
-        mov     esi, [ebx + blkdev.memory.device_data_t.data.offset]
+        mov     esi, [ebx + blkdev.memory.device_data_t.data.address]
         add     esi, eax
         rep
         movsb
@@ -157,12 +157,12 @@ kproc blkdev.memory.write ;/////////////////////////////////////////////////////
         mov     edx, eax
         add     edx, ecx
         jc      .overflow_error
-        cmp     edx, [ebx + blkdev.memory.device_data_t.data.length]
+        cmp     edx, [ebx + blkdev.memory.device_data_t.data.size]
         ja      .overflow_error
 
         ; copy data from the supplied buffer
         push    esi edi
-        mov     edi, [ebx + blkdev.memory.device_data_t.data.offset]
+        mov     edi, [ebx + blkdev.memory.device_data_t.data.address]
         add     edi, eax
         rep
         movsb

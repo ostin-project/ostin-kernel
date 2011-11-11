@@ -383,7 +383,7 @@ locals
   pg_count dd ?
 endl
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     [LFBAddress], -1
+        cmp     [LFBRange.address], -1
         jne     @f
         mov     [BOOT_VAR + BOOT_MTRR], 2
         stdcall alloc_pages, 0x280000 / 4096
@@ -396,7 +396,7 @@ endl
         mov     ebx, LFB_BASE
         mov     ecx, 0x280000 / 4096
         call    commit_pages
-        mov     [LFBAddress], LFB_BASE
+        mov     [LFBRange.address], LFB_BASE
         ret
 
     @@: test    [SCR_MODE], 0100000000000000b
@@ -407,7 +407,7 @@ endl
     @@: call    init_mtrr
 
         mov     edx, LFB_BASE
-        mov     esi, [LFBAddress]
+        mov     esi, [LFBRange.address]
         mov     edi, 0x00c00000
         mov     [exp_lfb + 4], edx
 
@@ -430,7 +430,7 @@ endl
         jnc     @f
         or      dword[sys_pgdir + (LFB_BASE shr 20)], PG_GLOBAL
 
-    @@: mov     [LFBAddress], LFB_BASE
+    @@: mov     [LFBRange.address], LFB_BASE
         mov     eax, cr3 ; flush TLB
         mov     cr3, eax
         ret
@@ -443,7 +443,7 @@ endl
         dec     edi
         jnz     @b
 
-        mov     eax, [LFBAddress]
+        mov     eax, [LFBRange.address]
         mov     edi, page_tabs + (LFB_BASE shr 10)
         or      eax, PG_UW
         mov     ecx, [pg_count]
@@ -453,7 +453,7 @@ endl
         dec     ecx
         jnz     @b
 
-        mov     [LFBAddress], LFB_BASE
+        mov     [LFBRange.address], LFB_BASE
         mov     eax, cr3 ; flush TLB
         mov     cr3, eax
 
@@ -1084,8 +1084,8 @@ kproc sysfn.ipc_ctl.set_buffer ;////////////////////////////////////////////////
         mov     eax, [current_slot]
         pushf
         cli
-        mov     [eax + app_data_t.ipc.offset], ecx ; set fields in extended information area
-        mov     [eax + app_data_t.ipc.length], edx
+        mov     [eax + app_data_t.ipc.address], ecx ; set fields in extended information area
+        mov     [eax + app_data_t.ipc.size], edx
 
         add     edx, ecx
         add     edx, 4095
@@ -1162,7 +1162,7 @@ endl
 
         mov     [dst_slot], eax
         shl     eax, 8
-        mov     edi, [SLOT_BASE + eax + app_data_t.ipc.offset] ; is ipc area defined?
+        mov     edi, [SLOT_BASE + eax + app_data_t.ipc.address] ; is ipc area defined?
         test    edi, edi
         jz      .no_ipc_area
 
@@ -1170,7 +1170,7 @@ endl
         and     ebx, 0x0fff
         mov     [dst_offset], ebx
 
-        mov     esi, [SLOT_BASE + eax + app_data_t.ipc.length]
+        mov     esi, [SLOT_BASE + eax + app_data_t.ipc.size]
         mov     [buf_size], esi
 
         mov     ecx, [ipc_tmp]
@@ -1611,7 +1611,7 @@ proc init_mtrr ;////////////////////////////////////////////////////////////////
         wrmsr
 
   .skip_init:
-        stdcall set_mtrr, [LFBAddress], [LFBSize], MEM_WC
+        stdcall set_mtrr, [LFBRange.address], [LFBRange.size], MEM_WC
 
         wbinvd  ; again invalidate
 

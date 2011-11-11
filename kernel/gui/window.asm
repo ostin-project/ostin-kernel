@@ -94,9 +94,9 @@ kproc sysfn.set_draw_state.end_drawing ;////////////////////////////////////////
         add     edx, draw_data - CURRENT_TASK
         mov     [edx + rect32_t.left], 0
         mov     [edx + rect32_t.top], 0
-        mov     eax, [Screen_Max_X]
+        mov     eax, [Screen_Max_Pos.x]
         mov     [edx + rect32_t.right], eax
-        mov     eax, [Screen_Max_Y]
+        mov     eax, [Screen_Max_Pos.y]
         mov     [edx + rect32_t.bottom], eax
         ret
 kendp
@@ -184,8 +184,8 @@ endg
 ;-----------------------------------------------------------------------------------------------------------------------
         xor     eax, eax
         xor     ebx, ebx
-        mov     ecx, [Screen_Max_X]
-        mov     edx, [Screen_Max_Y]
+        mov     ecx, [Screen_Max_Pos.x]
+        mov     edx, [Screen_Max_Pos.y]
         jmp     calculatescreen
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -194,9 +194,9 @@ endg
         xor     eax, eax
         mov     [draw_limits.left], eax
         mov     [draw_limits.top], eax
-        mov     eax, [Screen_Max_X]
+        mov     eax, [Screen_Max_Pos.x]
         mov     [draw_limits.right], eax
-        mov     eax, [Screen_Max_Y]
+        mov     eax, [Screen_Max_Pos.y]
         mov     [draw_limits.bottom], eax
         mov     eax, window_data
         jmp     redrawscreen
@@ -321,7 +321,7 @@ kproc sysfn.display_settings_ctl.set_screen_working_area ;//////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         xor     esi, esi
 
-        mov     edi, [Screen_Max_X]
+        mov     edi, [Screen_Max_Pos.x]
         mov     eax, ecx
         movsx   ebx, ax
         sar     eax, 16
@@ -340,7 +340,7 @@ kproc sysfn.display_settings_ctl.set_screen_working_area ;//////////////////////
     @@: mov     [screen_workarea.right], ebx
 
   .check_horizontal:
-        mov     edi, [Screen_Max_Y]
+        mov     edi, [Screen_Max_Pos.y]
         mov     eax, edx
         movsx   ebx, ax
         sar     eax, 16
@@ -647,7 +647,7 @@ kproc repos_windows ;///////////////////////////////////////////////////////////
 
         mov     eax, [edi + window_data_t.box.left]
         add     eax, [edi + window_data_t.box.width]
-        mov     ebx, [Screen_Max_X]
+        mov     ebx, [Screen_Max_Pos.x]
         cmp     eax, ebx
         jle     .fix_vertical
         mov     eax, [edi + window_data_t.box.width]
@@ -661,7 +661,7 @@ kproc repos_windows ;///////////////////////////////////////////////////////////
   .fix_vertical:
         mov     eax, [edi + window_data_t.box.top]
         add     eax, [edi + window_data_t.box.height]
-        mov     ebx, [Screen_Max_Y]
+        mov     ebx, [Screen_Max_Pos.y]
         cmp     eax, ebx
         jle     .fix_client_box
         mov     eax, [edi + window_data_t.box.height]
@@ -1679,7 +1679,7 @@ kproc window._.check_window_position ;//////////////////////////////////////////
         mov     ecx, [edi + window_data_t.box.width]
         mov     edx, [edi + window_data_t.box.height]
 
-        mov     esi, [Screen_Max_X]
+        mov     esi, [Screen_Max_Pos.x]
         cmp     ecx, esi
         ja      .fix_width_high
 
@@ -1691,7 +1691,7 @@ kproc window._.check_window_position ;//////////////////////////////////////////
         jg      .fix_left_high
 
   .check_height:
-        mov     esi, [Screen_Max_Y]
+        mov     esi, [Screen_Max_Pos.y]
         cmp     edx, esi
         ja      .fix_height_high
 
@@ -1827,12 +1827,12 @@ end virtual
 
         ; get WinMap start
         push    esi
-        mov     edi, [Screen_Max_X]
+        mov     edi, [Screen_Max_Pos.x]
         inc     edi
         mov     esi, edi
         imul    edi, ebx
         add     edi, eax
-        add     edi, [_WinMapAddress]
+        add     edi, [_WinMapRange.address]
         pop     eax
         mov     ah, al
         push    ax
@@ -1871,11 +1871,11 @@ end virtual
 
         ; get WinMap start  -> ebp
         push    eax
-        mov     eax, [Screen_Max_X] ; screen_sx
+        mov     eax, [Screen_Max_Pos.x] ; screen_sx
         inc     eax
         imul    eax, ebx
         add     eax, [esp]
-        add     eax, [_WinMapAddress]
+        add     eax, [_WinMapRange.address]
         mov     ebp, eax
 
         mov     edi, [edi + app_data_t.wnd_shape]
@@ -1934,7 +1934,7 @@ end virtual
 
         sub     ebp, [ff_xsz]
         add     ebp, [ff_x]
-        add     ebp, [Screen_Max_X] ; screen.x
+        add     ebp, [Screen_Max_Pos.x] ; screen.x
         inc     ebp
         inc     ebx
         cmp     ebx, [ff_ysz]

@@ -44,10 +44,10 @@ kproc mem_test ;////////////////////////////////////////////////////////////////
         mov     cr0, eax
         inc     [BOOT_VAR - OS_BASE + BOOT_PHOENIX_SMAP_CNT]
         xor     eax, eax
-        mov     dword[BOOT_VAR - OS_BASE + BOOT_PHOENIX_SMAP + phoenix_smap_addr_range_t.offset], eax
-        mov     dword[BOOT_VAR - OS_BASE + BOOT_PHOENIX_SMAP + phoenix_smap_addr_range_t.offset + 4], eax
-        mov     dword[BOOT_VAR - OS_BASE + BOOT_PHOENIX_SMAP + phoenix_smap_addr_range_t.length], edi
-        mov     dword[BOOT_VAR - OS_BASE + BOOT_PHOENIX_SMAP + phoenix_smap_addr_range_t.length + 4], eax
+        mov     dword[BOOT_VAR - OS_BASE + BOOT_PHOENIX_SMAP + phoenix_smap_addr_range_t.address], eax
+        mov     dword[BOOT_VAR - OS_BASE + BOOT_PHOENIX_SMAP + phoenix_smap_addr_range_t.address + 4], eax
+        mov     dword[BOOT_VAR - OS_BASE + BOOT_PHOENIX_SMAP + phoenix_smap_addr_range_t.size], edi
+        mov     dword[BOOT_VAR - OS_BASE + BOOT_PHOENIX_SMAP + phoenix_smap_addr_range_t.size + 4], eax
 
   .ret:
         ret
@@ -69,21 +69,21 @@ kproc init_mem ;////////////////////////////////////////////////////////////////
         jz      @f
         neg     eax
         and     eax, 0x0fff
-        add     dword[edi + phoenix_smap_addr_range_t.offset], eax
-        adc     dword[edi + phoenix_smap_addr_range_t.offset + 4], 0
-        sub     dword[edi + phoenix_smap_addr_range_t.length], eax
-        sbb     dword[edi + phoenix_smap_addr_range_t.length + 4], 0
+        add     dword[edi + phoenix_smap_addr_range_t.address], eax
+        adc     dword[edi + phoenix_smap_addr_range_t.address + 4], 0
+        sub     dword[edi + phoenix_smap_addr_range_t.size], eax
+        sbb     dword[edi + phoenix_smap_addr_range_t.size + 4], 0
         jc      .unusable
 
-    @@: and     dword[edi + phoenix_smap_addr_range_t.length], not 0x0fff
+    @@: and     dword[edi + phoenix_smap_addr_range_t.size], not 0x0fff
         jz      .unusable
         ; ignore memory after 4 Gb
-        cmp     dword[edi + phoenix_smap_addr_range_t.offset + 4], 0
+        cmp     dword[edi + phoenix_smap_addr_range_t.address + 4], 0
         jnz     .unusable
-        mov     eax, dword[edi + phoenix_smap_addr_range_t.offset]
-        cmp     dword[edi + phoenix_smap_addr_range_t.length + 4], 0
+        mov     eax, dword[edi + phoenix_smap_addr_range_t.address]
+        cmp     dword[edi + phoenix_smap_addr_range_t.size + 4], 0
         jnz     .overflow
-        add     eax, dword[edi + phoenix_smap_addr_range_t.length]
+        add     eax, dword[edi + phoenix_smap_addr_range_t.size]
         jnc     @f
 
   .overflow:
@@ -94,12 +94,12 @@ kproc init_mem ;////////////////////////////////////////////////////////////////
         mov     edx, eax
 
     @@: sub     eax, [edi]
-        mov     dword[edi + phoenix_smap_addr_range_t.length], eax
+        mov     dword[edi + phoenix_smap_addr_range_t.size], eax
         add     esi, eax
         jmp     .usable
 
   .unusable:
-        and     dword[edi + phoenix_smap_addr_range_t.length], 0
+        and     dword[edi + phoenix_smap_addr_range_t.size], 0
 
   .usable:
         add     edi, sizeof.phoenix_smap_addr_range_t
@@ -215,10 +215,10 @@ kproc init_page_map ;///////////////////////////////////////////////////////////
         mov     edx, [ebx - 4]
 
   .scanmap:
-        mov     ecx, dword[ebx + phoenix_smap_addr_range_t.length]
+        mov     ecx, dword[ebx + phoenix_smap_addr_range_t.size]
         shr     ecx, 12 ; ecx = number of pages
         jz      .next
-        mov     edi, dword[ebx + phoenix_smap_addr_range_t.offset]
+        mov     edi, dword[ebx + phoenix_smap_addr_range_t.address]
         shr     edi, 12 ; edi = first page
         mov     eax, edi
         shr     edi, 5
