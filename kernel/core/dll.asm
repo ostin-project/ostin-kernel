@@ -23,6 +23,44 @@ PID_KERNEL  = 1 ; os_idle thread
 MAX_DEFAULT_DLL_ADDR = 0x20000000
 MIN_DEFAULT_DLL_ADDR = 0x10000000
 
+struct coff_header_t
+  machine      dw ?
+  sections_cnt dw ?
+  data_time    dd ?
+  syms_ptr     dd ?
+  syms_cnt     dd ?
+  opt_header   dw ?
+  flags        dw ?
+ends
+
+struct coff_section_t
+  name             rb 8
+  virtual_size     dd ?
+  virtual_addr     dd ?
+  raw_data_size    dd ?
+  raw_data_ptr     dd ?
+  relocs_ptr       dd ?
+  line_numbers_ptr dd ?
+  relocs_cnt       dw ?
+  line_numbers_cnt dw ?
+  characteristics  dd ?
+ends
+
+struct coff_reloc_t
+  virtual_addr dd ?
+  sym_index    dd ?
+  type         dw ?
+ends
+
+struct coff_sym_t
+  name            rb 8
+  value           dd ?
+  section_number  dw ?
+  type            dw ?
+  storage_class   db ?
+  aux_symbols_cnt db ?
+ends
+
 uglobal
   align 4
   srv          linked_list_t
@@ -1184,7 +1222,7 @@ endl
         inc     [ecx + dll_descriptor_t.refcount]
         mov     eax, [ecx + dll_descriptor_t.exports]
         sub     eax, [ecx + dll_descriptor_t.defaultbase]
-        add     eax, [esi + dll_handle_t.base]
+        add     eax, [esi + dll_handle_t.range.address]
         ret
 
   .next_in_process:
@@ -1274,7 +1312,7 @@ endl
         dec     ecx
         jnz     @b
         ; it must be nonzero and not too big
-        mov     [esi + dll_descriptor_t.size], ebx
+        mov     [esi + dll_descriptor_t.data.size], ebx
         test    ebx, ebx
         jz      .fail_and_free_dll
         cmp     ebx, MAX_DEFAULT_DLL_ADDR - MIN_DEFAULT_DLL_ADDR
@@ -1283,7 +1321,7 @@ endl
         stdcall kernel_alloc, ebx
         test    eax, eax
         jz      .fail_and_free_dll
-        mov     [esi + dll_descriptor_t.data], eax
+        mov     [esi + dll_descriptor_t.data.address], eax
         ; calculate preferred base address
         add     ebx, 0x1fff
         and     ebx, not 0x0fff
@@ -1426,7 +1464,7 @@ endl
         ; fix relocs in the hidden copy in kernel memory to default address
         ; it is first fix; usually this will be enough, but second fix
         ; can be necessary if real load address will not equal assumption
-        mov     eax, [esi + dll_descriptor_t.data]
+        mov     eax, [esi + dll_descriptor_t.data.address]
         sub     eax, [esi + dll_descriptor_t.defaultbase]
         stdcall fix_coff_relocs, ebx, [esi + dll_descriptor_t.symbols_ptr], eax
 
@@ -1438,7 +1476,7 @@ endl
         call    init_heap
         pop     esi
 
-        mov     edi, [esi + dll_descriptor_t.size]
+        mov     edi, [esi + dll_descriptor_t.data.size]
         stdcall user_alloc_at, [esi + dll_descriptor_t.defaultbase], edi
         test    eax, eax
         jnz     @f
@@ -1467,8 +1505,8 @@ endl
         mov     [edx + dll_handle_t.prev_ptr], ebx
         mov     eax, ebx
         mov     ebx, [img_base]
-        mov     [eax + dll_handle_t.base], ebx
-        mov     [eax + dll_handle_t.size], edi
+        mov     [eax + dll_handle_t.range.address], ebx
+        mov     [eax + dll_handle_t.range.size], edi
         mov     [eax + dll_handle_t.refcount], 1
         mov     [eax + dll_handle_t.parent], esi
         mov     edx, ebx
@@ -1477,7 +1515,7 @@ endl
         ; copy entries of page table from kernel-side image to usermode
         ; use copy-on-write for user-mode image, so map as readonly
         xor     edi, edi
-        mov     ecx, [esi + dll_descriptor_t.data]
+        mov     ecx, [esi + dll_descriptor_t.data.address]
         shr     ecx, 12
 
   .map_pages_loop:
@@ -1493,7 +1531,7 @@ endl
         inc     ecx
         inc     edx
         add     edi, 0x1000
-        cmp     edi, [esi + dll_descriptor_t.size]
+        cmp     edi, [esi + dll_descriptor_t.data.size]
         jb      .map_pages_loop
 
         ; if real user-mode base is not equal to preferred base, relocate image
@@ -1507,7 +1545,7 @@ endl
         ret
 
   .fail_and_free_data:
-        stdcall kernel_free, [esi + dll_descriptor_t.data]
+        stdcall kernel_free, [esi + dll_descriptor_t.data.address]
 
   .fail_and_free_dll:
         mov     eax, esi
@@ -1580,7 +1618,7 @@ kproc dereference_dll ;/////////////////////////////////////////////////////////
         mov     [eax + dll_descriptor_t.prev_ptr], edx
         mov     [edx + dll_descriptor_t.next_ptr], eax
         stdcall kernel_free, [esi + dll_descriptor_t.coff_hdr]
-        stdcall kernel_free, [esi + dll_descriptor_t.data]
+        stdcall kernel_free, [esi + dll_descriptor_t.data.address]
         mov     eax, esi
         call    free
 
@@ -1593,9 +1631,9 @@ kproc destroy_hdll ;////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    ebx ecx esi edi
         push    eax
-        mov     ebx, [eax + dll_handle_t.base]
+        mov     ebx, [eax + dll_handle_t.range.address]
         mov     esi, [eax + dll_handle_t.parent]
-        mov     edx, [esi + dll_descriptor_t.size]
+        mov     edx, [esi + dll_descriptor_t.data.size]
         ; The following actions require the context of application where dll_handle_t is mapped.
         ; However, destroy_hdll can be called in the context of OS thread when
         ; cleaning up objects created by the application which is destroyed.
@@ -1615,7 +1653,7 @@ kproc destroy_hdll ;////////////////////////////////////////////////////////////
         mov     eax, ebx
         shr     ebx, 12
         push    ebx
-        mov     esi, [esi + dll_descriptor_t.data]
+        mov     esi, [esi + dll_descriptor_t.data.address]
         shr     esi, 12
 
   .unmap_loop:

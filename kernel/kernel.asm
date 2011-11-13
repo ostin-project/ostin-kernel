@@ -306,12 +306,12 @@ high_code:
         mov     [_display.vrefresh], 60
         mov     [_display.disable_mouse], __sys_disable_mouse
 
-        movzx   eax, [BOOT_VAR + BOOT_X_RES] ; X max
+        movzx   eax, [BOOT_VAR + BOOT_SCREEN_RES.width] ; X max
         mov     [_display.box.width], eax
         dec     eax
         mov     [Screen_Max_Pos.x], eax
         mov     [screen_workarea.right], eax
-        movzx   eax, [BOOT_VAR + BOOT_Y_RES] ; Y max
+        movzx   eax, [BOOT_VAR + BOOT_SCREEN_RES.height] ; Y max
         mov     [_display.box.height], eax
         dec     eax
         mov     [Screen_Max_Pos.y], eax
@@ -1197,12 +1197,12 @@ kproc set_variables ;///////////////////////////////////////////////////////////
         loop    .fl60
 
         push    eax
-        mov     ax, [BOOT_VAR + BOOT_Y_RES]
-        shr     ax, 1
-        shl     eax, 16
-        mov     ax, [BOOT_VAR + BOOT_X_RES]
-        shr     ax, 1
-        mov     dword[MOUSE_X], eax
+        movzx   eax, [BOOT_VAR + BOOT_SCREEN_RES.width]
+        shr     eax, 1
+        mov     [MOUSE_CURSOR_POS.x], eax
+        movzx   eax, [BOOT_VAR + BOOT_SCREEN_RES.height]
+        shr     eax, 1
+        mov     [MOUSE_CURSOR_POS.y], eax
 
         xor     eax, eax
         mov     [BTN_ADDR], BUTTON_INFO ; address of button list
@@ -1210,7 +1210,6 @@ kproc set_variables ;///////////////////////////////////////////////////////////
 ;       mov     [MOUSE_BUFF_COUNT], al ; mouse buffer
         mov     [KEY_COUNT], al ; keyboard buffer
         mov     [BTN_COUNT], al ; button buffer
-;       mov     dword[MOUSE_X], 100 * 65536 + 100 ; mouse x/y
 
         mov     [DONT_SWITCH], al ; change task if possible
         pop     eax
@@ -2033,10 +2032,10 @@ kproc sysfn.system_ctl.move_mouse_cursor_to_center ;////////////////////////////
 ;       push    eax
         mov     eax, [Screen_Max_Pos.x]
         shr     eax, 1
-        mov     [MOUSE_X], ax
+        mov     [MOUSE_CURSOR_POS.x], eax
         mov     eax, [Screen_Max_Pos.y]
         shr     eax, 1
-        mov     [MOUSE_Y], ax
+        mov     [MOUSE_CURSOR_POS.y], eax
         xor     eax, eax
         and     [esp + 4 + regs_context32_t.eax], eax
 ;       pop     eax
@@ -2107,14 +2106,16 @@ kproc sysfn.system_ctl.mouse_ctl.set_cursor_position ;//////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 18.19.4
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     dx, word[Screen_Max_Pos.y]
+        movzx   eax, dx
+        cmp     eax, [Screen_Max_Pos.y]
         ja      .exit
 
-        rol     edx, 16
-        cmp     dx, word[Screen_Max_Pos.x]
+        shr     edx, 16
+        cmp     edx, [Screen_Max_Pos.x]
         ja      .exit
 
-        mov     dword[MOUSE_X], edx
+        mov     [MOUSE_CURSOR_POS.x], edx
+        mov     [MOUSE_CURSOR_POS.x], eax
 
   .exit:
         ret

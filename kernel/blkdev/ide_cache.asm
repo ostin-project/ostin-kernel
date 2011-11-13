@@ -193,18 +193,7 @@ kproc calculate_cache ;/////////////////////////////////////////////////////////
 
         imul    esi, sizeof.drive_cache_t
         add     esi, ide_drives_cache
-
-        cmp     [hdd_appl_data], 0
-        jne     .ide_app_data
-
-        mov     ecx, [esi + drive_cache_t.sys_sad_size]
-        mov     esi, [esi + drive_cache_t.ptr]
-        ret
-
-  .ide_app_data:
-        mov     ecx, [esi + drive_cache_t.app_sad_size]
-        mov     esi, [esi + drive_cache_t.data_ptr]
-        ret
+        jmp     .get
 
   .not_ide:
         push    eax
@@ -212,26 +201,25 @@ kproc calculate_cache ;/////////////////////////////////////////////////////////
         sub     eax, 0x80
         cmp     byte[BiosDisksData + eax * 4 + 2], -1
         jz      @f
+
         movzx   eax, byte[BiosDisksData + eax * 4 + 2]
-        imul    eax, sizeof.drive_cache_t
-        add     eax, ide_drives_cache
+        imul    esi, eax, sizeof.drive_cache_t
+        add     esi, ide_drives_cache
+        pop     eax
         jmp     .get
 
-    @@: imul    eax, sizeof.drive_cache_t
-        add     eax, BiosDiskCaches
+    @@: imul    esi, eax, sizeof.drive_cache_t
+        add     esi, BiosDiskCaches
+        pop     eax
 
   .get:
+        add     esi, drive_cache_t.app
         cmp     [hdd_appl_data], 0
-        jne     .bd_appl_data
-        mov     ecx, [eax + drive_cache_t.sys_sad_size]
-        mov     esi, [eax + drive_cache_t.ptr]
-        pop     eax
-        ret
+        jne     @f
+        add     esi, drive_cache_t.sys - drive_cache_t.app
 
-  .bd_appl_data:
-        mov     ecx, [eax + drive_cache_t.app_sad_size]
-        mov     esi, [eax + drive_cache_t.data_ptr]
-        pop     eax
+    @@: mov     ecx, [esi + drive_cache_info_t.sad_size]
+        mov     esi, [esi + drive_cache_info_t.ptr]
         ret
 kendp
 
@@ -245,16 +233,7 @@ kproc calculate_cache_1 ;///////////////////////////////////////////////////////
 
         imul    esi, sizeof.drive_cache_t
         add     esi, ide_drives_cache
-
-        cmp     [hdd_appl_data], 0
-        jne     .ide_app_data
-
-        mov     esi, [esi + drive_cache_t.ptr]
-        ret
-
-  .ide_app_data:
-        mov     esi, [esi + drive_cache_t.data_ptr]
-        ret
+        jmp     .get
 
   .not_ide:
         push    eax
@@ -262,24 +241,24 @@ kproc calculate_cache_1 ;///////////////////////////////////////////////////////
         sub     eax, 0x80
         cmp     byte[BiosDisksData + eax * 4 + 2], -1
         jz      @f
+
         movzx   eax, byte[BiosDisksData + eax * 4 + 2]
-        imul    eax, sizeof.drive_cache_t
-        add     eax, ide_drives_cache
+        imul    esi, eax, sizeof.drive_cache_t
+        add     esi, ide_drives_cache
+        pop     eax
         jmp     .get
 
-    @@: imul    eax, sizeof.drive_cache_t
-        add     eax, BiosDiskCaches
+    @@: imul    esi, eax, sizeof.drive_cache_t
+        add     esi, BiosDiskCaches
+        pop     eax
 
   .get:
+        add     esi, drive_cache_t.app
         cmp     [hdd_appl_data], 0
-        jne     .bd_appl_data
-        mov     esi, [eax + drive_cache_t.ptr]
-        pop     eax
-        ret
+        jne     @f
+        add     esi, drive_cache_t.sys - drive_cache_t.app
 
-  .bd_appl_data:
-        mov     esi, [eax + drive_cache_t.data_ptr]
-        pop     eax
+    @@: mov     esi, [esi + drive_cache_info_t.ptr]
         ret
 kendp
 
@@ -293,22 +272,14 @@ kproc calculate_cache_2 ;///////////////////////////////////////////////////////
 
         imul    eax, sizeof.drive_cache_t
         add     eax, ide_drives_cache
-
-        cmp     [hdd_appl_data], 0
-        jne     .ide_app_data
-
-        mov     eax, [eax + drive_cache_t.sys_data]
-        ret
-
-  .ide_app_data:
-        mov     eax, [eax + drive_cache_t.app_data]
-        ret
+        jmp     .get
 
   .not_ide:
         mov     eax, [hdpos]
         sub     eax, 0x80
         cmp     byte[BiosDisksData + eax * 4 + 2], -1
         jz      @f
+
         movzx   eax, byte[BiosDisksData + eax * 4 + 2]
         imul    eax, sizeof.drive_cache_t
         add     eax, ide_drives_cache
@@ -318,13 +289,12 @@ kproc calculate_cache_2 ;///////////////////////////////////////////////////////
         add     eax, BiosDiskCaches
 
   .get:
+        add     eax, drive_cache_t.app
         cmp     [hdd_appl_data], 0
-        jne     .bd_appl_data
-        mov     eax, [eax + drive_cache_t.sys_data]
-        ret
+        jne     @f
+        add     eax, drive_cache_t.sys - drive_cache_t.app
 
-  .bd_appl_data:
-        mov     eax, [eax + drive_cache_t.app_data]
+    @@: mov     eax, [eax + drive_cache_info_t.data.address]
         ret
 kendp
 
@@ -338,18 +308,7 @@ kproc calculate_cache_3 ;///////////////////////////////////////////////////////
 
         imul    edi, sizeof.drive_cache_t
         add     edi, ide_drives_cache
-
-        cmp     [hdd_appl_data], 0
-        jne     .ide_app_data
-
-        mov     ecx, [edi + drive_cache_t.sys_sad_size]
-        mov     edi, [edi + drive_cache_t.sys_search_start]
-        ret
-
-  .ide_app_data:
-        mov     ecx, [edi + drive_cache_t.app_sad_size]
-        mov     edi, [edi + drive_cache_t.app_search_start]
-        ret
+        jmp     .get
 
   .not_ide:
         push    eax
@@ -357,26 +316,25 @@ kproc calculate_cache_3 ;///////////////////////////////////////////////////////
         sub     eax, 0x80
         cmp     byte[BiosDisksData + eax * 4 + 2], -1
         jz      @f
+
         movzx   eax, byte[BiosDisksData + eax * 4 + 2]
-        imul    eax, sizeof.drive_cache_t
-        add     eax, ide_drives_cache
+        imul    edi, eax, sizeof.drive_cache_t
+        add     edi, ide_drives_cache
+        pop     eax
         jmp     .get
 
-    @@: imul    eax, sizeof.drive_cache_t
-        add     eax, BiosDiskCaches
+    @@: imul    edi, eax, sizeof.drive_cache_t
+        add     edi, BiosDiskCaches
+        pop     eax
 
   .get:
+        add     edi, drive_cache_t.app
         cmp     [hdd_appl_data], 0
-        jne     .bd_appl_data
-        mov     ecx, [eax + drive_cache_t.sys_sad_size]
-        mov     edi, [eax + drive_cache_t.sys_search_start]
-        pop     eax
-        ret
+        jne     @f
+        add     edi, drive_cache_t.sys - drive_cache_t.app
 
-  .bd_appl_data:
-        mov     ecx, [eax + drive_cache_t.app_sad_size]
-        mov     edi, [eax + drive_cache_t.app_search_start]
-        pop     eax
+    @@: mov     ecx, [edi + drive_cache_info_t.sad_size]
+        mov     edi, [edi + drive_cache_info_t.search_start]
         ret
 kendp
 
@@ -390,16 +348,7 @@ kproc calculate_cache_4 ;///////////////////////////////////////////////////////
 
         imul    edi, sizeof.drive_cache_t
         add     edi, ide_drives_cache
-
-        cmp     [hdd_appl_data], 0
-        jne     .ide_app_data
-
-        cmp     edi, [edi + drive_cache_t.sys_sad_size]
-        ret
-
-  .ide_app_data:
-        cmp     edi, [edi + drive_cache_t.app_sad_size]
-        ret
+        jmp     .get
 
   .not_ide:
         push    eax
@@ -407,24 +356,24 @@ kproc calculate_cache_4 ;///////////////////////////////////////////////////////
         sub     eax, 0x80
         cmp     byte[BiosDisksData + eax * 4 + 2], -1
         jz      @f
+
         movzx   eax, byte[BiosDisksData + eax * 4 + 2]
-        imul    eax, sizeof.drive_cache_t
-        add     eax, ide_drives_cache
+        imul    edi, eax, sizeof.drive_cache_t
+        add     edi, ide_drives_cache
+        pop     eax
         jmp     .get
 
-    @@: imul    eax, sizeof.drive_cache_t
-        add     eax, BiosDiskCaches
+    @@: imul    edi, eax, sizeof.drive_cache_t
+        add     edi, BiosDiskCaches
+        pop     eax
 
   .get:
+        add     edi, drive_cache_t.app
         cmp     [hdd_appl_data], 0
-        jne     .bd_appl_data
-        cmp     edi, [eax + drive_cache_t.sys_sad_size]
-        pop     eax
-        ret
+        jne     @f
+        add     edi, drive_cache_t.sys - drive_cache_t.app
 
-  .bd_appl_data:
-        cmp     edi, [eax + drive_cache_t.app_sad_size]
-        pop     eax
+    @@: cmp     edi, [edi + drive_cache_info_t.sad_size]
         ret
 kendp
 
@@ -440,18 +389,7 @@ kproc calculate_cache_5 ;///////////////////////////////////////////////////////
 
         imul    eax, sizeof.drive_cache_t
         add     eax, ide_drives_cache
-
-        cmp     [hdd_appl_data], 0
-        jne     .ide_app_data
-
-        mov     [eax + drive_cache_t.sys_search_start], edi
-        pop     eax
-        ret
-
-  .ide_app_data:
-        mov     [eax + drive_cache_t.app_search_start], edi
-        pop     eax
-        ret
+        jmp     .get
 
   .not_ide:
         mov     eax, [hdpos]
@@ -467,14 +405,12 @@ kproc calculate_cache_5 ;///////////////////////////////////////////////////////
         add     eax, BiosDiskCaches
 
   .get:
+        add     eax, drive_cache_t.app
         cmp     [hdd_appl_data], 0
-        jne     .bd_appl_data
-        mov     [eax + drive_cache_t.sys_search_start], edi
-        pop     eax
-        ret
+        jne     @f
+        add     eax, drive_cache_t.sys - drive_cache_t.app
 
-  .bd_appl_data:
-        mov     [eax + drive_cache_t.app_search_start], edi
+    @@: mov     [eax + drive_cache_info_t.search_start], edi
         pop     eax
         ret
 kendp
@@ -514,14 +450,10 @@ kproc clear_CD_cache ;//////////////////////////////////////////////////////////
         add     esi, ide_drives_cache
         xor     eax, eax
 
-        mov     [esi + drive_cache_t.sys_search_start], eax
-        mov     ecx, [esi + drive_cache_t.sys_sad_size]
-        mov     edi, [esi + drive_cache_t.ptr]
+        add     esi, drive_cache_t.sys
         call    .clear
 
-        mov     [esi + drive_cache_t.app_search_start], eax
-        mov     ecx, [esi + drive_cache_t.app_sad_size]
-        mov     edi, [esi + drive_cache_t.data_ptr]
+        add     esi, drive_cache_t.app - drive_cache_t.sys
         call    .clear
 
   .exit:
@@ -531,6 +463,9 @@ kproc clear_CD_cache ;//////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
   .clear: ;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ;-----------------------------------------------------------------------------------------------------------------------
+        mov     [esi + drive_cache_info_t.search_start], eax
+        mov     ecx, [esi + drive_cache_info_t.sad_size]
+        mov     edi, [esi + drive_cache_info_t.ptr]
         shl     ecx, 1
         rep
         stosd
@@ -546,18 +481,13 @@ kproc cd_calculate_cache ;//////////////////////////////////////////////////////
         jae     .exit
 
         imul    esi, sizeof.drive_cache_t
-        add     esi, ide_drives_cache
+        add     esi, ide_drives_cache + drive_cache_t.app
+        cmp     [hdd_appl_data], 0
+        jne     @f
+        add     esi, drive_cache_t.sys - drive_cache_t.app
 
-        cmp     [cd_appl_data], 0
-        jne     .ide_app_data
-
-        mov     ecx, [esi + drive_cache_t.sys_sad_size]
-        mov     esi, [esi + drive_cache_t.ptr]
-        ret
-
-  .ide_app_data:
-        mov     ecx, [esi + drive_cache_t.app_sad_size]
-        mov     esi, [esi + drive_cache_t.data_ptr]
+    @@: mov     ecx, [esi + drive_cache_info_t.sad_size]
+        mov     esi, [esi + drive_cache_info_t.ptr]
 
   .exit:
         ret
@@ -572,16 +502,12 @@ kproc cd_calculate_cache_1 ;////////////////////////////////////////////////////
         jae     .exit
 
         imul    esi, sizeof.drive_cache_t
-        add     esi, ide_drives_cache
+        add     esi, ide_drives_cache + drive_cache_t.app
+        cmp     [hdd_appl_data], 0
+        jne     @f
+        add     esi, drive_cache_t.sys - drive_cache_t.app
 
-        cmp     [cd_appl_data], 0
-        jne     .ide_app_data
-
-        mov     esi, [esi + drive_cache_t.ptr]
-        ret
-
-  .ide_app_data:
-        mov     esi, [esi + drive_cache_t.data_ptr]
+    @@: mov     esi, [esi + drive_cache_info_t.ptr]
 
   .exit:
         ret
@@ -596,16 +522,12 @@ kproc cd_calculate_cache_2 ;////////////////////////////////////////////////////
         jae     .exit
 
         imul    eax, sizeof.drive_cache_t
-        add     eax, ide_drives_cache
+        add     eax, ide_drives_cache + drive_cache_t.app
+        cmp     [hdd_appl_data], 0
+        jne     @f
+        add     eax, drive_cache_t.sys - drive_cache_t.app
 
-        cmp     [cd_appl_data], 0
-        jne     .ide_app_data
-
-        mov     eax, [eax + drive_cache_t.sys_data]
-        ret
-
-  .ide_app_data:
-        mov     eax, [eax + drive_cache_t.app_data]
+    @@: mov     eax, [eax + drive_cache_info_t.data.address]
 
   .exit:
         ret
@@ -620,16 +542,12 @@ kproc cd_calculate_cache_3 ;////////////////////////////////////////////////////
         jae     .exit
 
         imul    edi, sizeof.drive_cache_t
-        add     edi, ide_drives_cache
+        add     edi, ide_drives_cache + drive_cache_t.app
+        cmp     [hdd_appl_data], 0
+        jne     @f
+        add     edi, drive_cache_t.sys - drive_cache_t.app
 
-        cmp     [cd_appl_data], 0
-        jne     .ide_app_data
-
-        mov     edi, [edi + drive_cache_t.sys_search_start]
-        ret
-
-  .ide_app_data:
-        mov     edi, [edi + drive_cache_t.app_search_start]
+    @@: mov     edi, [edi + drive_cache_info_t.search_start]
 
   .exit:
         ret
@@ -644,16 +562,12 @@ kproc cd_calculate_cache_4 ;////////////////////////////////////////////////////
         jae     .exit
 
         imul    edi, sizeof.drive_cache_t
-        add     edi, ide_drives_cache
+        add     edi, ide_drives_cache + drive_cache_t.app
+        cmp     [hdd_appl_data], 0
+        jne     @f
+        add     edi, drive_cache_t.sys - drive_cache_t.app
 
-        cmp     [cd_appl_data], 0
-        jne     .ide_app_data
-
-        cmp     edi, [edi + drive_cache_t.sys_sad_size]
-        ret
-
-  .ide_app_data:
-        cmp     edi, [edi + drive_cache_t.app_sad_size]
+    @@: cmp     edi, [edi + drive_cache_info_t.sad_size]
 
   .exit:
         ret
@@ -670,17 +584,12 @@ kproc cd_calculate_cache_5 ;////////////////////////////////////////////////////
         jae     .exit
 
         imul    eax, sizeof.drive_cache_t
-        add     eax, ide_drives_cache
+        add     eax, ide_drives_cache + drive_cache_t.app
+        cmp     [hdd_appl_data], 0
+        jne     @f
+        add     eax, drive_cache_t.sys - drive_cache_t.app
 
-        cmp     [cd_appl_data], 0
-        jne     .ide_app_data
-
-        mov     [eax + drive_cache_t.sys_search_start], edi
-        pop     eax
-        ret
-
-  .ide_app_data:
-        mov     [eax + drive_cache_t.app_search_start], edi
+    @@: mov     [eax + drive_cache_info_t.search_start], edi
 
   .exit:
         pop     eax

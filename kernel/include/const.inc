@@ -320,8 +320,7 @@ virtual at 0x9000
   BOOT_SCANLINE         dw ?  ; 0x09001 - scanline length
                         rb 5  ;
   BOOT_VESA_MODE        dw ?  ; 0x09008 - vesa video mode
-  BOOT_X_RES            dw ?  ; 0x0900a - X res
-  BOOT_Y_RES            dw ?  ; 0x0900c - Y res
+  BOOT_SCREEN_RES       size16_t ; 0x0900a - X/X res
                         rb 2  ;
 ; BOOT_MOUSE_PORT       db ?  ; 0x09010 - mouse port (unused)
                         rb 4  ;
@@ -376,8 +375,6 @@ EV_INTR             = 1
 struct app_object_t linked_list_t ; common object header
   magic    dd ?
   destroy  dd ? ; internal destructor
-; next_ptr dd ? ; next object in list
-; prev_ptr dd ? ; prev object in list
   pid      dd ? ; owner id
 ends
 
@@ -400,21 +397,19 @@ struct event_t app_object_t ; magic = 'EVNT'
 ends
 
 struct smem_t linked_list_t
-  base     dd ?
-  size     dd ?
+  range    memory_range32_t
   access   dd ?
   refcount dd ?
   name     rb 32
 ends
 
 struct smap_t app_object_t ; magic = 'SMAP'
-  base    dd ?     ; mapped base
-  parent  dd ?     ; smem_t
+  base    dd ? ; mapped base
+  parent  dd ? ; smem_t
 ends
 
 struct dll_descriptor_t linked_list_t
-  data        dd ?
-  size        dd ?
+  data        memory_range32_t
   timestamp   dq ?
   refcount    dd ?
   defaultbase dd ?
@@ -429,8 +424,7 @@ ends
 struct dll_handle_t linked_list_t
   pid      dd ? ; owner id
 
-  base     dd ? ; mapped base
-  size     dd ? ; mapped size
+  range    memory_range32_t ; mapped base/size
   refcount dd ? ; reference counter for this process and this lib
   parent   dd ? ; dll_descriptor_t
 ends
@@ -537,8 +531,6 @@ struct service_t linked_list_t
   srv_name    rb 16 ; ASCIIZ string
   magic       dd ?  ; ' SRV'
   size        dd ?  ; size of structure Service
-; next_ptr    dd ?  ; next Service descriptor
-; prev_ptr    dd ?  ; prev Service descriptor
   base        dd ?  ; service base address
   entry       dd ?  ; service START function
   srv_proc    dd ?  ; user mode service handler
@@ -547,44 +539,6 @@ ends
 
 DRV_ENTRY = 1
 DRV_EXIT  = -1
-
-struct coff_header_t
-  machine      dw ?
-  sections_cnt dw ?
-  data_time    dd ?
-  syms_ptr     dd ?
-  syms_cnt     dd ?
-  opt_header   dw ?
-  flags        dw ?
-ends
-
-struct coff_section_t
-  name             rb 8
-  virtual_size     dd ?
-  virtual_addr     dd ?
-  raw_data_size    dd ?
-  raw_data_ptr     dd ?
-  relocs_ptr       dd ?
-  line_numbers_ptr dd ?
-  relocs_cnt       dw ?
-  line_numbers_cnt dw ?
-  characteristics  dd ?
-ends
-
-struct coff_reloc_t
-  virtual_addr dd ?
-  sym_index    dd ?
-  type         dw ?
-ends
-
-struct coff_sym_t
-  name            rb 8
-  value           dd ?
-  section_number  dw ?
-  type            dw ?
-  storage_class   db ?
-  aux_symbols_cnt db ?
-ends
 
 struct ioctl_t
   handle   dd ?
@@ -595,16 +549,15 @@ struct ioctl_t
   out_size dd ?
 ends
 
+struct drive_cache_info_t
+  data         memory_range32_t
+  ptr          dd ?
+  sad_size     dd ?
+  search_start dd ?
+ends
+
 struct drive_cache_t
-  ptr              dd ?
-  size             dd ? ; not use
-  data_ptr         dd ?
-  sys_data_size    dd ? ; not use
-  app_data_size    dd ? ; not use
-  sys_data         dd ?
-  app_data         dd ?
-  sys_sad_size     dd ?
-  app_sad_size     dd ?
-  sys_search_start dd ?
-  app_search_start dd ?
+  size dd ?
+  sys  drive_cache_info_t
+  app  drive_cache_info_t
 ends

@@ -136,8 +136,8 @@ kproc mouse_check_events ;//////////////////////////////////////////////////////
         call    .call_middle_button_handler
 
   .check_position:
-        movzx   eax, [MOUSE_X]
-        movzx   ebx, [MOUSE_Y]
+        mov     eax, [MOUSE_CURSOR_POS.x]
+        mov     ebx, [MOUSE_CURSOR_POS.y]
         cmp     eax, [mouse.state.pos.x]
         jne     .position_changed
         cmp     ebx, [mouse.state.pos.y]

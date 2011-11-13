@@ -116,44 +116,46 @@
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc get_cache_ide ;///////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        and     [esi + drive_cache_t.sys_search_start], 0
-        and     [esi + drive_cache_t.app_search_start], 0
+;> esi ^= drive_cache_t
+;-----------------------------------------------------------------------------------------------------------------------
+        and     [esi + drive_cache_t.sys.search_start], 0
+        and     [esi + drive_cache_t.app.search_start], 0
         push    ecx
         stdcall kernel_alloc, [esi + drive_cache_t.size]
-        mov     [esi + drive_cache_t.ptr], eax
+        mov     [esi + drive_cache_t.sys.ptr], eax
         pop     ecx
         mov     edx, eax
         mov     eax, [esi + drive_cache_t.size]
         shr     eax, 3
-        mov     [esi + drive_cache_t.sys_data_size], eax
+        mov     [esi + drive_cache_t.sys.data.size], eax
         mov     ebx, eax
         imul    eax, 7
-        mov     [esi + drive_cache_t.app_data_size], eax
+        mov     [esi + drive_cache_t.app.data.size], eax
         add     ebx, edx
-        mov     [esi + drive_cache_t.data_ptr], ebx
+        mov     [esi + drive_cache_t.app.ptr], ebx
 
         cmp     cl, 010b
         je      .cd
         push    ecx
-        mov     eax, [esi + drive_cache_t.sys_data_size]
+        mov     eax, [esi + drive_cache_t.sys.data.size]
         call    calculate_for_hd
-        add     eax, [esi + drive_cache_t.ptr]
-        mov     [esi + drive_cache_t.sys_data], eax
-        mov     [esi + drive_cache_t.sys_sad_size], ecx
+        add     eax, [esi + drive_cache_t.sys.ptr]
+        mov     [esi + drive_cache_t.sys.data.address], eax
+        mov     [esi + drive_cache_t.sys.sad_size], ecx
 
         push    edi
-        mov     edi, [esi + drive_cache_t.ptr]
+        mov     edi, [esi + drive_cache_t.app.ptr]
         call    clear_ide_cache
         pop     edi
 
-        mov     eax, [esi + drive_cache_t.app_data_size]
+        mov     eax, [esi + drive_cache_t.app.data.size]
         call    calculate_for_hd
-        add     eax, [esi + drive_cache_t.data_ptr]
-        mov     [esi + drive_cache_t.app_data], eax
-        mov     [esi + drive_cache_t.app_sad_size], ecx
+        add     eax, [esi + drive_cache_t.app.ptr]
+        mov     [esi + drive_cache_t.app.data.address], eax
+        mov     [esi + drive_cache_t.app.sad_size], ecx
 
         push    edi
-        mov     edi, [esi + drive_cache_t.data_ptr]
+        mov     edi, [esi + drive_cache_t.app.ptr]
         call    clear_ide_cache
         pop     edi
 
@@ -162,25 +164,25 @@ kproc get_cache_ide ;///////////////////////////////////////////////////////////
 
   .cd:
         push    ecx
-        mov     eax, [esi + drive_cache_t.sys_data_size]
+        mov     eax, [esi + drive_cache_t.sys.data.size]
         call    calculate_for_cd
-        add     eax, [esi + drive_cache_t.ptr]
-        mov     [esi + drive_cache_t.sys_data], eax
-        mov     [esi + drive_cache_t.sys_sad_size], ecx
+        add     eax, [esi + drive_cache_t.sys.ptr]
+        mov     [esi + drive_cache_t.sys.data.address], eax
+        mov     [esi + drive_cache_t.sys.sad_size], ecx
 
         push    edi
-        mov     edi, [esi + drive_cache_t.ptr]
+        mov     edi, [esi + drive_cache_t.sys.ptr]
         call    clear_ide_cache
         pop     edi
 
-        mov     eax, [esi + drive_cache_t.app_data_size]
+        mov     eax, [esi + drive_cache_t.app.data.size]
         call    calculate_for_cd
-        add     eax, [esi + drive_cache_t.data_ptr]
-        mov     [esi + drive_cache_t.app_data], eax
-        mov     [esi + drive_cache_t.app_sad_size], ecx
+        add     eax, [esi + drive_cache_t.app.ptr]
+        mov     [esi + drive_cache_t.app.data.address], eax
+        mov     [esi + drive_cache_t.app.sad_size], ecx
 
         push    edi
-        mov     edi, [esi + drive_cache_t.data_ptr]
+        mov     edi, [esi + drive_cache_t.app.ptr]
         call    clear_ide_cache
         pop     edi
 

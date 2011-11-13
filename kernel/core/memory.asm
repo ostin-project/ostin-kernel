@@ -736,8 +736,8 @@ end if
         cmp     esi, eax
         jz      .fail
         mov     edx, ebx
-        sub     edx, [esi + dll_handle_t.base]
-        cmp     edx, [esi + dll_handle_t.size]
+        sub     edx, [esi + dll_handle_t.range.address]
+        cmp     edx, [esi + dll_handle_t.range.size]
         jb      .fault_in_hdll
 
   .scan_hdll.next:
@@ -752,9 +752,9 @@ end if
         stdcall map_page, ebx, eax, PG_UW
         mov     edi, ebx
         mov     ecx, 1024
-        sub     ebx, [esi + dll_handle_t.base]
+        sub     ebx, [esi + dll_handle_t.range.address]
         mov     esi, [esi + dll_handle_t.parent]
-        mov     esi, [esi + dll_descriptor_t.data]
+        mov     esi, [esi + dll_descriptor_t.data.address]
         add     esi, ebx
         rep
         movsd
@@ -981,8 +981,8 @@ proc safe_map_page stdcall, slot:dword, req_access:dword, ofs:dword ;///////////
         jz      .no_hdll
         mov     ebx, [ofs]
         and     ebx, not 0x0fff
-        sub     ebx, [ecx + dll_handle_t.base]
-        cmp     ebx, [ecx + dll_handle_t.size]
+        sub     ebx, [ecx + dll_handle_t.range.address]
+        cmp     ebx, [ecx + dll_handle_t.range.size]
         jb      .hdll_found
         mov     ecx, [ecx + dll_handle_t.next_ptr]
         jmp     .scan_hdll
@@ -996,7 +996,7 @@ proc safe_map_page stdcall, slot:dword, req_access:dword, ofs:dword ;///////////
   .hdll_found:
         ; allocate page, save it in page table, map it, copy contents from base
         mov     eax, [ecx + dll_handle_t.parent]
-        add     ebx, [eax + dll_descriptor_t.data]
+        add     ebx, [eax + dll_descriptor_t.data.address]
         call    alloc_page
         test    eax, eax
         jz      .no_hdll

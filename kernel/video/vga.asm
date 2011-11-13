@@ -149,7 +149,8 @@ kproc checkVga_N13 ;////////////////////////////////////////////////////////////
         pushad
         cmp     [EGA_counter], 1
         je      .novesal
-        mov     ecx, dword[MOUSE_X]
+        mov     ecx, [MOUSE_CURSOR_POS.x - 2]
+        mov     cx, word[MOUSE_CURSOR_POS.y]
         cmp     ecx, [novesachecksum]
         jne     .novesal
         popad
@@ -159,7 +160,7 @@ kproc checkVga_N13 ;////////////////////////////////////////////////////////////
   .novesal:
         mov     [novesachecksum], ecx
         mov     ecx, 0
-        movzx   eax, [MOUSE_Y]
+        mov     eax, [MOUSE_CURSOR_POS.y]
         cmp     eax, 100
         jge     .m13l3
         mov     eax, 100
@@ -173,7 +174,7 @@ kproc checkVga_N13 ;////////////////////////////////////////////////////////////
         sub     eax, 100
         imul    eax, 640 * 4
         add     ecx, eax
-        movzx   eax, [MOUSE_X]
+        mov     eax, [MOUSE_CURSOR_POS.x]
         cmp     eax, 160
         jge     .m13l1
         mov     eax, 160

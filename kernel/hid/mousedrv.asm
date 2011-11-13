@@ -36,14 +36,12 @@ uglobal
   MouseTickCounter rd 1
   MOUSE_PICTURE    dd ?
   MOUSE_VISIBLE    dd ?
+  MOUSE_CURSOR_POS point32_t
   MOUSE_SCROLL_H   dw ?
-  MOUSE_X          dw ?
-  MOUSE_Y          dw ?
   MOUSE_SCROLL_V   dw ?
   MOUSE_COLOR_MEM  dd ?
   COLOR_TEMP       dd ?
-  X_UNDER          dw ?
-  Y_UNDER          dw ?
+  MOUSE_CURSOR_UNDER_POS point32_t
   mousecount       dd 0x0
   mousedata        dd 0x0
   mouseunder       rb 0x600
@@ -84,9 +82,8 @@ kproc sysfn.mouse_ctl.get_screen_coordinates ;//////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 37.0: get screen-relative cursor coordinates
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, dword[MOUSE_X]
-        shl     eax, 16
-        mov     ax, [MOUSE_Y]
+        mov     eax, [MOUSE_CURSOR_POS.x - 2]
+        mov     ax, word[MOUSE_CURSOR_POS.y]
         mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
@@ -96,21 +93,18 @@ kproc sysfn.mouse_ctl.get_window_coordinates ;//////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 37.1: get window-relative cursor coordinates
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, dword[MOUSE_X]
-        shl     eax, 16
-        mov     ax, [MOUSE_Y]
         mov     esi, [TASK_BASE]
-        mov     bx, word[esi - twdw + window_data_t.box.left]
-        shl     ebx, 16
-        mov     bx, word[esi - twdw + window_data_t.box.top]
-        sub     eax, ebx
-
         mov     edi, [CURRENT_TASK]
         shl     edi, 8
+
+        mov     eax, [MOUSE_CURSOR_POS.x]
+        sub     eax, [esi - twdw + window_data_t.box.left]
+        sub     eax, [SLOT_BASE + edi + app_data_t.wnd_clientbox.left]
+        shl     eax, 16
+        mov     ax, word[MOUSE_CURSOR_POS.y]
+        sub     ax, word[esi - twdw + window_data_t.box.top]
         sub     ax, word[SLOT_BASE + edi + app_data_t.wnd_clientbox.top]
-        rol     eax, 16
-        sub     ax, word[SLOT_BASE + edi + app_data_t.wnd_clientbox.left]
-        rol     eax, 16
+
         mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
@@ -201,8 +195,8 @@ kproc draw_mouse_under ;////////////////////////////////////////////////////////
         je      @f
 
         pushad
-        movzx   eax, [X_UNDER]
-        movzx   ebx, [Y_UNDER]
+        mov     eax, [MOUSE_CURSOR_UNDER_POS.x]
+        mov     ebx, [MOUSE_CURSOR_UNDER_POS.y]
         stdcall [_display.restore_cursor], eax, ebx
         popad
         ret
@@ -213,8 +207,8 @@ kproc draw_mouse_under ;////////////////////////////////////////////////////////
 
 align  4
   .mres:
-        movzx   eax, [X_UNDER]
-        movzx   ebx, [Y_UNDER]
+        mov     eax, [MOUSE_CURSOR_UNDER_POS.x]
+        mov     ebx, [MOUSE_CURSOR_UNDER_POS.y]
         add     eax, ecx
         add     ebx, edx
         push    ecx
@@ -251,10 +245,10 @@ kproc save_draw_mouse ;/////////////////////////////////////////////////////////
         je      .no_hw_cursor
         pushad
 
-        mov     [X_UNDER], ax
-        mov     [Y_UNDER], bx
-        movzx   eax, [MOUSE_Y]
-        movzx   ebx, [MOUSE_X]
+        mov     [MOUSE_CURSOR_UNDER_POS.x], eax
+        mov     [MOUSE_CURSOR_UNDER_POS.y], ebx
+        mov     eax, [MOUSE_CURSOR_POS.y]
+        mov     ebx, [MOUSE_CURSOR_POS.x]
         push    eax
         push    ebx
 
@@ -288,12 +282,12 @@ kproc save_draw_mouse ;/////////////////////////////////////////////////////////
   .no_hw_cursor:
         pushad
         ; save & draw
-        mov     [X_UNDER], ax
-        mov     [Y_UNDER], bx
+        mov     [MOUSE_CURSOR_UNDER_POS.x], eax
+        mov     [MOUSE_CURSOR_UNDER_POS.y], ebx
         push    eax
         push    ebx
-        mov     ecx, 0
-        mov     edx, 0
+        xor     ecx, ecx
+        xor     edx, edx
 
 align   4
   .drm:
@@ -439,8 +433,8 @@ kproc __sys_disable_mouse ;/////////////////////////////////////////////////////
         mov     edx, [CURRENT_TASK]
         shl     edx, 5
         add     edx, window_data
-        movzx   eax, [MOUSE_X]
-        movzx   ebx, [MOUSE_Y]
+        mov     eax, [MOUSE_CURSOR_POS.x]
+        mov     ebx, [MOUSE_CURSOR_POS.y]
         mov     ecx, [Screen_Max_Pos.x]
         inc     ecx
         imul    ecx, ebx
@@ -468,8 +462,8 @@ kproc __sys_disable_mouse ;/////////////////////////////////////////////////////
         mov     edx, [CURRENT_TASK]
         shl     edx, 5
         add     edx, window_data
-        movzx   eax, [MOUSE_X]
-        movzx   ebx, [MOUSE_Y]
+        mov     eax, [MOUSE_CURSOR_POS.x]
+        mov     ebx, [MOUSE_CURSOR_POS.y]
         mov     ecx, [edx + 0] ; mouse inside the area ?
         add     eax, 10
         cmp     eax, ecx
@@ -523,8 +517,8 @@ kproc __sys_draw_pointer ;//////////////////////////////////////////////////////
         cmp     [MOUSE_VISIBLE], 0 ; mouse visible ?
         je      .chms00
         mov     [MOUSE_VISIBLE], 0
-        movzx   ebx, [MOUSE_Y]
-        movzx   eax, [MOUSE_X]
+        mov     ebx, [MOUSE_CURSOR_POS.y]
+        mov     eax, [MOUSE_CURSOR_POS.x]
         pushfd
         cli
         call    save_draw_mouse
@@ -535,10 +529,10 @@ kproc __sys_draw_pointer ;//////////////////////////////////////////////////////
         ret
 
   .chms00:
-        movzx   ecx, [X_UNDER]
-        movzx   edx, [Y_UNDER]
-        movzx   ebx, [MOUSE_Y]
-        movzx   eax, [MOUSE_X]
+        mov     ecx, [MOUSE_CURSOR_UNDER_POS.x]
+        mov     edx, [MOUSE_CURSOR_UNDER_POS.y]
+        mov     ebx, [MOUSE_CURSOR_POS.y]
+        mov     eax, [MOUSE_CURSOR_POS.x]
         cmp     eax, ecx
         jne     .redrawmouse
         cmp     ebx, edx
@@ -565,37 +559,37 @@ proc set_mouse_data stdcall, BtnState:dword, XMoving:dword, YMoving:dword, VScro
 
         mov     eax, [XMoving]
         call    mouse_acceleration
-        add     ax, [MOUSE_X] ; [XCoordinate]
-        cmp     ax, 0
-        jge     .M1
-        mov     eax, 0
+        add     eax, [MOUSE_CURSOR_POS.x] ; [XCoordinate]
+        test    eax, eax
+        jns     .M1
+        xor     eax, eax
         jmp     .M2
 
   .M1:
-        cmp     ax, word[Screen_Max_Pos.x] ; ScreenLength
+        cmp     eax, [Screen_Max_Pos.x] ; ScreenLength
         jl      .M2
-        mov     ax, word[Screen_Max_Pos.x] ; ScreenLength-1
+        mov     eax, [Screen_Max_Pos.x] ; ScreenLength-1
 
   .M2:
-        mov     [MOUSE_X], ax ; [XCoordinate]
+        mov     [MOUSE_CURSOR_POS.x], eax ; [XCoordinate]
 
         mov     eax, [YMoving]
         neg     eax
         call    mouse_acceleration
 
-        add     ax, [MOUSE_Y] ; [YCoordinate]
-        cmp     ax, 0
-        jge     .M3
-        mov     ax, 0
+        add     eax, [MOUSE_CURSOR_POS.y] ; [YCoordinate]
+        test    eax, eax
+        jns     .M3
+        xor     eax, eax
         jmp     .M4
 
   .M3:
-        cmp     ax, word[Screen_Max_Pos.y] ; ScreenHeigth
+        cmp     eax, [Screen_Max_Pos.y] ; ScreenHeigth
         jl      .M4
-        mov     ax, word[Screen_Max_Pos.y] ; ScreenHeigth-1
+        mov     eax, [Screen_Max_Pos.y] ; ScreenHeigth-1
 
   .M4:
-        mov     [MOUSE_Y], ax ; [YCoordinate]
+        mov     [MOUSE_CURSOR_POS.y], eax ; [YCoordinate]
 
         mov     eax, [VScroll]
         add     [MOUSE_SCROLL_V], ax

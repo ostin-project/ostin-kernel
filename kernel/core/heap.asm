@@ -1356,7 +1356,7 @@ kproc destroy_smap ;////////////////////////////////////////////////////////////
         mov     [ecx + smem_t.next_ptr], edx
         mov     [edx + smem_t.prev_ptr], ecx
 
-        stdcall kernel_free, [esi + smem_t.base]
+        stdcall kernel_free, [esi + smem_t.range.address]
         mov     eax, esi
         call    free
 
@@ -1471,8 +1471,8 @@ align 4
         mov     edx, [access]
         and     edx, SHM_ACCESS_MASK
 
-        mov     [esi + smem_t.base], eax
-        mov     [esi + smem_t.size], ecx
+        mov     [esi + smem_t.range.address], eax
+        mov     [esi + smem_t.range.size], ecx
         mov     [esi + smem_t.access], edx
         mov     [esi + smem_t.refcount], 0
         mov     [esi + smem_t.name + 28], 0
@@ -1530,7 +1530,7 @@ align 4
         mov     [edi + smap_t.parent], esi
         mov     [edi + smap_t.base], 0
 
-        stdcall user_alloc, [esi + smem_t.size]
+        stdcall user_alloc, [esi + smem_t.range.size]
         test    eax, eax
         mov     [mapped], eax
         mov     edx, E_NOMEM
@@ -1538,13 +1538,13 @@ align 4
 
         mov     [edi + smap_t.base], eax
 
-        mov     ecx, [esi + smem_t.size]
+        mov     ecx, [esi + smem_t.range.size]
         mov     [size], ecx
 
         shr     ecx, 12
         shr     eax, 10
 
-        mov     esi, [esi + smem_t.base]
+        mov     esi, [esi + smem_t.range.address]
         shr     esi, 10
         lea     edi, [page_tabs + eax]
         add     esi, page_tabs

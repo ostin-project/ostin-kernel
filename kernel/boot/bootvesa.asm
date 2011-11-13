@@ -406,8 +406,8 @@ kproc boot.set_vmode_boot_vars ;////////////////////////////////////////////////
         cmp     cx, 0x13
         je      .mode_x12_x13
 
-        mov_s_  [es:BOOT_X_RES], [boot.params.vmode.resolution.width]
-        mov_s_  [es:BOOT_Y_RES], [boot.params.vmode.resolution.height]
+        mov_s_  [es:BOOT_SCREEN_RES.width], [boot.params.vmode.resolution.width]
+        mov_s_  [es:BOOT_SCREEN_RES.height], [boot.params.vmode.resolution.height]
 
         cmp     byte[es:vi.vesa_version + 1], 2
         jb      .vesa12
@@ -431,8 +431,8 @@ kproc boot.set_vmode_boot_vars ;////////////////////////////////////////////////
         jmp     .exit
 
   .mode_x12_x13:
-        mov     [es:BOOT_X_RES], 640
-        mov     [es:BOOT_Y_RES], 480
+        mov     [es:BOOT_SCREEN_RES.width], 640
+        mov     [es:BOOT_SCREEN_RES.height], 480
         mov     [es:BOOT_BPP], 32
         or      [es:BOOT_LFB], -1
 
