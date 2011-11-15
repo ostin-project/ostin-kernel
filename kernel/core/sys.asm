@@ -697,11 +697,9 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         call    free_cd_channel
         and     [cd_status], 0
 
-    @@:
-
 if KCONFIG_BLKDEV_FLOPPY
 
-        cmp     [flp_status], esi
+    @@: cmp     [flp_status], esi
         jnz     @f
         and     [flp_status], 0
 
@@ -819,21 +817,3 @@ end if ; KCONFIG_BLKDEV_FLOPPY
 kendp
 
 restore .slot
-
-iglobal
-  boot_sched_1 db 'Building gdt tss pointer', 0
-  boot_sched_2 db 'Building IDT table', 0
-endg
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc build_scheduler ;/////////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        mov     esi, boot_sched_1
-        call    boot_log
-;       call    build_process_gdt_tss_pointer
-
-;       mov     esi, boot_sched_2
-;       call    boot_log
-
-        ret
-kendp

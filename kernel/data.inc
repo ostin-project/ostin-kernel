@@ -279,6 +279,10 @@ cpu_sign          rd 1
 cpu_info          rd 1
 cpu_caps          rd 4
 
+CURRENT_TASK      dd ?
+TASK_COUNT        dd ?
+TASK_BASE         dd ?
+
 WIN_STACK         rw 512
 WIN_POS           rw 512
 

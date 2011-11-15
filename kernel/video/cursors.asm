@@ -438,7 +438,7 @@ endl
 
         mov     eax, [CURRENT_TASK]
         shl     eax, 5
-        mov     eax, [CURRENT_TASK + eax + 4]
+        mov     eax, [TASK_DATA + eax - sizeof.task_data_t + task_data_t.pid]
         mov     ebx, [src]
         mov     ecx, [flags]
         call    create_cursor ; eax, ebx, ecx
@@ -479,7 +479,7 @@ endl
 
         mov     ebx, [CURRENT_TASK]
         shl     ebx, 5
-        mov     ebx, [CURRENT_TASK + ebx + 4]
+        mov     ebx, [TASK_DATA + ebx - sizeof.task_data_t + task_data_t.pid]
         cmp     ebx, [esi + cursor_t.pid]
         jne     .fail
 

@@ -537,7 +537,7 @@ high_code:
         inc     eax
         mov     [CURRENT_TASK], eax ; 1
         mov     [TASK_COUNT], eax ; 1
-        mov     dword[TASK_BASE], TASK_DATA
+        mov     [TASK_BASE], TASK_DATA
         mov     [current_slot], SLOT_BASE + sizeof.app_data_t
 
         ; set background
@@ -644,9 +644,6 @@ end if
         inc     edi
         call    sysfn.draw_number.force
 
-        ; BUILD SCHEDULER
-        call    build_scheduler ; sys.inc
-
         mov     esi, boot_devices
         call    boot_log
 
@@ -714,7 +711,7 @@ end if
         mov     [CURRENT_TASK], eax
         mov     [TASK_COUNT], eax
         mov     [current_slot], SLOT_BASE + sizeof.app_data_t
-        mov     dword[TASK_BASE], TASK_DATA
+        mov     [TASK_BASE], TASK_DATA
         mov     [TASK_DATA + task_data_t.wnd_number], al ; on screen number
         mov     [TASK_DATA + task_data_t.pid], eax ; process id number
 

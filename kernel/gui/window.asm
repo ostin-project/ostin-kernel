@@ -91,7 +91,7 @@ kproc sysfn.set_draw_state.end_drawing ;////////////////////////////////////////
 ;? System function 12.2
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     edx, [TASK_BASE]
-        add     edx, draw_data - CURRENT_TASK
+        add     edx, draw_data - (TASK_DATA - sizeof.task_data_t)
         mov     [edx + rect32_t.left], 0
         mov     [edx + rect32_t.top], 0
         mov     eax, [Screen_Max_Pos.x]

@@ -192,11 +192,6 @@ virtual at OS_BASE
                         rb 0x1000
   window_data:          rb 256 * sizeof.window_data_t
                         rb OS_BASE + 0x00003000 - $
-  CURRENT_TASK          dd ?
-  TASK_COUNT            dd ?
-                        rd 2
-  TASK_BASE             dd ?
-                        rd 3
   TASK_DATA:            rb 256 * sizeof.task_data_t
                         rb OS_BASE + 0x00007000 - $
   CDDataBuf:            rb 0x1000
@@ -273,7 +268,7 @@ LFB_BASE            = 0xfe000000
 
 new_app_base        = 0
 
-twdw                = 0x2000 ; CURRENT_TASK - window_data
+twdw                = (TASK_DATA - sizeof.task_data_t) - window_data
 
 std_application_base_address = new_app_base
 RING0_STACK_SIZE    = 0x2000 - 512 ; 512 bytes for FPU context

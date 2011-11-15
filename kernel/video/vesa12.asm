@@ -431,16 +431,16 @@ kproc vesa12_drawbar ;//////////////////////////////////////////////////////////
         push    eax
         push    ecx
         mov     eax, [TASK_BASE]
-        mov     ecx, [eax + draw_data - CURRENT_TASK + rect32_t.left]
+        mov     ecx, [eax + draw_data - (TASK_DATA - sizeof.task_data_t) + rect32_t.left]
         cmp     ecx, 0
         jnz     .dbcblimitlset12
-        mov     ecx, [eax + draw_data - CURRENT_TASK + rect32_t.top]
+        mov     ecx, [eax + draw_data - (TASK_DATA - sizeof.task_data_t) + rect32_t.top]
         cmp     ecx, 0
         jnz     .dbcblimitlset12
-        mov     ecx, [eax + draw_data - CURRENT_TASK + rect32_t.right]
+        mov     ecx, [eax + draw_data - (TASK_DATA - sizeof.task_data_t) + rect32_t.right]
         cmp     ecx, [Screen_Max_Pos.x]
         jnz     .dbcblimitlset12
-        mov     ecx, [eax + draw_data - CURRENT_TASK + rect32_t.bottom]
+        mov     ecx, [eax + draw_data - (TASK_DATA - sizeof.task_data_t) + rect32_t.bottom]
         cmp     ecx, [Screen_Max_Pos.y]
         jnz     .dbcblimitlset12
         pop     ecx
@@ -769,14 +769,14 @@ kproc vesa12_putimage ;/////////////////////////////////////////////////////////
 
         push    ecx
         mov     eax, [TASK_BASE]
-        cmp     [eax + draw_data - CURRENT_TASK + rect32_t.left], 0
+        cmp     [eax + draw_data - (TASK_DATA - sizeof.task_data_t) + rect32_t.left], 0
         jnz     .dbcblimitlset212
-        cmp     [eax + draw_data - CURRENT_TASK + rect32_t.top], 0
+        cmp     [eax + draw_data - (TASK_DATA - sizeof.task_data_t) + rect32_t.top], 0
         jnz     .dbcblimitlset212
-        mov     ecx, [eax + draw_data - CURRENT_TASK + rect32_t.right]
+        mov     ecx, [eax + draw_data - (TASK_DATA - sizeof.task_data_t) + rect32_t.right]
         cmp     ecx, [Screen_Max_Pos.x]
         jnz     .dbcblimitlset212
-        mov     ecx, [eax + draw_data - CURRENT_TASK + rect32_t.bottom]
+        mov     ecx, [eax + draw_data - (TASK_DATA - sizeof.task_data_t) + rect32_t.bottom]
         cmp     ecx, [Screen_Max_Pos.y]
         jnz     .dbcblimitlset212
         pop     ecx
