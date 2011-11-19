@@ -727,13 +727,15 @@ end if
 ;       call    _rdtsc
         rdtsc
         mov     ecx, eax
+        mov     ebx, edx
         mov     esi, 250 ; wait 1/4 a second
         call    delay_ms
 ;       call    _rdtsc
         rdtsc
         sti
         sub     eax, ecx
-        shl     eax, 2
+        sbb     edx, ebx
+        shld    eax, edx, 2
         mov     [CPU_FREQ], eax ; save tsc / sec
 
         mov     ebx, 1000000
@@ -744,7 +746,7 @@ end if
         mov     esi, boot_cpufreq
         call    boot_log
 
-        mov     ebx, edx
+        mov     ebx, eax
         mov     ecx, [boot_y]
         add     ecx, (10 + 17 * 6) shl 16 - 10 ; 'CPU frequency is '
         mov     edx, 0x00ffffff

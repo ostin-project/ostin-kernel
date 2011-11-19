@@ -1189,16 +1189,16 @@ endl
 
         inc     dword[process_number]
         mov     eax, [process_number]
-        mov     [ebx + 4], eax ; set PID
+        mov     [ebx + task_data_t.pid], eax ; set PID
 
         ; set draw data to full screen
         xor     eax, eax
-        mov     [ecx + 0], eax
-        mov     [ecx + 4], eax
+        mov     [ecx + rect32_t.left], eax
+        mov     [ecx + rect32_t.top], eax
         mov     eax, [Screen_Max_Pos.x]
-        mov     [ecx + 8], eax
+        mov     [ecx + rect32_t.right], eax
         mov     eax, [Screen_Max_Pos.y]
-        mov     [ecx + 12], eax
+        mov     [ecx + rect32_t.bottom], eax
 
         mov     ebx, [pl0_stack]
         mov     esi, [params]
