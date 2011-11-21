@@ -1,7 +1,7 @@
 ;;======================================================================================================================
-;;///// kernel.inc ///////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
+;;///// util.inc /////////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
 ;;======================================================================================================================
-;; (c) 2004-2011 KolibriOS team <http://kolibrios.org/>
+;; (c) 2011 Ostin project <http://ostin.googlecode.com/>
 ;;======================================================================================================================
 ;; This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
 ;; License as published by the Free Software Foundation, either version 2 of the License, or (at your option) any later
@@ -14,19 +14,4 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-include "charset.asm"
-
-;///include "include/sync.inc"
-
-include "blkdev/blkdev.inc"
-include "bus/bus.inc"
-include "core/core.inc"
-include "fs/fs.inc"
-include "gui/gui.inc"
-include "hid/hid.inc"
-include "network/network.inc"
-include "sound/sound.inc"
-include "util/util.inc"
-include "video/video.inc"
-
-include "imports.inc"
+include "b_tree.asm"
