@@ -24,9 +24,9 @@ uglobal
 endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc test.b_tree.insert ;//////////////////////////////////////////////////////////////////////////////////////////////
+kproc test.b_tree.insert_remove_1 ;/////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        klog_   LOG_DEBUG, "---[ test.b_tree.insert ]--->\n"
+        klog_   LOG_DEBUG, "---[ test.b_tree.insert_remove_1 ]--->\n"
 
         and     [test.b_tree.root], 0
         mov     eax, test.b_tree.nodes
@@ -54,15 +54,6 @@ rept 14 i:0
         call    test.b_tree._.dump
         klog2_  LOG_DEBUG, "\n"
 }
-
-        klog_   LOG_DEBUG, "---[ test.b_tree.insert ]---<\n"
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc test.b_tree.remove ;//////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        klog_   LOG_DEBUG, "---[ test.b_tree.remove ]--->\n"
 
 irp num, 10,85,15,70,20,60,30,50,65,80,90,40,5,55
 {
@@ -96,7 +87,75 @@ irp num, 10,85,15,70,20,60,30,50,65,80,90,40,5,55
         mov     dword[eax + 16], 0xcccccccc
 }
 
-        klog_   LOG_DEBUG, "---[ test.b_tree.remove ]---<\n"
+        klog_   LOG_DEBUG, "---[ test.b_tree.insert_remove_1 ]---<\n"
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc test.b_tree.insert_remove_2 ;/////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        klog_   LOG_DEBUG, "---[ test.b_tree.insert_remove_2 ]--->\n"
+
+        and     [test.b_tree.root], 0
+        mov     eax, test.b_tree.nodes
+
+irp num, 1,2,3,4,5,6,7,8,9,10,11,12,13,14
+{
+        mov     [eax + test.b_tree.node_t.number], num
+        add     eax, sizeof.test.b_tree.node_t
+}
+
+rept 14 i:0
+{
+        mov     eax, [test.b_tree.root]
+        klog_   LOG_DEBUG, "---> "
+        call    test.b_tree._.dump
+        klog2_  LOG_DEBUG, "\n"
+
+        mov     eax, test.b_tree.nodes + i * sizeof.test.b_tree.node_t
+        mov     ebx, [test.b_tree.root]
+        mov     ecx, test.b_tree._.compare_nodes
+        call    util.rb_tree.insert
+        mov     [test.b_tree.root], eax
+
+        klog_   LOG_DEBUG, "---< "
+        call    test.b_tree._.dump
+        klog2_  LOG_DEBUG, "\n"
+}
+
+irp num, 1,2,3,4,5,6,7,8,9,10,11,12,13,14
+{
+        mov     eax, [test.b_tree.root]
+        klog_   LOG_DEBUG, "---> "
+        call    test.b_tree._.dump
+        klog2_  LOG_DEBUG, "\n"
+
+        add     esp, -sizeof.test.b_tree.node_t
+        mov     eax, esp
+        mov     [eax + test.b_tree.node_t.number], num
+        mov     ebx, [test.b_tree.root]
+        mov     ecx, test.b_tree._.compare_nodes
+        call    util.b_tree.find
+        add     esp, sizeof.test.b_tree.node_t
+
+        push    eax
+
+        call    util.rb_tree.remove
+        mov     [test.b_tree.root], eax
+
+        klog_   LOG_DEBUG, "---< "
+        call    test.b_tree._.dump
+        klog2_  LOG_DEBUG, "\n"
+
+        pop     eax
+        mov     dword[eax], 0xcccccccc
+        mov     dword[eax + 4], 0xcccccccc
+        mov     dword[eax + 8], 0xcccccccc
+        mov     dword[eax + 12], 0xcccccccc
+        mov     dword[eax + 16], 0xcccccccc
+}
+
+        klog_   LOG_DEBUG, "---[ test.b_tree.insert_remove_2 ]---<\n"
         ret
 kendp
 
@@ -118,7 +177,7 @@ kproc test.b_tree._.dump ;//////////////////////////////////////////////////////
 
         push    0
         mov     byte[esp], 'b'
-        cmp     [eax + test.b_tree.node_t.color], 0
+        cmp     [eax + test.b_tree.node_t._.color], 0
         je      @f
         mov     byte[esp], 'r'
 
@@ -126,22 +185,22 @@ kproc test.b_tree._.dump ;//////////////////////////////////////////////////////
         klog2_  LOG_DEBUG, "%s%u", ecx, [eax + test.b_tree.node_t.number]
         add     esp, 4
 
-        cmp     [eax + test.b_tree.node_t.left_ptr], 0
+        cmp     [eax + test.b_tree.node_t._.left_ptr], 0
         jne     @f
-        cmp     [eax + test.b_tree.node_t.right_ptr], 0
+        cmp     [eax + test.b_tree.node_t._.right_ptr], 0
         je      .exit
 
     @@: klog2_  LOG_DEBUG, "("
 
         push    eax
-        mov     eax, [eax + test.b_tree.node_t.left_ptr]
+        mov     eax, [eax + test.b_tree.node_t._.left_ptr]
         call    test.b_tree._.dump
         pop     eax
 
         klog2_  LOG_DEBUG, ","
 
         push    eax
-        mov     eax, [eax + test.b_tree.node_t.right_ptr]
+        mov     eax, [eax + test.b_tree.node_t._.right_ptr]
         call    test.b_tree._.dump
         pop     eax
 

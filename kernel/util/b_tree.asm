@@ -14,39 +14,28 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-struct b_tree_node_t
-  parent_ptr dd ?
-  left_ptr   dd ?
-  right_ptr  dd ?
-ends
-
-struct rb_tree_node_t b_tree_node_t
-  color db ?
-        rb 3
-ends
-
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc util.b_tree.find ;////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> eax ^= fake node to find (contains key only, for comparator to work)
+;> eax ^= data to find (passed as first argument to callback)
 ;> ebx ^= root node
 ;> ecx ^= comparator callback, f(eax, ebx)
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax ^= actual node
 ;-----------------------------------------------------------------------------------------------------------------------
-        klog_   LOG_TRACE, "util.b_tree.find(%u,%x,%x)\n", [eax + rb_tree_node_t.data_ptr], ebx, ecx
+        klog_   LOG_TRACE, "util.b_tree.find(%x,%x,%x)\n", eax, ebx, ecx
 
   .next_node:
         test    ebx, ebx
         jz      .error
 
-        lea     edx, [ebx + rb_tree_node_t.left_ptr]
+        lea     edx, [ebx + rb_tree_node_t._.left_ptr]
 
         call    ecx
         je      .exit
         jb      @f
 
-        lea     edx, [ebx + rb_tree_node_t.right_ptr]
+        lea     edx, [ebx + rb_tree_node_t._.right_ptr]
 
     @@: mov     ebx, [edx]
         jmp     .next_node
@@ -61,6 +50,39 @@ kproc util.b_tree.find ;////////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
+kproc util.b_tree.enumerate ;///////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= root node
+;> ecx ^= callback, f(eax)
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax ^= 0 (completed) or not 0 (interrupted)
+;-----------------------------------------------------------------------------------------------------------------------
+        klog_   LOG_TRACE, "util.b_tree.enumerate(%x, %x)\n", ebx, ecx
+
+        xor     eax, eax
+        test    ebx, ebx
+        jz      .exit
+
+        push    ebx
+        mov     ebx, [ebx + rb_tree_node_t._.left_ptr]
+        call    util.b_tree.enumerate
+        test    eax, eax
+        pop     ebx
+        jnz     .exit
+
+        mov     eax, ebx
+        call    ecx
+        test    eax, eax
+        jnz     .exit
+
+        mov     ebx, [ebx + rb_tree_node_t._.right_ptr]
+        jmp     util.b_tree.enumerate ; tail recursion here
+
+  .exit:
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
 kproc util.rb_tree.insert ;/////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax ^= node to insert
@@ -70,22 +92,22 @@ kproc util.rb_tree.insert ;/////////////////////////////////////////////////////
 ;< eax ^= new root node
 ;-----------------------------------------------------------------------------------------------------------------------
         klog_   LOG_TRACE, "util.b_tree.insert(%x,%x,%x)\n", eax, ebx, ecx
-        and     [eax + rb_tree_node_t.parent_ptr], 0
-        and     [eax + rb_tree_node_t.left_ptr], 0
-        and     [eax + rb_tree_node_t.right_ptr], 0
-        or      [eax + rb_tree_node_t.color], 1
+        and     [eax + rb_tree_node_t._.parent_ptr], 0
+        and     [eax + rb_tree_node_t._.left_ptr], 0
+        and     [eax + rb_tree_node_t._.right_ptr], 0
+        or      [eax + rb_tree_node_t._.color], 1
 
-  .next_node:
         test    ebx, ebx
         jz      .case_1
 
-        lea     edx, [ebx + rb_tree_node_t.left_ptr]
+  .next_node:
+        lea     edx, [ebx + rb_tree_node_t._.left_ptr]
 
         call    ecx
         je      .error
         jb      @f
 
-        lea     edx, [ebx + rb_tree_node_t.right_ptr]
+        lea     edx, [ebx + rb_tree_node_t._.right_ptr]
 
     @@: cmp     dword[edx], 0
         je      @f
@@ -94,23 +116,23 @@ kproc util.rb_tree.insert ;/////////////////////////////////////////////////////
         jmp     .next_node
 
     @@: mov     [edx], eax
-        mov     [eax + rb_tree_node_t.parent_ptr], ebx
+        mov     [eax + rb_tree_node_t._.parent_ptr], ebx
 
   .case_1:
         ;klog_   LOG_DEBUG, "  case 1\n"
         ; eax ^= node
-        mov     edx, [eax + rb_tree_node_t.parent_ptr]
+        mov     edx, [eax + rb_tree_node_t._.parent_ptr]
         test    edx, edx
         jnz     .case_2
 
-        and     [eax + rb_tree_node_t.color], 0
+        and     [eax + rb_tree_node_t._.color], 0
         jmp     .exit
 
   .case_2:
         ;klog_   LOG_DEBUG, "  case 2\n"
         ; eax ^= node
         ; edx ^= parent node
-        cmp     [edx + rb_tree_node_t.color], 0
+        cmp     [edx + rb_tree_node_t._.color], 0
         je      .exit
 
   .case_3:
@@ -123,14 +145,14 @@ kproc util.rb_tree.insert ;/////////////////////////////////////////////////////
         test    eax, eax
         jz      .case_4
 
-        cmp     [eax + rb_tree_node_t.color], 0
+        cmp     [eax + rb_tree_node_t._.color], 0
         je      .case_4
 
-        and     [edx + rb_tree_node_t.color], 0
-        and     [eax + rb_tree_node_t.color], 0
+        and     [edx + rb_tree_node_t._.color], 0
+        and     [eax + rb_tree_node_t._.color], 0
 
         mov     eax, ecx
-        or      [eax + rb_tree_node_t.color], 1
+        or      [eax + rb_tree_node_t._.color], 1
         add     esp, 4
         jmp     .case_1 ; tail recursion here
 
@@ -142,26 +164,25 @@ kproc util.rb_tree.insert ;/////////////////////////////////////////////////////
         pop     eax
         xchg    eax, ecx
 
-        cmp     ecx, [edx + rb_tree_node_t.right_ptr]
+        cmp     ecx, [edx + rb_tree_node_t._.right_ptr]
         jne     .case_4_check_other
-        cmp     edx, [eax + rb_tree_node_t.left_ptr]
-        jne     .case_4_rotate_right
+        cmp     edx, [eax + rb_tree_node_t._.left_ptr]
+        jne     .case_4_check_other
 
         mov     eax, edx
         call    util.b_tree._.rotate_left
-        mov     eax, [ecx + rb_tree_node_t.left_ptr]
+        mov     eax, [ecx + rb_tree_node_t._.left_ptr]
         jmp     .case_5
 
   .case_4_check_other:
-        ;cmp     ecx, [edx + rb_tree_node_t.left_ptr]
-        ;jne     .case_4_end
-        cmp     edx, [eax + rb_tree_node_t.right_ptr]
+        cmp     ecx, [edx + rb_tree_node_t._.left_ptr]
+        jne     .case_4_end
+        cmp     edx, [eax + rb_tree_node_t._.right_ptr]
         jne     .case_4_end
 
-  .case_4_rotate_right:
         mov     eax, edx
         call    util.b_tree._.rotate_right
-        mov     eax, [ecx + rb_tree_node_t.right_ptr]
+        mov     eax, [ecx + rb_tree_node_t._.right_ptr]
         jmp     .case_5
 
   .case_4_end:
@@ -171,30 +192,27 @@ kproc util.rb_tree.insert ;/////////////////////////////////////////////////////
         ;klog_   LOG_DEBUG, "  case 5\n"
         ; eax ^= node
         mov     ecx, eax
-        mov     edx, [eax + rb_tree_node_t.parent_ptr]
+        mov     edx, [eax + rb_tree_node_t._.parent_ptr]
 
         call    util.b_tree._.get_grandparent
 
-        and     [edx + rb_tree_node_t.color], 0
-        or      [eax + rb_tree_node_t.color], 1
+        and     [edx + rb_tree_node_t._.color], 0
+        or      [eax + rb_tree_node_t._.color], 1
 
-        cmp     ecx, [edx + rb_tree_node_t.left_ptr]
+        cmp     ecx, [edx + rb_tree_node_t._.left_ptr]
         jne     .case_5_check_other
-        cmp     edx, [eax + rb_tree_node_t.left_ptr]
-        jne     .case_5_rotate_left
+        cmp     edx, [eax + rb_tree_node_t._.left_ptr]
+        jne     .case_5_check_other
 
-        ;mov     eax, edx
         call    util.b_tree._.rotate_right
         jmp     .case_5_end
 
   .case_5_check_other:
-        ;cmp     ecx, [edx + rb_tree_node_t.right_ptr]
-        ;jne     .case_5_end
-        cmp     edx, [eax + rb_tree_node_t.right_ptr]
+        cmp     ecx, [edx + rb_tree_node_t._.right_ptr]
+        jne     .case_5_end
+        cmp     edx, [eax + rb_tree_node_t._.right_ptr]
         jne     .case_5_end
 
-  .case_5_rotate_left:
-        ;mov     eax, edx
         call    util.b_tree._.rotate_left
 
   .case_5_end:
@@ -216,8 +234,8 @@ kproc util.rb_tree.remove ;/////////////////////////////////////////////////////
 ;< eax ^= new root node
 ;-----------------------------------------------------------------------------------------------------------------------
         klog_   LOG_TRACE, "util.b_tree.remove(%x)\n", eax
-        mov     ecx, [eax + rb_tree_node_t.left_ptr]
-        mov     ebx, [eax + rb_tree_node_t.right_ptr]
+        mov     ecx, [eax + rb_tree_node_t._.left_ptr]
+        mov     ebx, [eax + rb_tree_node_t._.right_ptr]
 
         test    ecx, ecx
         jz      .delete
@@ -226,7 +244,7 @@ kproc util.rb_tree.remove ;/////////////////////////////////////////////////////
         jz      .delete
 
     @@: ; ecx ^= right child
-        mov     ebx, [ecx + rb_tree_node_t.left_ptr]
+        mov     ebx, [ecx + rb_tree_node_t._.left_ptr]
         test    ebx, ebx
         jz      @f
 
@@ -237,22 +255,24 @@ kproc util.rb_tree.remove ;/////////////////////////////////////////////////////
         xchg    ebx, ecx
         call    util.b_tree._.swap
         xchg    eax, ebx
-        mov     ebx, [eax + rb_tree_node_t.right_ptr]
+        mov     ebx, [eax + rb_tree_node_t._.right_ptr]
 
   .delete:
         ;klog_   LOG_DEBUG, "  delete\n"
         ; eax ^= node
         ; ebx ^= [presumably] non-null child node (while its sibling is null node for sure)
-        cmp     [eax + rb_tree_node_t.color], 0
+        cmp     [eax + rb_tree_node_t._.color], 0
         jne     .replace
 
+        xor     ecx, ecx
         test    ebx, ebx
         jz      @f
 
-        mov     cl, [ebx + rb_tree_node_t.color]
-        mov     [eax + rb_tree_node_t.color], cl
+        mov     cl, [ebx + rb_tree_node_t._.color]
 
-    @@: push    eax ebx
+    @@: mov     [eax + rb_tree_node_t._.color], cl
+
+        push    eax ebx
         call    .case_1
         pop     ebx eax
 
@@ -263,8 +283,8 @@ kproc util.rb_tree.remove ;/////////////////////////////////////////////////////
         jnz     @f
 
         ;klog_   LOG_DEBUG, "  replace (null)\n"
-        mov     ecx, [eax + rb_tree_node_t.parent_ptr]
-        and     [eax + rb_tree_node_t.parent_ptr], 0
+        mov     ecx, [eax + rb_tree_node_t._.parent_ptr]
+        and     [eax + rb_tree_node_t._.parent_ptr], 0
         call    util.b_tree._.fix_parent_pointer
         xchg    eax, ecx
         jmp     .fix_root_color
@@ -278,13 +298,13 @@ kproc util.rb_tree.remove ;/////////////////////////////////////////////////////
         test    eax, eax
         jz      .exit
 
-        and     [eax + rb_tree_node_t.color], 0
+        and     [eax + rb_tree_node_t._.color], 0
         jmp     .exit
 
   .case_1:
         ;klog_   LOG_DEBUG, "  case 1\n"
         ; eax ^= node
-        mov     ebx, [eax + rb_tree_node_t.parent_ptr]
+        mov     ebx, [eax + rb_tree_node_t._.parent_ptr]
         test    ebx, ebx
         jz      .exit
 
@@ -296,13 +316,15 @@ kproc util.rb_tree.remove ;/////////////////////////////////////////////////////
 
         call    util.b_tree._.get_sibling
 
-        cmp     [eax + rb_tree_node_t.color], 0
+        test    eax, eax
+        jz      .case_3
+        cmp     [eax + rb_tree_node_t._.color], 0
         je      .case_3
 
-        or      [ebx + rb_tree_node_t.color], 1
-        and     [eax + rb_tree_node_t.color], 0
+        or      [ebx + rb_tree_node_t._.color], 1
+        and     [eax + rb_tree_node_t._.color], 0
 
-        mov     eax, [ebx + rb_tree_node_t.left_ptr]
+        mov     eax, [ebx + rb_tree_node_t._.left_ptr]
         cmp     eax, [esp]
         mov     eax, ebx
         jne     @f
@@ -317,31 +339,33 @@ kproc util.rb_tree.remove ;/////////////////////////////////////////////////////
         ; [esp] ^= node
         mov     eax, [esp]
 
-        mov     ebx, [eax + rb_tree_node_t.parent_ptr]
+        mov     ebx, [eax + rb_tree_node_t._.parent_ptr]
         call    util.b_tree._.get_sibling
 
-        cmp     [ebx + rb_tree_node_t.color], 0
+        test    ebx, ebx
+        jz      @f
+        cmp     [ebx + rb_tree_node_t._.color], 0
         jne     .case_4
 
-        ;test    eax, eax
-        ;jz      .case_3_exit
-        cmp     [eax + rb_tree_node_t.color], 0
+    @@: test    eax, eax
+        jz      .case_4 ; case_3_exit
+        cmp     [eax + rb_tree_node_t._.color], 0
         jne     .case_4
 
-        mov     ecx, [eax + rb_tree_node_t.left_ptr]
+        mov     ecx, [eax + rb_tree_node_t._.left_ptr]
         test    ecx, ecx
         jz      @f
-        cmp     [ecx + rb_tree_node_t.color], 0
+        cmp     [ecx + rb_tree_node_t._.color], 0
         jne     .case_4
 
-    @@: mov     ecx, [eax + rb_tree_node_t.right_ptr]
+    @@: mov     ecx, [eax + rb_tree_node_t._.right_ptr]
         test    ecx, ecx
         jz      .case_3_exit
-        cmp     [ecx + rb_tree_node_t.color], 0
+        cmp     [ecx + rb_tree_node_t._.color], 0
         jne     .case_4
 
   .case_3_exit:
-        or      [eax + rb_tree_node_t.color], 1
+        or      [eax + rb_tree_node_t._.color], 1
         xchg    eax, ebx
         add     esp, 4
         jmp     .case_1 ; tail recursion here
@@ -351,30 +375,33 @@ kproc util.rb_tree.remove ;/////////////////////////////////////////////////////
         ; [esp] ^= node
         ; eax ^= sibling node
         ; ebx ^= parent node
-        cmp     [ebx + rb_tree_node_t.color], 0
+        test    ebx, ebx
+        jz      .case_5
+        cmp     [ebx + rb_tree_node_t._.color], 0
         je      .case_5
 
         test    eax, eax
         jz      .case_4_exit2
-        cmp     [eax + rb_tree_node_t.color], 0
+        cmp     [eax + rb_tree_node_t._.color], 0
         jne     .case_5
 
-        mov     ecx, [eax + rb_tree_node_t.left_ptr]
+        mov     ecx, [eax + rb_tree_node_t._.left_ptr]
         test    ecx, ecx
         jz      @f
-        cmp     [ecx + rb_tree_node_t.color], 0
+        cmp     [ecx + rb_tree_node_t._.color], 0
         jne     .case_5
 
-    @@: mov     ecx, [eax + rb_tree_node_t.right_ptr]
+    @@: mov     ecx, [eax + rb_tree_node_t._.right_ptr]
         test    ecx, ecx
         jz      .case_4_exit
-        cmp     [ecx + rb_tree_node_t.color], 0
+        cmp     [ecx + rb_tree_node_t._.color], 0
         jne     .case_5
 
   .case_4_exit:
-        or      [eax + rb_tree_node_t.color], 1
+        or      [eax + rb_tree_node_t._.color], 1
+
   .case_4_exit2:
-        and     [ebx + rb_tree_node_t.color], 0
+        and     [ebx + rb_tree_node_t._.color], 0
         jmp     .exit_pop
 
   .case_5:
@@ -382,78 +409,83 @@ kproc util.rb_tree.remove ;/////////////////////////////////////////////////////
         ; [esp] ^= node
         ; eax ^= sibling node
         ; ebx ^= parent node
-        cmp     [eax + rb_tree_node_t.color], 0
+        test    ebx, ebx
+        jz      .exit_pop
+        test    eax, eax
+        jz      .exit_pop
+
+        cmp     [eax + rb_tree_node_t._.color], 0
         jne     .case_6
 
-        mov     ecx, [ebx + rb_tree_node_t.left_ptr]
+        mov     ecx, [ebx + rb_tree_node_t._.left_ptr]
         cmp     ecx, [esp]
         jne     .case_5_check_other
 
-        mov     ecx, [eax + rb_tree_node_t.right_ptr]
+        mov     ecx, [eax + rb_tree_node_t._.right_ptr]
         test    ecx, ecx
         jz      @f
-        cmp     [ecx + rb_tree_node_t.color], 0
+        cmp     [ecx + rb_tree_node_t._.color], 0
         jne     .case_5_check_other
 
-    @@: mov     ecx, [eax + rb_tree_node_t.left_ptr]
+    @@: mov     ecx, [eax + rb_tree_node_t._.left_ptr]
         test    ecx, ecx
         jz      .case_5_check_other
-        cmp     [ecx + rb_tree_node_t.color], 0
+        cmp     [ecx + rb_tree_node_t._.color], 0
         je      .case_5_check_other
 
-        or      [eax + rb_tree_node_t.color], 1
-        and     [ecx + rb_tree_node_t.color], 0
+        or      [eax + rb_tree_node_t._.color], 1
+        and     [ecx + rb_tree_node_t._.color], 0
         call    util.b_tree._.rotate_right
         jmp     .case_6
 
   .case_5_check_other:
-        mov     ecx, [eax + rb_tree_node_t.left_ptr]
+        mov     ecx, [eax + rb_tree_node_t._.left_ptr]
         test    ecx, ecx
         jz      @f
-        cmp     [ecx + rb_tree_node_t.color], 0
+        cmp     [ecx + rb_tree_node_t._.color], 0
         jne     .case_6
 
-    @@: mov     ecx, [eax + rb_tree_node_t.right_ptr]
+    @@: mov     ecx, [eax + rb_tree_node_t._.right_ptr]
         test    ecx, ecx
         jz      .case_6
-        cmp     [ecx + rb_tree_node_t.color], 0
+        cmp     [ecx + rb_tree_node_t._.color], 0
         je      .case_6
 
-        or      [eax + rb_tree_node_t.color], 1
-        and     [ecx + rb_tree_node_t.color], 0
+        or      [eax + rb_tree_node_t._.color], 1
+        and     [ecx + rb_tree_node_t._.color], 0
         call    util.b_tree._.rotate_left
 
   .case_6:
         ;klog_   LOG_DEBUG, "  case 6\n"
         ; [esp] ^= node
         mov     eax, [esp]
-        mov     ebx, [eax + rb_tree_node_t.parent_ptr]
+        mov     ebx, [eax + rb_tree_node_t._.parent_ptr]
         call    util.b_tree._.get_sibling
 
-        mov     cl, [ebx + rb_tree_node_t.color]
-        mov     [eax + rb_tree_node_t.color], cl
-        and     [ebx + rb_tree_node_t.color], 0
+        mov     cl, [ebx + rb_tree_node_t._.color]
+        mov     [eax + rb_tree_node_t._.color], cl
+        and     [ebx + rb_tree_node_t._.color], 0
 
-        mov     ecx, [ebx + rb_tree_node_t.left_ptr]
+        mov     ecx, [ebx + rb_tree_node_t._.left_ptr]
         cmp     ecx, [esp]
         xchg    eax, ebx
         jne     .case_6_fix_left
 
-        mov     ecx, [ebx + rb_tree_node_t.right_ptr]
+        mov     ecx, [ebx + rb_tree_node_t._.right_ptr]
         test    ecx, ecx
         jz      @f
 
-        and     [ecx + rb_tree_node_t.color], 0
+        and     [ecx + rb_tree_node_t._.color], 0
 
     @@: call    util.b_tree._.rotate_left
         jmp     .exit_pop
 
   .case_6_fix_left:
-        mov     ecx, [ebx + rb_tree_node_t.left_ptr]
+        mov     ecx, [ebx + rb_tree_node_t._.left_ptr]
         test    ecx, ecx
         jz      @f
 
-        and     [ecx + rb_tree_node_t.color], 0
+        and     [ecx + rb_tree_node_t._.color], 0
 
     @@: call    util.b_tree._.rotate_right
 
@@ -476,7 +508,7 @@ kproc util.b_tree._.get_root ;//////////////////////////////////////////////////
         jz      .exit
 
   .next_parent_node:
-        mov     ecx, [eax + rb_tree_node_t.parent_ptr]
+        mov     ecx, [eax + rb_tree_node_t._.parent_ptr]
         test    ecx, ecx
         jz      .exit
 
@@ -497,11 +529,11 @@ kproc util.b_tree._.get_grandparent ;///////////////////////////////////////////
         test    eax, eax
         jz      .exit
 
-        mov     eax, [eax + rb_tree_node_t.parent_ptr]
+        mov     eax, [eax + rb_tree_node_t._.parent_ptr]
         test    eax, eax
         jz      .exit
 
-        mov     eax, [eax + rb_tree_node_t.parent_ptr]
+        mov     eax, [eax + rb_tree_node_t._.parent_ptr]
 
   .exit:
         ret
@@ -515,20 +547,24 @@ kproc util.b_tree._.get_uncle ;/////////////////////////////////////////////////
 ;< eax ^= uncle node
 ;< ecx ^= grandparent node
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     ecx, [eax + rb_tree_node_t.parent_ptr]
+        mov     ecx, [eax + rb_tree_node_t._.parent_ptr]
 
         call    util.b_tree._.get_grandparent
         test    eax, eax
-        jz      .exit
+        jz      .error
 
         xchg    eax, ecx
-        cmp     eax, [ecx + rb_tree_node_t.left_ptr]
-        mov     eax, [ecx + rb_tree_node_t.right_ptr]
+        cmp     eax, [ecx + rb_tree_node_t._.left_ptr]
+        mov     eax, [ecx + rb_tree_node_t._.right_ptr]
         je      .exit
 
-        mov     eax, [ecx + rb_tree_node_t.left_ptr]
+        mov     eax, [ecx + rb_tree_node_t._.left_ptr]
 
   .exit:
+        ret
+
+  .error:
+        xor     ecx, ecx
         ret
 kendp
 
@@ -539,14 +575,14 @@ kproc util.b_tree._.get_sibling ;///////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax ^= sibling node
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     ecx, [eax + rb_tree_node_t.parent_ptr]
+        mov     ecx, [eax + rb_tree_node_t._.parent_ptr]
 
-        mov     edx, [ecx + rb_tree_node_t.left_ptr]
+        mov     edx, [ecx + rb_tree_node_t._.left_ptr]
         cmp     eax, edx
         xchg    eax, edx
         jne     .exit
 
-        mov     eax, [ecx + rb_tree_node_t.right_ptr]
+        mov     eax, [ecx + rb_tree_node_t._.right_ptr]
 
   .exit:
         ret
@@ -565,17 +601,17 @@ kproc util.b_tree._.swap ;//////////////////////////////////////////////////////
         add     esp, -4
         mov     ebp, esp
 
-        push    dword[eax + rb_tree_node_t.color] dword[ebx + rb_tree_node_t.color]
+        push    dword[eax + rb_tree_node_t._.color] dword[ebx + rb_tree_node_t._.color]
 
         ; T* ll = l->left;
-        mov     ecx, [eax + rb_tree_node_t.left_ptr]
+        mov     ecx, [eax + rb_tree_node_t._.left_ptr]
         ; T* llx = check_node(ll, l, r);
         call    .check_node
         push    edx
 
         ; T** llp = ll ? &llx->parent : &dummy;
         test    ecx, ecx
-        lea     ecx, [edx + rb_tree_node_t.parent_ptr]
+        lea     ecx, [edx + rb_tree_node_t._.parent_ptr]
         jnz     .push_first_left
         mov     ecx, ebp
 
@@ -583,14 +619,14 @@ kproc util.b_tree._.swap ;//////////////////////////////////////////////////////
         push    ecx
 
         ; T* lr = l->right;
-        mov     ecx, [eax + rb_tree_node_t.right_ptr]
+        mov     ecx, [eax + rb_tree_node_t._.right_ptr]
         ; T* lrx = check_node(lr, l, r);
         call    .check_node
         push    edx
 
         ; T** lrp = lr ? &lrx->parent : &dummy;
         test    ecx, ecx
-        lea     ecx, [edx + rb_tree_node_t.parent_ptr]
+        lea     ecx, [edx + rb_tree_node_t._.parent_ptr]
         jnz     .push_first_right
         mov     ecx, ebp
 
@@ -598,7 +634,7 @@ kproc util.b_tree._.swap ;//////////////////////////////////////////////////////
         push    ecx
 
         ; T* lp = l->parent;
-        mov     ecx, [eax + rb_tree_node_t.parent_ptr]
+        mov     ecx, [eax + rb_tree_node_t._.parent_ptr]
         ; T* lpx = check_node(lp, l, r);
         call    .check_node
         push    edx
@@ -606,11 +642,10 @@ kproc util.b_tree._.swap ;//////////////////////////////////////////////////////
         ; T** lpc = lp ? (lp->left == l ? &lpx->left : &lpx->right) : &dummy;
         test    ecx, ecx
         jz      .dummy_first_parent
-        add     ecx, rb_tree_node_t.left_ptr
-        add     edx, rb_tree_node_t.left_ptr
-        cmp     eax, [ecx]
+        add     edx, rb_tree_node_t._.left_ptr
+        cmp     eax, [ecx + rb_tree_node_t._.left_ptr]
         je      .push_first_parent
-        add     edx, rb_tree_node_t.right_ptr - rb_tree_node_t.left_ptr
+        add     edx, rb_tree_node_t._.right_ptr - rb_tree_node_t._.left_ptr
         jmp     .push_first_parent
 
   .dummy_first_parent:
@@ -622,14 +657,14 @@ kproc util.b_tree._.swap ;//////////////////////////////////////////////////////
         xchg    eax, ebx
 
         ; T* rl = r->left;
-        mov     ecx, [eax + rb_tree_node_t.left_ptr]
+        mov     ecx, [eax + rb_tree_node_t._.left_ptr]
         ; T* rlx = check_node(rl, r, l);
         call    .check_node
         push    edx
 
         ; T** rlp = rl ? &rlx->parent : &dummy;
         test    ecx, ecx
-        lea     ecx, [edx + rb_tree_node_t.parent_ptr]
+        lea     ecx, [edx + rb_tree_node_t._.parent_ptr]
         jnz     .push_second_left
         mov     ecx, ebp
 
@@ -637,14 +672,14 @@ kproc util.b_tree._.swap ;//////////////////////////////////////////////////////
         push    ecx
 
         ; T* rr = r->right;
-        mov     ecx, [eax + rb_tree_node_t.right_ptr]
+        mov     ecx, [eax + rb_tree_node_t._.right_ptr]
         ; T* rrx = check_node(rr, r, l);
         call    .check_node
         push    edx
 
         ; T** rrp = rr ? &rrx->parent : &dummy;
         test    ecx, ecx
-        lea     ecx, [edx + rb_tree_node_t.parent_ptr]
+        lea     ecx, [edx + rb_tree_node_t._.parent_ptr]
         jnz     .push_second_right
         mov     ecx, ebp
 
@@ -652,7 +687,7 @@ kproc util.b_tree._.swap ;//////////////////////////////////////////////////////
         push    ecx
 
         ; T* rp = r->parent;
-        mov     ecx, [eax + rb_tree_node_t.parent_ptr]
+        mov     ecx, [eax + rb_tree_node_t._.parent_ptr]
         ; T* rpx = check_node(rp, r, l);
         call    .check_node
         push    edx
@@ -660,11 +695,10 @@ kproc util.b_tree._.swap ;//////////////////////////////////////////////////////
         ; T** rpc = lp ? (rp->left == r ? &rpx->left : &rpx->right) : &dummy;
         test    ecx, ecx
         jz      .dummy_second_parent
-        add     ecx, rb_tree_node_t.left_ptr
-        add     edx, rb_tree_node_t.left_ptr
-        cmp     eax, [ecx]
+        add     edx, rb_tree_node_t._.left_ptr
+        cmp     eax, [ecx + rb_tree_node_t._.left_ptr]
         je      .push_second_parent
-        add     edx, rb_tree_node_t.right_ptr - rb_tree_node_t.left_ptr
+        add     edx, rb_tree_node_t._.right_ptr - rb_tree_node_t._.left_ptr
         jmp     .push_second_parent
 
   .dummy_second_parent:
@@ -679,17 +713,17 @@ kproc util.b_tree._.swap ;//////////////////////////////////////////////////////
         pop     ecx
         mov     [ecx], eax
         ; l->parent = rpx;
-        pop     [eax + rb_tree_node_t.parent_ptr]
+        pop     [eax + rb_tree_node_t._.parent_ptr]
         ; *rrp = l;
         pop     ecx
         mov     [ecx], eax
         ; l->right = rrx;
-        pop     [eax + rb_tree_node_t.right_ptr]
+        pop     [eax + rb_tree_node_t._.right_ptr]
         ; *rlp = l;
         pop     ecx
         mov     [ecx], eax
         ; l->left = rlx;
-        pop     [eax + rb_tree_node_t.left_ptr]
+        pop     [eax + rb_tree_node_t._.left_ptr]
 
         xchg    eax, ebx
 
@@ -697,19 +731,19 @@ kproc util.b_tree._.swap ;//////////////////////////////////////////////////////
         pop     ecx
         mov     [ecx], eax
         ; r->parent = lpx;
-        pop     [eax + rb_tree_node_t.parent_ptr]
+        pop     [eax + rb_tree_node_t._.parent_ptr]
         ; *lrp = r;
         pop     ecx
         mov     [ecx], eax
         ; r->right = lrx;
-        pop     [eax + rb_tree_node_t.right_ptr]
+        pop     [eax + rb_tree_node_t._.right_ptr]
         ; *llp = r;
         pop     ecx
         mov     [ecx], eax
         ; r->left = llx;
-        pop     [eax + rb_tree_node_t.left_ptr]
+        pop     [eax + rb_tree_node_t._.left_ptr]
 
-        pop     dword[ebx + rb_tree_node_t.color] dword[eax + rb_tree_node_t.color]
+        pop     dword[ebx + rb_tree_node_t._.color] dword[eax + rb_tree_node_t._.color]
 
         add     esp, 4
         pop     ebp edx ecx
@@ -738,13 +772,13 @@ kproc util.b_tree._.fix_parent_pointer ;////////////////////////////////////////
         test    ecx, ecx
         jz      .exit
 
-        cmp     eax, [ecx + rb_tree_node_t.left_ptr]
+        cmp     eax, [ecx + rb_tree_node_t._.left_ptr]
         jne     @f
 
-        mov     [ecx + rb_tree_node_t.left_ptr], ebx
+        mov     [ecx + rb_tree_node_t._.left_ptr], ebx
         jmp     .exit
 
-    @@: mov     [ecx + rb_tree_node_t.right_ptr], ebx
+    @@: mov     [ecx + rb_tree_node_t._.right_ptr], ebx
 
   .exit:
         ret
@@ -757,13 +791,13 @@ kproc util.b_tree._.replace ;///////////////////////////////////////////////////
 ;> ebx ^= second node
 ;-----------------------------------------------------------------------------------------------------------------------
         klog_   LOG_TRACE, "util.b_tree._.replace(%x,%x)\n", eax, ebx
-        mov     ecx, [eax + rb_tree_node_t.parent_ptr]
-        mov     [ebx + rb_tree_node_t.parent_ptr], ecx
+        mov     ecx, [eax + rb_tree_node_t._.parent_ptr]
+        mov     [ebx + rb_tree_node_t._.parent_ptr], ecx
         call    util.b_tree._.fix_parent_pointer
 
-        and     [eax + rb_tree_node_t.parent_ptr], 0
-        and     [eax + rb_tree_node_t.left_ptr], 0
-        and     [eax + rb_tree_node_t.right_ptr], 0
+        and     [eax + rb_tree_node_t._.parent_ptr], 0
+        and     [eax + rb_tree_node_t._.left_ptr], 0
+        and     [eax + rb_tree_node_t._.right_ptr], 0
         ret
 kendp
 
@@ -776,30 +810,30 @@ kproc util.b_tree._.rotate_left ;///////////////////////////////////////////////
         push    eax ecx edx
 
         mov     ecx, eax
-        mov     eax, [ecx + rb_tree_node_t.right_ptr]
-        mov     edx, [eax + rb_tree_node_t.left_ptr]
+        mov     eax, [ecx + rb_tree_node_t._.right_ptr]
+        mov     edx, [eax + rb_tree_node_t._.left_ptr]
 
-        mov     [ecx + rb_tree_node_t.right_ptr], edx
+        mov     [ecx + rb_tree_node_t._.right_ptr], edx
         test    edx, edx
         jz      @f
-        mov     [edx + rb_tree_node_t.parent_ptr], ecx
+        mov     [edx + rb_tree_node_t._.parent_ptr], ecx
 
-    @@: mov     edx, [ecx + rb_tree_node_t.parent_ptr]
-        mov     [eax + rb_tree_node_t.parent_ptr], edx
+    @@: mov     edx, [ecx + rb_tree_node_t._.parent_ptr]
+        mov     [eax + rb_tree_node_t._.parent_ptr], edx
         test    edx, edx
         jz      .finish
 
-        cmp     ecx, [edx + rb_tree_node_t.left_ptr]
+        cmp     ecx, [edx + rb_tree_node_t._.left_ptr]
         jne     @f
 
-        mov     [edx + rb_tree_node_t.left_ptr], eax
+        mov     [edx + rb_tree_node_t._.left_ptr], eax
         jmp     .finish
 
-    @@: mov     [edx + rb_tree_node_t.right_ptr], eax
+    @@: mov     [edx + rb_tree_node_t._.right_ptr], eax
 
   .finish:
-        mov     [eax + rb_tree_node_t.left_ptr], ecx
-        mov     [ecx + rb_tree_node_t.parent_ptr], eax
+        mov     [eax + rb_tree_node_t._.left_ptr], ecx
+        mov     [ecx + rb_tree_node_t._.parent_ptr], eax
 
         pop     edx ecx eax
         ret
@@ -814,30 +848,30 @@ kproc util.b_tree._.rotate_right ;//////////////////////////////////////////////
         push    eax ecx edx
 
         mov     ecx, eax
-        mov     eax, [ecx + rb_tree_node_t.left_ptr]
-        mov     edx, [eax + rb_tree_node_t.right_ptr]
+        mov     eax, [ecx + rb_tree_node_t._.left_ptr]
+        mov     edx, [eax + rb_tree_node_t._.right_ptr]
 
-        mov     [ecx + rb_tree_node_t.left_ptr], edx
+        mov     [ecx + rb_tree_node_t._.left_ptr], edx
         test    edx, edx
         jz      @f
-        mov     [edx + rb_tree_node_t.parent_ptr], ecx
+        mov     [edx + rb_tree_node_t._.parent_ptr], ecx
 
-    @@: mov     edx, [ecx + rb_tree_node_t.parent_ptr]
-        mov     [eax + rb_tree_node_t.parent_ptr], edx
+    @@: mov     edx, [ecx + rb_tree_node_t._.parent_ptr]
+        mov     [eax + rb_tree_node_t._.parent_ptr], edx
         test    edx, edx
         jz      .finish
 
-        cmp     ecx, [edx + rb_tree_node_t.left_ptr]
+        cmp     ecx, [edx + rb_tree_node_t._.left_ptr]
         jne     @f
 
-        mov     [edx + rb_tree_node_t.left_ptr], eax
+        mov     [edx + rb_tree_node_t._.left_ptr], eax
         jmp     .finish
 
-    @@: mov     [edx + rb_tree_node_t.right_ptr], eax
+    @@: mov     [edx + rb_tree_node_t._.right_ptr], eax
 
   .finish:
-        mov     [eax + rb_tree_node_t.right_ptr], ecx
-        mov     [ecx + rb_tree_node_t.parent_ptr], eax
+        mov     [eax + rb_tree_node_t._.right_ptr], ecx
+        mov     [ecx + rb_tree_node_t._.parent_ptr], eax
 
         pop     edx ecx eax
         ret
