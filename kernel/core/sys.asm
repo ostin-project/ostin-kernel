@@ -444,6 +444,18 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         pop     esi
         shl     esi, 5
         mov     [TASK_DATA + esi - sizeof.task_data_t + task_data_t.state], TSTATE_FREE
+
+        pusha
+        lea     eax, [TASK_DATA + esi - sizeof.task_data_t]
+        call    core.thread.compat.find_by_task_data
+        test    eax, eax
+        jz      .thread_not_found_1
+
+        call    core.thread.destroy
+
+  .thread_not_found_1:
+        popa
+        
         ret
 
     @@: cli
@@ -775,6 +787,18 @@ end if ; KCONFIG_BLKDEV_FLOPPY
         mov     edi, esi ; do not run this process slot
         shl     edi, 5
         mov     [TASK_DATA + edi - sizeof.task_data_t + task_data_t.state], TSTATE_FREE
+
+        pusha
+        lea     eax, [TASK_DATA + edi - sizeof.task_data_t]
+        call    core.thread.compat.find_by_task_data
+        test    eax, eax
+        jz      .thread_not_found_2
+
+        call    core.thread.destroy
+
+  .thread_not_found_2:
+        popa
+
         ; debugger test - terminate all debuggees
         mov     eax, 2
         mov     ecx, SLOT_BASE + 2 * sizeof.task_data_t + app_data_t.debugger_slot

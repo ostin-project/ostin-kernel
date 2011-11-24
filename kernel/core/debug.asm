@@ -537,7 +537,7 @@ kproc debugger_notify ;/////////////////////////////////////////////////////////
         ; new debug event
         mov     eax, ebp
         shl     eax, 8
-        or      byte[SLOT_BASE + eax + app_data_t.event_mask + 1], 1 ; set flag 0x100
+        or      [SLOT_BASE + eax + app_data_t.event_mask], EVENT_DEBUG
 
   .ret:
         ret

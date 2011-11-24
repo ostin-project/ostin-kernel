@@ -116,10 +116,15 @@ endg
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc update_counters ;/////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     edi, [TASK_BASE]
+        mov     edi, [CURRENT_THREAD]
+        test    edi, edi
+        jz      .exit
+
         rdtsc
-        sub     eax, [edi + task_data_t.stats.counter_add] ; time stamp counter add
-        add     [edi + task_data_t.stats.counter_sum], eax ; counter sum
+        sub     eax, [edi + core.thread_t.stats.counter_add]
+        add     [edi + core.thread_t.stats.counter_sum], eax
+
+  .exit:
         ret
 kendp
 
@@ -129,15 +134,20 @@ kproc updatecputimes ;//////////////////////////////////////////////////////////
         xor     eax, eax
         xchg    eax, [idleuse]
         mov     [idleusesec], eax
-        mov     ecx, [TASK_COUNT]
-        mov     edi, TASK_DATA
 
-  .newupdate:
+        mov     ecx, .update_cpu_usage
+        call    core.thread.enumerate
+        ret
+
+;-----------------------------------------------------------------------------------------------------------------------
+  .update_cpu_usage: ;::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+;-----------------------------------------------------------------------------------------------------------------------
+        push    edi
+        xor     edi, edi
+        xchg    edi, [eax + core.thread_t.stats.counter_sum]
+        mov     [eax + core.thread_t.stats.cpu_usage], edi
         xor     eax, eax
-        xchg    eax, [edi + task_data_t.stats.counter_sum]
-        mov     [edi + task_data_t.stats.cpu_usage], eax
-        add     edi, sizeof.task_data_t
-        loop    .newupdate
+        pop     edi
         ret
 kendp
 
@@ -156,7 +166,8 @@ kproc find_next_task ;//////////////////////////////////////////////////////////
 ;   [current_slot] is not set to new value (ebx)!!!
 ; scratched: eax,ecx
 ;-----------------------------------------------------------------------------------------------------------------------
-        call    update_counters ; edi := [TASK_BASE]
+        call    update_counters
+        mov     edi, [TASK_BASE]
         Mov     esi, ebx, [current_slot]
 
   .loop:
@@ -194,10 +205,23 @@ kproc find_next_task ;//////////////////////////////////////////////////////////
 
   .found:
         mov     byte[CURRENT_TASK], bh
+
+        pushad
+        mov     eax, edi
+        call    core.thread.compat.find_by_task_data
+        mov     [CURRENT_THREAD], eax
+        popad
+
         mov     [TASK_BASE], edi
+        mov     ecx, [CURRENT_THREAD]
+        test    ecx, ecx
+        jz      .exit
+
 ;       call    _rdtsc
         rdtsc
-        mov     [edi + task_data_t.stats.counter_add], eax ; for next using update_counters
+        mov     [ecx + core.thread_t.stats.counter_add], eax ; for next using update_counters
+
+  .exit:
         cmp     ebx, esi ; esi - previous slot-base
         ret
 kendp

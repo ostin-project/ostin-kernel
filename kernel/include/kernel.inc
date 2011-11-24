@@ -321,9 +321,9 @@ struct task_data_t
   state      db ?
   wnd_number db ?
              dw ?
-  event_mask dd ?
-  stats      task_stats_t
-             dd ?
+  event_mask dd ? ; -> core.thread_t.events.event_mask
+  stats      task_stats_t ; -> core.thread_t.stats
+  new_pid    dd ?
 ends
 
 static_assert sizeof.task_data_t = 32

@@ -1233,7 +1233,7 @@ endl
 
         mov     eax, [dst_slot]
         shl     eax, 8
-        or      [SLOT_BASE + eax + app_data_t.event_mask], 0x40
+        or      [SLOT_BASE + eax + app_data_t.event_mask], EVENT_IPC
         cmp     dword[check_idle_semaphore], 20
         jge     .ipc_no_cis
 

@@ -565,7 +565,13 @@ kproc get_event_for_app ;///////////////////////////////////////////////////////
         movzx   edi, bh ; bh  is assumed as [CURRENT_TASK]
         shl     edi, 5
         add     edi, TASK_DATA - sizeof.task_data_t ; edi is assumed as [TASK_BASE]
-        mov     ecx, [edi + task_data_t.event_mask]
+
+        mov     eax, edi
+        call    core.thread.compat.find_by_task_data
+        test    eax, eax
+        jz      .no_events
+
+        mov     ecx, [eax + core.thread_t.events.event_mask]
 
   .loop:
         ; until we reset all mask bits

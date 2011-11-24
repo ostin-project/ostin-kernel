@@ -461,13 +461,19 @@ macro include_debug_strings {
 macro klog_ _level, _format, [_args]
 {
   common
+    pushfd
+    cli
     DEBUGF _level, <"K : ", _format>, _args
+    popfd
 }
 
 macro klog2_ _level, _format, [_args]
 {
   common
+    pushfd
+    cli
     DEBUGF _level, _format, _args
+    popfd
 }
 
 macro cond_klog_begin _name, _cond_var

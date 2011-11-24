@@ -533,6 +533,9 @@ high_code:
         stdcall kernel_alloc, [_WinMapRange.size]
         mov     [_WinMapRange.address], eax
 
+        mov     ecx, core.thread.tree_mutex
+        call    mutex_init
+
         xor     eax, eax
         inc     eax
         mov     [CURRENT_TASK], eax ; 1
@@ -719,6 +722,12 @@ end if
         mov     eax, [def_cursor]
         mov     [SLOT_BASE + app_data_t.cursor], eax
         mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.cursor], eax
+
+        call    core.process.create
+        mov     [CURRENT_THREAD], eax
+        mov     ebx, SLOT_BASE + sizeof.app_data_t
+        call    core.process.compat.init_with_app_data
+        or      [eax + core.thread_t.flags], THREAD_FLAG_VALID
 
         ; READ TSC / SECOND
         mov     esi, boot_tsc
@@ -2248,9 +2257,17 @@ kproc sysfn.get_process_info ;//////////////////////////////////////////////////
 
         shl     ecx, 5
 
-        ; +0: dword: memory usage
-        mov     eax, [TASK_DATA + ecx - sizeof.task_data_t + task_data_t.stats.cpu_usage]
+        lea     eax, [TASK_DATA + ecx - sizeof.task_data_t]
+        call    core.thread.compat.find_by_task_data
+        test    eax, eax
+        jz      .nofillbuf
+
+        mov     ebp, eax
+
+        ; +0: dword: cpu usage
+        mov     eax, [ebp + core.thread_t.stats.cpu_usage]
         mov     [ebx], eax
+
         ; +10: 11 bytes: name of the process
         push    ecx
         lea     eax, [SLOT_BASE + ecx * 8 + app_data_t.app_name]
@@ -2303,7 +2320,7 @@ kproc sysfn.get_process_info ;//////////////////////////////////////////////////
         stosb
 
         ; Event mask (+71)
-        mov     eax, [TASK_DATA + ecx - sizeof.task_data_t + task_data_t.event_mask]
+        mov     eax, [ebp + core.thread_t.events.event_mask]
         stosd
 
         pop     esi
@@ -2495,7 +2512,7 @@ kproc checkmisc ;///////////////////////////////////////////////////////////////
 
   .set_mouse_event:
         add     edi, sizeof.app_data_t
-        or      [SLOT_BASE + edi + app_data_t.event_mask], 0100000b
+        or      [SLOT_BASE + edi + app_data_t.event_mask], EVENT_MOUSE
         loop    .set_mouse_event
 
   .mouse_not_active:
@@ -2506,7 +2523,7 @@ kproc checkmisc ;///////////////////////////////////////////////////////////////
 
   .set_bgr_event:
         add     edi, sizeof.app_data_t
-        or      [SLOT_BASE + edi + app_data_t.event_mask], 16
+        or      [SLOT_BASE + edi + app_data_t.event_mask], EVENT_BACKGROUND
         loop    .set_bgr_event
         mov     [BACKGROUND_CHANGED], 0
 
@@ -2754,9 +2771,10 @@ kproc sysfn.set_process_event_mask ;////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 40
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     edi, [TASK_BASE]
-        mov     eax, [edi + task_data_t.event_mask]
-        mov     [edi + task_data_t.event_mask], ebx
+        mov     edi, [CURRENT_THREAD]
+        mov     eax, [edi + core.thread_t.events.event_mask]
+        mov     [edi + core.thread_t.events.event_mask], ebx
+
         mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp

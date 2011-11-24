@@ -280,6 +280,7 @@ cpu_info          rd 1
 cpu_caps          rd 4
 
 CURRENT_TASK      dd ?
+CURRENT_THREAD    dd ?
 TASK_COUNT        dd ?
 TASK_BASE         dd ?
 

@@ -202,6 +202,7 @@ endl
 
     @@: mov     ecx, 8 ; 8 chars for name
         mov     edi, [slot_base]
+        add     edi, app_data_t.app_name
 
   .copy_process_name_loop:
         lodsb
@@ -1185,7 +1186,8 @@ endl
         add     ebx, TASK_DATA - sizeof.task_data_t ; ebx - pointer to information about process
         mov     [ebx + task_data_t.wnd_number], al ; set window number on screen = process slot
 
-        mov     [ebx + task_data_t.event_mask], 1 + 2 + 4 ; set default event flags (see 40 function)
+        ; set default event flags (see 40 function)
+        mov     [ebx + task_data_t.event_mask], EVENT_REDRAW + EVENT_KEY + EVENT_BUTTON
 
         inc     dword[process_number]
         mov     eax, [process_number]
@@ -1238,6 +1240,29 @@ endl
         mov     [SLOT_BASE + ebx * 8 + app_data_t.debugger_slot], eax
 
   .no_debug:
+        pusha
+        cmp     [app_path], 0
+        je      .thread
+
+        call    core.process.create
+        mov     ebx, [slot]
+        shl     ebx, 8
+        add     ebx, SLOT_BASE
+        call    core.process.compat.init_with_app_data
+        jmp     @f
+
+  .thread:
+        call    core.thread.create
+        mov     ebx, [slot]
+        shl     ebx, 8
+        add     ebx, SLOT_BASE
+        call    core.thread.compat.init_with_app_data
+
+    @@: mov     cl, [esp + regs_context32_t.cl]
+        mov     [eax + core.thread_t.state], cl
+        or      [eax + core.thread_t.flags], THREAD_FLAG_VALID
+        popa
+
         mov     [TASK_DATA + ebx - sizeof.task_data_t + task_data_t.state], cl
         ret
 endp
