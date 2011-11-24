@@ -15,8 +15,6 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-_esp equ esp
-
 ; Available format specifiers are: %s, %d, %u, %x (with partial width support)
 
 LOG_TRACE   = 1
@@ -73,9 +71,9 @@ macro DEBUGS_N _sign, _num, [_str] {
    ..label:
    mov  edx, ..str
   else
-esp equ esp + 4 * 8 + 4
+   esp equ esp + 4 * 8 + 4 + DEBUGF_ESP_ADD
    mov  edx, _str
-esp equ _esp
+   restore esp
   end if
   if ~_num eq
    if _num eqtype eax
@@ -157,8 +155,7 @@ macro DEBUGD_N _sign, _num, _dec {
  else if _dec eqtype 0
   mov eax, _dec
  else
-;  add esp,4*8+4
-esp equ esp + 4 * 8 + 4
+  esp equ esp + 4 * 8 + 4 + DEBUGF_ESP_ADD
   if _num eq
    mov eax, dword _dec
   else if _num = 1
@@ -176,8 +173,7 @@ esp equ esp + 4 * 8 + 4
   else
    mov eax, dword _dec
   end if
-esp equ _esp
-;  sub esp,4*8+4
+  restore esp
  end if
  mov cl, _sign
  call fdo_debug_outdec
@@ -227,11 +223,9 @@ macro DEBUGH_N _sign, _num, _hex {
  else if _hex eqtype 0
   mov eax, _hex
  else
-;  add esp, 4 * 8 + 4
-esp equ esp + 4 * 8 + 4
+  esp equ esp + 4 * 8 + 4 + DEBUGF_ESP_ADD
   mov eax, dword _hex
-esp equ _esp
-;  sub esp, 4 * 8 + 4
+  restore esp
  end if
  if ~_num eq
   mov edx, _num
@@ -463,7 +457,9 @@ macro klog_ _level, _format, [_args]
   common
     pushfd
     cli
+    DEBUGF_ESP_ADD equ 4
     DEBUGF _level, <"K : ", _format>, _args
+    restore DEBUGF_ESP_ADD
     popfd
 }
 
@@ -472,7 +468,9 @@ macro klog2_ _level, _format, [_args]
   common
     pushfd
     cli
+    DEBUGF_ESP_ADD equ 4
     DEBUGF _level, _format, _args
+    restore DEBUGF_ESP_ADD
     popfd
 }
 
