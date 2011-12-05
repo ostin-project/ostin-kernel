@@ -553,7 +553,7 @@ iglobal
   static_test_ram_device_data:
     ; data
     dd RAMDISK ; offset
-    dd 2 * 80 * 18 * 512 ; length
+    dd 2 * 80 * 18 ; length
     ; needs_free
     db 0
 
@@ -576,7 +576,7 @@ iglobal
     dd static_test_ram_device
     ; range
     dq 0 ; offset
-    dq 2 * 80 * 18 * 512 ; length
+    dq 2 * 80 * 18 ; length
     ; type
     db FS_PARTITION_TYPE_FAT12
     ; number
@@ -643,7 +643,7 @@ iglobal
     dd static_test_floppy_device
     ; range
     dq 0 ; offset
-    dq 2 * 80 * 18 * 512 ; length
+    dq 2 * 80 * 18 ; length
     ; type
     db FS_PARTITION_TYPE_FAT12
     ; number

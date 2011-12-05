@@ -74,21 +74,17 @@ kproc blkdev.floppy.read ;//////////////////////////////////////////////////////
 ;? Read from floppy device.
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> edi ^= buffer
-;> ecx #= buffer size (number of bytes to read)
-;> edx:eax #= offset
+;> ecx #= buffer size (number of blocks to read)
+;> edx:eax #= offset (in blocks)
 ;> ebx ^= blkdev.floppy.device_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;-----------------------------------------------------------------------------------------------------------------------
         ; check that offset is below 4 GiB
-        or      edx, edx
+        test    edx, edx
         jnz     .overflow_error
-
-        ; check that offset and buffer size are multiple of sector size
-        test    eax, FLOPPY_CTL_BYTES_PER_SECTOR - 1
-        jnz     .alignment_error
-        test    ecx, FLOPPY_CTL_BYTES_PER_SECTOR - 1
-        jnz     .alignment_error
+        test    eax, not (0xffffffff shr 9)
+        jnz     .overflow_error
 
         push    ecx esi edi
 
@@ -99,7 +95,7 @@ kproc blkdev.floppy.read ;//////////////////////////////////////////////////////
         ; read sector
         mov     eax, blkdev.floppy._.read_sector
         call    blkdev.floppy._.perform_operation_with_retry
-        or      eax, eax
+        test    eax, eax
         jnz     .exit
 
         ; copy sector data from FDC DMA buffer to the supplied buffer
@@ -111,8 +107,8 @@ kproc blkdev.floppy.read ;//////////////////////////////////////////////////////
         pop     ecx
 
         pop     eax
-        add     eax, FLOPPY_CTL_BYTES_PER_SECTOR
-        sub     ecx, FLOPPY_CTL_BYTES_PER_SECTOR
+        inc     eax
+        dec     ecx
         jnz     .next_sector
 
         xor     eax, eax
@@ -139,21 +135,17 @@ kproc blkdev.floppy.write ;/////////////////////////////////////////////////////
 ;? Write to floppy device.
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> esi ^= buffer
-;> ecx #= buffer size (number of bytes to write)
-;> edx:eax #= offset
+;> ecx #= buffer size (number of blocks to write)
+;> edx:eax #= offset (in blocks)
 ;> ebx ^= blkdev.floppy.device_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;-----------------------------------------------------------------------------------------------------------------------
         ; check that offset is below 4 GiB
-        or      edx, edx
+        test    edx, edx
         jnz     .overflow_error
-
-        ; check that offset and buffer size are multiple of sector size
-        test    eax, FLOPPY_CTL_BYTES_PER_SECTOR - 1
-        jnz     .alignment_error
-        test    ecx, FLOPPY_CTL_BYTES_PER_SECTOR - 1
-        jnz     .alignment_error
+        test    eax, not (0xffffffff shr 9)
+        jnz     .overflow_error
 
         push    ecx esi edi
 
@@ -172,12 +164,12 @@ kproc blkdev.floppy.write ;/////////////////////////////////////////////////////
         ; write sector
         mov     eax, blkdev.floppy._.write_sector
         call    blkdev.floppy._.perform_operation_with_retry
-        or      eax, eax
+        test    eax, eax
         jnz     .exit
 
         pop     eax
-        add     eax, FLOPPY_CTL_BYTES_PER_SECTOR
-        sub     ecx, FLOPPY_CTL_BYTES_PER_SECTOR
+        inc     eax
+        dec     ecx
         jnz     .next_sector
 
         xor     eax, eax
@@ -294,15 +286,13 @@ kproc blkdev.floppy._.calculate_chs ;///////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Convert physical address to CHS.
 ;-----------------------------------------------------------------------------------------------------------------------
-;> eax #= physical address
+;> eax #= LBA
 ;> ebx ^= blkdev.floppy.device_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax ecx edx
 
-        mov     ecx, FLOPPY_CTL_BYTES_PER_SECTOR
-        xor     edx, edx
-        div     ecx ; eax #= LBA
         mov     ecx, FLOPPY_CTL_SECTORS_PER_TRACK
+        xor     edx, edx
         div     ecx
         inc     edx
         mov     [ebx + blkdev.floppy.device_data_t.position.sector], dl

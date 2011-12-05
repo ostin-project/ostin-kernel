@@ -2491,9 +2491,9 @@ kproc fs.fat12._.read_fat ;/////////////////////////////////////////////////////
         cmp     [ebp + fs.fat12.partition_data_t.is_fat_valid], 0
         jne     .exit ; eax = 0
 
-        mov     eax, 512
+        mov_s_  eax, 1
         cdq
-        mov     ecx, 9 * 2 * 512
+        mov_s_  ecx, 9 * 2
         lea     edi, [ebp + fs.fat12.partition_data_t.buffer]
         call    fs.read
         or      eax, eax
@@ -2530,9 +2530,9 @@ kproc fs.fat12._.write_fat ;////////////////////////////////////////////////////
         lea     edi, [ebp + fs.fat12.partition_data_t.buffer]
         call    fs.fat12.restore_fat_chain
 
-        mov     eax, 512
+        mov_s_  eax, 1
         cdq
-        mov     ecx, 9 * 2 * 512
+        mov_s_  ecx, 9 * 2
         lea     esi, [ebp + fs.fat12.partition_data_t.buffer]
         call    fs.write
         or      eax, eax
@@ -2562,9 +2562,9 @@ kproc fs.fat12._.read_root_directory ;//////////////////////////////////////////
         cmp     [ebp + fs.fat12.partition_data_t.is_root_valid], 0
         jne     .exit ; eax = 0
 
-        mov     eax, 19 * 512
+        mov_s_  eax, 19
         cdq
-        mov     ecx, (33 - 19) * 512
+        mov_s_  ecx, 33 - 19
         lea     edi, [ebp + fs.fat12.partition_data_t.buffer + 1024]
         call    fs.read
         or      eax, eax
@@ -2592,9 +2592,9 @@ kproc fs.fat12._.write_root_directory ;/////////////////////////////////////////
         cmp     [ebp + fs.fat12.partition_data_t.is_root_valid], 0
         je      .exit ; eax = 0
 
-        mov     eax, 19 * 512
+        mov_s_  eax, 19
         cdq
-        mov     ecx, (33 - 19) * 512
+        mov_s_  ecx, 33 - 19
         lea     esi, [ebp + fs.fat12.partition_data_t.buffer + 1024]
         call    fs.write
         or      eax, eax
@@ -2890,9 +2890,8 @@ kproc fs.fat12._.read_sector ;//////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    ecx edx
 
-        shl     eax, 9 ; #= physical address
-        cdq
-        mov     ecx, 512
+        xor     edx, edx
+        mov_s_  ecx, 1
         mov     edi, [ebx + fs.partition_t.user_data]
         add     edi, fs.fat12.partition_data_t.buffer
         call    fs.read
@@ -2913,9 +2912,8 @@ kproc fs.fat12._.write_sector ;/////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    ecx edx
 
-        shl     eax, 9 ; #= physical address
-        cdq
-        mov     ecx, 512
+        xor     edx, edx
+        mov_s_  ecx, 1
         mov     esi, [ebx + fs.partition_t.user_data]
         add     esi, fs.fat12.partition_data_t.buffer
         call    fs.write
