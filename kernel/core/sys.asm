@@ -385,26 +385,6 @@ kproc set_application_table_status ;////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc clear_application_table_status ;//////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        push    eax
-
-        mov     eax, [CURRENT_TASK]
-        shl     eax, 5
-        mov     eax, [TASK_DATA + eax - sizeof.task_data_t + task_data_t.pid]
-
-        cmp     eax, [application_table_status]
-        jne     .apptsl1
-        xor     eax, eax
-        mov     [application_table_status], eax
-
-  .apptsl1:
-        pop  eax
-
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
 kproc sysfn.resize_app_memory ;/////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 64
@@ -708,14 +688,6 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         jnz     @f
         call    free_cd_channel
         and     [cd_status], 0
-
-if KCONFIG_BLKDEV_FLOPPY
-
-    @@: cmp     [flp_status], esi
-        jnz     @f
-        and     [flp_status], 0
-
-end if ; KCONFIG_BLKDEV_FLOPPY
 
     @@: pop     esi
         cmp     [bgrlockpid], esi

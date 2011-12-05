@@ -33,6 +33,20 @@ FLOPPY_CTL_HEADS_PER_CYLINDER = 2
 FLOPPY_CTL_SECTORS_PER_TRACK  = 18
 FLOPPY_CTL_BYTES_PER_SECTOR   = 512
 
+iglobal
+  blkdev.floppy.ctl.irq_func dd util.noop
+endg
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc blkdev.floppy.ctl.initialize ;////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        mov     ebx, static_test_floppy_device_data
+        call    blkdev.floppy.ctl.reset
+
+        or      [blkdev.floppy.ctl._.data.last_drive_number], -1
+        ret
+kendp
+
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc blkdev.floppy.ctl.reset ;/////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -243,16 +257,6 @@ kproc blkdev.floppy.ctl._.update_motor_timer ;//////////////////////////////////
 ;> ebx ^= blkdev.floppy.device_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
         mov_s_  [ebx + blkdev.floppy.device_data_t.motor_timer], [timer_ticks]
-
-        ; TODO: remove this
-        push    eax
-        mov     al, [blkdev.floppy.ctl._.data.last_drive_number]
-        inc     al
-        mov     [flp_number], al
-        mov     [fdd_motor_status], al
-        mov_s_  [timer_fdd_motor], [timer_ticks]
-        pop     eax
-
         ret
 kendp
 
@@ -295,14 +299,6 @@ kproc blkdev.floppy.ctl._.stop_motor ;//////////////////////////////////////////
 
         mov     [blkdev.floppy.ctl._.data.last_drive_number], cl
         and     [ebx + blkdev.floppy.device_data_t.motor_timer], 0
-
-        ; TODO: remove this
-        and     [fdd_motor_status], 0
-        and     [flp_status], 0
-        ; reset cache flags due to stale info
-        and     [root_read], 0
-        and     [flp_fat], 0
-
         ret
 kendp
 
@@ -513,7 +509,7 @@ kproc blkdev.floppy.ctl._.prepare_for_interrupt ;///////////////////////////////
         ; reset interrupt flag
         and     [blkdev.floppy.ctl._.data.interrupt_flag], 0
         ; replace interrupt handler
-        mov     [fdc_irq_func], .raise_fdc_interrupt_flag
+        mov     [blkdev.floppy.ctl.irq_func], .raise_fdc_interrupt_flag
         ret
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -553,7 +549,7 @@ kproc blkdev.floppy.ctl._.wait_for_interrupt ;//////////////////////////////////
         mov     eax, FLOPPY_CTL_ERROR_TIMEOUT
 
   .exit:
-        mov     [fdc_irq_func], util.noop
+        mov     [blkdev.floppy.ctl.irq_func], util.noop
         pop     ecx
         ret
 kendp

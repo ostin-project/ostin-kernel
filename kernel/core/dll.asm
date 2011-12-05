@@ -247,7 +247,7 @@ if KCONFIG_BLKDEV_FLOPPY
         cmp     al, 6
         jnz     @f
         push    eax
-        call    [fdc_irq_func]
+        call    [blkdev.floppy.ctl.irq_func]
         mov     [check_idle_semaphore], 5
         pop     eax
 

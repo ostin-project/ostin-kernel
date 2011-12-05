@@ -115,17 +115,7 @@ iglobal
     dd sysfn.get_time ; 3
     dd sysfn.draw_text ; 4
     dd sysfn.delay_hs ; 5
-
-if KCONFIG_BLKDEV_MEMORY
-
-    dd sysfn.read_rd_file ; 6
-
-else
-
-    dd sysfn.not_implemented
-
-end if ; KCONFIG_BLKDEV_MEMORY
-
+    dd sysfn.not_implemented ; 6
     dd sysfn.put_image ; 7
     dd sysfn.define_button ; 8
     dd sysfn.get_process_info ; 9
@@ -213,17 +203,7 @@ end if ; KCONFIG_BLKDEV_FLOPPY
     dd 0
     dd 0
     dd 0
-
-if defined COMPATIBILITY_MENUET_SYSFN58
-
-    dd sysfn.file_system ; 58
-
-else ; COMPATIBILITY_MENUET_SYSFN58
-
     dd 0
-
-end if ; COMPATIBILITY_MENUET_SYSFN58
-
     dd 0
     dd 0
     dd 0

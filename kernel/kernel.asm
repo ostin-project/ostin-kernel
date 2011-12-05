@@ -958,7 +958,7 @@ end if
 
 if KCONFIG_BLKDEV_FLOPPY
 
-        call    fdc_init
+        call    blkdev.floppy.ctl.initialize
 
 end if ; KCONFIG_BLKDEV_FLOPPY
 

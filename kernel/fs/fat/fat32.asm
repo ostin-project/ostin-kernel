@@ -449,22 +449,6 @@ kproc get_cluster_of_a_path ;///////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc set_current_time_for_entry ;//////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;? Set current time/date for file entry
-;-----------------------------------------------------------------------------------------------------------------------
-;> ebx = file entry pointer
-;-----------------------------------------------------------------------------------------------------------------------
-        push    eax
-        call    fs.fat.get_time_for_file ; update files date/time
-        mov     [ebx + 22], ax
-        call    fs.fat.get_date_for_file
-        mov     [ebx + 24], ax
-        pop     eax
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
 kproc add_disk_free_space ;/////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> ecx = cluster count
@@ -706,70 +690,6 @@ kproc clear_cluster_chain ;/////////////////////////////////////////////////////
         pop     edx ecx eax
         ret
 kendp
-
-if defined COMPATIBILITY_MENUET_SYSFN58
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc get_hd_info ;/////////////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;< eax = 0 (ok) or error code
-;< edx = cluster size in bytes
-;< ebx = total clusters on disk
-;< ecx = free clusters on disk
-;-----------------------------------------------------------------------------------------------------------------------
-;# Error codes:
-;#   3 - unknown FS
-;#   10 - access denied
-;-----------------------------------------------------------------------------------------------------------------------
-        cmp     [fs_type], 16
-        jz      .info_fat_ok
-        cmp     [fs_type], 32
-        jz      .info_fat_ok
-        xor     edx, edx
-        xor     ebx, ebx
-        xor     ecx, ecx
-        mov     eax, ERROR_UNKNOWN_FS
-        ret
-
-  .info_fat_ok:
-;       call    reserve_hd1
-
-        xor     ecx, ecx ; count of free clusters
-        mov     eax, 2
-        mov     ebx, [LAST_CLUSTER]
-
-  .info_cluster:
-        push    eax
-        call    get_FAT ; get cluster info
-        cmp     [hd_error], 0
-        jne     .info_access_denied
-
-        test    eax, eax ; is it free?
-        jnz     .info_used ; no
-        inc     ecx
-
-  .info_used:
-        pop     eax
-        inc     eax
-        cmp     eax, ebx ; is above last cluster?
-        jbe     .info_cluster ; no. test next cluster
-
-        dec     ebx ; cluster count
-        imul    edx, [SECTORS_PER_CLUSTER], 512 ; cluster size in bytes
-        mov     [hd1_status], 0
-        xor     eax, eax
-        ret
-
-  .info_access_denied:
-        add     esp, 4
-        xor     edx, edx
-        xor     ebx, ebx
-        xor     ecx, ecx
-        mov     eax, ERROR_ACCESS_DENIED
-        ret
-kendp
-
-end if ; COMPATIBILITY_MENUET_SYSFN58
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc update_disk ;/////////////////////////////////////////////////////////////////////////////////////////////////////
