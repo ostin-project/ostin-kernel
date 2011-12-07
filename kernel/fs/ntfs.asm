@@ -14,6 +14,36 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
+struct fs.ntfs.partition_data_t
+  sectors_per_cluster dd ?
+  mft_cluster         dd ?
+  mftmirr_cluster     dd ?
+  frs_size            dd ? ; FRS size in bytes
+  iab_size            dd ? ; IndexAllocationBuffer size in bytes
+  frs_buffer          dd ?
+  iab_buffer          dd ?
+  mft_retrieval       dd ?
+  mft_retrieval_size  dd ?
+  mft_retrieval_alloc dd ?
+  mft_retrieval_end   dd ?
+  cur_index_size      dd ?
+  cur_index_buf       dd ?
+ends
+
+iglobal
+  fs.ntfs.vftbl dd \
+    ntfs_HdRead, \
+    ntfs_HdReadFolder, \
+    fs.error.not_implemented, \
+    fs.error.not_implemented, \
+    fs.error.not_implemented, \
+    ntfs_HdGetFileInfo, \
+    fs.error.not_implemented, \
+    fs.error.not_implemented, \
+    fs.error.not_implemented, \
+    fs.error.not_implemented
+endg
+
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc ntfs_test_bootsec ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -121,7 +151,7 @@ kproc ntfs_setup ;//////////////////////////////////////////////////////////////
         add     eax, [PARTITION_START]
         dec     eax
         mov     [PARTITION_END], eax
-        mov     [fs_type], 1
+        mov     [fs_type], FS_PARTITION_TYPE_NTFS
         mov     eax, [ebx + 0x30]
         mov     [ntfs_data.mft_cluster], eax
         mov     eax, [ebx + 0x38]

@@ -15,6 +15,39 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
+struct fs.fat16x.partition_data_t
+  sectors_per_fat     dd ?
+  number_of_fats      dd ?
+  sectors_per_cluster dd ?
+  bytes_per_sector    dd ? ; Note: if BPS <> 512 need lots of changes
+  root_cluster        dd ? ; first rootdir cluster
+  fat_start           dd ? ; start of fat table
+  root_start          dd ? ; start of rootdir (only fat16)
+  root_sectors        dd ? ; count of rootdir sectors (only fat16)
+  data_start          dd ? ; start of data area (=first cluster 2)
+  last_cluster        dd ? ; last availabe cluster
+  adr_fsinfo          dd ? ; used only by fat32
+  fatRESERVED         dd ?
+  fatBAD              dd ?
+  fatEND              dd ?
+  fatMASK             dd ?
+  fatStartScan        dd ?
+ends
+
+iglobal
+  fs.fat16x.vftbl dd \
+    fat32_HdRead, \
+    fat32_HdReadFolder, \
+    fat32_HdRewrite, \
+    fat32_HdWrite, \
+    fat32_HdSetFileEnd, \
+    fat32_HdGetFileInfo, \
+    fat32_HdSetFileInfo, \
+    fs.error.not_implemented, \
+    fat32_HdDelete, \
+    fat32_HdRewrite
+endg
+
 uglobal
   align 4
   longname_sec1        dd 0   ; used by analyze_directory to save 2 previous
@@ -50,9 +83,9 @@ kproc set_FAT ;/////////////////////////////////////////////////////////////////
 
         cmp     eax, 2
         jb      .sfc_error
-        cmp     eax, [LAST_CLUSTER]
+        cmp     eax, [fat16x_data.last_cluster]
         ja      .sfc_error
-        cmp     [fs_type], 16
+        cmp     [fs_type], FS_PARTITION_TYPE_FAT16
         je      .sfc_1
         add     eax, eax
 
@@ -61,7 +94,7 @@ kproc set_FAT ;/////////////////////////////////////////////////////////////////
         mov     esi, 511
         and     esi, eax ; esi = position in fat sector
         shr     eax, 9 ; eax = fat sector
-        add     eax, [FAT_START]
+        add     eax, [fat16x_data.fat_start]
         mov     ebx, fat_cache
 
         cmp     eax, [fat_in_cache] ; is fat sector already in memory?
@@ -80,7 +113,7 @@ kproc set_FAT ;/////////////////////////////////////////////////////////////////
         jne     .sfc_error
 
   .sfc_in_cache:
-        cmp     [fs_type], 16
+        cmp     [fs_type], FS_PARTITION_TYPE_FAT16
         jne     .sfc_test32
 
   .sfc_set16:
@@ -88,7 +121,7 @@ kproc set_FAT ;/////////////////////////////////////////////////////////////////
         jmp     .sfc_write
 
   .sfc_test32:
-        mov     eax, [fatMASK]
+        mov     eax, [fat16x_data.fatMASK]
 
   .sfc_set32:
         and     edx, eax
@@ -102,7 +135,7 @@ kproc set_FAT ;/////////////////////////////////////////////////////////////////
         mov     [fat_change], 1 ; fat has changed
 
   .sfc_nonzero:
-        and     edx, [fatMASK]
+        and     edx, [fat16x_data.fatMASK]
 
   .sfc_error:
         pop     esi ebx eax
@@ -118,7 +151,7 @@ kproc get_FAT ;/////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    ebx esi
 
-        cmp     [fs_type], 16
+        cmp     [fs_type], FS_PARTITION_TYPE_FAT16
         je      .gfc_1
         add     eax, eax
 
@@ -127,7 +160,7 @@ kproc get_FAT ;/////////////////////////////////////////////////////////////////
         mov     esi, 511
         and     esi, eax ; esi = position in fat sector
         shr     eax, 9 ; eax = fat sector
-        add     eax, [FAT_START]
+        add     eax, [fat16x_data.fat_start]
         mov     ebx, fat_cache
 
         cmp     eax, [fat_in_cache] ; is fat sector already in memory?
@@ -147,7 +180,7 @@ kproc get_FAT ;/////////////////////////////////////////////////////////////////
 
   .gfc_in_cache:
         mov     eax, [ebx + esi]
-        and     eax, [fatMASK]
+        and     eax, [fat16x_data.fatMASK]
 
   .hd_error_01:
         pop     esi ebx
@@ -163,14 +196,14 @@ kproc get_free_FAT ;////////////////////////////////////////////////////////////
 ;# Note: for more speed need to use fat_cache directly
 ;-----------------------------------------------------------------------------------------------------------------------
         push    ecx
-        mov     ecx, [LAST_CLUSTER] ; counter for full disk
+        mov     ecx, [fat16x_data.last_cluster] ; counter for full disk
         sub     ecx, 2
-        mov     eax, [fatStartScan]
+        mov     eax, [fat16x_data.fatStartScan]
         cmp     eax, 2
         jb      .gff_reset
 
   .gff_test:
-        cmp     eax, [LAST_CLUSTER] ; if above last cluster start at cluster 2
+        cmp     eax, [fat16x_data.last_cluster] ; if above last cluster start at cluster 2
         jbe     .gff_in_range
 
   .gff_reset:
@@ -199,7 +232,7 @@ kproc get_free_FAT ;////////////////////////////////////////////////////////////
 
   .gff_found:
         lea     ecx, [eax + 1]
-        mov     [fatStartScan], ecx
+        mov     [fat16x_data.fatStartScan], ecx
         pop     ecx
         clc
         ret
@@ -217,14 +250,14 @@ kproc write_fat_sector ;////////////////////////////////////////////////////////
         cmp     eax, -1
         jz      .write_fat_not_used
         mov     ebx, fat_cache
-        mov     ecx, [NUMBER_OF_FATS]
+        mov     ecx, [fat16x_data.number_of_fats]
 
   .write_next_fat:
         call    hd_write
         cmp     [hd_error], 0
         jne     .write_fat_not_used
 
-        add     eax, [SECTORS_PER_FAT]
+        add     eax, [fat16x_data.sectors_per_fat]
         dec     ecx
         jnz     .write_next_fat
 
@@ -254,24 +287,24 @@ kproc analyze_directory ;///////////////////////////////////////////////////////
   .adr_new_cluster:
         mov     [cluster_tmp], eax
         mov     [fat16_root], 0
-        cmp     eax, [LAST_CLUSTER]
+        cmp     eax, [fat16x_data.last_cluster]
         ja      .adr_not_found ; too big cluster number, something is wrong
         cmp     eax, 2
         jnb     .adr_data_cluster
 
-        mov     eax, [ROOT_CLUSTER] ; if cluster < 2 then read rootdir
-        cmp     [fs_type], 16
+        mov     eax, [fat16x_data.root_cluster] ; if cluster < 2 then read rootdir
+        cmp     [fs_type], FS_PARTITION_TYPE_FAT16
         jne     .adr_data_cluster
-        mov     eax, [ROOT_START]
-        mov     edx, [ROOT_SECTORS]
+        mov     eax, [fat16x_data.root_start]
+        mov     edx, [fat16x_data.root_sectors]
         mov     [fat16_root], 1 ; flag for fat16 rootdir
         jmp     .adr_new_sector
 
   .adr_data_cluster:
         sub     eax, 2
-        mov     edx, [SECTORS_PER_CLUSTER]
+        mov     edx, [fat16x_data.sectors_per_cluster]
         imul    eax, edx
-        add     eax, [DATA_START]
+        add     eax, [fat16x_data.data_start]
 
   .adr_new_sector:
         mov     ebx, buffer
@@ -320,7 +353,7 @@ kproc analyze_directory ;///////////////////////////////////////////////////////
 
         cmp     eax, 2 ; incorrect fat chain?
         jb      .adr_not_found ; yes
-        cmp     eax, [fatRESERVED] ; is it end of directory?
+        cmp     eax, [fat16x_data.fatRESERVED] ; is it end of directory?
         jb      .adr_new_cluster ; no. analyse it
 
   .adr_not_found:
@@ -350,24 +383,24 @@ kproc get_data_cluster ;////////////////////////////////////////////////////////
         push    eax ecx
 
         mov     [fat16_root], 0
-        cmp     eax, [LAST_CLUSTER]
+        cmp     eax, [fat16x_data.last_cluster]
         ja      .gdc_error ; too big cluster number, something is wrong
         cmp     eax, 2
         jnb     .gdc_cluster
 
-        mov     eax, [ROOT_CLUSTER] ; if cluster < 2 then read rootdir
-        cmp     [fs_type], 16
+        mov     eax, [fat16x_data.root_cluster] ; if cluster < 2 then read rootdir
+        cmp     [fs_type], FS_PARTITION_TYPE_FAT16
         jne     .gdc_cluster
-        mov     eax, [ROOT_START]
-        mov     ecx, [ROOT_SECTORS] ; Note: not cluster size
+        mov     eax, [fat16x_data.root_start]
+        mov     ecx, [fat16x_data.root_sectors] ; Note: not cluster size
         mov     [fat16_root], 1 ; flag for fat16 rootdir
         jmp     .gdc_read
 
   .gdc_cluster:
         sub     eax, 2
-        mov     ecx, [SECTORS_PER_CLUSTER]
+        mov     ecx, [fat16x_data.sectors_per_cluster]
         imul    eax, ecx
-        add     eax, [DATA_START]
+        add     eax, [fat16x_data.data_start]
 
   .gdc_read:
         test    esi, esi ; first wanted block
@@ -419,7 +452,7 @@ kproc get_cluster_of_a_path ;///////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    ebx edx
 
-        mov     eax, [ROOT_CLUSTER]
+        mov     eax, [fat16x_data.root_cluster]
         mov     edx, ebx
 
   .search_end_of_path:
@@ -433,7 +466,7 @@ kproc get_cluster_of_a_path ;///////////////////////////////////////////////////
 
         mov     eax, [ebx + 20 - 2] ; read the HIGH 16bit cluster field
         mov     ax, [ebx + 26] ; read the LOW 16bit cluster field
-        and     eax, [fatMASK]
+        and     eax, [fat16x_data.fatMASK]
         add     edx, 11 ; 8+3 (name+extension)
         jmp     .search_end_of_path
 
@@ -458,11 +491,11 @@ kproc add_disk_free_space ;/////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         test    ecx, ecx ; no change
         je      .add_dfs_no
-        cmp     [fs_type], 32 ; free disk space only used by fat32
+        cmp     [fs_type], FS_PARTITION_TYPE_FAT32 ; free disk space only used by fat32
         jne     .add_dfs_no
 
         push    eax ebx
-        mov     eax, [ADR_FSINFO]
+        mov     eax, [fat16x_data.adr_fsinfo]
         mov     ebx, fsinfo_buffer
         call    hd_read
         cmp     [hd_error], 0
@@ -472,7 +505,7 @@ kproc add_disk_free_space ;/////////////////////////////////////////////////////
         jne     .add_not_fs
 
         add     [ebx + 0x1e8], ecx
-        push    [fatStartScan]
+        push    [fat16x_data.fatStartScan]
         pop     dword[ebx + 0x1ec]
         call    hd_write
 ;       cmp     [hd_error], 0
@@ -506,9 +539,9 @@ kproc file_read ;///////////////////////////////////////////////////////////////
 ;#  9 - fat table corrupted
 ;#  10 - access denied
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     [fs_type], 16
+        cmp     [fs_type], FS_PARTITION_TYPE_FAT16
         jz      .fat_ok_for_reading
-        cmp     [fs_type], 32
+        cmp     [fs_type], FS_PARTITION_TYPE_FAT32
         jz      .fat_ok_for_reading
         xor     ebx, ebx
         mov     eax, ERROR_UNKNOWN_FS
@@ -533,7 +566,7 @@ kproc file_read ;///////////////////////////////////////////////////////////////
         jne     .file_access_denied
 
         mov     [file_size], eax
-        mov     eax, [ROOT_CLUSTER]
+        mov     eax, [fat16x_data.root_cluster]
         jmp     .file_read_start
 
   .no_read_root:
@@ -547,7 +580,7 @@ kproc file_read ;///////////////////////////////////////////////////////////////
 
         mov     eax, [ebx + 20 - 2] ; FAT entry
         mov     ax, [ebx + 26]
-        and     eax, [fatMASK]
+        and     eax, [fat16x_data.fatMASK]
         call    get_dir_size
         cmp     [hd_error], 0
         jne     .file_access_denied
@@ -557,7 +590,7 @@ kproc file_read ;///////////////////////////////////////////////////////////////
 
         mov     eax, [ebx + 20 - 2] ; FAT entry
         mov     ax, [ebx + 26]
-        and     eax, [fatMASK]
+        and     eax, [fat16x_data.fatMASK]
 
   .file_read_start:
         mov     ebx, [esp + regs_context32_t.ecx] ; pointer to buffer
@@ -575,7 +608,7 @@ kproc file_read ;///////////////////////////////////////////////////////////////
         cmp     [hd_error], 0
         jne     .file_access_denied
 
-        cmp     eax, [fatRESERVED] ; end of file
+        cmp     eax, [fat16x_data.fatRESERVED] ; end of file
         jnb     .file_read_eof
         cmp     eax, 2 ; incorrect fat chain
         jnb     .file_read_new_cluster
@@ -631,16 +664,16 @@ kproc get_dir_size ;////////////////////////////////////////////////////////////
         test    eax, eax
         jnz     .dir_size_next
 
-        mov     eax, [ROOT_SECTORS]
+        mov     eax, [fat16x_data.root_sectors]
         shl     eax, 9 ; fat16 rootdir size in bytes
-        cmp     [fs_type], 16
+        cmp     [fs_type], FS_PARTITION_TYPE_FAT16
         je      .dir_size_ret
-        mov     eax, [ROOT_CLUSTER]
+        mov     eax, [fat16x_data.root_cluster]
 
   .dir_size_next:
         cmp     eax, 2 ; incorrect fat chain
         jb      .dir_size_end
-        cmp     eax, [fatRESERVED] ; end of directory
+        cmp     eax, [fat16x_data.fatRESERVED] ; end of directory
         ja      .dir_size_end
         call    get_FAT ; get next cluster
         cmp     [hd_error], 0
@@ -650,7 +683,7 @@ kproc get_dir_size ;////////////////////////////////////////////////////////////
         jmp     .dir_size_next
 
   .dir_size_end:
-        imul    eax, [SECTORS_PER_CLUSTER], 512 ; cluster size in bytes
+        imul    eax, [fat16x_data.sectors_per_cluster], 512 ; cluster size in bytes
         imul    eax, edx
 
   .dir_size_ret:
@@ -667,11 +700,11 @@ kproc clear_cluster_chain ;/////////////////////////////////////////////////////
         xor     ecx, ecx ; cluster count
 
   .clean_new_chain:
-        cmp     eax, [LAST_CLUSTER] ; end of file
+        cmp     eax, [fat16x_data.last_cluster] ; end of file
         ja      .delete_OK
         cmp     eax, 2 ; unfinished fat chain or zero length file
         jb      .delete_OK
-        cmp     eax, [ROOT_CLUSTER] ; don't remove root cluster
+        cmp     eax, [fat16x_data.root_cluster] ; don't remove root cluster
         jz      .delete_OK
 
         xor     edx, edx
@@ -727,8 +760,8 @@ kproc hd_find_lfn ;/////////////////////////////////////////////////////////////
         push    0
         push    fat16_root_first
         push    fat16_root_next
-        mov     eax, [ROOT_CLUSTER]
-        cmp     [fs_type], 32
+        mov     eax, [fat16x_data.root_cluster]
+        cmp     [fs_type], FS_PARTITION_TYPE_FAT32
         jz      .fat32
 
   .loop:
@@ -771,7 +804,7 @@ kproc hd_find_lfn ;/////////////////////////////////////////////////////////////
 
   .root:
         mov     eax, [eax + 4]
-        add     eax, [ROOT_START]
+        add     eax, [fat16x_data.root_start]
 
   .cmn:
         add     esp, 20 ; CF=0
@@ -843,14 +876,14 @@ kproc fat32_HdRead ;////////////////////////////////////////////////////////////
         jecxz   .new_sector
         test    eax, eax
         jz      .eof
-        cmp     eax, [fatRESERVED]
+        cmp     eax, [fat16x_data.fatRESERVED]
         jae     .eof
         mov     [cluster_tmp], eax
         dec     eax
         dec     eax
-        mov     edi, [SECTORS_PER_CLUSTER]
+        mov     edi, [fat16x_data.sectors_per_cluster]
         imul    eax, edi
-        add     eax, [DATA_START]
+        add     eax, [fat16x_data.data_start]
 
   .new_sector:
         test    ecx, ecx
@@ -944,7 +977,7 @@ kproc fat32_HdReadFolder ;//////////////////////////////////////////////////////
 ;# flags:
 ;#   bit 0: 0 (ANSI names) or 1 (UNICODE names)
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, [ROOT_CLUSTER]
+        mov     eax, [fat16x_data.root_cluster]
         push    edi
         cmp     byte[esi], 0
         jz      .doit
@@ -988,18 +1021,18 @@ kproc fat32_HdReadFolder ;//////////////////////////////////////////////////////
         mov     [cluster_tmp], eax
         test    eax, eax
         jnz     @f
-        cmp     [fs_type], 32
+        cmp     [fs_type], FS_PARTITION_TYPE_FAT32
         jz      .notfound
-        mov     eax, [ROOT_START]
-        push    [ROOT_SECTORS]
+        mov     eax, [fat16x_data.root_start]
+        push    [fat16x_data.root_sectors]
         push    ebx
         jmp     .new_sector
 
     @@: dec     eax
         dec     eax
-        imul    eax, [SECTORS_PER_CLUSTER]
-        push    [SECTORS_PER_CLUSTER]
-        add     eax, [DATA_START]
+        imul    eax, [fat16x_data.sectors_per_cluster]
+        push    [fat16x_data.sectors_per_cluster]
+        add     eax, [fat16x_data.data_start]
         push    ebx
 
   .new_sector:
@@ -1031,17 +1064,17 @@ kproc fat32_HdReadFolder ;//////////////////////////////////////////////////////
         jnz     .notfound2
         cmp     eax, 2
         jb      .done
-        cmp     eax, [fatRESERVED]
+        cmp     eax, [fat16x_data.fatRESERVED]
         jae     .done
         push    eax
-        mov     eax, [SECTORS_PER_CLUSTER]
+        mov     eax, [fat16x_data.sectors_per_cluster]
         mov     [esp + 8], eax
         pop     eax
         mov     [cluster_tmp], eax
         dec     eax
         dec     eax
-        imul    eax, [SECTORS_PER_CLUSTER]
-        add     eax, [DATA_START]
+        imul    eax, [fat16x_data.sectors_per_cluster]
+        add     eax, [fat16x_data.data_start]
 
     @@: mov     ebx, buffer
         mov     edi, ebx
@@ -1076,10 +1109,10 @@ kproc fat32_HdReadFolder ;//////////////////////////////////////////////////////
         jnz     .notfound2
         cmp     eax, 2
         jb      .done
-        cmp     eax, [fatRESERVED]
+        cmp     eax, [fat16x_data.fatRESERVED]
         jae     .done
         push    eax
-        mov     eax, [SECTORS_PER_CLUSTER]
+        mov     eax, [fat16x_data.sectors_per_cluster]
         mov     [esp + 8], eax
         pop     eax
         pop     ebx
@@ -1126,12 +1159,12 @@ kproc fat16_root_next_sector ;//////////////////////////////////////////////////
         push    ecx
         mov     ecx, [eax + 4]
         push    ecx
-        add     ecx, [ROOT_START]
+        add     ecx, [fat16x_data.root_start]
         mov     [longname_sec2], ecx
         pop     ecx
         inc     ecx
         mov     [eax + 4], ecx
-        cmp     ecx, [ROOT_SECTORS]
+        cmp     ecx, [fat16x_data.root_sectors]
         pop     ecx
         jae     fat16_root_first.readerr
 kendp
@@ -1140,7 +1173,7 @@ kendp
 kproc fat16_root_first ;////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, [eax + 4]
-        add     eax, [ROOT_START]
+        add     eax, [fat16x_data.root_start]
         push    ebx
         mov     edi, buffer
         mov     ebx, edi
@@ -1169,7 +1202,7 @@ kproc fat16_root_end_write ;////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         pusha
         mov     eax, [eax + 4]
-        add     eax, [ROOT_START]
+        add     eax, [fat16x_data.root_start]
         mov     ebx, buffer
         call    hd_write
         popa
@@ -1215,7 +1248,7 @@ kproc fat_notroot_next_sector ;/////////////////////////////////////////////////
         push    ecx
         mov     ecx, [eax + 4]
         inc     ecx
-        cmp     ecx, [SECTORS_PER_CLUSTER]
+        cmp     ecx, [fat16x_data.sectors_per_cluster]
         jae     fat_notroot_next_cluster
         mov     [eax + 4], ecx
         jmp     @f
@@ -1231,7 +1264,7 @@ kproc fat_notroot_next_cluster ;////////////////////////////////////////////////
         pop     eax
         cmp     [hd_error], 0
         jnz     fat_notroot_next_err
-        cmp     ecx, [fatRESERVED]
+        cmp     ecx, [fat16x_data.fatRESERVED]
         jae     fat_notroot_next_err
         mov     [eax], ecx
         and     dword[eax + 4], 0
@@ -1306,7 +1339,7 @@ kproc fat_notroot_extend_dir ;//////////////////////////////////////////////////
 
   .found:
         push    edx
-        mov     edx, [fatEND]
+        mov     edx, [fat16x_data.fatEND]
         call    set_FAT
         mov     edx, eax
         mov     eax, [esp + 4]
@@ -1341,9 +1374,9 @@ kproc fat_notroot_extend_dir ;//////////////////////////////////////////////////
         dec     eax
         dec     eax
         push    ebx ecx
-        mov     ecx, [SECTORS_PER_CLUSTER]
+        mov     ecx, [fat16x_data.sectors_per_cluster]
         imul    eax, ecx
-        add     eax, [DATA_START]
+        add     eax, [fat16x_data.data_start]
         mov     ebx, edi
 
     @@: call    hd_write
@@ -1361,8 +1394,8 @@ kproc fat_get_sector ;//////////////////////////////////////////////////////////
         mov     ecx, [eax]
         dec     ecx
         dec     ecx
-        imul    ecx, [SECTORS_PER_CLUSTER]
-        add     ecx, [DATA_START]
+        imul    ecx, [fat16x_data.sectors_per_cluster]
+        add     ecx, [fat16x_data.data_start]
         add     ecx, [eax + 4]
         mov     eax, ecx
         pop     ecx
@@ -1401,8 +1434,8 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         jnz     .noroot
         test    ebp, ebp
         jnz     .hasebp
-        mov     ebp, [ROOT_CLUSTER]
-        cmp     [fs_type], 32
+        mov     ebp, [fat16x_data.root_cluster]
+        cmp     [fs_type], FS_PARTITION_TYPE_FAT32
         jz      .pushnotroot
         push    fat16_root_extend_dir
         push    fat16_root_end_write
@@ -1507,7 +1540,7 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         test    eax, eax
         jz      .done1
 
-    @@: cmp     eax, [fatRESERVED]
+    @@: cmp     eax, [fat16x_data.fatRESERVED]
         jae     .done1
         push    edx
         xor     edx, edx
@@ -1736,7 +1769,7 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         lea     eax, [esp + 8]
         call    dword[eax + 16] ; flush directory
         push    ecx
-        mov     ecx, [SECTORS_PER_CLUSTER]
+        mov     ecx, [fat16x_data.sectors_per_cluster]
         shl     ecx, 9
         jmp     .doit2
 
@@ -1762,7 +1795,7 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         call    dword[eax + 16] ; flush directory
         pop     eax
         push    edx
-        mov     edx, [fatEND]
+        mov     edx, [fat16x_data.fatEND]
         call    set_FAT
         pop     edx
 
@@ -1770,9 +1803,9 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         push    eax
         dec     eax
         dec     eax
-        mov     ebp, [SECTORS_PER_CLUSTER]
+        mov     ebp, [fat16x_data.sectors_per_cluster]
         imul    eax, ebp
-        add     eax, [DATA_START]
+        add     eax, [fat16x_data.data_start]
         ; write data
 
   .write_sector:
@@ -1819,7 +1852,7 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         call    get_free_FAT
         jc      .diskfull
         push    edx
-        mov     edx, [fatEND]
+        mov     edx, [fat16x_data.fatEND]
         call    set_FAT
         xchg    eax, ecx
         mov     edx, ecx
@@ -1857,7 +1890,7 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         mov     [esp + 32 + 16], ebx
         lea     eax, [ebx + 511]
         shr     eax, 9
-        mov     ecx, [SECTORS_PER_CLUSTER]
+        mov     ecx, [fat16x_data.sectors_per_cluster]
         lea     eax, [eax + ecx - 1]
         xor     edx, edx
         div     ecx
@@ -1873,7 +1906,7 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         push    512
         mov     edi, buffer
         mov     ebx, edi
-        mov     ecx, [SECTORS_PER_CLUSTER]
+        mov     ecx, [fat16x_data.sectors_per_cluster]
         shl     ecx, 9
         cmp     ecx, [esp + 12]
         jnz     .writedircont
@@ -1897,7 +1930,7 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         mov     dword[edi - 32 + 8], '    '
         mov     byte[edi - 32 + 11], 0x10
         mov     ecx, [esp + 20 + 8]
-        cmp     ecx, [ROOT_CLUSTER]
+        cmp     ecx, [fat16x_data.root_cluster]
         jnz     @f
         xor     ecx, ecx
 
@@ -2066,8 +2099,8 @@ kproc fat32_HdWrite ;///////////////////////////////////////////////////////////
         mov     eax, edi
         dec     eax
         dec     eax
-        imul    eax, [SECTORS_PER_CLUSTER]
-        add     eax, [DATA_START]
+        imul    eax, [fat16x_data.sectors_per_cluster]
+        add     eax, [fat16x_data.data_start]
         add     eax, ebp
         ; load sector if needed
         cmp     dword[esp + 4], 0 ; we don't need to read uninitialized data
@@ -2135,7 +2168,7 @@ kproc fat32_HdWrite ;///////////////////////////////////////////////////////////
   .skip:
         ; next sector
         inc     ebp
-        cmp     ebp, [SECTORS_PER_CLUSTER]
+        cmp     ebp, [fat16x_data.sectors_per_cluster]
         jb      @f
         xor     ebp, ebp
         mov     eax, edi
@@ -2171,8 +2204,8 @@ kproc hd_extend_file ;//////////////////////////////////////////////////////////
 ;< if CF = 1 (error), eax = error code (ERROR_FAT_TABLE or ERROR_DISK_FULL or 11)
 ;-----------------------------------------------------------------------------------------------------------------------
         push    ebp
-        mov     ebp, [SECTORS_PER_CLUSTER]
-        imul    ebp, [BYTES_PER_SECTOR]
+        mov     ebp, [fat16x_data.sectors_per_cluster]
+        imul    ebp, [fat16x_data.bytes_per_sector]
         push    ecx
         ; find the last cluster of file
         mov     eax, [edi + 20 - 2]
@@ -2201,7 +2234,7 @@ kproc hd_extend_file ;//////////////////////////////////////////////////////////
 
     @@: cmp     eax, 2
         jb      .fat_err
-        cmp     eax, [fatRESERVED]
+        cmp     eax, [fat16x_data.fatRESERVED]
         jb      .last_loop
 
   .fat_err:
@@ -2217,7 +2250,7 @@ kproc hd_extend_file ;//////////////////////////////////////////////////////////
         pop     eax
         jmp     .device_err
 
-    @@: cmp     eax, [fatRESERVED]
+    @@: cmp     eax, [fat16x_data.fatRESERVED]
         pop     eax
         jb      .fat_err
         ; set length to full number of clusters
@@ -2236,7 +2269,7 @@ kproc hd_extend_file ;//////////////////////////////////////////////////////////
         push    eax
         call    get_free_FAT
         jc      .disk_full
-        mov     edx, [fatEND]
+        mov     edx, [fat16x_data.fatEND]
         call    set_FAT
         mov     edx, eax
         pop     eax
@@ -2384,8 +2417,8 @@ kproc fat32_HdSetFileEnd ;//////////////////////////////////////////////////////
         sub     dword[esp + 4], 0x200
         jae     .next_cluster
         lea     eax, [edi - 2]
-        imul    eax, [SECTORS_PER_CLUSTER]
-        add     eax, [DATA_START]
+        imul    eax, [fat16x_data.sectors_per_cluster]
+        add     eax, [fat16x_data.data_start]
         add     eax, ebp
         cmp     dword[esp + 4], -0x200
         jz      .noread
@@ -2418,7 +2451,7 @@ kproc fat32_HdSetFileEnd ;//////////////////////////////////////////////////////
         sub     dword[esp + 20], 0x200
         jbe     .pop_ret
         inc     ebp
-        cmp     ebp, [SECTORS_PER_CLUSTER]
+        cmp     ebp, [fat16x_data.sectors_per_cluster]
         jb      .zero_loop
         xor     ebp, ebp
         mov     eax, edi
@@ -2438,7 +2471,7 @@ kproc fat32_HdSetFileEnd ;//////////////////////////////////////////////////////
         jz      .zero_size
         ; find new last cluster
 
-    @@: mov     eax, [SECTORS_PER_CLUSTER]
+    @@: mov     eax, [fat16x_data.sectors_per_cluster]
         shl     eax, 9
         sub     [esp], eax
         jbe     @f
@@ -2459,7 +2492,7 @@ kproc fat32_HdSetFileEnd ;//////////////////////////////////////////////////////
         ; terminate FAT chain
         push    edx
         mov     eax, ecx
-        mov     edx, [fatEND]
+        mov     edx, [fat16x_data.fatEND]
         call    set_FAT
         mov     eax, edx
         pop     edx
@@ -2492,8 +2525,8 @@ kproc fat32_HdSetFileEnd ;//////////////////////////////////////////////////////
         pop     ecx
         pop     eax
         dec     ecx
-        imul    ecx, [SECTORS_PER_CLUSTER]
-        add     ecx, [DATA_START]
+        imul    ecx, [fat16x_data.sectors_per_cluster]
+        add     ecx, [fat16x_data.data_start]
         push    eax
         sar     eax, 9
         add     ecx, eax
@@ -2631,8 +2664,8 @@ kproc fat32_HdDelete ;//////////////////////////////////////////////////////////
         mov     bp, [edi + 26]
         xor     ecx, ecx
         lea     eax, [ebp - 2]
-        imul    eax, [SECTORS_PER_CLUSTER]
-        add     eax, [DATA_START]
+        imul    eax, [fat16x_data.sectors_per_cluster]
+        add     eax, [fat16x_data.data_start]
         mov     ebx, buffer
         call    hd_read
         cmp     [hd_error], 0
@@ -2648,7 +2681,7 @@ kproc fat32_HdDelete ;//////////////////////////////////////////////////////////
         cmp     ebx, buffer + 0x200
         jb      .checkempty
         inc     ecx
-        cmp     ecx, [SECTORS_PER_CLUSTER]
+        cmp     ecx, [fat16x_data.sectors_per_cluster]
         jb      @f
         mov     eax, ebp
         call    get_FAT
@@ -2658,8 +2691,8 @@ kproc fat32_HdDelete ;//////////////////////////////////////////////////////////
         xor     ecx, ecx
 
     @@: lea     eax, [ebp - 2]
-        imul    eax, [SECTORS_PER_CLUSTER]
-        add     eax, [DATA_START]
+        imul    eax, [fat16x_data.sectors_per_cluster]
+        add     eax, [fat16x_data.data_start]
         add     eax, ecx
         mov     ebx, buffer
         call    hd_read

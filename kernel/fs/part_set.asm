@@ -16,6 +16,11 @@
 ;? Find all partitions with supported file systems
 ;;======================================================================================================================
 
+fs_dependent_data_size max_of \
+  sizeof.fs.fat16x.partition_data_t, \
+  sizeof.fs.ntfs.partition_data_t, \
+  sizeof.fs.ext2.partition_data_t
+
 uglobal
   ;******************************************************
   ; Please do not change this place - variables in text
@@ -33,70 +38,17 @@ uglobal
   problem_partition db 0 ; used for partitions search
 
   align 4
-  fs_dependent_data_start:
-    ; FATxx data
-    SECTORS_PER_FAT     dd 0x1f3a
-    NUMBER_OF_FATS      dd 0x2
-    SECTORS_PER_CLUSTER dd 0x8
-    BYTES_PER_SECTOR    dd 0x200      ; Note: if BPS <> 512 need lots of changes
-    ROOT_CLUSTER        dd 2          ; first rootdir cluster
-    FAT_START           dd 0          ; start of fat table
-    ROOT_START          dd 0          ; start of rootdir (only fat16)
-    ROOT_SECTORS        dd 0          ; count of rootdir sectors (only fat16)
-    DATA_START          dd 0          ; start of data area (=first cluster 2)
-    LAST_CLUSTER        dd 0          ; last availabe cluster
-    ADR_FSINFO          dd 0          ; used only by fat32
-    fatRESERVED         dd 0x0ffffff6
-    fatBAD              dd 0x0ffffff7
-    fatEND              dd 0x0ffffff8
-    fatMASK             dd 0x0fffffff
-    fatStartScan        dd 2
-  fs_dependent_data_end:
+  fs_dependent_data_start rb fs_dependent_data_size
   file_system_data_size = $ - PARTITION_START
 
-  static_assert file_system_data_size <= 96, "sizeof(file system data) too big!"
-
   virtual at fs_dependent_data_start
-    ; NTFS data
-    ntfs_data:
-      .sectors_per_cluster dd ?
-      .mft_cluster         dd ?
-      .mftmirr_cluster     dd ?
-      .frs_size            dd ? ; FRS size in bytes
-      .iab_size            dd ? ; IndexAllocationBuffer size in bytes
-      .frs_buffer          dd ?
-      .iab_buffer          dd ?
-      .mft_retrieval       dd ?
-      .mft_retrieval_size  dd ?
-      .mft_retrieval_alloc dd ?
-      .mft_retrieval_end   dd ?
-      .cur_index_size      dd ?
-      .cur_index_buf       dd ?
-
-    static_assert $ <= fs_dependent_data_end, "increase sizeof(fs_dependent_data)!"
+    fat16x_data fs.fat16x.partition_data_t
   end virtual
-
   virtual at fs_dependent_data_start
-    ; EXT2 data
-    ext2_data:
-      .log_block_size                dd ?
-      .block_size                    dd ?
-      .count_block_in_block          dd ?
-      .blocks_per_group              dd ?
-      .inodes_per_group              dd ?
-      .global_desc_table             dd ?
-      .root_inode                    dd ? ; pointer to root inode in memory
-      .inode_size                    dd ?
-      .count_pointer_in_block        dd ? ;  block_size / 4
-      .count_pointer_in_block_square dd ? ; (block_size / 4)**2
-      .ext2_save_block               dd ? ; block for 1 global procedure
-      .ext2_temp_block               dd ? ; block for small procedures
-      .ext2_save_inode               dd ? ; inode for global procedure
-      .ext2_temp_inode               dd ? ; inode for small procedures
-      .sb                            dd ? ; superblock
-      .groups_count                  dd ?
-
-    static_assert $ <= fs_dependent_data_end, "increase sizeof(fs_dependent_data)!"
+    ntfs_data fs.ntfs.partition_data_t
+  end virtual
+  virtual at fs_dependent_data_start
+    ext2_data fs.ext2.partition_data_t
   end virtual
 endg
 
@@ -344,7 +296,7 @@ kproc set_PARTITION_variables ;/////////////////////////////////////////////////
 
   .return_from_part_set:
         popad
-;       mov     [fs_type], 0
+;       mov     [fs_type], FS_PARTITION_TYPE_UNKNOWN
         call    free_hd_channel
         mov     [hd1_status], 0 ; free
         ret
@@ -407,17 +359,17 @@ kproc set_PARTITION_variables ;/////////////////////////////////////////////////
 
         movzx   eax, word[ebx + 0x0e] ; sectors reserved
         add     eax, [PARTITION_START]
-        mov     [FAT_START], eax ; fat_start = partition_start + reserved
+        mov     [fat16x_data.fat_start], eax ; fat_start = partition_start + reserved
 
         movzx   eax, byte[ebx + 0x0d] ; sectors per cluster
         test    eax, eax
         jz      .problem_fat_dec_count
-        mov     [SECTORS_PER_CLUSTER], eax
+        mov     [fat16x_data.sectors_per_cluster], eax
 
         movzx   ecx, word[ebx + 0x0b] ; bytes per sector
         cmp     ecx, 0x200
         jnz     .problem_fat_dec_count
-        mov     [BYTES_PER_SECTOR], ecx
+        mov     [fat16x_data.bytes_per_sector], ecx
 
         movzx   eax, word[ebx + 0x11] ; count of rootdir entries (=0 fat32)
         mov     edx, 32
@@ -426,7 +378,7 @@ kproc set_PARTITION_variables ;/////////////////////////////////////////////////
         add     eax, ecx ; round up if not equal count
         inc     ecx ; bytes per sector
         div     ecx
-        mov     [ROOT_SECTORS], eax ; count of rootdir sectors
+        mov     [fat16x_data.root_sectors], eax ; count of rootdir sectors
 
         movzx   eax, word[ebx + 0x16] ; sectors per fat <65536
         test    eax, eax
@@ -434,17 +386,17 @@ kproc set_PARTITION_variables ;/////////////////////////////////////////////////
         mov     eax, [ebx + 0x24] ; sectors per fat
 
   .fat16_fatsize:
-        mov     [SECTORS_PER_FAT], eax
+        mov     [fat16x_data.sectors_per_fat], eax
 
         movzx   eax, byte[ebx + 0x10] ; number of fats
         test    eax, eax ; if 0 it's not fat partition
         jz      .problem_fat_dec_count
-        mov     [NUMBER_OF_FATS], eax
-        imul    eax, [SECTORS_PER_FAT]
-        add     eax, [FAT_START]
-        mov     [ROOT_START], eax ; rootdir = fat_start + fat_size * fat_count
-        add     eax, [ROOT_SECTORS] ; rootdir sectors should be 0 on fat32
-        mov     [DATA_START], eax ; data area = rootdir + rootdir_size
+        mov     [fat16x_data.number_of_fats], eax
+        imul    eax, [fat16x_data.sectors_per_fat]
+        add     eax, [fat16x_data.fat_start]
+        mov     [fat16x_data.root_start], eax ; rootdir = fat_start + fat_size * fat_count
+        add     eax, [fat16x_data.root_sectors] ; rootdir sectors should be 0 on fat32
+        mov     [fat16x_data.data_start], eax ; data area = rootdir + rootdir_size
 
         movzx   eax, word[ebx + 0x13] ; total sector count <65536
         test    eax, eax
@@ -456,13 +408,13 @@ kproc set_PARTITION_variables ;/////////////////////////////////////////////////
         dec     eax
         mov     [PARTITION_END], eax
         inc     eax
-        sub     eax, [DATA_START] ; eax = count of data sectors
+        sub     eax, [fat16x_data.data_start] ; eax = count of data sectors
         xor     edx, edx
-        div     dword[SECTORS_PER_CLUSTER]
+        div     dword[fat16x_data.sectors_per_cluster]
         inc     eax
-        mov     [LAST_CLUSTER], eax
+        mov     [fat16x_data.last_cluster], eax
         dec     eax ; cluster count
-        mov     [fatStartScan], 2
+        mov     [fat16x_data.fatStartScan], 2
 
         ; limits by Microsoft Hardware White Paper v1.03
         cmp     eax, 4085 ; 0x0ff5
@@ -472,38 +424,38 @@ kproc set_PARTITION_variables ;/////////////////////////////////////////////////
 
   .fat32_partition:
         mov     eax, [ebx + 0x2c] ; rootdir cluster
-        mov     [ROOT_CLUSTER], eax
+        mov     [fat16x_data.root_cluster], eax
         movzx   eax, word[ebx + 0x30] ; fs info sector
         add     eax, [PARTITION_START]
-        mov     [ADR_FSINFO], eax
+        mov     [fat16x_data.adr_fsinfo], eax
         call    hd_read
         mov     eax, [ebx + 0x1ec]
         cmp     eax, -1
         jz      @f
-        mov     [fatStartScan], eax
+        mov     [fat16x_data.fatStartScan], eax
 
     @@: popad
 
-        mov     [fatRESERVED], 0x0ffffff6
-        mov     [fatBAD], 0x0ffffff7
-        mov     [fatEND], 0x0ffffff8
-        mov     [fatMASK], 0x0fffffff
-        mov     [fs_type], 32 ; Fat32
+        mov     [fat16x_data.fatRESERVED], 0x0ffffff6
+        mov     [fat16x_data.fatBAD], 0x0ffffff7
+        mov     [fat16x_data.fatEND], 0x0ffffff8
+        mov     [fat16x_data.fatMASK], 0x0fffffff
+        mov     [fs_type], FS_PARTITION_TYPE_FAT32 ; Fat32
         call    free_hd_channel
         mov     [hd1_status], 0 ; free
         ret
 
   .fat16_partition:
         xor     eax, eax
-        mov     [ROOT_CLUSTER], eax
+        mov     [fat16x_data.root_cluster], eax
 
         popad
 
-        mov     [fatRESERVED], 0x0000fff6
-        mov     [fatBAD], 0x0000fff7
-        mov     [fatEND], 0x0000fff8
-        mov     [fatMASK], 0x0000ffff
-        mov     [fs_type], 16 ; Fat16
+        mov     [fat16x_data.fatRESERVED], 0x0000fff6
+        mov     [fat16x_data.fatBAD], 0x0000fff7
+        mov     [fat16x_data.fatEND], 0x0000fff8
+        mov     [fat16x_data.fatMASK], 0x0000ffff
+        mov     [fs_type], FS_PARTITION_TYPE_FAT16 ; Fat16
         call    free_hd_channel
         mov     [hd1_status], 0 ; free
         ret

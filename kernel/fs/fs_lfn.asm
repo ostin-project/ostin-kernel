@@ -793,57 +793,56 @@ kproc fs.error.access_denied ;//////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
+kproc fs_OnGenericQuery3 ;//////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        add     edi, fs.ntfs.vftbl
+        cmp     [fs_type], FS_PARTITION_TYPE_NTFS
+        je      .known_fs
+
+        add     edi, fs.ext2.vftbl - fs.ntfs.vftbl
+        cmp     [fs_type], FS_PARTITION_TYPE_EXT2
+        je      .known_fs
+
+        add     edi, fs.fat16x.vftbl - fs.ext2.vftbl
+        cmp     [fs_type], FS_PARTITION_TYPE_FAT16
+        je      .known_fs
+        cmp     [fs_type], FS_PARTITION_TYPE_FAT32
+        je      .known_fs
+
+        jmp     fs.error.unknown_filesystem
+
+  .known_fs:
+        jmp     dword[edi]
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
 kproc fs_HdRead ;///////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     byte[esi], 0
         je      fs.error.access_denied
 
-        cmp     [fs_type], 1
-        je      ntfs_HdRead
-        cmp     [fs_type], 2
-        je      ext2_HdRead
-        cmp     [fs_type], 16
-        je      fat32_HdRead
-        cmp     [fs_type], 32
-        je      fat32_HdRead
-
-        jmp     fs.error.unknown_filesystem
+        mov     edi, fs.vftbl_t.read_file
+        jmp     fs_OnGenericQuery3
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs_HdReadFolder ;/////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     [fs_type], 1
-        je      ntfs_HdReadFolder
-        cmp     [fs_type], 2
-        je      ext2_HdReadFolder
-        cmp     [fs_type], 16
-        je      fat32_HdReadFolder
-        cmp     [fs_type], 32
-        je      fat32_HdReadFolder
-
-        jmp     fs.error.unknown_filesystem
+        mov     edi, fs.vftbl_t.read_directory
+        jmp     fs_OnGenericQuery3
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs_HdRewrite ;////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         xor     eax, eax
+        mov     edi, fs.vftbl_t.create_file
 
   .direct:
         cmp     byte[esi], 0
         je      fs.error.access_denied
 
-;       cmp     [fs_type], 1
-;       je      ntfs_HdRewrite
-;       cmp     [fs_type], 2
-;       je      ext2_HdRewrite
-        cmp     [fs_type], 16
-        je      fat32_HdRewrite
-        cmp     [fs_type], 32
-        je      fat32_HdRewrite
-
-        jmp     fs.error.unknown_filesystem
+        jmp     fs_OnGenericQuery3
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -852,16 +851,8 @@ kproc fs_HdWrite ;//////////////////////////////////////////////////////////////
         cmp     byte[esi], 0
         je      fs.error.access_denied
 
-;       cmp     [fs_type], 1
-;       je      ntfs_HdWrite
-;       cmp     [fs_type], 2
-;       je      ext2_HdWrite
-        cmp     [fs_type], 16
-        je      fat32_HdWrite
-        cmp     [fs_type], 32
-        je      fat32_HdWrite
-
-        jmp     fs.error.unknown_filesystem
+        mov     edi, fs.vftbl_t.write_file
+        jmp     fs_OnGenericQuery3
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -870,46 +861,22 @@ kproc fs_HdSetFileEnd ;/////////////////////////////////////////////////////////
         cmp     byte[esi], 0
         je      fs.error.access_denied
 
-;       cmp     [fs_type], 1
-;       je      ntfs_HdSetFileEnd
-;       cmp     [fs_type], 2
-;       je      ext2_HdSetFileEnd
-        cmp     [fs_type], 16
-        je      fat32_HdSetFileEnd
-        cmp     [fs_type], 32
-        je      fat32_HdSetFileEnd
-
-        jmp     fs.error.unknown_filesystem
+        mov     edi, fs.vftbl_t.truncate_file
+        jmp     fs_OnGenericQuery3
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs_HdGetFileInfo ;////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     [fs_type], 1
-        je      ntfs_HdGetFileInfo
-        cmp     [fs_type], 2
-        je      ext2_HdGetFileInfo
-        cmp     [fs_type], 16
-        je      fat32_HdGetFileInfo
-        cmp     [fs_type], 32
-        je      fat32_HdGetFileInfo
-
-        jmp     fs.error.unknown_filesystem
+        mov     edi, fs.vftbl_t.get_file_info
+        jmp     fs_OnGenericQuery3
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs_HdSetFileInfo ;////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;       cmp     [fs_type], 1
-;       je      ntfs_HdSetFileInfo
-;       cmp     [fs_type], 2
-;       je      ext2_HdSetFileInfo
-        cmp     [fs_type], 16
-        je      fat32_HdSetFileInfo
-        cmp     [fs_type], 32
-        je      fat32_HdSetFileInfo
-
-        jmp     fs.error.unknown_filesystem
+        mov     edi, fs.vftbl_t.set_file_info
+        jmp     fs_OnGenericQuery3
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -918,22 +885,15 @@ kproc fs_HdDelete ;/////////////////////////////////////////////////////////////
         cmp     byte[esi], 0
         je      fs.error.access_denied
 
-;       cmp     [fs_type], 1
-;       je      ntfs_HdDelete
-;       cmp     [fs_type], 2
-;       je      ext2_HdDelete
-        cmp     [fs_type], 16
-        je      fat32_HdDelete
-        cmp     [fs_type], 32
-        je      fat32_HdDelete
-
-        jmp     fs.error.unknown_filesystem
+        mov     edi, fs.vftbl_t.delete_file
+        jmp     fs_OnGenericQuery3
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs_HdCreateFolder ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     al, 1
+        mov     edi, fs.vftbl_t.create_directory
         jmp     fs_HdRewrite.direct
 kendp
 

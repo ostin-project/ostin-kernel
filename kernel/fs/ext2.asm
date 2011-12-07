@@ -14,6 +14,39 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
+struct fs.ext2.partition_data_t
+  log_block_size                dd ?
+  block_size                    dd ?
+  count_block_in_block          dd ?
+  blocks_per_group              dd ?
+  inodes_per_group              dd ?
+  global_desc_table             dd ?
+  root_inode                    dd ? ; pointer to root inode in memory
+  inode_size                    dd ?
+  count_pointer_in_block        dd ? ; block_size / 4
+  count_pointer_in_block_square dd ? ; (block_size / 4)**2
+  ext2_save_block               dd ? ; block for 1 global procedure
+  ext2_temp_block               dd ? ; block for small procedures
+  ext2_save_inode               dd ? ; inode for global procedure
+  ext2_temp_inode               dd ? ; inode for small procedures
+  sb                            dd ? ; superblock
+  groups_count                  dd ?
+ends
+
+iglobal
+  fs.ext2.vftbl dd \
+    ext2_HdRead, \
+    ext2_HdReadFolder, \
+    fs.error.not_implemented, \
+    fs.error.not_implemented, \
+    fs.error.not_implemented, \
+    ext2_HdGetFileInfo, \
+    fs.error.not_implemented, \
+    fs.error.not_implemented, \
+    fs.error.not_implemented, \
+    fs.error.not_implemented
+endg
+
 EXT2_BAD_INO         = 1
 EXT2_ROOT_INO        = 2
 EXT2_ACL_IDX_INO     = 3
@@ -183,7 +216,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc ext2_setup ;//////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     [fs_type], 2
+        mov     [fs_type], FS_PARTITION_TYPE_EXT2
 
         push    512
         call    kernel_alloc ; mem for superblock

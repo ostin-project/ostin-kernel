@@ -14,6 +14,7 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
+FS_PARTITION_TYPE_UNKNOWN = 0
 FS_PARTITION_TYPE_FAT12   = 1
 FS_PARTITION_TYPE_FAT16   = 2
 FS_PARTITION_TYPE_FAT32   = 3

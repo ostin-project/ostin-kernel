@@ -22,20 +22,6 @@ struct fs.fat12.partition_data_t
   is_root_valid db ?
 ends
 
-uglobal
-  n_sector              dd 0  ; temporary save for sector value
-  clust_tmp_flp         dd 0  ; used by analyze_directory and analyze_directory_to_write
-  path_pointer_flp      dd 0
-  pointer_file_name_flp dd 0
-; save_root_flag        db 0
-  save_flag             db 0
-  root_read             db 0  ; 0-necessary to load root, 1-not to load root
-  flp_fat               db 0  ; 0-necessary to load fat, 1-not to load fat
-  flp_number            db 0  ; 1- Floppy A, 2-Floppy B
-  old_track             db 0  ; old value track
-  flp_label             rb 15 ; Label and ID of inserted floppy disk
-endg
-
 iglobal
   jump_table fs.fat12, vftbl, 0, \
     read_file, \
