@@ -431,11 +431,20 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         test    eax, eax
         jz      .thread_not_found_1
 
-        call    core.thread.destroy
+        push    [eax + core.thread_t.process_ptr]
+
+        call    core.thread.free
+
+        pop     eax
+        lea     ecx, [eax + core.process_t.threads]
+        cmp     [ecx + linked_list_t.next_ptr], ecx
+        jne     .thread_not_found_1
+
+        call    core.process.free
 
   .thread_not_found_1:
         popa
-        
+
         ret
 
     @@: cli
@@ -766,7 +775,16 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         test    eax, eax
         jz      .thread_not_found_2
 
-        call    core.thread.destroy
+        push    [eax + core.thread_t.process_ptr]
+
+        call    core.thread.free
+
+        pop     eax
+        lea     ecx, [eax + core.process_t.threads]
+        cmp     [ecx + linked_list_t.next_ptr], ecx
+        jne     .thread_not_found_2
+
+        call    core.process.free
 
   .thread_not_found_2:
         popa

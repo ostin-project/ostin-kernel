@@ -1241,24 +1241,24 @@ endl
 
   .no_debug:
         pusha
+        mov     eax, [CURRENT_PROCESS]
         cmp     [app_path], 0
         je      .thread
 
-        call    core.process.create
+        call    core.process.alloc
         mov     ebx, [slot]
         shl     ebx, 8
         add     ebx, SLOT_BASE
         call    core.process.compat.init_with_app_data
-        jmp     @f
 
   .thread:
-        call    core.thread.create
+        call    core.thread.alloc
         mov     ebx, [slot]
         shl     ebx, 8
         add     ebx, SLOT_BASE
         call    core.thread.compat.init_with_app_data
 
-    @@: mov     cl, [esp + regs_context32_t.cl]
+        mov     cl, [esp + regs_context32_t.cl]
         mov     [eax + core.thread_t.state], cl
         or      [eax + core.thread_t.flags], THREAD_FLAG_VALID
         popa

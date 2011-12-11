@@ -1,5 +1,5 @@
 ;;======================================================================================================================
-;;///// task.asm /////////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
+;;///// thread.asm ///////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
 ;;======================================================================================================================
 ;; (c) 2011 Ostin project <http://ostin.googlecode.com/>
 ;;======================================================================================================================
@@ -14,8 +14,7 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-THREAD_FLAG_VALID   = 0x01
-THREAD_FLAG_PROCESS = 0x02
+THREAD_FLAG_VALID = 0x01
 
 struct core.thread_events_t
   event_mask    dd ?
@@ -40,12 +39,20 @@ struct core.thread_debug_regs_t
   dr7 dd ?
 ends
 
+struct core.thread_debug_t
+  debugger_slot dd ?
+  state         dd ?
+  event_mem     dd ?
+  regs          core.thread_debug_regs_t
+ends
+
 struct core.thread_t rb_tree_node_t
   id            dd ?
-  parent_id     dd ?
   flags         dd ?
-  heap_range    memory_range32_t ; app_data_t.heap_base, app_data_t.heap_top
-  ipc_range     memory_range32_t ; app_data_t.ipc
+  process_ptr   dd ? ; ^= core.process_t
+  window_ptr    dd ? ; ^= gui.window_t
+  siblings      linked_list_t
+  ipc_range     memory_range32_t
   state         db ?
   keyboard_mode db ?
                 rb 2
@@ -60,138 +67,98 @@ struct core.thread_t rb_tree_node_t
   cur_dir       dd ?
   tls_base      dd ?
   io_map        rd 2
-  debugger_slot dd ?
-  dbg_state     dd ?
-  dbg_event_mem dd ?
-  dbg_regs      core.thread_debug_regs_t
+  dir_table     dd ?
+  debug         core.thread_debug_t
 ends
 
 static_assert sizeof.core.thread_t mod 4 = 0
 
-struct core.process_t core.thread_t
-  app_name      rb 11
-                rb 5
-  mem_range     memory_range32_t ; task_data_t.mem_start, app_data_t.mem_size
-  dir_table     dd ?
-  dlls_list_ptr dd ?
-  obj           linked_list_t
-ends
-
-static_assert sizeof.core.process_t mod 4 = 0
-
-struct gui.window_t
-  box             box32_t
-  wnd_clientbox   box32_t
-  saved_box       box32_t
-  union
-    cl_workarea   dd ?
-    struct
-                  rb 3
-      fl_wstyle   db ?
-    ends
-  ends
-  cl_titlebar     dd ?
-  cl_frames       dd ?
-  reserved        db ?
-  fl_wstate       db ?
-  fl_wdrawn       db ?
-  fl_redraw       db ?
-  wnd_shape       dd ?
-  wnd_shape_scale dd ?
-  wnd_caption     dd ? ; ^= char*
-  cursor          dd ? ; ^= cursor_t
-  wnd_number      db ?
-                  rb 3
-ends
-
-static_assert sizeof.gui.window_t mod 4 = 0
-
-uglobal
-  core.thread.tree_root  dd ?
-  core.thread.tree_mutex mutex_t
-endg
-
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc core.process.create ;/////////////////////////////////////////////////////////////////////////////////////////////
+kproc core.thread.lock_tree ;///////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;< eax ^= [invalid] core.process_t or 0
-;-----------------------------------------------------------------------------------------------------------------------
-        ; allocate memory for process structure
-        mov     eax, sizeof.core.process_t
-        call    malloc
-        or      eax, eax
-        jz      .exit
-
-        ; zero-initialize allocated memory
-        push    eax
-        xchg    eax, edi
-        xor     eax, eax
-        mov     ecx, sizeof.core.process_t / 4
-        rep     stosd
-        pop     eax
-
-        call    core.thread._.initialize
-
-        ; mark this thread as process
-        or      [eax + core.process_t.flags], THREAD_FLAG_PROCESS
-
-        klog_   LOG_DEBUG, "process #%u created\n", [eax + core.thread_t.id]
-
-  .exit:
+        push    eax ecx edx
+        mov     ecx, core.thread._.tree_mutex
+        call    mutex_lock
+        pop     edx ecx eax
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc core.thread.create ;//////////////////////////////////////////////////////////////////////////////////////////////
+kproc core.thread.unlock_tree ;/////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        push    eax ecx edx
+        mov     ecx, core.thread._.tree_mutex
+        call    mutex_unlock
+        pop     edx ecx eax
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc core.thread.alloc ;///////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> eax ^= parent core.process_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax ^= [invalid] core.thread_t or 0
 ;-----------------------------------------------------------------------------------------------------------------------
+        push    eax
+
         ; allocate memory for thread structure
         mov     eax, sizeof.core.thread_t
         call    malloc
         or      eax, eax
         jz      .exit
 
-        ; zero-initialize allocated memory
         push    eax
+
+        ; zero-initialize allocated memory
         xchg    eax, edi
         xor     eax, eax
         mov     ecx, sizeof.core.thread_t / 4
         rep     stosd
-        pop     eax
 
+        call    core.thread.lock_tree
+
+        mov     eax, [esp]
         call    core.thread._.initialize
 
-        klog_   LOG_DEBUG, "thread #%u created\n", [eax + core.thread_t.id]
+        mov     ecx, [esp + 4]
+        mov     [eax + core.thread_t.process_ptr], ecx
+        add     ecx, core.process_t.threads
+        call    core.thread._.add_to_siblings_list
+
+        call    core.thread.unlock_tree
+
+        pop     eax
+
+        klog_   LOG_DEBUG, "thread #%u allocated\n", [eax + core.thread_t.id]
 
   .exit:
+        add     esp, 4
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc core.thread.destroy ;//////////////////////////////////////////////////////////////////////////////////////////////
+kproc core.thread.free ;////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax ^= core.thread_t
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax
 
-        klog_   LOG_DEBUG, "process/thread #%u destroyed\n", [eax + core.thread_t.id]
+        klog_   LOG_DEBUG, "thread #%u freed\n", [eax + core.thread_t.id]
 
-        ; ensure no one else has access to thread tree expect us
-        mov     ecx, core.thread.tree_mutex
-        call    mutex_lock
+        call    core.thread.lock_tree
+
+        call    core.thread._.remove_from_siblings_list
 
         ; remove thread from the tree
-        mov     eax, [esp]
         call    util.rb_tree.remove
-        mov     [core.thread.tree_root], eax
+        mov     [core.thread._.tree_root], eax
 
         ; free used memory
         mov     eax, [esp]
         call    free
 
-        mov     ecx, core.thread.tree_mutex
-        call    mutex_unlock
+        call    core.thread.unlock_tree
 
         pop     eax
         ret
@@ -206,18 +173,15 @@ kproc core.thread.find_by_id ;//////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    ebx ecx edx eax
 
-        ; ensure no one else has access to thread tree expect us
-        mov     ecx, core.thread.tree_mutex
-        call    mutex_lock
+        call    core.thread.lock_tree
 
         mov     eax, [esp]
-        mov     ebx, [core.thread.tree_root]
+        mov     ebx, [core.thread._.tree_root]
         mov     ecx, .compare_id
         call    util.b_tree.find
         xchg    eax, [esp]
 
-        mov     ecx, core.thread.tree_mutex
-        call    mutex_unlock
+        call    core.thread.unlock_tree
 
         pop     eax edx ecx ebx
         ret
@@ -239,20 +203,15 @@ kproc core.thread.enumerate ;///////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    ecx
 
-        ; ensure no one else has access to thread tree expect us
-        mov     ecx, core.thread.tree_mutex
-        call    mutex_lock
+        call    core.thread.lock_tree
 
-        ; enumerate tree to calculate unused thread ID
         pop     edx
-        mov     ebx, [core.thread.tree_root]
+        mov     ebx, [core.thread._.tree_root]
         mov     ecx, .check_valid_and_call_back
         call    util.b_tree.enumerate
 
-        push    eax
-        mov     ecx, core.thread.tree_mutex
-        call    mutex_unlock
-        pop     eax
+        call    core.thread.unlock_tree
+
         ret
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -270,27 +229,7 @@ kproc core.thread.enumerate ;///////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc core.thread.get_process ;/////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;> eax ^= core.thread_t
-;-----------------------------------------------------------------------------------------------------------------------
-;< eax ^= core.process_t
-;-----------------------------------------------------------------------------------------------------------------------
-        test    eax, eax
-        jz      .exit
-
-        test    [eax + core.thread_t.flags], THREAD_FLAG_PROCESS
-        jnz     .exit
-
-        mov     eax, [eax + core.thread_t.parent_id]
-        call    core.thread.find_by_id
-
-  .exit:
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc core.thread.compat.find_by_task_data ;///////////////////////////////////////////////////////////////////////////////
+kproc core.thread.compat.find_by_task_data ;////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax ^= task_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -302,7 +241,7 @@ kproc core.thread.compat.find_by_task_data ;////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc core.thread.compat.find_by_app_data ;////////////////////////////////////////////////////////////////////////////////
+kproc core.thread.compat.find_by_app_data ;/////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax ^= app_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -315,42 +254,12 @@ kproc core.thread.compat.find_by_app_data ;/////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc core.process.compat.init_with_app_data ;//////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;> eax ^= core.thread_t
-;> ebx ^= app_data_t
-;-----------------------------------------------------------------------------------------------------------------------
-        call    core.thread.compat.init_with_app_data
-
-        push    ebx
-        mov_s_  [eax + core.process_t.mem_range.size], [ebx + app_data_t.mem_size]
-        mov_s_  [eax + core.process_t.dir_table], [ebx + app_data_t.dir_table]
-        mov_s_  [eax + core.process_t.dlls_list_ptr], [ebx + app_data_t.dlls_list_ptr]
-        mov_s_  [eax + core.process_t.obj.prev_ptr], [ebx + app_data_t.obj.prev_ptr]
-        mov_s_  [eax + core.process_t.obj.next_ptr], [ebx + app_data_t.obj.next_ptr]
-
-        sub     ebx, SLOT_BASE
-        shr     ebx, 3
-        add     ebx, TASK_DATA - sizeof.task_data_t
-
-        mov_s_  [eax + core.process_t.mem_range.address], [ebx + task_data_t.mem_start]
-        pop     ebx
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
 kproc core.thread.compat.init_with_app_data ;///////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax ^= core.thread_t
 ;> ebx ^= app_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax ebx ecx
-        mov     ecx, [ebx + app_data_t.heap_base]
-        mov     [eax + core.thread_t.heap_range.address], ecx
-        neg     ecx
-        add     ecx, [ebx + app_data_t.heap_top]
-        mov     [eax + core.thread_t.heap_range.size], ecx
-
         mov     cl, [ebx + app_data_t.keyboard_mode]
         mov     [eax + core.thread_t.keyboard_mode], cl
 
@@ -366,7 +275,7 @@ kproc core.thread.compat.init_with_app_data ;///////////////////////////////////
         mov_s_  [eax + core.thread_t.tls_base], [ebx + app_data_t.tls_base]
         mov_s_  [eax + core.thread_t.io_map], [ebx + app_data_t.io_map]
         mov_s_  [eax + core.thread_t.io_map + 4], [ebx + app_data_t.io_map + 4]
-        mov_s_  [eax + core.thread_t.debugger_slot], [ebx + app_data_t.debugger_slot]
+        mov_s_  [eax + core.thread_t.debug.debugger_slot], [ebx + app_data_t.debugger_slot]
 
         sub     ebx, SLOT_BASE
         shr     ebx, 3
@@ -379,18 +288,16 @@ kproc core.thread.compat.init_with_app_data ;///////////////////////////////////
 
         mov_s_  [ebx + task_data_t.new_pid], [eax + core.thread_t.id]
 
-        mov     ebx, eax
-        mov     eax, [CURRENT_THREAD]
-        call    core.thread.get_process
-        test    eax, eax
-        jz      .exit
-
-        mov_s_  [ebx + core.thread_t.parent_id], [eax + core.thread_t.id]
-
   .exit:
         pop     ecx ebx eax
         ret
 kendp
+
+uglobal
+  core.thread._.tree_root  dd ?
+  core.thread._.tree_mutex mutex_t
+  core.thread._.last_id    dd ?
+endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc core.thread._.initialize ;////////////////////////////////////////////////////////////////////////////////////////
@@ -399,29 +306,28 @@ kproc core.thread._.initialize ;////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax
 
-        ; ensure no one else has access to thread tree expect us
-        mov     ecx, core.thread.tree_mutex
-        call    mutex_lock
-
         ; enumerate tree to calculate unused thread ID
-        mov     ebx, [core.thread.tree_root]
+        mov     ebx, [core.thread._.tree_root]
         mov     ecx, .check_used_id
-        mov     edx, 1
-        call    util.b_tree.enumerate
+        mov     edx, [core.thread._.last_id]
+        inc     edx
+        jnz     @f
+
+        inc     dl
+
+    @@: call    util.b_tree.enumerate
         ; we're optimistic here and hope we always find a free ID to use, hence no enumeration result check
 
         ; set thread ID to acquired one
         mov     eax, [esp]
         mov     [eax + core.thread_t.id], edx
+        mov     [core.thread._.last_id], edx
 
         ; add thread to the tree
-        mov     ebx, [core.thread.tree_root]
+        mov     ebx, [core.thread._.tree_root]
         mov     ecx, .compare_id
         call    util.rb_tree.insert
-        mov     [core.thread.tree_root], eax
-
-        mov     ecx, core.thread.tree_mutex
-        call    mutex_unlock
+        mov     [core.thread._.tree_root], eax
 
         pop     eax
         ret
@@ -452,5 +358,42 @@ kproc core.thread._.initialize ;////////////////////////////////////////////////
         mov     eax, [eax + core.thread_t.id]
         cmp     eax, [ebx + core.thread_t.id]
         pop     eax
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc core.thread._.add_to_siblings_list ;//////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> eax ^= core.thread_t
+;> ecx ^= linked_list_t
+;-----------------------------------------------------------------------------------------------------------------------
+        push    eax ecx
+        add     eax, core.thread_t.siblings
+
+        push    [ecx + linked_list_t.next_ptr]
+        mov     [ecx + linked_list_t.next_ptr], eax
+        mov     [eax + linked_list_t.prev_ptr], ecx
+        pop     ecx
+        mov     [ecx + linked_list_t.prev_ptr], eax
+        mov     [eax + linked_list_t.next_ptr], ecx
+
+        pop     ecx eax
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc core.thread._.remove_from_siblings_list ;/////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> eax ^= core.thread_t
+;-----------------------------------------------------------------------------------------------------------------------
+        push    eax ecx
+        add     eax, core.thread_t.siblings
+
+        mov     ecx, [eax + linked_list_t.prev_ptr]
+        mov_s_  [ecx + linked_list_t.next_ptr], [eax + linked_list_t.next_ptr]
+        mov     ecx, [eax + linked_list_t.next_ptr]
+        mov_s_  [ecx + linked_list_t.prev_ptr], [eax + linked_list_t.prev_ptr]
+
+        pop     ecx eax
         ret
 kendp

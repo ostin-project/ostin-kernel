@@ -281,6 +281,7 @@ cpu_caps          rd 4
 
 CURRENT_TASK      dd ?
 CURRENT_THREAD    dd ?
+CURRENT_PROCESS   dd ?
 TASK_COUNT        dd ?
 TASK_BASE         dd ?
 

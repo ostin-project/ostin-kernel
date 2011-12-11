@@ -19,6 +19,36 @@
 ;;///// public functions ///////////////////////////////////////////////////////////////////////////////////////////////
 ;;======================================================================================================================
 
+WINDOW_FLAG_VALID = 0x01
+
+struct gui.window_t
+  id            dd ?
+  flags         dd ? ; #= combination of WINDOW_FLAG_*
+  thread_ptr    dd ?
+  box           box32_t
+  client_box    box32_t
+  saved_box     box32_t
+  union
+    cl_workarea dd ?
+    struct
+                rb 3
+      fl_wstyle db ?
+    ends
+  ends
+  cl_titlebar   dd ?
+  cl_frames     dd ?
+  fl_wstate     db ?
+  fl_wdrawn     db ?
+  fl_redraw     db ?
+                db ?
+  shape         dd ?
+  shape_scale   dd ?
+  caption       dd ? ; ^= char*
+  cursor        dd ? ; ^= cursor_t
+ends
+
+static_assert sizeof.gui.window_t mod 4 = 0
+
 window.BORDER_SIZE = 5
 
 uglobal

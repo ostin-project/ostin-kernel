@@ -207,9 +207,16 @@ kproc find_next_task ;//////////////////////////////////////////////////////////
         mov     byte[CURRENT_TASK], bh
 
         pushad
+
         mov     eax, edi
         call    core.thread.compat.find_by_task_data
         mov     [CURRENT_THREAD], eax
+        test    eax, eax
+        jz      @f
+
+        mov     eax, [eax + core.thread_t.process_ptr]
+
+    @@: mov     [CURRENT_PROCESS], eax
         popad
 
         mov     [TASK_BASE], edi

@@ -533,7 +533,9 @@ high_code:
         stdcall kernel_alloc, [_WinMapRange.size]
         mov     [_WinMapRange.address], eax
 
-        mov     ecx, core.thread.tree_mutex
+        mov     ecx, core.process._.tree_mutex
+        call    mutex_init
+        mov     ecx, core.thread._.tree_mutex
         call    mutex_init
 
         xor     eax, eax
@@ -723,10 +725,16 @@ end if
         mov     [SLOT_BASE + app_data_t.cursor], eax
         mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.cursor], eax
 
-        call    core.process.create
-        mov     [CURRENT_THREAD], eax
+        call    core.process.alloc
+        mov     [CURRENT_PROCESS], eax
         mov     ebx, SLOT_BASE + sizeof.app_data_t
         call    core.process.compat.init_with_app_data
+        or      [eax + core.process_t.flags], PROCESS_FLAG_VALID
+
+        call    core.thread.alloc
+        mov     [CURRENT_THREAD], eax
+        mov     ebx, SLOT_BASE + sizeof.app_data_t
+        call    core.thread.compat.init_with_app_data
         or      [eax + core.thread_t.flags], THREAD_FLAG_VALID
 
         ; READ TSC / SECOND
@@ -2270,7 +2278,8 @@ kproc sysfn.get_process_info ;//////////////////////////////////////////////////
 
         ; +10: 11 bytes: name of the process
         push    ecx
-        lea     eax, [SLOT_BASE + ecx * 8 + app_data_t.app_name]
+        mov     eax, [ebp + core.thread_t.process_ptr]
+        add     eax, core.process_t.name
         add     ebx, 10
         mov     ecx, 11
         call    memmove
