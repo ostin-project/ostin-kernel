@@ -2335,11 +2335,20 @@ kproc sysfn.get_process_info ;//////////////////////////////////////////////////
         pop     esi
         pop     edi
 
-  .nofillbuf:
+  .exit:
         ; return number of processes
         mov     eax, [TASK_COUNT]
         mov     [esp + 4 + regs_context32_t.eax], eax
         ret
+
+  .nofillbuf:
+        mov     edi, ebx
+        mov     ecx, 1024 / 4
+        xor     eax, eax
+        rep
+        stosd
+        mov     dword[ebx + 50], TSTATE_FREE
+        jmp     .exit
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
