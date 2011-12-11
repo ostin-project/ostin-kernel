@@ -981,7 +981,7 @@ endl
         stosd   ; clean extended information about new thread
         mov     esi, ebx
         mov     edi, edx
-        mov     ecx, 11
+        mov     ecx, PROCESS_MAX_NAME_LEN
         rep
         movsb   ; copy process name
 

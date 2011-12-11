@@ -70,12 +70,14 @@ macro xchg_s_ a, b
 
 macro static_assert cond, message
 {
-  if ~ (cond)
+  local ..static_assert_pass
+  if defined ..static_assert_pass & ~ (cond)
     if ~ message eq
       display "Assertion failed: ", message, 13, 10
     end if
     __assert_failed__
   end if
+  ..static_assert_pass:
 }
 
 macro Mov op1, op2, op3 ; op1 = op2 = op3

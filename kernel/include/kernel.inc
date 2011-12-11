@@ -362,8 +362,8 @@ struct app_data_debug_regs_t
 ends
 
 struct app_data_t
-  app_name        rb 11
-                  rb 5
+  app_name        rb PROCESS_MAX_NAME_LEN
+                  rb 16 - PROCESS_MAX_NAME_LEN
   fpu_state       dd ?
   ev_count_       dd ? ; unused
   exc_handler     dd ?

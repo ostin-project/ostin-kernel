@@ -2281,7 +2281,7 @@ kproc sysfn.get_process_info ;//////////////////////////////////////////////////
         mov     eax, [ebp + core.thread_t.process_ptr]
         add     eax, core.process_t.name
         add     ebx, 10
-        mov     ecx, 11
+        mov     ecx, PROCESS_MAX_NAME_LEN
         call    memmove
         pop     ecx
 

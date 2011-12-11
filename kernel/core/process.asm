@@ -14,14 +14,16 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
+PROCESS_MAX_NAME_LEN = 11
+
 PROCESS_FLAG_VALID = 0x01
 
 struct core.process_t rb_tree_node_t
   id            dd ?
   flags         dd ?
   parent_id     dd ?
-  name          rb 11
-                rb 5
+  name          rb PROCESS_MAX_NAME_LEN
+                rb (4 - PROCESS_MAX_NAME_LEN mod 4) mod 4
   mem_range     memory_range32_t
   heap_base     dd ?
   heap_top      dd ?

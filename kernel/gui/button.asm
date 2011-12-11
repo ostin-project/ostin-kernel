@@ -34,7 +34,7 @@ struct sys_button_t
   box       box16_t
 ends
 
-;static_assert sizeof.sys_button_t = 16
+static_assert sizeof.sys_button_t = 16
 
 uglobal
   BTN_ADDR dd ?
