@@ -18,8 +18,7 @@
 
 uglobal
   align 4
-  label known_part dword
-  fat32part rd 1 ; for boot 0x1
+  known_part dd ? ; for boot 0x1
 endg
 
         mov     [transfer_adress], DRIVE_DATA + 0x0a
@@ -33,7 +32,7 @@ search_partitions_ide0:
         mov     [known_part], 1
 
 search_partitions_ide0_1:
-        call    set_PARTITION_variables
+        call    set_partition_variables
         test    [problem_partition], 2
         jnz     search_partitions_ide1 ; not found part
         test    [problem_partition], 1
@@ -56,7 +55,7 @@ search_partitions_ide1:
         mov     [known_part], 1
 
 search_partitions_ide1_1:
-        call    set_PARTITION_variables
+        call    set_partition_variables
         test    [problem_partition], 2
         jnz     search_partitions_ide2
         test    [problem_partition], 1
@@ -79,7 +78,7 @@ search_partitions_ide2:
         mov     [known_part], 1
 
 search_partitions_ide2_1:
-        call    set_PARTITION_variables
+        call    set_partition_variables
         test    [problem_partition], 2
         jnz     search_partitions_ide3
         test    [problem_partition], 1
@@ -102,7 +101,7 @@ search_partitions_ide3:
         mov     [known_part], 1
 
 search_partitions_ide3_1:
-        call    set_PARTITION_variables
+        call    set_partition_variables
         test    [problem_partition], 2
         jnz     end_search_partitions_ide
         test    [problem_partition], 1
@@ -129,7 +128,7 @@ start_search_partitions_bd:
         mov     [known_part], 1
 
 search_partitions_bd:
-        call    set_PARTITION_variables
+        call    set_partition_variables
         test    [problem_partition], 2
         jnz     end_search_partitions_bd
         test    [problem_partition], 1
@@ -160,7 +159,7 @@ endg
 kproc partition_data_transfer ;/////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     edi, [transfer_adress]
-        mov     esi, PARTITION_START ; start of file_system_data
+        mov     esi, current_partition ; start of file_system_data
         mov     ecx, (file_system_data_size + 3) / 4
         rep
         movsd
@@ -172,7 +171,7 @@ kproc partition_data_transfer_1 ;///////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;       cli
         push    edi
-        mov     edi, PARTITION_START
+        mov     edi, current_partition
         mov     esi, [transfer_adress]
         mov     ecx, (file_system_data_size + 3) / 4
         rep

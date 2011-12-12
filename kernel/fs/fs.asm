@@ -149,7 +149,6 @@ kproc choice_necessity_partition_1 ;////////////////////////////////////////////
         sub     eax, ebx
 
   .f:
-;       add     eax, [fat32part]
         add     eax, [known_part]
         dec     eax
         xor     edx, edx

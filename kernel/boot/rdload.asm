@@ -23,15 +23,15 @@
         mov     [hdbase], 0x1f0
         mov     [hdid], 0
         mov     [hdpos], 1
-        mov     [fat32part], 0
+        mov     [known_part], 0
 
 position_1_1:
-        inc     [fat32part]
+        inc     [known_part]
         call    search_and_read_image
         cmp     [image_retrieved], 1
         je      yes_sys_on_hd
         movzx   eax, byte[DRIVE_DATA + 2]
-        cmp     [fat32part], eax
+        cmp     [known_part], eax
         jle     position_1_1
 
 position_2:
@@ -40,15 +40,15 @@ position_2:
         mov     [hdbase], 0x1f0
         mov     [hdid], 0x10
         mov     [hdpos], 2
-        mov     [fat32part], 0
+        mov     [known_part], 0
 
 position_2_1:
-        inc     [fat32part]
+        inc     [known_part]
         call    search_and_read_image
         cmp     [image_retrieved], 1
         je      yes_sys_on_hd
         movzx   eax, byte[DRIVE_DATA + 3]
-        cmp     eax, [fat32part]
+        cmp     eax, [known_part]
         jle     position_2_1
 
 position_3:
@@ -57,15 +57,15 @@ position_3:
         mov     [hdbase], 0x170
         mov     [hdid], 0
         mov     [hdpos], 3
-        mov     [fat32part], 0
+        mov     [known_part], 0
 
 position_3_1:
-        inc     [fat32part]
+        inc     [known_part]
         call    search_and_read_image
         cmp     [image_retrieved], 1
         je      yes_sys_on_hd
         movzx   eax, byte[DRIVE_DATA + 4]
-        cmp     eax, [fat32part]
+        cmp     eax, [known_part]
         jle     position_3_1
 
 position_4:
@@ -74,20 +74,20 @@ position_4:
         mov     [hdbase], 0x170
         mov     [hdid], 0x10
         mov     [hdpos], 4
-        mov     [fat32part], 0
+        mov     [known_part], 0
 
 position_4_1:
-        inc     [fat32part]
+        inc     [known_part]
         call    search_and_read_image
         cmp     [image_retrieved], 1
         je      yes_sys_on_hd
         movzx   eax, byte[DRIVE_DATA + 5]
-        cmp     eax, [fat32part]
+        cmp     eax, [known_part]
         jle     position_4_1
         jmp     yes_sys_on_hd
 
 search_and_read_image:
-        call    set_FAT32_variables
+        call    set_partition_variables
         mov     edx, bootpath
         call    read_image
         test    eax, eax

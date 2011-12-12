@@ -796,17 +796,17 @@ kendp
 kproc fs_OnGenericQuery3 ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         add     edi, fs.ntfs.vftbl
-        cmp     [fs_type], FS_PARTITION_TYPE_NTFS
+        cmp     [current_partition.type], FS_PARTITION_TYPE_NTFS
         je      .known_fs
 
         add     edi, fs.ext2.vftbl - fs.ntfs.vftbl
-        cmp     [fs_type], FS_PARTITION_TYPE_EXT2
+        cmp     [current_partition.type], FS_PARTITION_TYPE_EXT2
         je      .known_fs
 
         add     edi, fs.fat16x.vftbl - fs.ext2.vftbl
-        cmp     [fs_type], FS_PARTITION_TYPE_FAT16
+        cmp     [current_partition.type], FS_PARTITION_TYPE_FAT16
         je      .known_fs
-        cmp     [fs_type], FS_PARTITION_TYPE_FAT32
+        cmp     [current_partition.type], FS_PARTITION_TYPE_FAT32
         je      .known_fs
 
         jmp     fs.error.unknown_filesystem

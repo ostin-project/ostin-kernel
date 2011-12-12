@@ -184,10 +184,10 @@ ends
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc ext2_test_superblock ;////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     [fs_type], 0x83
+        cmp     [current_partition.type], 0x83
         jne     .no
 
-        mov     eax, [PARTITION_START]
+        mov     eax, dword[current_partition.range.offset]
         add     eax, 2 ; superblock start at 1024b
         call    hd_read
 
@@ -216,7 +216,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc ext2_setup ;//////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     [fs_type], FS_PARTITION_TYPE_EXT2
+        mov     [current_partition.type], FS_PARTITION_TYPE_EXT2
 
         push    512
         call    kernel_alloc ; mem for superblock
@@ -294,7 +294,7 @@ kproc ext2_get_block ;//////////////////////////////////////////////////////////
         push    eax ebx ecx
         mov     ecx, [ext2_data.log_block_size]
         shl     eax, cl
-        add     eax, [PARTITION_START]
+        add     eax, dword[current_partition.range.offset]
         mov     ecx, [ext2_data.count_block_in_block]
 
     @@: call    hd_read
@@ -412,7 +412,7 @@ kproc ext2_get_inode ;//////////////////////////////////////////////////////////
 
         mov     ecx, [ext2_data.log_block_size]
         shl     eax, cl
-        add     eax, [PARTITION_START] ; partition start - in terms of hdd (512)
+        add     eax, dword[current_partition.range.offset] ; partition start - in terms of hdd (512)
 
         ; eax - points to inode table on hdd
         mov     esi, eax ; lets save it in esi for now
@@ -1295,7 +1295,7 @@ kproc ext2_balloc ;/////////////////////////////////////////////////////////////
         mov     ebx, [ext2_data.sb]
         dec     [ebx + ext2_sb_t.free_block_count]
         mov     eax, 2
-        add     eax, [PARTITION_START]
+        add     eax, dword[current_partition.range.offset]
         call    hd_write
         mov     eax, [ebx + ext2_sb_t.first_data_block]
         inc     eax
@@ -1336,7 +1336,7 @@ kproc ext2_set_block ;//////////////////////////////////////////////////////////
         push    eax ebx ecx
         mov     ecx, [ext2_data.log_block_size]
         shl     eax, cl
-        add     eax, [PARTITION_START]
+        add     eax, dword[current_partition.range.offset]
         mov     ecx, [ext2_data.count_block_in_block]
 
     @@: call    hd_write

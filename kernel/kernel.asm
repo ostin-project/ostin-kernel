@@ -1480,7 +1480,6 @@ kproc sysfn.set_config.hd_base ;////////////////////////////////////////////////
         mov     [hdbase], 0x1f0
         and     [hdid], 0
         mov     [hdpos], ecx
-;       call    set_FAT32_variables
 
   .noprmahd:
         cmp     ecx, 2
@@ -1489,7 +1488,6 @@ kproc sysfn.set_config.hd_base ;////////////////////////////////////////////////
         mov     [hdbase], 0x1f0
         mov     [hdid], 0x10
         mov     [hdpos], ecx
-;       call    set_FAT32_variables
 
   .noprslhd:
         cmp     ecx, 3
@@ -1498,7 +1496,6 @@ kproc sysfn.set_config.hd_base ;////////////////////////////////////////////////
         mov     [hdbase], 0x170
         and     [hdid], 0
         mov     [hdpos], ecx
-;       call    set_FAT32_variables
 
   .nosemahd:
         cmp     ecx, 4
@@ -1507,7 +1504,6 @@ kproc sysfn.set_config.hd_base ;////////////////////////////////////////////////
         mov     [hdbase], 0x170
         mov     [hdid], 0x10
         mov     [hdpos], ecx
-;       call    set_FAT32_variables
 
   .noseslhd:
         call    reserve_hd1
@@ -1529,8 +1525,7 @@ kproc sysfn.set_config.hd_partition ;///////////////////////////////////////////
 ;? System function 21.8
 ;? fat32 partition in hd
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     [fat32part], ecx
-;       call    set_FAT32_variables
+        mov     [known_part], ecx
         call    reserve_hd1
         call    reserve_hd_channel
         call    free_hd_channel
@@ -1690,7 +1685,7 @@ kproc sysfn.get_config.hd_partition ;///////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 26.8
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, [fat32part]
+        mov     eax, [known_part]
         mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp

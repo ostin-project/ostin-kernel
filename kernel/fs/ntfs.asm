@@ -148,10 +148,8 @@ kproc ntfs_setup ;//////////////////////////////////////////////////////////////
         movzx   eax, byte[ebx + 13]
         mov     [ntfs_data.sectors_per_cluster], eax
         mov     eax, [ebx + 0x28]
-        add     eax, [PARTITION_START]
-        dec     eax
-        mov     [PARTITION_END], eax
-        mov     [fs_type], FS_PARTITION_TYPE_NTFS
+        mov     dword[current_partition.range.length], eax
+        mov     [current_partition.type], FS_PARTITION_TYPE_NTFS
         mov     eax, [ebx + 0x30]
         mov     [ntfs_data.mft_cluster], eax
         mov     eax, [ebx + 0x38]
@@ -336,7 +334,7 @@ kendp
 kproc ntfs_read_frs_sector ;////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax ecx
-        add     eax, [PARTITION_START]
+        add     eax, dword[current_partition.range.offset]
         mov     ecx, [ntfs_data.frs_size]
         shr     ecx, 9
         mov     ebx, [ntfs_data.frs_buffer]
@@ -426,7 +424,7 @@ kproc ntfs_read_attr ;//////////////////////////////////////////////////////////
         mov     eax, [ntfs_data.sectors_per_cluster]
         mul     ecx
         ; eax = sector on partition
-        add     eax, [PARTITION_START]
+        add     eax, dword[current_partition.range.offset]
         pop     edx
         add     eax, edx
         mov     ebx, [ntfs_cur_buf]
@@ -864,7 +862,7 @@ kproc ntfs_read_attr ;//////////////////////////////////////////////////////////
         add     eax, ebp
         imul    eax, [ntfs_data.sectors_per_cluster]
         add     eax, edx
-        add     eax, [PARTITION_START]
+        add     eax, dword[current_partition.range.offset]
         pop     ecx
         neg     ecx
         imul    ecx, [ntfs_data.sectors_per_cluster]
