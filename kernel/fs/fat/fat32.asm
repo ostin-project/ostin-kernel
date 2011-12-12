@@ -312,14 +312,14 @@ kproc analyze_directory ;///////////////////////////////////////////////////////
         cmp     [hd_error], 0
         jne     .adr_not_found
 
-        mov     ecx, 512 / 32 ; count of dir entrys per sector = 16
+        mov     ecx, 512 / sizeof.fs.fat.dir_entry_t ; count of dir entrys per sector = 16
 
   .adr_analyze:
-        mov     edi, [ebx + 11] ; file attribute
-        and     edi, 0x0f
-        cmp     edi, 0x0f
+        movzx   edi, [ebx + fs.fat.dir_entry_t.attributes] ; file attribute
+        and     edi, FS_FAT_ATTR_LONG_NAME_MASK
+        cmp     edi, FS_FAT_ATTR_LONG_NAME
         je      .adr_long_filename
-        test    edi, 0x08 ; skip over volume label
+        test    edi, FS_FAT_ATTR_VOLUME_ID ; skip over volume label
         jne     .adr_long_filename ; Note: label can be same name as file/dir
 
         mov     esi, [esp + 0] ; filename need to be uppercase
@@ -332,7 +332,7 @@ kproc analyze_directory ;///////////////////////////////////////////////////////
         je      .adr_found
 
   .adr_long_filename:
-        add     ebx, 32 ; position of next dir entry
+        add     ebx, sizeof.fs.fat.dir_entry_t ; position of next dir entry
         dec     ecx
         jnz     .adr_analyze
 
@@ -464,8 +464,8 @@ kproc get_cluster_of_a_path ;///////////////////////////////////////////////////
         call    analyze_directory
         jc      .directory_not_found
 
-        mov     eax, [ebx + 20 - 2] ; read the HIGH 16bit cluster field
-        mov     ax, [ebx + 26] ; read the LOW 16bit cluster field
+        mov     eax, dword[ebx + fs.fat.dir_entry_t.start_cluster.high - 2] ; read the HIGH 16bit cluster field
+        mov     ax, [ebx + fs.fat.dir_entry_t.start_cluster.low] ; read the LOW 16bit cluster field
         and     eax, [fat16x_data.fatMASK]
         add     edx, 11 ; 8+3 (name+extension)
         jmp     .search_end_of_path
@@ -505,8 +505,7 @@ kproc add_disk_free_space ;/////////////////////////////////////////////////////
         jne     .add_not_fs
 
         add     [ebx + 0x1e8], ecx
-        push    [fat16x_data.fatStartScan]
-        pop     dword[ebx + 0x1ec]
+        mov_s_  dword[ebx + 0x1ec], [fat16x_data.fatStartScan]
         call    hd_write
 ;       cmp     [hd_error], 0
 ;       jne     .add_not_fs
@@ -574,12 +573,12 @@ kproc file_read ;///////////////////////////////////////////////////////////////
         call    analyze_directory
         jc      .file_to_read_not_found
 
-        mov     eax, [ebx + 28] ; file size
-        test    byte[ebx + 11], 0x10 ; is it directory?
+        mov     eax, [ebx + fs.fat.dir_entry_t.size] ; file size
+        test    [ebx + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY ; is it directory?
         jz      .read_set_size ; no
 
-        mov     eax, [ebx + 20 - 2] ; FAT entry
-        mov     ax, [ebx + 26]
+        mov     eax, dword[ebx + fs.fat.dir_entry_t.start_cluster.high - 2] ; FAT entry
+        mov     ax, [ebx + fs.fat.dir_entry_t.start_cluster.low]
         and     eax, [fat16x_data.fatMASK]
         call    get_dir_size
         cmp     [hd_error], 0
@@ -588,8 +587,8 @@ kproc file_read ;///////////////////////////////////////////////////////////////
   .read_set_size:
         mov     [file_size], eax
 
-        mov     eax, [ebx + 20 - 2] ; FAT entry
-        mov     ax, [ebx + 26]
+        mov     eax, dword[ebx + fs.fat.dir_entry_t.start_cluster.high - 2] ; FAT entry
+        mov     ax, [ebx + fs.fat.dir_entry_t.start_cluster.low]
         and     eax, [fat16x_data.fatMASK]
 
   .file_read_start:
@@ -632,7 +631,7 @@ kproc file_read ;///////////////////////////////////////////////////////////////
         popad
         mov     [hd1_status], 0
         mov     ebx, [file_size]
-        xor     eax, eax
+        xor     eax, eax ; ERROR_SUCCESS
         ret
 
   .file_to_read_not_found:
@@ -771,11 +770,11 @@ kproc hd_find_lfn ;/////////////////////////////////////////////////////////////
         jz      .found
 
   .continue:
-        test    byte[edi + 11], 0x10
+        test    [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY
         jz      .notfound
         and     dword[esp + 12], 0
-        mov     eax, [edi + 20 - 2]
-        mov     ax, [edi + 26] ; cluster
+        mov     eax, dword[edi + fs.fat.dir_entry_t.start_cluster.high - 2]
+        mov     ax, [edi + fs.fat.dir_entry_t.start_cluster.low] ; cluster
 
   .fat32:
         mov     [esp + 8], eax
@@ -842,7 +841,7 @@ kproc fat32_HdRead ;////////////////////////////////////////////////////////////
         jmp     fs.error.access_denied
 
   .found:
-        test    byte[edi + 11], 0x10 ; do not allow read directories
+        test    [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY ; do not allow read directories
         jnz     .noaccess
         test    ebx, ebx
         jz      .l1
@@ -859,17 +858,17 @@ kproc fat32_HdRead ;////////////////////////////////////////////////////////////
 
   .l1:
         push    ecx edx
-        push    0
-        mov     eax, [edi + 28]
+        push    ERROR_SUCCESS
+        mov     eax, [edi + fs.fat.dir_entry_t.size]
         sub     eax, ebx
         jb      .eof
         cmp     eax, ecx
         jae     @f
         mov     ecx, eax
-        mov     byte[esp], 6
+        mov     byte[esp], ERROR_END_OF_FILE
 
-    @@: mov     eax, [edi + 20 - 2]
-        mov     ax, [edi + 26]
+    @@: mov     eax, dword[edi + fs.fat.dir_entry_t.start_cluster.high - 2]
+        mov     ax, [edi + fs.fat.dir_entry_t.start_cluster.low]
         ; now eax=cluster, ebx=position, ecx=count, edx=buffer for data
 
   .new_cluster:
@@ -989,15 +988,15 @@ kproc fat32_HdReadFolder ;//////////////////////////////////////////////////////
         jmp     fs.error.file_not_found
 
   .found:
-        test    byte[edi + 11], 0x10 ; do not allow read files
+        test    [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY ; do not allow read files
         jnz     .found_dir
 
         pop     edi
         jmp     fs.error.access_denied
 
   .found_dir:
-        mov     eax, [edi + 20 - 2]
-        mov     ax, [edi + 26] ; eax=cluster
+        mov     eax, dword[edi + fs.fat.dir_entry_t.start_cluster.high - 2]
+        mov     ax, [edi + fs.fat.dir_entry_t.start_cluster.low] ; eax=cluster
 
   .doit:
         push    esi ecx
@@ -1009,12 +1008,12 @@ kproc fat32_HdReadFolder ;//////////////////////////////////////////////////////
         ; init header
         push    eax ecx
         mov     edi, edx
-        mov     ecx, 32 / 4
+        mov     ecx, sizeof.fs.file_info_header_t / 4
         xor     eax, eax
         rep
         stosd
         pop     ecx eax
-        mov     byte[edx], 1 ; version
+        mov     byte[edx + fs.file_info_header_t.version], 1 ; version
         mov     esi, edi ; esi points to BDFE
 
   .new_cluster:
@@ -1047,9 +1046,9 @@ kproc fat32_HdReadFolder ;//////////////////////////////////////////////////////
   .l1:
         call    fs.fat.get_name
         jc      .l2
-        cmp     byte[edi + 11], 0x0f
+        cmp     [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_LONG_NAME
         jnz     .do_bdfe
-        add     edi, 0x20
+        add     edi, sizeof.fs.fat.dir_entry_t
         cmp     edi, ebx
         jb      .do_bdfe
         pop     eax
@@ -1085,16 +1084,16 @@ kproc fat32_HdReadFolder ;//////////////////////////////////////////////////////
         push    eax
 
   .do_bdfe:
-        inc     dword[edx + 8] ; new file found
+        inc     dword[edx + fs.file_info_header_t.files_count] ; new file found
         dec     dword[esp + 4]
         jns     .l2
         dec     ecx
         js      .l2
-        inc     dword[edx + 4] ; new file block copied
+        inc     dword[edx + fs.file_info_header_t.files_read] ; new file block copied
         call    fs.fat.fat_entry_to_bdfe
 
   .l2:
-        add     edi, 0x20
+        add     edi, sizeof.fs.fat.dir_entry_t
         cmp     edi, ebx
         jb      .l1
         pop     eax
@@ -1131,7 +1130,7 @@ kproc fat32_HdReadFolder ;//////////////////////////////////////////////////////
         add     esp, 262 * 2 + 4 + 8
         pop     ebp
         mov     ebx, [edx + 4]
-        xor     eax, eax
+        xor     eax, eax ; ERROR_SUCCESS
         dec     ecx
         js      @f
         mov     al, ERROR_END_OF_FILE
@@ -1143,9 +1142,9 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fat16_root_next ;/////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     edi, buffer + 0x200 - 0x20
+        cmp     edi, buffer + 0x200 - sizeof.fs.fat.dir_entry_t
         jae     fat16_root_next_sector
-        add     edi, 0x20
+        add     edi, sizeof.fs.fat.dir_entry_t
         ret     ; CF=0
 kendp
 
@@ -1154,8 +1153,7 @@ kproc fat16_root_next_sector ;//////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? read next sector
 ;-----------------------------------------------------------------------------------------------------------------------
-        push    [longname_sec2]
-        pop     [longname_sec1]
+        mov_s_  [longname_sec1], [longname_sec2]
         push    ecx
         mov     ecx, [eax + 4]
         push    ecx
@@ -1230,17 +1228,16 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fat_notroot_next ;////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     edi, buffer + 0x200 - 0x20
+        cmp     edi, buffer + 0x200 - sizeof.fs.fat.dir_entry_t
         jae     fat_notroot_next_sector
-        add     edi, 0x20
+        add     edi, sizeof.fs.fat.dir_entry_t
         ret     ; CF=0
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fat_notroot_next_sector ;/////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        push    [longname_sec2]
-        pop     [longname_sec1]
+        mov_s_  [longname_sec1], [longname_sec2]
         push    eax
         call    fat_get_sector
         mov     [longname_sec2], eax
@@ -1475,7 +1472,7 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         mov     eax, ERROR_FILE_NOT_FOUND
 
   .ret1:
-        mov     [esp + 28], eax
+        mov     [esp + regs_context32_t.eax], eax
         popad
         xor     ebx, ebx
         ret
@@ -1483,11 +1480,11 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
     @@: inc     esi
 
   .common0:
-        test    byte[edi + 11], 0x10 ; must be directory
+        test    [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY ; must be directory
         mov     eax, ERROR_ACCESS_DENIED
         jz      .ret1
-        mov     ebp, [edi + 20 - 2]
-        mov     bp, [edi + 26] ; ebp=cluster
+        mov     ebp, dword[edi + fs.fat.dir_entry_t.start_cluster.high - 2]
+        mov     bp, [edi + fs.fat.dir_entry_t.start_cluster.low] ; ebp=cluster
         mov     eax, ERROR_FAT_TABLE
         cmp     ebp, 2
         jb      .ret1
@@ -1506,7 +1503,7 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         call    fs.fat.find_long_name
         jc      .notfound
         ; found
-        test    byte[edi + 11], 0x10
+        test    [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY
         jz      .exists_file
         ; found directory; if we are creating directory, return OK,
         ;                  if we are creating file, say "access denied"
@@ -1515,14 +1512,14 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         test    al, al
         jz      fs.error.access_denied
 
-        xor     eax, eax
+        xor     eax, eax ; ERROR_SUCCESS
         xor     ebx, ebx
         ret
 
   .exists_file:
         ; found file; if we are creating directory, return "access denied",
         ;             if we are creating file, delete existing file and continue
-        cmp     byte[esp + 32 + 28], 0
+        cmp     [esp + 32 + regs_context32_t.al], 0
         jz      @f
         add     esp, 32
         popad
@@ -1531,12 +1528,12 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
     @@: ; delete FAT chain
         push    edi
         xor     eax, eax
-        mov     dword[edi + 28], eax ; zero size
+        mov     [edi + fs.fat.dir_entry_t.size], eax ; zero size
         xor     ecx, ecx
-        mov     eax, [edi + 20 - 2]
-        mov     ax, [edi + 26]
-        mov     word[edi + 20], cx
-        mov     word[edi + 26], cx
+        mov     eax, dword[edi + fs.fat.dir_entry_t.start_cluster.high - 2]
+        mov     ax, [edi + fs.fat.dir_entry_t.start_cluster.low]
+        mov     [edi + fs.fat.dir_entry_t.start_cluster.high], cx
+        mov     [edi + fs.fat.dir_entry_t.start_cluster.low], cx
         test    eax, eax
         jz      .done1
 
@@ -1553,11 +1550,11 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
   .done1:
         pop     edi
         call    fs.fat.get_time_for_file
-        mov     [edi + 22], ax
+        mov     [edi + fs.fat.dir_entry_t.modified_at.time], ax
         call    fs.fat.get_date_for_file
-        mov     [edi + 24], ax
-        mov     [edi + 18], ax
-        or      byte[edi + 11], 0x20 ; set 'archive' attribute
+        mov     [edi + fs.fat.dir_entry_t.modified_at.date], ax
+        mov     [edi + fs.fat.dir_entry_t.accessed_at.date], ax
+        or      [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_ARCHIVE ; set 'archive' attribute
         jmp     .doit
 
   .notfound:
@@ -1582,7 +1579,7 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         jc      .found
 
   .test_short_name_entry:
-        cmp     byte[edi + 11], 0x0f
+        cmp     [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_LONG_NAME
         jz      .test_short_name_cont
         mov     ecx, 11
         push    esi edi
@@ -1616,8 +1613,7 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         mov     ecx, 8
         repnz
         scasb
-        push    1
-        pop     eax ; 1 entry
+        mov_s_  eax, 1 ; 1 entry
         jnz     .notilde
         ; we need ceil(strlen(esi)/13) additional entries = floor((strlen(esi)+12+13)/13) total
         xor     eax, eax
@@ -1658,9 +1654,9 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         ret
 
   .scan_dir:
-        cmp     byte[edi], 0
+        cmp     [edi + fs.fat.dir_entry_t.name], 0
         jz      .free
-        cmp     byte[edi], 0xe5
+        cmp     [edi + fs.fat.dir_entry_t.name], 0xe5
         jz      .free
         xor     ecx, ecx
 
@@ -1720,7 +1716,7 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         stosb
         mov     cl, 5
         call    fs.fat.read_symbols
-        mov     ax, 0x0f
+        mov     ax, FS_FAT_ATTR_LONG_NAME
         stosw
         mov     al, [esp + 4]
         stosb
@@ -1745,26 +1741,26 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         mov     ecx, 11
         rep
         movsb
-        mov     word[edi], 0x20 ; attributes
+        mov     word[edi], FS_FAT_ATTR_ARCHIVE ; attributes
         sub     edi, 11
         pop     esi ecx
         add     esp, 12
-        mov     byte[edi + 13], 0 ; tenths of a second at file creation time
+        mov     [edi + fs.fat.dir_entry_t.created_at.time_ms], 0 ; tenths of a second at file creation time
         call    fs.fat.get_time_for_file
-        mov     [edi + 14], ax ; creation time
-        mov     [edi + 22], ax ; last write time
+        mov     [edi + fs.fat.dir_entry_t.created_at.time], ax ; creation time
+        mov     [edi + fs.fat.dir_entry_t.modified_at.time], ax ; last write time
         call    fs.fat.get_date_for_file
-        mov     [edi + 16], ax ; creation date
-        mov     [edi + 24], ax ; last write date
-        mov     [edi + 18], ax ; last access date
+        mov     [edi + fs.fat.dir_entry_t.created_at.date], ax ; creation date
+        mov     [edi + fs.fat.dir_entry_t.modified_at.date], ax ; last write date
+        mov     [edi + fs.fat.dir_entry_t.accessed_at.date], ax ; last access date
         xor     ecx, ecx
-        mov     word[edi + 20], cx ; high word of cluster
-        mov     word[edi + 26], cx ; low word of cluster - to be filled
-        mov     dword[edi + 28], ecx ; file size - to be filled
+        mov     [edi + fs.fat.dir_entry_t.start_cluster.high], cx ; high word of cluster
+        mov     [edi + fs.fat.dir_entry_t.start_cluster.low], cx ; low word of cluster - to be filled
+        mov     [edi + fs.fat.dir_entry_t.size], ecx ; file size - to be filled
         cmp     byte[esp + 32 + 28], cl
         jz      .doit
         ; create directory
-        mov     byte[edi + 11], 0x10 ; attributes: folder
+        mov     [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY ; attributes: folder
         mov     edx, edi
         lea     eax, [esp + 8]
         call    dword[eax + 16] ; flush directory
@@ -1788,9 +1784,9 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         call    get_free_FAT
         jc      .diskfull
         push    eax
-        mov     [edi + 26], ax
+        mov     [edi + fs.fat.dir_entry_t.start_cluster.low], ax
         shr     eax, 16
-        mov     [edi + 20], ax
+        mov     [edi + fs.fat.dir_entry_t.start_cluster.high], ax
         lea     eax, [esp + 16 + 8]
         call    dword[eax + 16] ; flush directory
         pop     eax
@@ -1809,7 +1805,7 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         ; write data
 
   .write_sector:
-        cmp     byte[esp + 16 + 32 + 28], 0
+        cmp     [esp + 16 + 32 + regs_context32_t.al], 0
         jnz     .writedir
         mov     ecx, 512
         cmp     dword[esp + 8], ecx
@@ -1875,19 +1871,19 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         pop     eax
 
   .done:
-        xor     eax, eax
+        xor     eax, eax ; ERROR_SUCCESS
 
   .ret:
         pop     edi ecx
         mov     ebx, esi
         sub     ebx, edx
         pop     ebp
-        mov     [esp + 32 + 28], eax
+        mov     [esp + 32 + regs_context32_t.eax], eax
         lea     eax, [esp + 8]
         call    dword[eax + 8]
-        mov     [edi + 28], ebx
+        mov     [edi + fs.fat.dir_entry_t.size], ebx
         call    dword[eax + 16]
-        mov     [esp + 32 + 16], ebx
+        mov     [esp + 32 + regs_context32_t.ebx], ebx
         lea     eax, [ebx + 511]
         shr     eax, 9
         mov     ecx, [fat16x_data.sectors_per_cluster]
@@ -1912,31 +1908,31 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         jnz     .writedircont
         dec     dword[esp + 16]
         push    esi
-        mov     ecx, 32 / 4
+        mov     ecx, sizeof.fs.fat.dir_entry_t / 4
         rep
         movsd
         pop     esi
-        mov     dword[edi - 32], '.   '
-        mov     dword[edi - 32 + 4], '    '
-        mov     dword[edi - 32 + 8], '    '
-        mov     byte[edi - 32 + 11], 0x10
+        mov     dword[edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.name], '.   '
+        mov     dword[edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.name + 4], '    '
+        mov     dword[edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.name + 8], '    '
+        mov     [edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY
         push    esi
-        mov     ecx, 32 / 4
+        mov     ecx, sizeof.fs.fat.dir_entry_t / 4
         rep
         movsd
         pop     esi
-        mov     dword[edi - 32], '..  '
-        mov     dword[edi - 32 + 4], '    '
-        mov     dword[edi - 32 + 8], '    '
-        mov     byte[edi - 32 + 11], 0x10
+        mov     dword[edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.name], '..  '
+        mov     dword[edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.name + 4], '    '
+        mov     dword[edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.name + 8], '    '
+        mov     [edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY
         mov     ecx, [esp + 20 + 8]
         cmp     ecx, [fat16x_data.root_cluster]
         jnz     @f
         xor     ecx, ecx
 
-    @@: mov     word[edi - 32 + 26], cx
+    @@: mov     [edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.start_cluster.low], cx
         shr     ecx, 16
-        mov     [edi - 32 + 20], cx
+        mov     [edi - sizeof.fs.fat.dir_entry_t + fs.fat.dir_entry_t.start_cluster.high], cx
         jmp     .writedircont
 kendp
 
@@ -2000,16 +1996,16 @@ kproc fat32_HdWrite ;///////////////////////////////////////////////////////////
         add     ecx, ebx
         jc      .eof ; FAT does not support files larger than 4GB
         push    eax ; save directory sector
-        push    0 ; return value=0
+        push    ERROR_SUCCESS ; return value=0
 
         call    fs.fat.get_time_for_file
-        mov     [edi + 22], ax ; last write time
+        mov     [edi + fs.fat.dir_entry_t.modified_at.time], ax ; last write time
         call    fs.fat.get_date_for_file
-        mov     [edi + 24], ax ; last write date
-        mov     [edi + 18], ax ; last access date
+        mov     [edi + fs.fat.dir_entry_t.modified_at.date], ax ; last write date
+        mov     [edi + fs.fat.dir_entry_t.accessed_at.date], ax ; last access date
 
-        push    dword[edi + 28] ; save current file size
-        cmp     ecx, [edi + 28]
+        push    [edi + fs.fat.dir_entry_t.size] ; save current file size
+        cmp     ecx, [edi + fs.fat.dir_entry_t.size]
         jbe     .length_ok
         cmp     ecx, ebx
         jz      .length_ok
@@ -2022,7 +2018,7 @@ kproc fat32_HdWrite ;///////////////////////////////////////////////////////////
         jz      .disk_full
         pop     eax
         pop     eax
-        mov     [esp + 4 + 28], eax
+        mov     [esp + 4 + regs_context32_t.eax], eax
         pop     eax
         popad
         xor     ebx, ebx
@@ -2030,7 +2026,7 @@ kproc fat32_HdWrite ;///////////////////////////////////////////////////////////
 
   .disk_full:
         ; correct number of bytes to write
-        mov     ecx, [edi + 28]
+        mov     ecx, [edi + fs.fat.dir_entry_t.size]
         cmp     ecx, ebx
         ja      .length_ok
 
@@ -2042,17 +2038,17 @@ kproc fat32_HdWrite ;///////////////////////////////////////////////////////////
 
     @@: pop     eax
         pop     eax
-        mov     [esp + 4 + 28], eax ; eax=return value
+        mov     [esp + 4 + regs_context32_t.eax], eax ; eax=return value
         pop     eax
-        sub     edx, [esp + 20]
-        mov     [esp + 16], edx ; ebx=number of written bytes
+        sub     edx, [esp + regs_context32_t.edx]
+        mov     [esp + regs_context32_t.ebx], edx ; ebx=number of written bytes
         popad
         ret
 
   .length_ok:
-        mov     esi, [edi + 28]
-        mov     eax, [edi + 20 - 2]
-        mov     ax, [edi + 26]
+        mov     esi, [edi + fs.fat.dir_entry_t.size]
+        mov     eax, dword[edi + fs.fat.dir_entry_t.start_cluster.high - 2]
+        mov     ax, [edi + fs.fat.dir_entry_t.start_cluster.low]
         mov     edi, eax ; edi=current cluster
         xor     ebp, ebp ; ebp=current sector in cluster
         ; save directory
@@ -2201,16 +2197,16 @@ kproc hd_extend_file ;//////////////////////////////////////////////////////////
 ;> ecx = new size
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< if CF = 0 (ok), eax = 0
-;< if CF = 1 (error), eax = error code (ERROR_FAT_TABLE or ERROR_DISK_FULL or 11)
+;< if CF = 1 (error), eax = error code (ERROR_FAT_TABLE or ERROR_DISK_FULL or ERROR_DEVICE_FAIL)
 ;-----------------------------------------------------------------------------------------------------------------------
         push    ebp
         mov     ebp, [fat16x_data.sectors_per_cluster]
         imul    ebp, [fat16x_data.bytes_per_sector]
         push    ecx
         ; find the last cluster of file
-        mov     eax, [edi + 20 - 2]
-        mov     ax, [edi + 26]
-        mov     ecx, [edi + 28]
+        mov     eax, dword[edi + fs.fat.dir_entry_t.start_cluster.high - 2]
+        mov     ax, [edi + fs.fat.dir_entry_t.start_cluster.low]
+        mov     ecx, [edi + fs.fat.dir_entry_t.size]
         jecxz   .zero_size
 
   .last_loop:
@@ -2254,7 +2250,7 @@ kproc hd_extend_file ;//////////////////////////////////////////////////////////
         pop     eax
         jb      .fat_err
         ; set length to full number of clusters
-        sub     [edi + 28], ecx
+        sub     [edi + fs.fat.dir_entry_t.size], ecx
 
   .start_extend:
         pop     ecx
@@ -2263,7 +2259,7 @@ kproc hd_extend_file ;//////////////////////////////////////////////////////////
         mov     edx, 2 ; start scan from cluster 2
 
   .extend_loop:
-        cmp     [edi + 28], ecx
+        cmp     [edi + fs.fat.dir_entry_t.size], ecx
         jae     .extend_done
         ; add new cluster
         push    eax
@@ -2282,9 +2278,9 @@ kproc hd_extend_file ;//////////////////////////////////////////////////////////
 
   .first_cluster:
         ror     edx, 16
-        mov     [edi + 20], dx
+        mov     [edi + fs.fat.dir_entry_t.start_cluster.high], dx
         ror     edx, 16
-        mov     [edi + 26], dx
+        mov     [edi + fs.fat.dir_entry_t.start_cluster.low], dx
 
     @@: push    ecx
         mov     ecx, -1
@@ -2293,13 +2289,13 @@ kproc hd_extend_file ;//////////////////////////////////////////////////////////
         mov     eax, edx
         cmp     [hd_error], 0
         jnz     .device_err3
-        add     [edi + 28], ebp
+        add     [edi + fs.fat.dir_entry_t.size], ebp
         jmp     .extend_loop
 
   .extend_done:
-        mov     [edi + 28], ecx
+        mov     [edi + fs.fat.dir_entry_t.size], ecx
         pop     edx ebp
-        xor     eax, eax ; CF=0
+        xor     eax, eax ; ERROR_SUCCESS, CF=0
         ret
 
   .device_err3:
@@ -2308,8 +2304,7 @@ kproc hd_extend_file ;//////////////////////////////////////////////////////////
 
   .disk_full:
         pop     eax edx ebp
-        push    ERROR_DISK_FULL
-        pop     eax
+        mov_s_  eax, ERROR_DISK_FULL
         cmp     [hd_error], 0
         jz      @f
         mov     al, ERROR_DEVICE_FAIL
@@ -2346,7 +2341,7 @@ kproc fat32_HdSetFileEnd ;//////////////////////////////////////////////////////
         jmp     fs.error.file_not_found
 
     @@: ; must not be directory
-        test    byte[edi + 11], 0x10
+        test    [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY
         jz      @f
         pop     edi
         jmp     fs.error.access_denied
@@ -2362,7 +2357,7 @@ kproc fat32_HdSetFileEnd ;//////////////////////////////////////////////////////
         ; set file modification date/time to current
         call    fs.fat.update_datetime
         mov     eax, [ebx]
-        cmp     eax, [edi + 28]
+        cmp     eax, [edi + fs.fat.dir_entry_t.size]
         jb      .truncate
         ja      .expand
         pop     eax
@@ -2372,13 +2367,13 @@ kproc fat32_HdSetFileEnd ;//////////////////////////////////////////////////////
         xor     eax, eax
         cmp     [hd_error], 0
         jz      @f
-        mov     al, 11
+        mov     al, ERROR_DEVICE_FAIL
 
     @@: ret
 
   .expand:
         push    ebx ebp ecx
-        push    dword[edi + 28] ; save old size
+        push    [edi + fs.fat.dir_entry_t.size] ; save old size
         mov     ecx, eax
         call    hd_extend_file
         push    eax ; return code
@@ -2394,12 +2389,12 @@ kproc fat32_HdSetFileEnd ;//////////////////////////////////////////////////////
   .expand_ok:
   .disk_full:
         ; save directory
-        mov     eax, [edi + 28]
+        mov     eax, [edi + fs.fat.dir_entry_t.size]
         xchg    eax, [esp + 20]
         mov     ebx, buffer
         call    hd_write
-        mov     eax, [edi + 20 - 2]
-        mov     ax, [edi + 26]
+        mov     eax, dword[edi + fs.fat.dir_entry_t.start_cluster.high - 2]
+        mov     ax, [edi + fs.fat.dir_entry_t.start_cluster.low]
         mov     edi, eax
         cmp     [hd_error], 0
         jz      @f
@@ -2462,10 +2457,10 @@ kproc fat32_HdSetFileEnd ;//////////////////////////////////////////////////////
         jmp     .zero_loop
 
   .truncate:
-        mov     [edi + 28], eax
+        mov     [edi + fs.fat.dir_entry_t.size], eax
         push    ecx
-        mov     ecx, [edi + 20 - 2]
-        mov     cx, [edi + 26]
+        mov     ecx, dword[edi + fs.fat.dir_entry_t.start_cluster.high - 2]
+        mov     cx, [edi + fs.fat.dir_entry_t.start_cluster.low]
         push    eax
         test    eax, eax
         jz      .zero_size
@@ -2483,8 +2478,7 @@ kproc fat32_HdSetFileEnd ;//////////////////////////////////////////////////////
 
   .device_err3:
         pop     eax ecx eax edi
-        push    ERROR_DEVICE_FAIL
-        pop     eax
+        mov_s_  eax, ERROR_DEVICE_FAIL
         ret
 
     @@: ; we will zero data at the end of last sector - remember it
@@ -2504,8 +2498,8 @@ kproc fat32_HdSetFileEnd ;//////////////////////////////////////////////////////
         jmp     .device_err3
 
   .zero_size:
-        and     word[edi + 20], 0
-        and     word[edi + 26], 0
+        and     [edi + fs.fat.dir_entry_t.start_cluster.high], 0
+        and     [edi + fs.fat.dir_entry_t.start_cluster.low], 0
         push    0
         mov     eax, ecx
 
@@ -2552,7 +2546,7 @@ kproc fat32_HdSetFileEnd ;//////////////////////////////////////////////////////
   .truncate_done:
         pop     ecx eax edi
         call    update_disk
-        xor     eax, eax
+        xor     eax, eax ; ERROR_SUCCESS
         cmp     [hd_error], 0
         jz      @f
         mov     al, ERROR_DEVICE_FAIL
@@ -2591,7 +2585,7 @@ kproc fat32_HdGetFileInfo ;/////////////////////////////////////////////////////
         call    fs.fat.fat_entry_to_bdfe.direct
         pop     ebp esi
         pop     edi
-        xor     eax, eax
+        xor     eax, eax ; ERROR_SUCCESS
         ret
 kendp
 
@@ -2625,7 +2619,7 @@ kproc fat32_HdSetFileInfo ;/////////////////////////////////////////////////////
         call    hd_write
         call    update_disk
         pop     edi
-        xor     eax, eax
+        xor     eax, eax ; ERROR_SUCCESS
         ret
 kendp
 
@@ -2652,16 +2646,16 @@ kproc fat32_HdDelete ;//////////////////////////////////////////////////////////
         ret
 
   .found:
-        cmp     dword[edi], '.   '
+        cmp     dword[edi + fs.fat.dir_entry_t.name], '.   '
         jz      .access_denied2
-        cmp     dword[edi], '..  '
+        cmp     dword[edi + fs.fat.dir_entry_t.name], '..  '
         jz      .access_denied2
-        test    byte[edi + 11], 0x10
+        test    [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY
         jz      .dodel
         ; we can delete only empty folders!
         pushad
-        mov     ebp, [edi + 20 - 2]
-        mov     bp, [edi + 26]
+        mov     ebp, dword[edi + fs.fat.dir_entry_t.start_cluster.high - 2]
+        mov     bp, [edi + fs.fat.dir_entry_t.start_cluster.low]
         xor     ecx, ecx
         lea     eax, [ebp - 2]
         imul    eax, [fat16x_data.sectors_per_cluster]
@@ -2670,14 +2664,14 @@ kproc fat32_HdDelete ;//////////////////////////////////////////////////////////
         call    hd_read
         cmp     [hd_error], 0
         jnz     .err1
-        add     ebx, 2 * 0x20
+        add     ebx, 2 * sizeof.fs.fat.dir_entry_t
 
   .checkempty:
-        cmp     byte[ebx], 0
+        cmp     [ebx + fs.fat.dir_entry_t.name], 0
         jz      .empty
-        cmp     byte[ebx], 0xe5
+        cmp     [ebx + fs.fat.dir_entry_t.name], 0xe5
         jnz     .notempty
-        add     ebx, 0x20
+        add     ebx, sizeof.fs.fat.dir_entry_t
         cmp     ebx, buffer + 0x200
         jb      .checkempty
         inc     ecx
@@ -2704,8 +2698,7 @@ kproc fat32_HdDelete ;//////////////////////////////////////////////////////////
 
   .err2:
         pop     edi
-        push    ERROR_DEVICE_FAIL
-        pop     eax
+        mov_s_  eax, ERROR_DEVICE_FAIL
         ret
 
   .notempty:
@@ -2726,11 +2719,11 @@ kproc fat32_HdDelete ;//////////////////////////////////////////////////////////
 
   .dodel:
         push    eax
-        mov     eax, [edi + 20 - 2]
-        mov     ax, [edi + 26]
+        mov     eax, dword[edi + fs.fat.dir_entry_t.start_cluster.high - 2]
+        mov     ax, [edi + fs.fat.dir_entry_t.start_cluster.low]
         xchg    eax, [esp]
         ; delete folder entry
-        mov     byte[edi], 0xe5
+        mov     [edi + fs.fat.dir_entry_t.name], 0xe5
         ; delete LFN (if present)
 
   .lfndel:
@@ -2739,8 +2732,7 @@ kproc fat32_HdDelete ;//////////////////////////////////////////////////////////
         cmp     [longname_sec2], 0
         jz      .lfndone
         push    [longname_sec2]
-        push    [longname_sec1]
-        pop     [longname_sec2]
+        mov_s_  [longname_sec2], [longname_sec1]
         and     [longname_sec1], 0
         push    ebx
         mov     ebx, buffer
@@ -2751,12 +2743,12 @@ kproc fat32_HdDelete ;//////////////////////////////////////////////////////////
         pop     eax
         mov     edi, buffer + 0x200
 
-    @@: sub     edi, 0x20
-        cmp     byte[edi], 0xe5
+    @@: sub     edi, sizeof.fs.fat.dir_entry_t
+        cmp     [edi + fs.fat.dir_entry_t.name], 0xe5
         jz      .lfndone
-        cmp     byte[edi + 11], 0x0f
+        cmp     [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_LONG_NAME
         jnz     .lfndone
-        mov     byte[edi], 0xe5
+        mov     [edi + fs.fat.dir_entry_t.name], 0xe5
         jmp     .lfndel
 
   .lfndone:
@@ -2769,7 +2761,7 @@ kproc fat32_HdDelete ;//////////////////////////////////////////////////////////
         call    clear_cluster_chain
         call    update_disk
         pop     edi
-        xor     eax, eax
+        xor     eax, eax ; ERROR_SUCCESS
         cmp     [hd_error], 0
         jz      @f
         mov     al, ERROR_DEVICE_FAIL
