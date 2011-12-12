@@ -431,7 +431,7 @@ kendp
 kproc save_hd_wait_timeout ;////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax
-        mov     eax, [timer_ticks]
+        mov     eax, dword[timer_ticks]
         add     eax, 3 * KCONFIG_SYS_TIMER_FREQ ; 3 sec timeout
         mov     [hd_wait_timeout], eax
         pop     eax
@@ -443,7 +443,7 @@ kproc check_hd_wait_timeout ;///////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax
         mov     eax, [hd_wait_timeout]
-        cmp     [timer_ticks], eax
+        cmp     dword[timer_ticks], eax
         jg      hd_timeout_error
         pop     eax
         mov     [hd_error], 0

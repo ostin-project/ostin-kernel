@@ -503,14 +503,14 @@ kproc __sys_draw_pointer ;//////////////////////////////////////////////////////
         ret
 
     @@: push    eax
-        mov     eax, [timer_ticks]
+        mov     eax, dword[timer_ticks]
         sub     eax, [MouseTickCounter]
         cmp     eax, 1
         ja      @f
         pop     eax
         ret
 
-    @@: mov     eax, [timer_ticks]
+    @@: mov     eax, dword[timer_ticks]
         mov     [MouseTickCounter], eax
         pop     eax
         pushad
@@ -598,7 +598,7 @@ proc set_mouse_data stdcall, BtnState:dword, XMoving:dword, YMoving:dword, VScro
         add     [MOUSE_SCROLL_H], ax
 
         mov     [mouse_active], 1
-        mov     eax, [timer_ticks]
+        mov     eax, dword[timer_ticks]
         mov     [mouse_timer_ticks], eax
         ret
 endp
@@ -607,7 +607,7 @@ endp
 kproc mouse_acceleration ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax
-        mov     eax, [timer_ticks]
+        mov     eax, dword[timer_ticks]
         sub     eax, [mouse_timer_ticks]
         cmp     eax, [mouse_delay]
         pop     eax

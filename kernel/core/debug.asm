@@ -473,7 +473,7 @@ kproc debugger_notify ;/////////////////////////////////////////////////////////
 ;# interrupts remain disabled
 ;-----------------------------------------------------------------------------------------------------------------------
         xchg    ebp, eax
-        mov     edi, [timer_ticks]
+        mov     edi, dword[timer_ticks]
         add     edi, 5 * KCONFIG_SYS_TIMER_FREQ ; 5 sec timeout
 
   .1:
@@ -504,7 +504,7 @@ kproc debugger_notify ;/////////////////////////////////////////////////////////
         pop     ecx
         cmp     [CURRENT_TASK], 1
         jnz     .notos
-        cmp     [timer_ticks], edi
+        cmp     dword[timer_ticks], edi
         jae     .ret
 
   .notos:

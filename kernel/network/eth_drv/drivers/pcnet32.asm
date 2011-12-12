@@ -920,14 +920,14 @@ kproc pcnet32_xmit ;////////////////////////////////////////////////////////////
         call    [pcnet32_access.write_csr]
         mov     [pcnet32_private.cur_tx], 0
         ; wait for TX to complete
-        mov     ecx, [timer_ticks] ; [0xfdf0]
+        mov     ecx, dword[timer_ticks] ; [0xfdf0]
         add     ecx, 1 * KCONFIG_SYS_TIMER_FREQ
 
   .L2:
         mov     ax, [edi + pcnet32_tx_head.status]
         test    ax, 0x8000
         jz      .L3
-        cmp     ecx, [timer_ticks] ; [0xfdf0]
+        cmp     ecx, dword[timer_ticks] ; [0xfdf0]
         jb      .L4
         mov     esi, 10
         call    delay_ms

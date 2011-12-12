@@ -183,7 +183,7 @@ kproc stack_handler ;///////////////////////////////////////////////////////////
 
 
         ; Test for 10ms tick, call tcp timer
-        mov     eax, [timer_ticks] ; [0xfdf0]
+        mov     eax, dword[timer_ticks] ; [0xfdf0]
         cmp     eax, [last_1hsTick]
         je      .sh_001
 

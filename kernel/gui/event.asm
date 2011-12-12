@@ -322,8 +322,8 @@ kproc Wait_events_ex ;//////////////////////////////////////////////////////////
 
         xor     edx, edx
         call    hs_to_ticks
-        add     eax, [timer_ticks]
-        adc     edx, [timer_ticks + 4]
+        add     eax, dword[timer_ticks]
+        adc     edx, dword[timer_ticks + 4]
 
     @@: mov     dword[esi + app_data_t.wait_timeout], eax
         mov     dword[esi + app_data_t.wait_timeout + 4], edx

@@ -217,7 +217,7 @@ kproc mouse._.left_button_press_handler ;///////////////////////////////////////
         test    dl, mouse.WINDOW_MOVE_FLAG
         jz      @f
 
-        mov     eax, [timer_ticks]
+        mov     eax, dword[timer_ticks]
         mov     ebx, eax
         xchg    ebx, [mouse.active_sys_window.last_ticks]
         sub     eax, ebx

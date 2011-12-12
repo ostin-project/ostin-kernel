@@ -576,8 +576,8 @@ high_code:
         xchg    al, ah
         out     0x40, al ; msb (bits 8..15)
 
-        and     [timer_ticks], 0
-        and     [timer_ticks + 4], 0
+        and     dword[timer_ticks], 0
+        and     dword[timer_ticks + 4], 0
 
         ; Enable timer IRQ (IRQ0) and hard drives IRQs (IRQ14, IRQ15)
         ; they are used: when partitions are scanned, hd_read relies on timer
@@ -1048,7 +1048,7 @@ kproc checkidle ;///////////////////////////////////////////////////////////////
         add     [idleuse], eax
 
   .idle_loop_entry:
-        mov     eax, [timer_ticks] ; eax = [timer_ticks]
+        mov     eax, dword[timer_ticks] ; eax = [timer_ticks]
         cmp     [check_idle_semaphore], 0
         je      .idle_loop
         dec     [check_idle_semaphore]
@@ -1700,8 +1700,8 @@ kproc sysfn.get_config.tick_count ;/////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 26.9
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, [timer_ticks] ; [0xfdf0]
-        mov     edx, [timer_ticks + 4]
+        mov     eax, dword[timer_ticks] ; [0xfdf0]
+        mov     edx, dword[timer_ticks + 4]
         call    ticks_to_hs
         mov     [esp + 4 + regs_context32_t.eax], eax
         ret
@@ -2809,13 +2809,13 @@ kproc sysfn.delay_hs ;//////////////////////////////////////////////////////////
         mov     eax, ebx
         xor     edx, edx
         call    hs_to_ticks
-        add     eax, [timer_ticks]
-        adc     edx, [timer_ticks + 4]
+        add     eax, dword[timer_ticks]
+        adc     edx, dword[timer_ticks + 4]
 
   .check_for_timeout:
-        cmp     edx, [timer_ticks + 4]
+        cmp     edx, dword[timer_ticks + 4]
         jne     @f
-        cmp     eax, [timer_ticks]
+        cmp     eax, dword[timer_ticks]
 
     @@: jbe     .exit
 

@@ -14,6 +14,180 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
+FS_ISO9660_VOL_TYPE_BOOT_RECORD    = 0
+FS_ISO9660_VOL_TYPE_PRI_VOL_DESCR  = 1
+FS_ISO9660_VOL_TYPE_SUP_VOL_DESCR  = 2
+FS_ISO9660_VOL_TYPE_VOL_PART_DESCR = 3
+FS_ISO9660_VOL_TYPE_SET_TERM       = 255
+
+FS_ISO9660_ATTR_EXISTENCE = 00000001b
+FS_ISO9660_ATTR_DIRECTORY = 00000010b
+FS_ISO9660_ATTR_ASSOC     = 00000100b
+FS_ISO9660_ATTR_RECORD    = 00001000b
+FS_ISO9660_ATTR_PROTECT   = 00010000b
+FS_ISO9660_ATTR_MULTIEXT  = 10000000b
+
+FS_ISO9660_PERM_SYS_OWNER_READ = 0000000000000001b
+FS_ISO9660_PERM_SYS_OWNER_EXEC = 0000000000000100b
+FS_ISO9660_PERM_OWNER_READ     = 0000000000010000b
+FS_ISO9660_PERM_OWNER_EXEC     = 0000000001000000b
+FS_ISO9660_PERM_GRP_OWNER_READ = 0000000100000000b
+FS_ISO9660_PERM_GRP_OWNER_EXEC = 0000010000000000b
+FS_ISO9660_PERM_GROUP_READ     = 0001000000000000b
+FS_ISO9660_PERM_GROUP_EXEC     = 0100000000000000b
+
+struct fs.iso9660.long_date_time_t
+  year   dd ?
+  month  dw ?
+  day    dw ?
+  hour   dw ?
+  minute dw ?
+  second dw ?
+  hsec   dw ?
+  tz     db ?
+ends
+
+struct fs.iso9660.short_date_time_t
+  year   db ?
+  month  db ?
+  day    db ?
+  hour   db ?
+  minute db ?
+  second db ?
+  tz     db ?
+ends
+
+struct fs.iso9660.vol_descr_t
+  descr_type    db ? ; one of FS_ISO9660_VOL_TYPE_*
+  std_ident     rb 5
+  descr_version db ?
+ends
+
+struct fs.iso9660.boot_record_t fs.iso9660.vol_descr_t
+  boot_system_ident rb 32
+  boot_ident        rb 32
+ends
+
+struct fs.iso9660.vol_descr_set_term_t fs.iso9660.vol_descr_t
+ends
+
+struct fs.iso9660.pri_vol_descr_t fs.iso9660.vol_descr_t
+                         db ?
+  system_ident           rb 32
+  ident                  rb 32
+                         rb 8
+  size                   dq ?
+                         rb 32
+  set_size               dd ?
+  seq_number             dd ?
+  logical_block_size     dd ?
+  path_tbl_size          dq ?
+  lsb_path_table_loc     dd ?
+  lsb_path_table_opt_loc dd ?
+  msb_path_table_loc     dd ?
+  msb_path_table_opt_loc dd ?
+  root_dir_entry         rb 34
+  set_ident              rb 128
+  publisher_ident        rb 128
+  data_preparer_ident    rb 128
+  application_ident      rb 128
+  copyright_file_ident   rb 37
+  abstract_file_ident    rb 37
+  biblio_file_ident      rb 37
+  created_at             fs.iso9660.long_date_time_t
+  modified_at            fs.iso9660.long_date_time_t
+  expires_at             fs.iso9660.long_date_time_t
+  effective_at           fs.iso9660.long_date_time_t
+  file_struct_version    db ?
+                         db ?
+  app_use                rb 512
+                         rb 653
+ends
+
+struct fs.iso9660.sup_vol_descr_t fs.iso9660.vol_descr_t
+  flags                  db ?
+  system_ident           rb 32
+  ident                  rb 32
+                         rb 8
+  size                   dq ?
+  escape_sequences       rb 32
+  set_size               dd ?
+  seq_number             dd ?
+  logical_block_size     dd ?
+  path_tbl_size          dq ?
+  lsb_path_table_loc     dd ?
+  lsb_path_table_opt_loc dd ?
+  msb_path_table_loc     dd ?
+  msb_path_table_opt_loc dd ?
+  root_dir_entry         rb 34
+  set_ident              rb 128
+  publisher_ident        rb 128
+  data_preparer_ident    rb 128
+  application_ident      rb 128
+  copyright_file_ident   rb 37
+  abstract_file_ident    rb 37
+  biblio_file_ident      rb 37
+  created_at             fs.iso9660.long_date_time_t
+  modified_at            fs.iso9660.long_date_time_t
+  expires_at             fs.iso9660.long_date_time_t
+  effective_at           fs.iso9660.long_date_time_t
+  file_struct_version    db ?
+                         db ?
+  app_use                rb 512
+                         rb 653
+ends
+
+struct fs.iso9660.vol_part_descr_t fs.iso9660.vol_descr_t
+               db ?
+  system_ident rb 32
+  ident        rb 32
+  loc          dq ?
+  size         dq ?
+  sys_use      rb 1960
+ends
+
+struct fs.iso9660.dir_entry_t
+  entry_size          db ?
+  ext_attr_entry_size db ?
+  extent_loc          dq ?
+  size                dq ?
+  recorded_at         fs.iso9660.short_date_time_t
+  attributes          db ? ; combination of FS_ISO9660_ATTR_*
+  unit_size           db ?
+  il_gap_size         db ?
+  vol_seq_number      dd ?
+  name_size           db ?
+  name                rb 0
+ends
+
+struct fs.iso9660.path_tbl_entry_t
+  name_size           db ?
+  ext_attr_entry_size db ?
+  extent_loc          dd ?
+  parent_dir_number   dw ?
+  name                rb 0
+ends
+
+struct fs.iso9660.ext_attr_entry_t
+  owner_id        dd ?
+  group_id        dd ?
+  permissions     dw ? ; combination of FS_ISO9660_PERM_*
+  created_at      fs.iso9660.long_date_time_t
+  modified_at     fs.iso9660.long_date_time_t
+  expires_at      fs.iso9660.long_date_time_t
+  effective_at    fs.iso9660.long_date_time_t
+  format          db ?
+  attributes      db ?
+  size            dd ?
+  system_ident    rb 32
+                  rb 64
+  version         db ?
+  escape_seq_size db ?
+                  rb 64
+  app_use_size    dd ?
+  app_use         rb 0
+ends
+
 uglobal
   cd_current_pointer_of_input   dd 0
   cd_current_pointer_of_input_2 dd 0
@@ -64,7 +238,7 @@ kproc fs_CdRead ;///////////////////////////////////////////////////////////////
 
   .found:
         mov     edi, [cd_current_pointer_of_input]
-        test    byte[edi + 25], 010b ; do not allow read directories
+        test    [edi + fs.iso9660.dir_entry_t.attributes], FS_ISO9660_ATTR_DIRECTORY ; do not allow read directories
         jnz     .noaccess
         test    ebx, ebx
         jz      .l1
@@ -73,7 +247,7 @@ kproc fs_CdRead ;///////////////////////////////////////////////////////////////
         xor     ebx, ebx
 
   .reteof:
-        mov     eax, 6 ; end of file
+        mov     eax, ERROR_END_OF_FILE ; end of file
         pop     edi
         ret
 
@@ -81,16 +255,16 @@ kproc fs_CdRead ;///////////////////////////////////////////////////////////////
 
   .l1:
         push    ecx edx
-        push    0
-        mov     eax, [edi + 10] ; real file section size
+        push    ERROR_SUCCESS
+        mov     eax, dword[edi + fs.iso9660.dir_entry_t.size] ; real file section size
         sub     eax, ebx
         jb      .eof
         cmp     eax, ecx
         jae     @f
         mov     ecx, eax
-        mov     byte[esp], 6
+        mov     byte[esp], ERROR_END_OF_FILE
 
-    @@: mov     eax, [edi + 2]
+    @@: mov     eax, dword[edi + fs.iso9660.dir_entry_t.extent_loc]
         mov     [CDSectorAddress], eax
         ; now eax=cluster, ebx=position, ecx=count, edx=buffer for data
 
@@ -181,7 +355,7 @@ kproc fs_CdReadFolder ;/////////////////////////////////////////////////////////
 
   .found:
         mov     edi, [cd_current_pointer_of_input]
-        test    byte[edi + 25], 010b ; do not allow read directories
+        test    [edi + fs.iso9660.dir_entry_t.attributes], FS_ISO9660_ATTR_DIRECTORY ; do not allow read directories
         jnz     .found_dir
         pop     edi
 
@@ -191,28 +365,28 @@ kproc fs_CdReadFolder ;/////////////////////////////////////////////////////////
         ret
 
   .found_dir:
-        mov     eax, [edi + 2] ; eax=cluster
+        mov     eax, dword[edi + fs.iso9660.dir_entry_t.extent_loc] ; eax=cluster
         mov     [CDSectorAddress], eax
-        mov     eax, [edi + 10] ; directory size
+        mov     eax, dword[edi + fs.iso9660.dir_entry_t.size] ; directory size
 
   .doit:
         ; init header
         push    eax ecx
         mov     edi, edx
-        mov     ecx, 32 / 4
+        mov     ecx, sizeof.fs.file_info_header_t / 4
         xor     eax, eax
         rep
         stosd
         pop     ecx eax
-        mov     byte[edx], 1 ; version
+        mov     byte[edx + fs.file_info_header_t.version], 1 ; version
         mov     [cd_mem_location], edx
-        add     [cd_mem_location], 32
+        add     [cd_mem_location], sizeof.fs.file_info_header_t
 
         ; convert "БДВК" info "УСВК"
 
 ; .mainloop:
         mov     [cd_counter_block], 0
-        dec     dword[CDSectorAddress]
+        dec     [CDSectorAddress]
         push    ecx
 
   .read_to_buffer:
@@ -226,16 +400,16 @@ kproc fs_CdReadFolder ;/////////////////////////////////////////////////////////
         ; is it the end of directory?
         ja      .read_to_buffer
         mov     edi, [cd_counter_block]
-        mov     [edx + 8], edi
+        mov     [edx + fs.file_info_header_t.files_count], edi
         mov     edi, [ebx]
-        sub     [edx + 4], edi
-        xor     eax, eax
+        sub     [edx + fs.file_info_header_t.files_read], edi
+        xor     eax, eax ; ERROR_SUCCESS
         dec     ecx
         js      @f
         mov     al, ERROR_END_OF_FILE
 
     @@: pop     ecx edi
-        mov     ebx, [edx + 4]
+        mov     ebx, [edx + fs.file_info_header_t.files_read]
         ret
 
   .get_names_from_buffer:
@@ -247,17 +421,17 @@ kproc fs_CdReadFolder ;/////////////////////////////////////////////////////////
         jc      .end_buffer
         inc     dword[cd_counter_block]
         mov     eax, [cd_counter_block]
-        cmp     [ebx], eax
+        cmp     [ebx + fs.file_info_t.flags], eax
         jae     .get_names_from_buffer_1
         test    ecx, ecx
         jz      .get_names_from_buffer_1
         mov     edi, [cd_counter_block]
-        mov     [edx + 4], edi
+        mov     [edx + fs.file_info_header_t.files_read], edi
         dec     ecx
         mov     esi, ebp
         mov     edi, [cd_mem_location]
-        add     edi, 40
-        test    dword[ebx + 4], 1 ; 0=ANSI, 1=UNICODE
+        add     edi, fs.file_info_t.name
+        test    [ebx + fs.file_info_t.flags], 1 ; 0=ANSI, 1=UNICODE
         jnz     .unicode
 ;       jmp     .unicode
 
@@ -273,13 +447,13 @@ kproc fs_CdReadFolder ;/////////////////////////////////////////////////////////
         cmp     ax, 0x3b00 ; ';' - filename terminator
         je      .cd_get_parameters_of_file_1
         ; check for filenames not ending with terminator
-        movzx   eax, byte[ebp - 33]
+        movzx   eax, [ebp - fs.iso9660.dir_entry_t.name + fs.iso9660.dir_entry_t.entry_size]
         add     eax, ebp
-        sub     eax, 34
+        sub     eax, fs.iso9660.dir_entry_t.name + 1
         cmp     esi, eax
         je      .cd_get_parameters_of_file_1
         ; check for end of directory
-        movzx   eax, byte[ebp - 1]
+        movzx   eax, [ebp - fs.iso9660.dir_entry_t.name + fs.iso9660.dir_entry_t.name_size]
         add     eax, ebp
         cmp     esi, eax
         jb      .ansi
@@ -310,13 +484,13 @@ kproc fs_CdReadFolder ;/////////////////////////////////////////////////////////
         cmp     ax, 0x3b00 ; ';' - filename terminator
         je      .cd_get_parameters_of_file_2
         ; check for filenames not ending with terminator
-        movzx   eax, byte[ebp - 33]
+        movzx   eax, [ebp - fs.iso9660.dir_entry_t.name + fs.iso9660.dir_entry_t.entry_size]
         add     eax, ebp
-        sub     eax, 34
+        sub     eax, fs.iso9660.dir_entry_t.name + 1
         cmp     esi, eax
         je      .cd_get_parameters_of_file_2
         ; check for end of directory
-        movzx   eax, byte[ebp - 1]
+        movzx   eax, [ebp - fs.iso9660.dir_entry_t.name + fs.iso9660.dir_entry_t.name_size]
         add     eax, ebp
         cmp     esi, eax
         jb      .unicode
@@ -358,7 +532,7 @@ kproc cd_get_parameters_of_file_1 ;/////////////////////////////////////////////
         inc     eax
         shl     eax, 1
         ; is it a directory?
-        test    byte[ebp - 8], 2
+        test    [ebp - fs.iso9660.dir_entry_t.name + fs.iso9660.dir_entry_t.attributes], FS_ISO9660_ATTR_DIRECTORY
         jz      .file
         inc     eax
 
@@ -367,7 +541,7 @@ kproc cd_get_parameters_of_file_1 ;/////////////////////////////////////////////
         ; not a system file
         shl     eax, 3
         ; is it a hidden file? (existence attribute)
-        test    byte[ebp - 8], 1
+        test    [ebp - fs.iso9660.dir_entry_t.name + fs.iso9660.dir_entry_t.attributes], FS_ISO9660_ATTR_EXISTENCE
         jz      .hidden
         inc     eax
 
@@ -375,54 +549,41 @@ kproc cd_get_parameters_of_file_1 ;/////////////////////////////////////////////
         shl     eax, 1
         ; file is always read-only since this is CD
         inc     eax
-        mov     [edi], eax
+        mov     [edi + fs.file_info_t.attributes], eax
         ; getting file time
-        ; hours
-        movzx   eax, byte[ebp - 12]
+        movzx   eax, [ebp - fs.iso9660.dir_entry_t.name + fs.iso9660.dir_entry_t.recorded_at.hour]
         shl     eax, 8
-        ; minutes
-        mov     al, [ebp - 11]
+        mov     al, [ebp - fs.iso9660.dir_entry_t.name + fs.iso9660.dir_entry_t.recorded_at.minute]
         shl     eax, 8
-        ; seconds
-        mov     al, [ebp - 10]
-        ; file creation time
-        mov     [edi + 8], eax
-        ; file last access time
-        mov     [edi + 16], eax
-        ; file last modification time
-        mov     [edi + 24], eax
+        mov     al, [ebp - fs.iso9660.dir_entry_t.name + fs.iso9660.dir_entry_t.recorded_at.second]
+        mov     [edi + fs.file_info_t.created_at.time], eax
+        mov     [edi + fs.file_info_t.accessed_at.time], eax
+        mov     [edi + fs.file_info_t.modified_at.time], eax
         ; getting file date
-        ; year
-        movzx   eax, byte[ebp - 15]
+        movzx   eax, [ebp - fs.iso9660.dir_entry_t.name + fs.iso9660.dir_entry_t.recorded_at.year]
         add     eax, 1900
         shl     eax, 8
-        ; month
-        mov     al, [ebp - 14]
+        mov     al, [ebp - fs.iso9660.dir_entry_t.name + fs.iso9660.dir_entry_t.recorded_at.month]
         shl     eax, 8
-        ; day
-        mov     al, [ebp - 13]
-        ; file creation date
-        mov     [edi + 12], eax
-        ; file last access date
-        mov     [edi + 20], eax
-        ; file last modification date
-        mov     [edi + 28], eax
-        ; getting filename encoding
+        mov     al, [ebp - fs.iso9660.dir_entry_t.name + fs.iso9660.dir_entry_t.recorded_at.day]
+        mov     [edi + fs.file_info_t.created_at.date], eax
+        mov     [edi + fs.file_info_t.accessed_at.date], eax
+        mov     [edi + fs.file_info_t.modified_at.date], eax
         xor     eax, eax
-        test    dword[ebx + 4], 1 ; 0=ANSI, 1=UNICODE
+        test    [ebx + fs.file_info_t.flags], 1 ; 0=ANSI, 1=UNICODE
         jnz     .unicode_1
-        mov     [edi + 4], eax
+        mov     [edi + fs.file_info_t.flags], eax
         jmp     @f
 
   .unicode_1:
         inc     eax
-        mov     [edi + 4], eax
+        mov     [edi + fs.file_info_t.flags], eax
 
     @@: ; getting file size (in bytes)
         xor     eax, eax
-        mov     [edi + 32 + 4], eax
-        mov     eax, [ebp - 23]
-        mov     [edi + 32], eax
+        mov     [edi + fs.file_info_t.size.high], eax
+        mov     eax, dword[ebp - fs.iso9660.dir_entry_t.name + fs.iso9660.dir_entry_t.size]
+        mov     [edi + fs.file_info_t.size.low], eax
         ret
 kendp
 
@@ -455,12 +616,12 @@ kproc fs_CdGetFileInfo ;////////////////////////////////////////////////////////
     @@: mov     edi, edx
         push    ebp
         mov     ebp, [cd_current_pointer_of_input]
-        add     ebp, 33
+        add     ebp, fs.iso9660.dir_entry_t.name
         call    cd_get_parameters_of_file_1
         pop     ebp
-        and     dword[edi + 4], 0
+        and     [edi + fs.file_info_t.flags], 0
         pop     edi
-        xor     eax, eax
+        xor     eax, eax ; ERROR_SUCCESS
         ret
 kendp
 
@@ -504,7 +665,6 @@ kproc cd_find_lfn ;/////////////////////////////////////////////////////////////
 ;       mov     [CDSectorAddress], 15
         mov     [CDDataBuf_pointer], CDDataBuf
 
-
   .start:
         inc     [CDSectorAddress]
         call    ReadCDWRetr ; _1
@@ -513,27 +673,29 @@ kproc cd_find_lfn ;/////////////////////////////////////////////////////////////
 
   .start_check:
         ; dummy check
-        cmp     dword[CDDataBuf + 1], 'CD00'
+        cmp     dword[CDDataBuf + fs.iso9660.vol_descr_t.std_ident], 'CD00'
         jne     .access_denied
-        cmp     byte[CDDataBuf + 5], '1'
+        cmp     [CDDataBuf + fs.iso9660.vol_descr_t.std_ident + 4], '1'
         jne     .access_denied
         ; is it a volume descriptor set terminator?
-        cmp     byte[CDDataBuf], 0xff
+        cmp     [CDDataBuf + fs.iso9660.vol_descr_t.descr_type], FS_ISO9660_VOL_TYPE_SET_TERM
         je      .access_denied
         ; is it a supplementary volume descriptor?
-        cmp     byte[CDDataBuf], 0x2
+        cmp     [CDDataBuf + fs.iso9660.vol_descr_t.descr_type], FS_ISO9660_VOL_TYPE_SUP_VOL_DESCR
         jne     .start
         ; is it an enhanced volume descriptor (version = 2)?
-        cmp     byte[CDDataBuf + 6], 0x1
+        cmp     [CDDataBuf + fs.iso9660.vol_descr_t.descr_version], 0x1
         jne     .start
 
         ; root directory parameters
-        mov     eax, [CDDataBuf + 0x9c + 2] ; root directory start
+        ; root directory start
+        mov     eax, dword[CDDataBuf + fs.iso9660.sup_vol_descr_t.root_dir_entry + fs.iso9660.dir_entry_t.extent_loc]
         mov     [CDSectorAddress], eax
-        mov     eax, [CDDataBuf + 0x9c + 10] ; root directory size
+        ; root directory size
+        mov     eax, dword[CDDataBuf + fs.iso9660.sup_vol_descr_t.root_dir_entry + fs.iso9660.dir_entry_t.size]
         cmp     byte[esi], 0
         jnz     @f
-        mov     [cd_current_pointer_of_input], CDDataBuf + 0x9c
+        mov     [cd_current_pointer_of_input], CDDataBuf + fs.iso9660.sup_vol_descr_t.root_dir_entry
         jmp     .done
 
     @@: ; beginning search
@@ -542,7 +704,7 @@ kproc cd_find_lfn ;/////////////////////////////////////////////////////////////
         dec     [CDSectorAddress]
 
   .read_to_buffer:
-        inc     dword[CDSectorAddress]
+        inc     [CDSectorAddress]
         mov     [CDDataBuf_pointer], CDDataBuf
         call    ReadCDWRetr ; reading directory sector
         cmp     [DevErrorCode], 0
@@ -572,9 +734,8 @@ kproc cd_find_lfn ;/////////////////////////////////////////////////////////////
 
   .nested:
         mov     eax, [cd_current_pointer_of_input]
-        push    dword[eax + 2]
-        pop     dword[CDSectorAddress] ; directory start
-        mov     eax, [eax + 2 + 8] ; directory size
+        mov_s_  [CDSectorAddress], dword[eax + fs.iso9660.dir_entry_t.extent_loc] ; directory start
+        mov     eax, dword[eax + fs.iso9660.dir_entry_t.size] ; directory size
         jmp     .mainloop
 
   .done:
@@ -622,9 +783,9 @@ kproc cd_get_name ;/////////////////////////////////////////////////////////////
         jz      .next_sector
         cmp     ebp, CDDataBuf + 2048 ; end of buffer?
         jae     .next_sector
-        movzx   eax, byte[ebp]
+        movzx   eax, [ebp + fs.iso9660.dir_entry_t.entry_size]
         add     [cd_current_pointer_of_input_2], eax ; next directory entry
-        add     ebp, 33 ; pointer set to beginning of name
+        add     ebp, fs.iso9660.dir_entry_t.name ; pointer set to beginning of name
         pop     eax
         clc
         ret
@@ -685,13 +846,13 @@ kproc cd_compare_name ;/////////////////////////////////////////////////////////
         cmp     word[edi], 0x3b00 ; ';' - filename terminator
         je      .done_1
         ; check for filenames not ending with terminator
-        movzx   eax, byte[ebp - 33]
+        movzx   eax, [ebp - fs.iso9660.dir_entry_t.name + fs.iso9660.dir_entry_t.entry_size]
         add     eax, ebp
-        sub     eax, 34
+        sub     eax, fs.iso9660.dir_entry_t.name + 1
         cmp     edi, eax
         je      .done_1
         ; check for end of directory
-        movzx   eax, byte[ebp - 1]
+        movzx   eax, [ebp - fs.iso9660.dir_entry_t.name + fs.iso9660.dir_entry_t.name_size]
         add     eax, ebp
         cmp     edi, eax
         jne     .name_not_coincide

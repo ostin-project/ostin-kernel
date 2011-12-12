@@ -701,13 +701,13 @@ kproc r6040_transmit ;//////////////////////////////////////////////////////////
         jz      .l3
 
         push    ecx esi
-        mov     ecx, [timer_ticks]
+        mov     ecx, dword[timer_ticks]
         add     ecx, 1 * KCONFIG_SYS_TIMER_FREQ
 
   .l2:
         test    [r6040_tx_ring + eax + r6040_x_head.status], 0x8000
         jz      .l5
-        cmp     ecx, [timer_ticks]
+        cmp     ecx, dword[timer_ticks]
         jb      .l4
         mov     esi, 10
         call    delay_ms

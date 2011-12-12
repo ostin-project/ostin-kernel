@@ -307,7 +307,7 @@ kproc SendPacketDatCommand ;////////////////////////////////////////////////////
 
     @@: call    change_task
         ; check command execution duration
-        mov     eax, [timer_ticks]
+        mov     eax, dword[timer_ticks]
         sub     eax, [TickCounter_1]
         cmp     eax, BSYWaitTime
         ja      .Err1_1 ; timeout error
@@ -354,7 +354,7 @@ kproc SendPacketDatCommand ;////////////////////////////////////////////////////
 
     @@: call    change_task
         ; check command execution duration
-        mov     eax, [timer_ticks]
+        mov     eax, dword[timer_ticks]
         sub     eax, [TickCounter_1]
         cmp     eax, MaxCDWaitTime
         ja      .Err1_1 ; timeout error
@@ -444,7 +444,7 @@ kproc SendPacketNoDatCommand ;//////////////////////////////////////////////////
   .WaitDevice0_1:
         call    change_task
         ; check command execution duration
-        mov     eax, [timer_ticks]
+        mov     eax, dword[timer_ticks]
         sub     eax, [TickCounter_1]
         cmp     eax, BSYWaitTime
         ja      .Err1_3 ; timeout error
@@ -482,7 +482,7 @@ kproc SendPacketNoDatCommand ;//////////////////////////////////////////////////
   .WaitDevice1_1:
         call    change_task
         ; check command execution duration
-        mov     eax, [timer_ticks]
+        mov     eax, dword[timer_ticks]
         sub     eax, [TickCounter_1]
         cmp     eax, MaxCDWaitTime
         ja      .Err1_3 ; timeout error
@@ -560,7 +560,7 @@ kproc SendCommandToHDD_1 ;//////////////////////////////////////////////////////
         out     dx, al
         ; wait until drive is ready
         inc     dx
-        mov     eax, [timer_ticks]
+        mov     eax, dword[timer_ticks]
         mov     [TickCounter_1], eax
         mov     ecx, NoTickWaitTime
 
@@ -574,7 +574,7 @@ kproc SendCommandToHDD_1 ;//////////////////////////////////////////////////////
 
     @@: call    change_task
         ; check command execution duration
-        mov     eax, [timer_ticks]
+        mov     eax, dword[timer_ticks]
         sub     eax, [TickCounter_1]
         cmp     eax, BSYWaitTime ; 300 ; wait for 3 sec
         ja      .Err1_4 ; timeout error
@@ -667,7 +667,7 @@ kproc WaitUnitReady ;///////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         pusha
         ; save operation start time
-        mov     eax, [timer_ticks]
+        mov     eax, dword[timer_ticks]
         mov     [WURStartTime], eax
         ; clear packet command buffer
         call    clear_packet_buffer
@@ -693,7 +693,7 @@ kproc WaitUnitReady ;///////////////////////////////////////////////////////////
         cmp     [DevErrorCode], 0
         je      .End_11
         ; check execution duration
-        mov     eax, [timer_ticks]
+        mov     eax, dword[timer_ticks]
         sub     eax, [WURStartTime]
         cmp     eax, MaxCDWaitTime
         jb      .SendCommand
@@ -815,7 +815,7 @@ kproc check_ATAPI_device_event ;////////////////////////////////////////////////
 ;> DiskNumber = drive number on channel
 ;-----------------------------------------------------------------------------------------------------------------------
         pusha
-        mov     eax, [timer_ticks]
+        mov     eax, dword[timer_ticks]
         sub     eax, [timer_ATAPI_check]
         cmp     eax, 1 * KCONFIG_SYS_TIMER_FREQ
         jb      .end_1
@@ -845,7 +845,7 @@ kproc check_ATAPI_device_event ;////////////////////////////////////////////////
 
   .end:
         sti
-        mov     eax, [timer_ticks]
+        mov     eax, dword[timer_ticks]
         mov     [timer_ATAPI_check], eax
 
   .end_1:

@@ -256,7 +256,7 @@ kproc blkdev.floppy.ctl._.update_motor_timer ;//////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> ebx ^= blkdev.floppy.device_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov_s_  [ebx + blkdev.floppy.device_data_t.motor_timer], [timer_ticks]
+        mov_s_  [ebx + blkdev.floppy.device_data_t.motor_timer], dword[timer_ticks]
         ret
 kendp
 
@@ -271,7 +271,7 @@ kproc blkdev.floppy.ctl._.check_motor_timer ;///////////////////////////////////
         test    eax, eax
         jz      .exit
 
-        sub     eax, [timer_ticks]
+        sub     eax, dword[timer_ticks]
         add     eax, 2 * KCONFIG_SYS_TIMER_FREQ ; ~2 sec
         jg      .exit
 
@@ -331,12 +331,12 @@ kproc blkdev.floppy.ctl._.select_drive ;////////////////////////////////////////
         mov     [blkdev.floppy.ctl._.data.last_drive_number], cl
 
         ; reset timer tick counter
-        mov     ecx, [timer_ticks]
+        mov     ecx, dword[timer_ticks]
 
   .wait_for_motor:
         ; wait for ~1/3 sec
         call    change_task
-        mov     eax, [timer_ticks]
+        mov     eax, dword[timer_ticks]
         sub     eax, ecx
         cmp     eax, KCONFIG_SYS_TIMER_FREQ / 3
         jb      .wait_for_motor
@@ -527,7 +527,7 @@ kproc blkdev.floppy.ctl._.wait_for_interrupt ;//////////////////////////////////
         push    ecx
 
         ; reset timer tick counter
-        mov     ecx, [timer_ticks]
+        mov     ecx, dword[timer_ticks]
 
   .check_flag:
         ; reset controller error code
@@ -540,7 +540,7 @@ kproc blkdev.floppy.ctl._.wait_for_interrupt ;//////////////////////////////////
         call    change_task
 
         ; check for timeout (~3 sec)
-        mov     eax, [timer_ticks]
+        mov     eax, dword[timer_ticks]
         sub     eax, ecx
         cmp     eax, 3 * KCONFIG_SYS_TIMER_FREQ
         jb      .check_flag
