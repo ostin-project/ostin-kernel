@@ -76,20 +76,27 @@ static_assert sizeof.core.thread_t mod 4 = 0
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc core.thread.lock_tree ;///////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        push    eax ecx edx
-        mov     ecx, core.thread._.tree_mutex
-        call    mutex_lock
-        pop     edx ecx eax
+        ; FIXME: could lead to recursion in `find_next_task`, hot fix until scheduling is refactored
+;       push    eax ecx edx
+;       mov     ecx, core.thread._.tree_mutex
+;       call    mutex_lock
+;       pop     edx ecx eax
+        pushfd
+        pop     dword[core.thread._.tree_mutex]
+        cli
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc core.thread.unlock_tree ;/////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        push    eax ecx edx
-        mov     ecx, core.thread._.tree_mutex
-        call    mutex_unlock
-        pop     edx ecx eax
+        ; FIXME: could lead to recursion in `find_next_task`, hot fix until scheduling is refactored
+;       push    eax ecx edx
+;       mov     ecx, core.thread._.tree_mutex
+;       call    mutex_unlock
+;       pop     edx ecx eax
+        push    dword[core.thread._.tree_mutex]
+        popfd
         ret
 kendp
 

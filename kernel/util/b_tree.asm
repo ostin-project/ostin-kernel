@@ -24,7 +24,7 @@ kproc util.b_tree.find ;////////////////////////////////////////////////////////
 ;< eax ^= actual node
 ;-----------------------------------------------------------------------------------------------------------------------
         klog_   LOG_TRACE, "util.b_tree.find(%x,%x,%x)\n", eax, ebx, ecx
-        push    ebx ecx edx
+        push    ebx
 
   .next_node:
         test    ebx, ebx
@@ -43,12 +43,12 @@ kproc util.b_tree.find ;////////////////////////////////////////////////////////
 
   .exit:
         xchg    eax, ebx
-        pop     edx ecx ebx
+        pop     ebx
         ret
 
   .error:
         xor     eax, eax
-        pop     edx ecx ebx
+        pop     ebx
         ret
 kendp
 

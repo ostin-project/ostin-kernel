@@ -38,20 +38,27 @@ static_assert sizeof.core.process_t mod 4 = 0
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc core.process.lock_tree ;//////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        push    eax ecx edx
-        mov     ecx, core.process._.tree_mutex
-        call    mutex_lock
-        pop     edx ecx eax
+        ; FIXME: could lead to recursion in `find_next_task`, hot fix until scheduling is refactored
+;       push    eax ecx edx
+;       mov     ecx, core.process._.tree_mutex
+;       call    mutex_lock
+;       pop     edx ecx eax
+        pushfd
+        pop     dword[core.process._.tree_mutex]
+        cli
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc core.process.unlock_tree ;////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        push    eax ecx edx
-        mov     ecx, core.process._.tree_mutex
-        call    mutex_unlock
-        pop     edx ecx eax
+        ; FIXME: could lead to recursion in `find_next_task`, hot fix until scheduling is refactored
+;       push    eax ecx edx
+;       mov     ecx, core.process._.tree_mutex
+;       call    mutex_unlock
+;       pop     edx ecx eax
+        push    dword[core.process._.tree_mutex]
+        popfd
         ret
 kendp
 

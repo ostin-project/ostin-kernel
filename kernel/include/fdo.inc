@@ -455,23 +455,27 @@ macro include_debug_strings {
 macro klog_ _level, _format, [_args]
 {
   common
-    pushfd
-    cli
-    DEBUGF_ESP_ADD equ 4
-    DEBUGF _level, <"K : ", _format>, _args
-    restore DEBUGF_ESP_ADD
-    popfd
+    if __DEBUG__ = 1 & _level >= __DEBUG_LEVEL__
+      pushfd
+      cli
+      DEBUGF_ESP_ADD equ 4
+      DEBUGF _level, <"K : ", _format>, _args
+      restore DEBUGF_ESP_ADD
+      popfd
+    end if
 }
 
 macro klog2_ _level, _format, [_args]
 {
   common
-    pushfd
-    cli
-    DEBUGF_ESP_ADD equ 4
-    DEBUGF _level, _format, _args
-    restore DEBUGF_ESP_ADD
-    popfd
+    if __DEBUG__ = 1 & _level >= __DEBUG_LEVEL__
+      pushfd
+      cli
+      DEBUGF_ESP_ADD equ 4
+      DEBUGF _level, _format, _args
+      restore DEBUGF_ESP_ADD
+      popfd
+    end if
 }
 
 macro cond_klog_begin _name, _cond_var
