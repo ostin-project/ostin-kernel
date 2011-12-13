@@ -536,7 +536,7 @@ kproc wait_for_sector_buffer ;//////////////////////////////////////////////////
     @@: mov     [hd_error], 1
 
   .buf_wait_ok:
-        pop   edx eax
+        pop     edx eax
         ret
 kendp
 

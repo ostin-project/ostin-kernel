@@ -74,7 +74,7 @@ pci_data_sel    = pci_data_32 - gdts
 use16
 org 0
 
-        jmp   boot.start
+        jmp     boot.start
 
 include "boot/preboot.inc"
 

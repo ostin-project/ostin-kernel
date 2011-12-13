@@ -1253,7 +1253,7 @@ kproc ext2_balloc ;/////////////////////////////////////////////////////////////
         or      eax, -1 ; searching for first free inode (!= -1)
         repe
         scasd
-        jz     .test_last_dword ; found or not
+        jz      .test_last_dword ; found or not
 
         mov     eax, [edi - 4]
         sub     ebp, ecx

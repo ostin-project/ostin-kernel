@@ -841,10 +841,10 @@ proc map_mem stdcall, lin_addr:dword, slot:dword, ofs:dword, buf_size:dword, req
         shr     ecx, 12
         inc     ecx
 
-        mov edx, [ofs]
-        shr edx, 12
-        and edx, 0x3ff
-        mov esi, [ipc_ptab]
+        mov     edx, [ofs]
+        shr     edx, 12
+        and     edx, 0x3ff
+        mov     esi, [ipc_ptab]
 
   .map:
         stdcall safe_map_page, [slot], [req_access], [ofs]

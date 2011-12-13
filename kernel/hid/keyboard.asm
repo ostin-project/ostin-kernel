@@ -392,11 +392,11 @@ kproc send_scancode ;///////////////////////////////////////////////////////////
         mov     [ext_code], cl
         jmp     .writekey
 
-    @@: cmp   al, 0x3a
-        jne   @f
-        mov   bl, 4
-        mov   eax, VKEY_CAPSLOCK
-        jmp   .no_key.xor
+    @@: cmp     al, 0x3a
+        jne     @f
+        mov     bl, 4
+        mov     eax, VKEY_CAPSLOCK
+        jmp     .no_key.xor
 
     @@: cmp     al, 0x45
         jne     @f

@@ -1260,7 +1260,7 @@ kproc forcedeth_poll ;//////////////////////////////////////////////////////////
     @@: and     eax, LEN_MASK_V2
 
   .next2:
-;       mov   dword[forcedeth_tmp_len], eax
+;       mov     dword[forcedeth_tmp_len], eax
 
         ; valid = 1
         mov     dword[forcedeth_tmp_valid], 1
@@ -2403,7 +2403,7 @@ kproc forcedeth_update_linkspeed ;//////////////////////////////////////////////
         mov     eax, MII_1000BT_SR
         mov     ecx, MII_READ
         call    forcedeth_mii_rw ; status_1000 = eax
-;       mov    dword[forcedeth_tmp_status_1000], eax
+;       mov     dword[forcedeth_tmp_status_1000], eax
 
         ; if ((control_1000 & ADVERTISE_1000FULL) &&
         ;     (status_1000 & LPA_1000FULL)) {

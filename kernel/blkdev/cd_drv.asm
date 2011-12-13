@@ -565,12 +565,12 @@ kproc SendCommandToHDD_1 ;//////////////////////////////////////////////////////
         mov     ecx, NoTickWaitTime
 
   .WaitHDReady_2:
-        cmp    [timer_ticks_enable], 0
-        jne    @f
-        dec    ecx
-;       test   ecx, ecx
-        jz     .Err1_4
-        jmp    .test
+        cmp     [timer_ticks_enable], 0
+        jne     @f
+        dec     ecx
+;       test    ecx, ecx
+        jz      .Err1_4
+        jmp     .test
 
     @@: call    change_task
         ; check command execution duration
@@ -978,7 +978,7 @@ kproc GetEvent_StatusNotification ;/////////////////////////////////////////////
         pusha
         mov     [CDDataBuf_pointer], CDDataBuf
         ; clear packet command buffer
-        call  clear_packet_buffer
+        call    clear_packet_buffer
         ; set command code
         mov     [PacketCommand], 0x4a
         mov     [PacketCommand + 1], 00000001b

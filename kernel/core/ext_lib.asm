@@ -179,7 +179,7 @@ proc dll.Load, import_table:dword ;/////////////////////////////////////////////
 
         mov     al, '/'
         stosb
-        mov esi, sysdir_path
+        mov     esi, sysdir_path
 
     @@: lodsb
         stosb

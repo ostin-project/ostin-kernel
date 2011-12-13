@@ -212,7 +212,7 @@ kproc normalize_number ;////////////////////////////////////////////////////////
         mov     al, 1
 
   .continue:
-        and   eax, 0x3f
+        and     eax, 0x3f
         ret
 kendp
 

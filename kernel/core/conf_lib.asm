@@ -292,7 +292,7 @@ proc do_inet_adr stdcall, strs ;////////////////////////////////////////////////
         mov     ebx, 0
 
   .next:
-        push esi
+        push    esi
 
     @@: lodsb
         or      al, al

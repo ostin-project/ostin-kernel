@@ -728,15 +728,15 @@ kproc update_disk ;/////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? write changed fat and cache to disk
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp   [fat_change], 0 ; is fat changed?
-        je    .upd_no_change
+        cmp     [fat_change], 0 ; is fat changed?
+        je      .upd_no_change
 
-        call  write_fat_sector
-        cmp   [hd_error], 0
-        jne   .update_disk_acces_denied
+        call    write_fat_sector
+        cmp     [hd_error], 0
+        jne     .update_disk_acces_denied
 
   .upd_no_change:
-        call  write_cache
+        call    write_cache
 
   .update_disk_acces_denied:
         ret
@@ -902,7 +902,7 @@ kproc fat32_HdRead ;////////////////////////////////////////////////////////////
         jne     .noaccess_1
         add     edx, 512
         sub     ecx, 512
-        jmp    .skip
+        jmp     .skip
 
   .force_buf:
         ; we must read sector to temporary buffer and then copy it to destination
@@ -920,14 +920,14 @@ kproc fat32_HdRead ;////////////////////////////////////////////////////////////
         jbe     @f
         mov     ecx, 512
 
-    @@: sub    ecx, ebx
-        mov    ebx, edx
+    @@: sub     ecx, ebx
+        mov     ebx, edx
         call    memmove
-        add    edx, ecx
-        sub    [esp], ecx
-        pop    ecx
-        pop    eax
-        xor    ebx, ebx
+        add     edx, ecx
+        sub     [esp], ecx
+        pop     ecx
+        pop     eax
+        xor     ebx, ebx
 
   .skip:
         inc     eax

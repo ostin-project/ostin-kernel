@@ -1133,7 +1133,7 @@ kproc e3c59x_set_active_port ;//////////////////////////////////////////////////
         ret
 
   .set_first_available_media:
-        jmp    e3c59x_set_available_media
+        jmp     e3c59x_set_available_media
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -2059,8 +2059,8 @@ kproc e3c59x_boomerang_transmit ;///////////////////////////////////////////////
 
     @@: ; calculate
         mov     ebx, ecx
-;       test   byte[e3c59x_has_hwcksm], 0xff
-;       jz     @f
+;       test    byte[e3c59x_has_hwcksm], 0xff
+;       jz      @f
 ;       or      ebx, 1 shl 26 ; set AddTcpChecksum
 ;
 ;   @@:
@@ -2312,7 +2312,7 @@ kproc e3c59x_boomerang_poll ;///////////////////////////////////////////////////
         lea     edx, [ebp + E3C59X_REG_UP_PKT_STATUS]
         in      eax, dx
         test    ah, 0x20 ; UpStalled
-        jz     .noUpUnStall
+        jz      .noUpUnStall
         ; issue upUnStall command
         lea     edx, [ebp + E3C59X_REG_COMMAND]
         mov     ax, (110b shl 11) + 1 ; upUnStall

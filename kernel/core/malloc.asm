@@ -176,9 +176,9 @@ kproc malloc ;//////////////////////////////////////////////////////////////////
 
         ; rsize = ms.topsize -= nb;
         ; p = ms.top;
-        mov ecx, [mst.top]
-        sub eax, esi
-        mov [mst.topsize], eax
+        mov     ecx, [mst.top]
+        sub     eax, esi
+        mov     [mst.topsize], eax
 
         ; r = ms.top = chunk_plus_offset(p, nb);
         ; r->head = rsize | PINUSE_BIT;
@@ -475,7 +475,7 @@ kproc insert_large_chunk ;//////////////////////////////////////////////////////
         jz      .insert_child
 
         ; T = *C;
-        mov edx, edi
+        mov     edx, edi
 
   .loop:
         ; for (;;)
@@ -633,7 +633,7 @@ kproc malloc_small ;////////////////////////////////////////////////////////////
         sub     edi, esi
 
   .loop:
-        mov ebx, ecx
+        mov     ebx, ecx
 
   .loop_1:
         ; while ((t = leftmost_child(t)) != 0)
@@ -815,7 +815,7 @@ kproc malloc_large ;////////////////////////////////////////////////////////////
         jz      @f
 
         ; rst = rt;
-        mov [.rst], ecx
+        mov     [.rst], ecx
 
     @@: ; if (t == 0)
         test    eax, eax

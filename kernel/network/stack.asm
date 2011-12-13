@@ -561,7 +561,7 @@ kproc app_socket_handler ;//////////////////////////////////////////////////////
         or      al, -1
         ret
 
-    @@: jmp    dword[drvr_cable]
+    @@: jmp     dword[drvr_cable]
 
   .fail:
         or      eax, -1

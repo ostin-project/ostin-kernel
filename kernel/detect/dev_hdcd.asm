@@ -219,7 +219,7 @@ kproc SendCommandToHDD ;////////////////////////////////////////////////////////
         ; check execution duration
         dec     ecx
 ;       cmp     ecx, 0
-        jz     .Err1
+        jz      .Err1
 ;       mov     eax, [timer_ticks]
 ;       sub     eax, [TickCounter_1]
 ;       cmp     eax, 3 * KCONFIG_SYS_TIMER_FREQ ; wait for 3 sec

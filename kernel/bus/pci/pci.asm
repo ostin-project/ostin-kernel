@@ -506,13 +506,13 @@ kproc sysfn.pci_ctl.mmio_map ;//////////////////////////////////////////////////
 
         and     edx, 0x0000ffff
         cmp     ah, 6
-        jc     .bar_0_5
-        jz     .bar_rom
+        jc      .bar_0_5
+        jz      .bar_rom
         mov     eax, -2
         jmp     .exit
 
   .bar_rom:
-        mov    ah, 8 ; bar6 = Expansion ROM base address
+        mov     ah, 8 ; bar6 = Expansion ROM base address
 
   .bar_0_5:
         push    ecx

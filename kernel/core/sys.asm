@@ -676,10 +676,10 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         add     edi, window_data
 
         ; skip minimized windows
-        test   [edi + window_data_t.fl_wstate], WSTATE_MINIMIZED
-        jnz    .check_next_window
+        test    [edi + window_data_t.fl_wstate], WSTATE_MINIMIZED
+        jnz     .check_next_window
 
-        call   waredraw
+        call    waredraw
 
   .nothing_to_activate:
         popad

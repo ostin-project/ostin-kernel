@@ -459,10 +459,10 @@ kproc fs_CdReadFolder ;/////////////////////////////////////////////////////////
         jb      .ansi
 
   .cd_get_parameters_of_file_1:
-        mov   byte[edi], 0
-        call  cd_get_parameters_of_file
-        add   [cd_mem_location], 304
-        jmp   .get_names_from_buffer_1
+        mov     byte[edi], 0
+        call    cd_get_parameters_of_file
+        add     [cd_mem_location], 304
+        jmp     .get_names_from_buffer_1
 
   .ansi_parent_directory:
         cmp     [cd_counter_block], 2
@@ -729,8 +729,8 @@ kproc cd_find_lfn ;/////////////////////////////////////////////////////////////
   .found:
         ; needed entry found
         ; end of filename
-        cmp    byte[esi - 1], 0
-        jz    .done
+        cmp     byte[esi - 1], 0
+        jz      .done
 
   .nested:
         mov     eax, [cd_current_pointer_of_input]
@@ -791,7 +791,7 @@ kproc cd_get_name ;/////////////////////////////////////////////////////////////
         ret
 
   .next_sector:
-        pop  eax
+        pop     eax
         stc
         ret
 kendp
@@ -858,9 +858,9 @@ kproc cd_compare_name ;/////////////////////////////////////////////////////////
         jne     .name_not_coincide
 
   .done_1:
-        pop   edi eax
-        add   esp, 4
-        inc   esi
+        pop     edi eax
+        add     esp, 4
+        inc     esi
         clc
         ret
 kendp

@@ -346,14 +346,14 @@ kproc sysfn.get_date ;//////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cli
 
-    @@: mov   al, 10
-        out   0x70, al
-        in    al, 0x71
-        test  al, al
-        jns   @f
-        mov   esi, 1
-        call  delay_ms
-        jmp   @b
+    @@: mov     al, 10
+        out     0x70, al
+        in      al, 0x71
+        test    al, al
+        jns     @f
+        mov     esi, 1
+        call    delay_ms
+        jmp     @b
 
     @@: mov     ch, 0
         mov     al, 7 ; date
