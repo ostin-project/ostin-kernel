@@ -196,9 +196,9 @@ kproc boot.int8_handler ;///////////////////////////////////////////////////////
         popf
         js      .exit
 
-        ; timed out, store f10 in key buffer
+        ; timed out, store f11 in key buffer
         mov     ah, 5
-        mov     cx, 0x4400
+        mov     cx, 0x8500
         int     0x16
 
   .exit:
