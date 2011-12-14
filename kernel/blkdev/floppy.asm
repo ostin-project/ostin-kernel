@@ -122,11 +122,6 @@ kproc blkdev.floppy.read ;//////////////////////////////////////////////////////
   .overflow_error:
         mov     eax, -123 ; TODO: add error code
         ret
-
-  .alignment_error:
-        mov     eax, -321 ; TODO: add error code
-        pop     ebp
-        ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -182,11 +177,6 @@ kproc blkdev.floppy.write ;/////////////////////////////////////////////////////
 
   .overflow_error:
         mov     eax, -123 ; TODO: add error code
-        ret
-
-  .alignment_error:
-        mov     eax, -321 ; TODO: add error code
-        pop     ebp
         ret
 kendp
 

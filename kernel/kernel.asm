@@ -597,8 +597,6 @@ high_code:
 
 include "detect/disks.inc"
 
-        call    Parser_params
-
 ; READ RAMDISK IMAGE FROM HD
 include "boot/rdload.asm"
 
@@ -812,13 +810,6 @@ no_pal_ega:
 
         stdcall map_page, tss.io_map_0, [SLOT_BASE + sizeof.app_data_t + app_data_t.io_map], PG_MAP
         stdcall map_page, tss.io_map_1, [SLOT_BASE + sizeof.app_data_t + app_data_t.io_map + 4], PG_MAP
-
-        mov     ax, [OS_BASE + 0x10000 + bx_from_load]
-        cmp     ax, 'r1' ; if not used ram disk - load network configuration from files
-        je      no_st_network
-        call    set_network_conf
-
-no_st_network:
 
         ; LOAD FIRST APPLICATION
         cli

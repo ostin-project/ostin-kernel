@@ -14,10 +14,8 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-include "conf_lib.asm"
 include "dll.asm"
 include "exports.inc"
-include "ext_lib.asm"
 include "fpu.asm"
 include "heap.asm"
 include "malloc.asm"

@@ -1337,6 +1337,24 @@ kproc biosdisk_enum_root ;//////////////////////////////////////////////////////
         ret
 kendp
 
+iglobal
+  ; pointer to memory for path replace table,
+  ; size of one record is 128 bytes: 64 bytes for search pattern + 64 bytes for replace string
+
+  ; start with one entry: sys -> <sysdir>
+  full_file_name_table dd syslibdir_name
+    .size              dd 2
+
+  syslibdir_name db 'sys/lib', 0
+                 rb 64 - ($ - syslibdir_name)
+  syslibdir_path db 'rd/1/dll', 0
+                 rb 64 - ($ - syslibdir_path)
+  sysdir_name    db 'sys', 0
+                 rb 64 - ($ - sysdir_name)
+  sysdir_path    db 'rd/1', 0
+                 rb 64 - ($ - sysdir_path)
+endg
+
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc process_replace_file_name ;///////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
