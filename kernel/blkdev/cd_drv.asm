@@ -241,7 +241,7 @@ kproc ReadCDWRetr_1 ;///////////////////////////////////////////////////////////
         loop    .NextRetr
 
   .End_4:
-        mov     dword[DevErrorCode], eax
+        mov     [DevErrorCode], eax
         popad
         ret
 kendp
@@ -540,13 +540,11 @@ kproc SendCommandToHDD_1 ;//////////////////////////////////////////////////////
         cmp     [ATAAddressMode], 1
         ja      .Err2_4
         ; check if channel number is valid
-        mov     bx, [ChannelNumber]
-        cmp     bx, 2
-        jae     .Err3_4
+        movzx   ebx, [ChannelNumber]
+        cmp     ebx, 1
+        ja      .Err3_4
         ; set base address
-        shl     bx, 1
-        movzx   ebx, bx
-        mov     ax, [ebx + StandardATABases]
+        mov     ax, [StandardATABases + ebx * 2]
         mov     [ATABasePortAddr], ax
         ; wait for HDD being ready to receive command
         ; select needed drive

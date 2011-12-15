@@ -24,34 +24,27 @@ FindHDD: ;//////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Find HDDs and CDs
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     [ChannelNumber], 0
-        mov     [DiskNumber], 0
-        call    .FindHDD_3
-;       mov     ax, [Sector512 + 176]
-;       mov     [DRIVE_DATA + 6], ax
-;       mov     ax, [Sector512 + 126]
-;       mov     [DRIVE_DATA + 8], ax
-;       mov     ax, [Sector512 + 128]
-;       mov     [DRIVE_DATA + 8], ax
-        mov     [DiskNumber], 1
-        call    .FindHDD_3
-;       mov     al, [Sector512 + 176]
-;       mov     [DRIVE_DATA + 7], al
-        inc     [ChannelNumber]
-        mov     [DiskNumber], 0
-        call    .FindHDD_3
-;       mov     al, [Sector512 + 176]
-;       mov     [DRIVE_DATA + 8], al
-        mov     [DiskNumber], 1
+        and     [ChannelNumber], 0
+        and     [DiskNumber], 0
         call    .FindHDD_1
-;       mov     al, [Sector512 + 176]
-;       mov     [DRIVE_DATA + 9], al
+
+        inc     [DiskNumber]
+        call    .FindHDD_1
+
+        inc     [ChannelNumber]
+        dec     [DiskNumber]
+        call    .FindHDD_1
+
+        inc     [DiskNumber]
+        call    .FindHDD_1
 
         jmp     EndFindHDD
 
 ;-----------------------------------------------------------------------------------------------------------------------
   .FindHDD_1: ;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ;-----------------------------------------------------------------------------------------------------------------------
+        shl     byte[DRIVE_DATA + 1], 2
+
         call    ReadHDD_ID
         cmp     [DevErrorCode], 0
         jne     .FindHDD_2
@@ -73,13 +66,6 @@ FindHDD: ;//////////////////////////////////////////////////////////////////////
         inc     byte[DRIVE_DATA + 1]
 
   .FindHDD_2_2:
-        ret
-
-;-----------------------------------------------------------------------------------------------------------------------
-  .FindHDD_3: ;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-;-----------------------------------------------------------------------------------------------------------------------
-        call    .FindHDD_1
-        shl     byte[DRIVE_DATA + 1], 2
         ret
 
 uglobal
@@ -191,13 +177,11 @@ kproc SendCommandToHDD ;////////////////////////////////////////////////////////
         cmp     [ATAAddressMode], 1
         ja      .Err2
         ; check if channel number is valid
-        mov     bx, [ChannelNumber]
-        cmp     bx, 2
-        jae     .Err3
+        movzx   ebx, [ChannelNumber]
+        cmp     ebx, 1
+        ja      .Err3
         ; set base address
-        shl     bx, 1
-        movzx   ebx, bx
-        mov     ax, [ebx + StandardATABases]
+        mov     ax, [StandardATABases + ebx * 2]
         mov     [ATABasePortAddr], ax
         ; wait for HDD being ready to receive command
         ; select needed drive
@@ -363,13 +347,11 @@ kproc DeviceReset ;/////////////////////////////////////////////////////////////
 ;> DiskNumber - drive number on channel (0 or 1)
 ;-----------------------------------------------------------------------------------------------------------------------
         ; check if channel number is valid
-        mov     bx, [ChannelNumber]
-        cmp     bx, 2
-        jae     .Err3_2
+        movzx   ebx, [ChannelNumber]
+        cmp     ebx, 1
+        ja      .Err3_2
         ; set base address
-        shl     bx, 1
-        movzx   ebx, bx
-        mov     dx, [ebx + StandardATABases]
+        mov     dx, [StandardATABases + ebx * 2]
         mov     [ATABasePortAddr], dx
         ; select needed drive
         add     dx, 6 ; heads register address
