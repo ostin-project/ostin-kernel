@@ -28,6 +28,8 @@ struct blkdev.device_t
   user_data dd ? ; ^= blkdev.?.device_data_t
 ends
 
+include "blkdev.asm"
+
 match =1, KCONFIG_BLKDEV_FLOPPY
 {
 include "floppy.asm"

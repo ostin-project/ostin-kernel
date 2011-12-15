@@ -54,14 +54,12 @@ kproc fs.read ;/////////////////////////////////////////////////////////////////
         pop     edx eax
         ja      .overflow_error
 
-        push    ebx edx esi
+        push    ebx edx
         add     eax, dword[ebx + fs.partition_t.range.offset]
         adc     edx, dword[ebx + fs.partition_t.range.offset + 4]
-        mov     esi, [ebx + fs.partition_t.device]
-        mov     ebx, [esi + blkdev.device_t.user_data]
-        mov     esi, [esi + blkdev.device_t.vftbl]
-        call    [esi + blkdev.vftbl_t.read]
-        pop     esi edx ebx
+        mov     ebx, [ebx + fs.partition_t.device]
+        call    blkdev.read
+        pop     edx ebx
 
         ret
 
@@ -89,14 +87,12 @@ kproc fs.write ;////////////////////////////////////////////////////////////////
         pop     edx eax
         ja      .overflow_error
 
-        push    ebx edx edi
+        push    ebx edx
         add     eax, dword[ebx + fs.partition_t.range.offset]
         adc     edx, dword[ebx + fs.partition_t.range.offset + 4]
-        mov     edi, [ebx + fs.partition_t.device]
-        mov     ebx, [edi + blkdev.device_t.user_data]
-        mov     edi, [edi + blkdev.device_t.vftbl]
-        call    [edi + blkdev.vftbl_t.write]
-        pop     edi edx ebx
+        mov     ebx, [ebx + fs.partition_t.device]
+        call    blkdev.write
+        pop     edx ebx
 
         ret
 
