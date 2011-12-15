@@ -39,17 +39,21 @@ macro diff10 title, l1, l2
   z = 0
   m = 1000000000
   display title, ': '
-  repeat 10
-   d = '0' + s / m
-   s = s - (s / m) * m
-   m = m / 10
-   if d <> '0'
-    z = 1
-   end if
-   if z <> 0
-    display d
-   end if
-  end repeat
+  if l2 - l1 = 0
+   display '0'
+  else
+   repeat 10
+    d = '0' + s / m
+    s = s - (s / m) * m
+    m = m / 10
+    if d <> '0'
+     z = 1
+    end if
+    if z <> 0
+      display d
+    end if
+   end repeat
+  end if
   display 13, 10
 }
 

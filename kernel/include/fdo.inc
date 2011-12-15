@@ -1,6 +1,7 @@
 ;;======================================================================================================================
 ;;///// fdo.inc //////////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
 ;;======================================================================================================================
+;; (c) 2011 Ostin project <http://ostin.googlecode.com/>
 ;; (c) 2007-2010 KolibriOS team <http://kolibrios.org/>
 ;; (c) 2005-2006 mike.dld <mike.dld@gmail.com>
 ;;======================================================================================================================
@@ -24,22 +25,6 @@ LOG_WARNING = 4
 LOG_ERROR   = 5
 LOG_INFO    = 6
 LOG_NONE    = 7
-
-; to be defined:
-;   __DEBUG__ equ 1
-;   __DEBUG_LEVEL__ equ 5
-
-macro debug_func name {
- if used name
-  name@of@func equ name
-}
-
-macro debug_beginf {
- align 4
- name@of@func:
-}
-
-debug_endf fix end if
 
 macro DEBUGS _sign, [_str] {
  common
@@ -110,7 +95,7 @@ macro DEBUGS_N _sign, _num, [_str] {
   else
    mov esi, 0x7fffffff
   end if
-  call fdo_debug_outstr
+  call fdo.debug_outstr
   popad
   popf
 }
@@ -176,7 +161,7 @@ macro DEBUGD_N _sign, _num, _dec {
   restore esp
  end if
  mov cl, _sign
- call fdo_debug_outdec
+ call fdo.debug_outdec
  popad
  popf
 }
@@ -234,25 +219,23 @@ macro DEBUGH_N _sign, _num, _hex {
    mov edx, 8
   end if
  end if
- call fdo_debug_outhex
+ call fdo.debug_outhex
  popad
  popf
 }
 
 ;-----------------------------------------------------------------------------
 
-debug_func fdo_debug_outchar
-debug_beginf
+kproc fdo.debug_outchar
         pushad
         mov     bl, al
         mov     ecx, sysfn.debug_board.push_back
         call    ecx ; sysfn.debug_board
         popad
         ret
-debug_endf
+kendp
 
-debug_func fdo_debug_outstr
-debug_beginf
+kproc fdo.debug_outstr
   .l1:
         dec     esi
         js      .l2
@@ -266,10 +249,9 @@ debug_beginf
 
   .l2:
         ret
-debug_endf
+kendp
 
-debug_func fdo_debug_outdec
-debug_beginf
+kproc fdo.debug_outdec
         or      cl, cl
         jz      @f
         or      eax, eax
@@ -277,7 +259,7 @@ debug_beginf
         neg     eax
         push    eax
         mov     al, '-'
-        call    fdo_debug_outchar
+        call    fdo.debug_outchar
         pop     eax
 
     @@: push    10
@@ -295,19 +277,18 @@ debug_beginf
         pop     eax
         add     al, '0'
         jz      .l3
-        call    fdo_debug_outchar
+        call    fdo.debug_outchar
         jmp     .l2
 
   .l3:
         ret
-debug_endf
+kendp
 
 if used __fdo_hexdigits
 __fdo_hexdigits db '0123456789ABCDEF'
 end if
 
-debug_func fdo_debug_outhex
-debug_beginf
+kproc fdo.debug_outhex
         mov     cl, dl
         neg     cl
         add     cl, 8
@@ -319,163 +300,140 @@ debug_beginf
         push    eax
         and     eax, 0x0f
         mov     al, [__fdo_hexdigits + eax]
-        call    fdo_debug_outchar
+        call    fdo.debug_outchar
         pop     eax
         dec     edx
         jnz     .l1
         ret
-debug_endf
+kendp
 
 ;-----------------------------------------------------------------------------
 
-macro DEBUGF _level, _format, [_arg] {
- common
- if __DEBUG__ = 1 & _level >= __DEBUG_LEVEL__
-  local ..f1, f2, a1, a2, c1, c2, c3, ..lbl
-  _debug_str_ equ __debug_str_ # a1
-  a1 = 0
-  c2 = 0
-  c3 = 0
-  f2 = 0
-  repeat ..lbl - ..f1
-   virtual at 0
-    db _format, 0, 0
-    load c1 word from % - 1
-   end virtual
-   if c1 = '%s'
-    virtual at 0
-     db _format, 0, 0
-     store word 0 at % - 1
-     load c1 from f2 - c2
-    end virtual
-    if c1 <> 0
-     DEBUGS 0, _debug_str_ + f2 - c2
-    end if
-    c2 = c2 + 1
-    f2 = % + 1
-    DEBUGF_HELPER S, a1, 0, _arg
-   else if c1 = '%x'
-    virtual at 0
-     db _format, 0, 0
-     store word 0 at % - 1
-     load c1 from f2 - c2
-    end virtual
-    if c1 <> 0
-     DEBUGS 0, _debug_str_ + f2 - c2
-    end if
-    c2 = c2 + 1
-    f2 = % + 1
-    DEBUGF_HELPER H, a1, 0, _arg
-   else if c1 = '%d' | c1 = '%u'
-    local c4
-    if c1 = '%d'
-     c4 = 1
-    else
-     c4 = 0
-    end if
-    virtual at 0
-     db _format, 0, 0
-     store word 0 at % - 1
-     load c1 from f2 - c2
-    end virtual
-    if c1 <> 0
-     DEBUGS 0, _debug_str_ + f2 - c2
-    end if
-    c2 = c2 + 1
-    f2 = % + 1
-    DEBUGF_HELPER D, a1, c4, _arg
-   else if c1 = '\n'
-    c3 = c3 + 1
-   end if
-  end repeat
+macro __debugf_output_next_str
+{
+  local p1, p2, c
+  debugf@char = 0
+  _debug_str_ equ __debug_str_ # c
+  p1 = debugf@pos
   virtual at 0
-   db _format, 0, 0
-   load c1 from f2 - c2
+    db debugf@fmt
+    while debugf@pos < debugf@len
+      load c from debugf@pos
+      if c = '%'
+        load c from debugf@pos + 1
+        if c <> '%'
+          debugf@char = c
+          break
+        end if
+        debugf@pos = debugf@pos + 1
+      end if
+      debugf@pos = debugf@pos + 1
+    end while
   end virtual
-  if (c1 <> 0) & (f2 <> ..lbl - ..f1 - 1)
-   DEBUGS 0, _debug_str_ + f2 - c2
-  end if
-  virtual at 0
-   ..f1 db _format, 0
-   ..lbl:
-   __debug_strings equ __debug_strings, _debug_str_, <_format>, ..lbl - ..f1 - 1 - c2 - c3
-  end virtual
- end if
-}
-
-macro __include_debug_strings dummy, [_id, _fmt, _len] {
- common
-  local c1, a1, a2
- forward
-  if defined _len & ~_len eq
-   _id:
-   a1 = 0
-   a2 = 0
-   repeat _len
-    virtual at 0
-     db _fmt, 0, 0
-     load c1 word from % + a2 - 1
-    end virtual
-    if (c1 = '%s') | (c1 = '%x') | (c1 = '%d') | (c1 = '%u')
-     db 0
-     a2 = a2 + 1
-    else if (c1 = '\n')
-     dw 0x0a0d
-     a1 = a1 + 1
-     a2 = a2 + 1
-    else
-     db c1 and 0xff
-    end if
-   end repeat
-   db 0
+  p2 = debugf@pos
+  if p2 - p1 > 0
+    __debug_strings equ __debug_strings, _debug_str_, <debugf@fmt>, p1, p2 - p1
+    DEBUGS 0, _debug_str_ : p2 - p1
   end if
 }
 
-macro DEBUGF_HELPER _letter, _num, _sign, [_arg] {
- common
-  local num
-  num = 0
- forward
-  if num = _num
-   DEBUG#_letter _sign, _arg
-  end if
-  num = num + 1
- common
-  _num = _num + 1
+macro DEBUGF _format, [_arg]
+{
+  common
+    debugf@fmt equ _format
+    debugf@pos = 0
+    virtual at 0
+      db _format
+      debugf@len = $
+    end virtual
+  forward
+    __debugf_output_next_str
+    if debugf@char
+      if _arg eq
+        'Error: less arguments than expected'
+      end if
+      debugf@pos = debugf@pos + 2
+      if debugf@char = 's'
+        DEBUGS 0, _arg
+      else if debugf@char = 'x'
+        DEBUGH 0, _arg
+      else if debugf@char = 'd'
+        DEBUGD 1, _arg
+      else if debugf@char = 'u'
+        DEBUGD 0, _arg
+      else
+        'Error: invalid format string'
+      end if
+    else
+      if ~ _arg eq
+        'Error: more arguments than expected'
+      end if
+    end if
+  common
+    __debugf_output_next_str
+    purge debugf@fmt
+}
+
+macro __include_debug_strings dummy, [_id, _fmt, _pos, _len] {
+  common
+    local p, l, c
+  forward
+    if defined _pos
+      p = _pos
+      l = _pos + _len
+      _id:
+      while p < l
+        virtual at 0
+          db _fmt, 0
+          load c word from p
+        end virtual
+        if c = '\n'
+          dw 0x0a0d
+          p = p + 1
+        else
+          db c and 0xff
+        end if
+        p = p + 1
+      end while
+    end if
 }
 
 macro include_debug_strings {
- if __DEBUG__ = 1
-  match dbg_str, __debug_strings \{
-   __include_debug_strings dbg_str
+  match =1 dbg_str, KCONFIG_DEBUG __debug_strings \{
+    __include_debug_strings dbg_str
   \}
- end if
 }
 
 macro klog_ _level, _format, [_args]
 {
   common
-    if __DEBUG__ = 1 & _level >= __DEBUG_LEVEL__
-      pushfd
-      cli
-      DEBUGF_ESP_ADD equ 4
-      DEBUGF _level, <"K : ", _format>, _args
-      restore DEBUGF_ESP_ADD
-      popfd
-    end if
+    match =1, KCONFIG_DEBUG
+    \{
+     if _level >= KCONFIG_DEBUG_LEVEL
+       pushfd
+       cli
+       DEBUGF_ESP_ADD equ 4
+       DEBUGF <"K : ", _format>, _args
+       restore DEBUGF_ESP_ADD
+       popfd
+     end if
+   \}
 }
 
 macro klog2_ _level, _format, [_args]
 {
   common
-    if __DEBUG__ = 1 & _level >= __DEBUG_LEVEL__
-      pushfd
-      cli
-      DEBUGF_ESP_ADD equ 4
-      DEBUGF _level, _format, _args
-      restore DEBUGF_ESP_ADD
-      popfd
-    end if
+    match =1, KCONFIG_DEBUG
+    \{
+      if _level >= KCONFIG_DEBUG_LEVEL
+        pushfd
+        cli
+        DEBUGF_ESP_ADD equ 4
+        DEBUGF _format, _args
+        restore DEBUGF_ESP_ADD
+        popfd
+      end if
+    \}
 }
 
 macro cond_klog_begin _name, _cond_var

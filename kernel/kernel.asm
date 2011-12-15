@@ -223,9 +223,6 @@ include "boot/shutdown.asm"
 use32
 org $ + (KERNEL_CODE - OS_BASE)
 
-__DEBUG__ equ KCONFIG_DEBUG
-__DEBUG_LEVEL__ equ KCONFIG_DEBUG_LEVEL
-
 include "init.asm"
 
 org $ + OS_BASE
