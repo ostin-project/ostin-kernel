@@ -233,7 +233,7 @@ align 4
 align 16
   .main:
         save_ring3_context
-        mov     eax, [esp + 32]
+        mov     eax, [esp + sizeof.regs_context32_t]
         mov     bx, app_data ; os_data
         mov     ds, bx
         mov     es, bx
@@ -275,7 +275,7 @@ end if ; KCONFIG_BLKDEV_FLOPPY
         mov     [check_idle_semaphore], 5
 
   .exit:
-        cmp     dword[esp + 32], 8
+        cmp     dword[esp + sizeof.regs_context32_t], 8
         mov     al, 0x20
         jb      @f
         out     0xa0, al
@@ -714,7 +714,7 @@ endl
         jne     .cleanup
 
         mov     eax, [file]
-        cmp     dword[eax], 0x4b43504b
+        cmp     dword[eax], 'KPCK'
         jne     .exit
         mov     ebx, [eax + 4]
         mov     [file_size], ebx
@@ -871,7 +871,7 @@ endl
         mov     eax, [coff]
         movzx   ebx, [eax + coff_header_t.sections_cnt]
         mov     [n_sec], ebx
-        lea     esi, [eax + 20]
+        lea     esi, [eax + sizeof.coff_header_t]
 
   .fix_sec:
         mov     edi, [esi + coff_section_t.relocs_ptr]
@@ -911,7 +911,7 @@ endl
         add     [eax], edx
 
   .next_reloc:
-        add     edi, 10
+        add     edi, sizeof.coff_reloc_t
         dec     ecx
         jnz     .reloc_loop
 
@@ -934,7 +934,7 @@ endl
         mov     eax, [coff]
         movzx   ebx, [eax + coff_header_t.sections_cnt]
         mov     [n_sec], ebx
-        lea     esi, [eax + 20]
+        lea     esi, [eax + sizeof.coff_header_t]
         mov     edx, [delta]
 
   .fix_sec:
@@ -955,7 +955,7 @@ endl
         add     [eax + edx], edx
 
   .next_reloc:
-        add     edi, 10
+        add     edi, sizeof.coff_reloc_t
         dec     ecx
         jnz     .reloc_loop
 
@@ -1015,7 +1015,7 @@ endl
         movzx   ecx, [eax + coff_header_t.sections_cnt]
         xor     ebx, ebx
 
-        lea     edx, [eax + 20]
+        lea     edx, [eax + sizeof.coff_header_t]
 
     @@: add     ebx, [edx + coff_section_t.raw_data_size]
         add     ebx, 15
@@ -1042,7 +1042,7 @@ endl
         mov     edx, [coff]
         movzx   ebx, [edx + coff_header_t.sections_cnt]
         mov     edi, [img_base]
-        lea     eax, [edx + 20]
+        lea     eax, [edx + sizeof.coff_header_t]
 
     @@: mov     [eax + coff_section_t.virtual_addr], edi
         mov     esi, [eax + coff_section_t.raw_data_ptr]
@@ -1076,7 +1076,7 @@ endl
         lea     ebx, [exports]
         mov     dword[ebx], kernel_export
         mov     dword[ebx + 4], 0
-        lea     eax, [edx + 20]
+        lea     eax, [edx + sizeof.coff_header_t]
 
         stdcall fix_coff_symbols, eax, [sym], [edx + coff_header_t.syms_cnt], [strings], ebx
         test    eax, eax
@@ -1182,7 +1182,7 @@ proc load_library stdcall, file_name:dword ;////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 locals
   fullname rb 260
-  fileinfo rb 40
+  fileinfo fs.file_info_t
   coff     dd ?
   img_base dd ?
 endl
@@ -1246,8 +1246,8 @@ endl
         jnz     .continue_scan
 
   .test_prev_dll:
-        mov     eax, dword[fileinfo + 24] ; last modified time
-        mov     edx, dword[fileinfo + 28] ; last modified date
+        mov     eax, [fileinfo.modified_at.time] ; last modified time
+        mov     edx, [fileinfo.modified_at.date] ; last modified date
         cmp     dword[esi + dll_descriptor_t.timestamp], eax
         jnz     .continue_scan
         cmp     dword[esi + dll_descriptor_t.timestamp + 4], edx
@@ -1264,7 +1264,7 @@ endl
         test    eax, eax
         jz      .fail
         mov     [coff], eax
-        mov     dword[fileinfo + 32], ebx
+        mov     [fileinfo.size.low], ebx
 
         ; allocate dll_descriptor_t struct; size is sizeof.dll_descriptor_t plus size of DLL name
         mov     esi, edi
@@ -1284,9 +1284,9 @@ endl
         rep
         movsb
         mov     esi, eax
-        mov     eax, dword[fileinfo + 24]
+        mov     eax, [fileinfo.modified_at.time]
         mov     dword[esi + dll_descriptor_t.timestamp], eax
-        mov     eax, dword[fileinfo + 28]
+        mov     eax, [fileinfo.modified_at.date]
         mov     dword[esi + dll_descriptor_t.timestamp + 4], eax
         ; initialize dll_descriptor_t struct
         and     [esi + dll_descriptor_t.refcount], 0 ; no dll_handle_t-s yet; later it will be incremented
@@ -1301,7 +1301,7 @@ endl
         movzx   ecx, [edx + coff_header_t.sections_cnt]
         xor     ebx, ebx
 
-        add     edx, 20
+        add     edx, sizeof.coff_header_t
 
     @@: call    coff_get_align
         add     ebx, eax
@@ -1340,7 +1340,7 @@ endl
         mov     edx, [coff]
         movzx   ebx, [edx + coff_header_t.sections_cnt]
         mov     edi, eax
-        add     edx, 20
+        add     edx, sizeof.coff_header_t
 
     @@: call    coff_get_align
         add     ecx, eax
@@ -1377,7 +1377,7 @@ endl
         ; and also relocations table for all sections
         mov     edx, [coff]
         mov     ebx, [edx + coff_header_t.syms_ptr]
-        mov     edi, dword[fileinfo + 32]
+        mov     edi, [fileinfo.size.low]
         sub     edi, ebx
         jc      .fail_and_free_data
         mov     [esi + dll_descriptor_t.symbols_lim], edi
@@ -1385,7 +1385,7 @@ endl
         movzx   ecx, [edx + coff_header_t.sections_cnt]
         lea     ecx, [ecx * 5]
         lea     edi, [edi + ecx * 8 + 20]
-        add     edx, 20
+        add     edx, sizeof.coff_header_t
 
     @@: movzx   eax, [edx + coff_section_t.relocs_cnt]
         lea     eax, [eax * 5]
@@ -1441,7 +1441,7 @@ endl
         ; fixup symbols
         mov     edx, ebx
         mov     eax, [ebx + coff_header_t.syms_cnt]
-        add     edx, 20
+        add     edx, sizeof.coff_header_t
         mov     ecx, [esi + dll_descriptor_t.symbols_num]
         lea     ecx, [ecx * 9]
         add     ecx, ecx

@@ -689,7 +689,7 @@ kproc Vesa12_getpixel24 ;///////////////////////////////////////////////////////
         and     edi, 65535
         add     edi, VGABasePtr
         mov     ecx, [edi]
-        and     ecx, 255 * 256 * 256 + 255 * 256 + 255
+        and     ecx, 0x00ffffff
         sti
         ret
 kendp
@@ -710,7 +710,7 @@ kproc Vesa12_getpixel32 ;///////////////////////////////////////////////////////
         and     edi, 65535
         add     edi, VGABasePtr
         mov     ecx, [edi]
-        and     ecx, 255 * 256 * 256 + 255 * 256 + 255
+        and     ecx, 0x00ffffff
         sti
         ret
 kendp

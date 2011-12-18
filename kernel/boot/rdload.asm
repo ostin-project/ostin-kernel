@@ -104,7 +104,7 @@ search_and_read_image:
 
 read_image:
         mov     eax, hdsysimage + OS_BASE + 0x10000
-        mov     ebx, 1474560 / 512
+        mov     ebx, 1440 * 1024 / 512
         mov     ecx, RAMDISK
         mov     esi, 0
         mov     edi, 12
@@ -120,17 +120,15 @@ no_sys_on_hd:
         jne     not_format_ram_disk
         ; format_ram_disk
         mov     edi, RAMDISK
-        mov     ecx, 0x1080
+        mov     ecx, 33 * 512 / 4
         xor     eax, eax
+        rep
+        stosd
 
-    @@: stosd
-        loop    @b
-
-        mov     ecx, 0x58f7f
+        mov     ecx, (1440 * 1024 / 512 - 33) * 512 / 4
         mov     eax, 0xf6f6f6f6
-
-    @@: stosd
-        loop    @b
+        rep
+        stosd
 
         mov     dword[RAMDISK + 0x200], 0x00fffff0 ; fat table
         mov     dword[RAMDISK + 0x4200], 0x00fffff0

@@ -346,9 +346,9 @@ kproc set_partition_variables ;/////////////////////////////////////////////////
         mov     [fat16x_data.fatStartScan], 2
 
         ; limits by Microsoft Hardware White Paper v1.03
-        cmp     eax, 4085 ; 0x0ff5
+        cmp     eax, 0x0ff5 ; 4085
         jb      .problem_fat_dec_count ; fat12 not supported
-        cmp     eax, 65525 ; 0xfff5
+        cmp     eax, 0xfff5 ; 65525
         jb      .fat16_partition
 
   .fat32_partition:

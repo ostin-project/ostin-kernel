@@ -32,7 +32,6 @@ include "include/kglobals.inc"
 include "include/fs.inc"
 
 max_processes   = 255
-tss_step        = 128 + 8192 ; tss & i/o - 65535 ports, * 256 = 557056 * 4
 
 os_stack        = os_data_l - gdts ; GDTs
 os_code         = os_code_l - gdts
@@ -94,7 +93,7 @@ include "detect/biosdisk.asm"
 
         cli     ; disable all irqs
 
-        mov     al, 255 ; mask all irqs
+        mov     al, 0xff ; mask all irqs
         out     0xa1, al
         out     0x21, al
 
@@ -122,7 +121,7 @@ include "detect/biosdisk.asm"
         lgdt    [cs:tmp_gdt] ; Load GDT
         mov     eax, cr0 ; protected mode
         or      eax, ecx
-        and     eax, (10011111b shl 24) + 0x00ffffff ; caching enabled
+        and     eax, not (CR0_NW + CR0_CD) ; caching enabled
         mov     cr0, eax
         jmp     pword os_code:B32 ; jmp to enable 32 bit mode
 
@@ -555,7 +554,7 @@ high_code:
         mov     edi, eax
         mov     [network_free_ports], eax
         or      eax, -1
-        mov     ecx, 0x10000 / 32
+        mov     ecx, 0x10000 / 8 / 4
         rep
         stosd
 
@@ -591,6 +590,13 @@ high_code:
         out     dx, al
         mov     dl, 0x76
         out     dx, al
+
+        ; clear table area
+        xor     eax, eax
+        mov     edi, DRIVE_DATA
+        mov     ecx, 16384
+        rep
+        stosd
 
 include "detect/disks.inc"
 
@@ -774,10 +780,6 @@ end if
 ;       call    detect_devices
         stdcall load_driver, szPS2MDriver
 ;       stdcall load_driver, szCOM_MDriver
-
-        mov     esi, boot_setmouse
-        call    boot_log
-        call    setmouse
 
         ; PALETTE FOR 320x200 and 640x480 16 col
         cmp     [SCR_MODE], 0x12
@@ -2277,7 +2279,7 @@ kproc sysfn.get_process_info ;//////////////////////////////////////////////////
         cmp     ecx, 1 shl 5
         je      .os_mem
         mov     edx, [SLOT_BASE + ecx * 8 + app_data_t.mem_size]
-        mov     eax, std_application_base_address
+        mov     eax, new_app_base
 
   .os_mem:
         stosd
@@ -2443,7 +2445,7 @@ kendp
 kproc cache_disable ;///////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, cr0
-        or      eax, 01100000000000000000000000000000b
+        or      eax, CR0_NW + CR0_CD
         mov     cr0, eax
         wbinvd  ; set MESI
         ret
@@ -2453,7 +2455,7 @@ kendp
 kproc cache_enable ;////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, cr0
-        and     eax, 010011111111111111111111111111111b
+        and     eax, not (CR0_NW + CR0_CD)
         mov     cr0, eax
         ret
 kendp
@@ -2463,7 +2465,7 @@ kproc is_cache_enabled ;////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, cr0
         mov     ebx, eax
-        and     eax, 01100000000000000000000000000000b
+        and     eax, CR0_NW + CR0_CD
         jz      .cache_disabled
         mov     [esp + 4 + regs_context32_t.eax], ebx
 
@@ -2479,7 +2481,7 @@ kproc modify_pce ;//////////////////////////////////////////////////////////////
 ;       mov     ebx, 0
 ;       or      bx, 0100000000b ; pce
 ;       xor     eax, ebx ; invert pce
-        bts     eax, 8 ; pce=cr4[8]
+        or      eax, CR4_PCE
         mov     cr4, eax
         mov     [esp + 4 + regs_context32_t.eax], eax
         ret
@@ -3372,7 +3374,7 @@ kproc rerouteirqs ;/////////////////////////////////////////////////////////////
         out     0xa1, al
         call    .pic_delay
 
-        mov     al, 255 ; mask all irq's
+        mov     al, 0xff ; mask all irq's
         out     0xa1, al
         call    .pic_delay
         out     0x21, al
@@ -3384,7 +3386,7 @@ kproc rerouteirqs ;/////////////////////////////////////////////////////////////
         call    .pic_delay
         loop    .picl1
 
-        mov     al, 255 ; mask all irq's
+        mov     al, 0xff ; mask all irq's
         out     0x0a1, al
         call    .pic_delay
         out     0x21, al

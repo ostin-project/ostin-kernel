@@ -1557,8 +1557,8 @@ kproc window._.set_window_clientbox ;///////////////////////////////////////////
         push    eax ecx edi
 
         mov     eax, [_skinh]
-        mov     [window_topleft + 8 * 3 + 4], eax
-        mov     [window_topleft + 8 * 4 + 4], eax
+        mov     [window_topleft + 3 * sizeof.point32_t + point32_t.y], eax
+        mov     [window_topleft + 4 * sizeof.point32_t + point32_t.y], eax
 
         mov     ecx, edi
         sub     edi, window_data
@@ -1568,7 +1568,7 @@ kproc window._.set_window_clientbox ;///////////////////////////////////////////
 
         movzx   eax, [ecx + window_data_t.fl_wstyle]
         and     eax, 0x0f
-        mov     eax, [eax * 8 + window_topleft + 0]
+        mov     eax, [window_topleft + eax * sizeof.point32_t + point32_t.x]
         mov     [SLOT_BASE + edi + app_data_t.wnd_clientbox.left], eax
         shl     eax, 1
         neg     eax
@@ -1577,8 +1577,8 @@ kproc window._.set_window_clientbox ;///////////////////////////////////////////
 
         movzx   eax, [ecx + window_data_t.fl_wstyle]
         and     eax, 0x0f
-        push    [eax * 8 + window_topleft + 0]
-        mov     eax, [eax * 8 + window_topleft + 4]
+        push    [window_topleft + eax * sizeof.point32_t + point32_t.x]
+        mov     eax, [window_topleft + eax * sizeof.point32_t + point32_t.y]
         mov     [SLOT_BASE + edi + app_data_t.wnd_clientbox.top], eax
         neg     eax
         sub     eax, [esp]

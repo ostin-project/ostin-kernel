@@ -57,7 +57,6 @@ boot_cpuid       db 'Reading CPUIDs', 0
 boot_devices     db 'Detecting devices', 0
 boot_timer       db 'Setting timer', 0
 boot_irqs        db 'Reprogramming IRQs', 0
-boot_setmouse    db 'Setting mouse', 0
 boot_windefs     db 'Setting window defaults', 0
 boot_bgr         db 'Calculating background', 0
 boot_resirqports db 'Reserving IRQs & ports', 0

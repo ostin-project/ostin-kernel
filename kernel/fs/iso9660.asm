@@ -444,7 +444,7 @@ kproc fs_CdReadFolder ;/////////////////////////////////////////////////////////
         stosb
         ; check for filename end
         mov     ax, [esi]
-        cmp     ax, 0x3b00 ; ';' - filename terminator
+        cmp     ax, ';' shl 8 ; ';' - filename terminator
         je      .cd_get_parameters_of_file_1
         ; check for filenames not ending with terminator
         movzx   eax, [ebp - fs.iso9660.dir_entry_t.name + fs.iso9660.dir_entry_t.entry_size]
@@ -481,7 +481,7 @@ kproc fs_CdReadFolder ;/////////////////////////////////////////////////////////
         movsw
         ; check for end of filename
         mov     ax, [esi]
-        cmp     ax, 0x3b00 ; ';' - filename terminator
+        cmp     ax, ';' shl 8 ; ';' - filename terminator
         je      .cd_get_parameters_of_file_2
         ; check for filenames not ending with terminator
         movzx   eax, [ebp - fs.iso9660.dir_entry_t.name + fs.iso9660.dir_entry_t.entry_size]
@@ -504,11 +504,11 @@ kproc fs_CdReadFolder ;/////////////////////////////////////////////////////////
   .unicode_parent_directory:
         cmp     [cd_counter_block], 2
         je      @f
-        mov     word[edi], 0x2e00 ; '.'
+        mov     word[edi], '.' shl 8 ; '.'
         add     edi, 2
         jmp     .cd_get_parameters_of_file_2
 
-    @@: mov     dword[edi], 0x2e002e00 ; '..'
+    @@: mov     dword[edi], ('.' shl 24) + ('.' shl 8) ; '..'
         add     edi, 4
         jmp     .cd_get_parameters_of_file_2
 
@@ -843,7 +843,7 @@ kproc cd_compare_name ;/////////////////////////////////////////////////////////
 
   .done:
         ; check for end of filename
-        cmp     word[edi], 0x3b00 ; ';' - filename terminator
+        cmp     word[edi], ';' shl 8 ; ';' - filename terminator
         je      .done_1
         ; check for filenames not ending with terminator
         movzx   eax, [ebp - fs.iso9660.dir_entry_t.name + fs.iso9660.dir_entry_t.entry_size]

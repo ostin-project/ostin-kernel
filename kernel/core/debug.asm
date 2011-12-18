@@ -340,7 +340,7 @@ kproc sysfn.debug_ctl.set_drx ;/////////////////////////////////////////////////
         btr     [eax + 0x10], edx ; clear L<i> bit
         test    byte[eax + 0x10], 0x55
         jnz     .okret
-;       imul    eax, ebp, tss_step/32
+;       imul    eax, ebp, sizeof.sizeof.tss_t / 32
 ;       and     byte[eax + tss_data + tss_t._trap], not 1
         and     [SLOT_BASE + ebp * 8 + app_data_t.dbg_state], not 1
 
@@ -391,7 +391,7 @@ kproc sysfn.debug_ctl.set_drx ;/////////////////////////////////////////////////
         not     ebx
         and     [eax + 0x10 + 2], bx
         or      [eax + 0x10 + 2], dx ; set R/W and LEN fields
-;       imul    eax, ebp, tss_step / 32
+;       imul    eax, ebp, sizeof.sizeof.tss_t / 32
 ;       or      byte[eax + tss_data + tss_t._trap], 1
         or      [SLOT_BASE + ebp * 8 + app_data_t.dbg_state], 1
         jmp     .okret

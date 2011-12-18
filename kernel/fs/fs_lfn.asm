@@ -15,7 +15,6 @@
 ;;======================================================================================================================
 
 ; System function 70 - files with long names (LFN)
-; diamond, 2006
 
 iglobal
   ; in this table names must be in lowercase
@@ -234,7 +233,7 @@ kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////
         xor     eax, eax
         mov     ebp, [ebx + fs.query_t.read_directory.count] ; blocks to read
         mov     edx, [ebx + fs.query_t.read_directory.buffer_ptr] ; result buffer ptr
-;       add     edx, std_application_base_address
+;       add     edx, new_app_base
         push    [ebx + fs.query_t.read_directory.start_block] ; first block
         mov     ebx, [ebx + fs.query_t.read_directory.flags] ; flags
         ; ebx=flags, [esp]=first block, ebp=number of blocks, edx=return area, esi='Next' handler
@@ -328,7 +327,7 @@ kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////
         mov     esi, virtual_root_query
         mov     ebp, [ebx + fs.query_t.read_directory.count]
         mov     edx, [ebx + fs.query_t.read_directory.buffer_ptr]
-;       add     edx, std_application_base_address
+;       add     edx, new_app_base
         push    [ebx + fs.query_t.read_directory.start_block] ; first block
         mov     ebx, [ebx + fs.query_t.read_directory.flags] ; flags
         xor     eax, eax

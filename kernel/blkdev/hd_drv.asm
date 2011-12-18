@@ -235,9 +235,9 @@ kproc hd_read_pio ;/////////////////////////////////////////////////////////////
         out     dx, al ; cylinder number (high byte)
         shr     eax, 8
         inc     edx
-        and     al, 1 + 2 + 4 + 8
+        and     al, 00001111b
         add     al, [hdid]
-        add     al, 128 + 64 + 32
+        add     al, 11100000b
         out     dx, al ; head/disk number
         inc     edx
         mov     al, 0x20
@@ -258,7 +258,7 @@ kproc hd_read_pio ;/////////////////////////////////////////////////////////////
         add     edi, eax
         pop     eax
 
-        mov     ecx, 256
+        mov     ecx, 512 / 2
         mov     edx, [hdbase]
         rep
         insw
@@ -386,9 +386,9 @@ kproc cache_write_pio ;/////////////////////////////////////////////////////////
         out     dx, al
         shr     eax, 8
         inc     edx
-        and     al, 1 + 2 + 4 + 8
+        and     al, 00001111b
         add     al, [hdid]
-        add     al, 128 + 64 + 32
+        add     al, 11100000b
         out     dx, al
         inc     edx
         mov     al, 0x30
@@ -411,7 +411,7 @@ kproc cache_write_pio ;/////////////////////////////////////////////////////////
         add     esi, eax
         pop     eax
 
-        mov     ecx, 256
+        mov     ecx, 512 / 2
         mov     edx, [hdbase]
         rep
         outsw

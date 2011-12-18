@@ -186,6 +186,8 @@ struct tss_t
   io_map_1 rb 4096
 ends
 
+diff10 'sizeof.tss_t', 0, sizeof.tss_t - 4096 * 2
+
 OS_BASE = 0x80000000
 
 virtual at OS_BASE
@@ -270,7 +272,6 @@ new_app_base        = 0
 
 twdw                = (TASK_DATA - sizeof.task_data_t) - window_data
 
-std_application_base_address = new_app_base
 RING0_STACK_SIZE    = 0x2000 - 512 ; 512 bytes for FPU context
 
 REG_SS              = RING0_STACK_SIZE - 4
@@ -313,34 +314,22 @@ virtual at 0x9000
 
   BOOT_BPP              db ?  ; 0x09000 - bits per pixel
   BOOT_SCANLINE         dw ?  ; 0x09001 - scanline length
-                        rb 5  ;
   BOOT_VESA_MODE        dw ?  ; 0x09008 - vesa video mode
   BOOT_SCREEN_RES       size16_t ; 0x0900a - X/X res
-                        rb 2  ;
-; BOOT_MOUSE_PORT       db ?  ; 0x09010 - mouse port (unused)
-                        rb 4  ;
   BOOT_BANK_SW          dd ?  ; 0x09014 - Vesa 1.2 pm bank switch
   BOOT_LFB              dd ?  ; 0x09018 - Vesa 2.0 LFB address
   BOOT_MTRR             db ?  ; 0x0901c - 0 or 1: enable MTRR graphics acceleration
-; BOOT_LOG              db ?  ; 0x0901d - 0 or 1: enable system log display (unused)
-                        rb 1  ;
   BOOT_DIRECT_LFB       db ?  ; 0x0901e - 0 or 1: enable direct lfb write, paging disabled
   BOOT_DMA              db ?  ; 0x0901f - 0 or 1: enable DMA
   BOOT_PCI_DATA         rb 8  ; 0x09020 - pci data
-                        rb 8
   BOOT_VRR              db ?  ; 0x09030 - VRR start enabled 1, 2-no
   BOOT_IDE_BASE_ADDR    dw ?  ; 0x09031 - IDEContrRegsBaseAddr
-                        rb 1  ;         -
-; BOOT_MEM_AMOUNT       dd ?  ; 0x09034 - memory amount (unused)
-                        rb 12
   BOOT_APM_ENTRY_OFS    dd ?  ; 0x09040 - APM entry point offset
   BOOT_APM_VERSION      dw ?  ; 0x09044 - APM version
   BOOT_APM_FLAGS        dw ?  ; 0x09046 - APM flags
-                        rb 8
   BOOT_APM_CODE32_SEG   dw ?  ; 0x09050 - APM RM segment base address of PM 32-bit code segment
   BOOT_APM_CODE16_SEG   dw ?  ; 0x09052 - APM RM segment base address of PM 16-bit code segment
   BOOT_APM_DATA16_SEG   dw ?  ; 0x09054 - APM RM segment base address of PM 16-bit data segment
-                        rb 41
   BOOT_BIOS_DISKS_CNT   db ?  ; 0x0907f - BIOS disks count
   BOOT_BIOS_DISKS       rd 32 ; 0x09080 - BIOS disks data
   BOOT_PHOENIX_SMAP_CNT dd ?  ; 0x09100
@@ -350,10 +339,6 @@ virtual at 0x9000
 end virtual
 
 ;;----------------------------------------------------------------------------------------------------------------------
-
-TMP_FILE_NAME       = 0
-TMP_CMD_LINE        = 1024
-TMP_ICON_OFFS       = 1280
 
 EVENT_REDRAW        = 0x00000001
 EVENT_KEY           = 0x00000002

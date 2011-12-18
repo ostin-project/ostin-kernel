@@ -157,7 +157,7 @@ kproc ReadCDWRetr ;/////////////////////////////////////////////////////////////
         add     esi, eax
         pop     eax
         mov     edi, ebx ; [CDDataBuf_pointer]
-        mov     ecx, 512 ; /4
+        mov     ecx, 2048 / 4
         rep
         movsd   ; move data
 

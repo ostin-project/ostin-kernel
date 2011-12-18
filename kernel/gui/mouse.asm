@@ -14,8 +14,6 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-include "mousepointer.inc"
-
 ;;======================================================================================================================
 ;;///// public functions ///////////////////////////////////////////////////////////////////////////////////////////////
 ;;======================================================================================================================
@@ -682,6 +680,7 @@ kproc mouse._.check_sys_window_actions ;////////////////////////////////////////
         add     edx, -10
         cmp     ebx, edx
         jge     .resize_sw_action
+
   .resize_w_action.direct:
         mov     eax, mouse.WINDOW_RESIZE_W_FLAG
         jmp     .exit
@@ -690,6 +689,7 @@ kproc mouse._.check_sys_window_actions ;////////////////////////////////////////
         add     edx, -10
         cmp     ebx, edx
         jge     .resize_se_action
+
   .resize_e_action.direct:
         mov     eax, mouse.WINDOW_RESIZE_E_FLAG
         jmp     .exit

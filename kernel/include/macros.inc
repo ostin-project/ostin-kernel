@@ -79,7 +79,7 @@ macro static_assert cond, message
     if ~ message eq
       display "Assertion failed: ", message, 13, 10
     end if
-    __assert_failed__
+    err
   end if
   ..static_assert_pass:
 }

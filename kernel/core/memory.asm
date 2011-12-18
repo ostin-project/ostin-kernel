@@ -1561,10 +1561,7 @@ proc init_mtrr ;////////////////////////////////////////////////////////////////
         bt      [cpu_caps], CAPS_MTRR
         jnc     .exit
 
-        mov     eax, cr0
-        or      eax, 0x60000000 ; disable caching
-        mov     cr0, eax
-        wbinvd  ; invalidate cache
+        call    cache_disable
 
         mov     ecx, 0x2ff
         rdmsr
@@ -1615,9 +1612,7 @@ proc init_mtrr ;////////////////////////////////////////////////////////////////
 
         wbinvd  ; again invalidate
 
-        mov     eax, cr0
-        and     eax, not 0x60000000
-        mov     cr0, eax ; enable caching
+        call    cache_enable
 
   .exit:
         ret

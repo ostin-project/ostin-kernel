@@ -29,13 +29,15 @@ ERROR_ACCESS_DENIED   = 10
 ERROR_DEVICE_FAIL     = 11
 ERROR_ALLOC           = 12
 
-FA_READONLY = 00000001b
-FA_HIDDEN   = 00000010b
-FA_SYSTEM   = 00000100b
-FA_LABEL    = 00001000b
-FA_FOLDER   = 00010000b
-FA_ARCHIVED = 00100000b
-FA_ANY	    = 00111111b
+FS_INFO_ATTR_READONLY = 00000001b
+FS_INFO_ATTR_HIDDEN   = 00000010b
+FS_INFO_ATTR_SYSTEM   = 00000100b
+FS_INFO_ATTR_LABEL    = 00001000b
+FS_INFO_ATTR_FOLDER   = 00010000b
+FS_INFO_ATTR_ARCHIVED = 00100000b
+FS_INFO_ATTR_ANY      = 00111111b
+
+FS_INFO_FLAG_UNICODE = 1
 
 struct fs.generic_query_params_t
   param1 dd ?
@@ -144,8 +146,8 @@ struct fs.file_info_header_t
 ends
 
 struct fs.file_info_t
-  attributes    dd ?
-  flags         dd ?
+  attributes    dd ? ; combination of FS_INFO_ATTR_*
+  flags         dd ? ; combination of FS_INFO_FLAG_*
   created_at    fs.file_date_time_t
   accessed_at   fs.file_date_time_t
   modified_at   fs.file_date_time_t

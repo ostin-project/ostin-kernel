@@ -76,11 +76,6 @@ EXT2_777_MODE        = EXT2_S_IROTH or EXT2_S_IWOTH or EXT2_S_IXOTH or \
 EXT2_FT_REG_FILE     = 1    ; it's a file, record in parent directory
 EXT2_FT_DIR          = 2    ; it's a directory
 
-FS_FT_HIDDEN         = 2
-FS_FT_DIR            = 0x10 ; it's a directory
-FS_FT_ASCII          = 0    ; name is in ascii
-FS_FT_UNICODE        = 1    ; name is in unicode
-
 EXT2_FEATURE_INCOMPAT_FILETYPE = 0x0002
 
 uglobal
@@ -544,7 +539,7 @@ kproc ext2_HdReadFolder ;///////////////////////////////////////////////////////
 
     @@: xor     eax, eax
         mov     edi, edx
-        mov     ecx, 32 / 4
+        mov     ecx, sizeof.fs.file_info_header_t / 4
         rep
         stosd   ; fill header zero
         pop     edi ; edi = number of blocks to read
@@ -631,7 +626,7 @@ kproc ext2_HdReadFolder ;///////////////////////////////////////////////////////
         mov     edi, edx
         push    eax ecx
         xor     eax, eax
-        mov     ecx, 40 / 4
+        mov     ecx, sizeof.fs.file_info_t / 4
         rep
         stosd
         pop     ecx eax
@@ -641,7 +636,7 @@ kproc ext2_HdReadFolder ;///////////////////////////////////////////////////////
         mov     ebx, [ext2_data.ext2_temp_inode]
         call    ext2_get_inode
 
-        lea     edi, [edx + 8]
+        lea     edi, [edx + fs.file_info_t.created_at]
 
         mov     eax, [ebx + ext2_inode_t.i_ctime] ; convert time into ntfs format
         xor     edx, edx
@@ -669,27 +664,25 @@ kproc ext2_HdReadFolder ;///////////////////////////////////////////////////////
         stosd
         mov     eax, [ebx + ext2_inode_t.i_dir_acl] ; high size
         stosd
-        xor     dword[edx], FS_FT_DIR
+        xor     [edx + fs.file_info_t.attributes], FS_INFO_ATTR_FOLDER
 
-    @@: xor     dword[edx], FS_FT_DIR
+    @@: xor     [edx + fs.file_info_t.attributes], FS_INFO_ATTR_FOLDER
         pop     esi eax
-
-        or      dword[edx + 4], FS_FT_ASCII ; symbol type in name
 
         ; now copying the name, converting it from UTF-8 to CP866
         push    eax ecx esi
         movzx   ecx, [eax + ext2_dir_t.name_len]
-        lea     edi, [edx + 40]
+        lea     edi, [edx + fs.file_info_t.name]
         lea     esi, [eax + ext2_dir_t.name]
         call    utf8toansi_str
         pop     esi ecx eax
         and     byte[edi], 0
 
-        cmp     byte[edx + 40], '.'
+        cmp     byte[edx + fs.file_info_t.name], '.'
         jne     @f
-        or      dword[edx], FS_FT_HIDDEN
+        or      [edx + fs.file_info_t.attributes], FS_INFO_ATTR_HIDDEN
 
-    @@: add     edx, 40 + 264 ; go to next record
+    @@: add     edx, fs.file_info_t.name + 264 ; go to next record
         dec     ecx ; if record is empty, ecx should not be decreased
 
   .empty_rec:
@@ -713,12 +706,12 @@ kproc ext2_HdReadFolder ;///////////////////////////////////////////////////////
         pop     edx
         mov     ebx, [EXT2_read_in_folder]
         mov     ecx, [EXT2_files_in_folder]
-        mov     dword[edx], 1 ; version
+        mov     [edx + fs.file_info_header_t.version], 1 ; version
         xor     eax, eax
-        mov     [edx + 4], ebx
-        mov     [edx + 8], ecx
-        lea     edi, [edx + 12]
-        mov     ecx, 20 / 4
+        mov     [edx + fs.file_info_header_t.files_read], ebx
+        mov     [edx + fs.file_info_header_t.files_count], ecx
+        lea     edi, [edx + fs.file_info_header_t.files_count + 4]
+        mov     ecx, (sizeof.fs.file_info_header_t - fs.file_info_header_t.files_count - 4) / 4
         rep
         stosd
         ret
@@ -957,25 +950,25 @@ kproc ext2_HdGetFileInfo ;//////////////////////////////////////////////////////
 
     @@: xor     eax, eax
         mov     edi, edx
-        mov     ecx, 40 / 4
+        mov     ecx, sizeof.fs.file_info_t / 4
         rep
         stosd   ; fill zero
 
         cmp     byte[ebx], '.'
         jnz     @f
-        or      dword[edx], FS_FT_HIDDEN
+        or      [edx + fs.file_info_t.attributes], FS_INFO_ATTR_HIDDEN
 
     @@: test    [ebp + ext2_inode_t.i_mode], EXT2_S_IFDIR
         jnz     @f
         mov     eax, [ebp + ext2_inode_t.i_size] ; low size
         mov     ebx, [ebp + ext2_inode_t.i_dir_acl] ; high size
-        mov     dword[edx + 32], eax
-        mov     dword[edx + 36], ebx
-        xor     dword[edx], FS_FT_DIR
+        mov     [edx + fs.file_info_t.size.low], eax
+        mov     [edx + fs.file_info_t.size.high], ebx
+        xor     [edx + fs.file_info_t.attributes], FS_INFO_ATTR_FOLDER
 
-    @@: xor     dword[edx], FS_FT_DIR
+    @@: xor     [edx + fs.file_info_t.attributes], FS_INFO_ATTR_FOLDER
 
-        lea     edi, [edx + 8]
+        lea     edi, [edx + fs.file_info_t.created_at]
         mov     eax, [ebx + ext2_inode_t.i_ctime]
         xor     edx, edx
         add     eax, 3054539008

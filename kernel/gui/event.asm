@@ -505,7 +505,7 @@ kproc sysfn.send_window_message ;///////////////////////////////////////////////
         mov     [KEY_BUFF + eax], dl
 
   .result:
-        setae   [esp + 4 + regs_context32_t.al] ; initially, dword[esp+32]==72
+        setae   [esp + 4 + regs_context32_t.al] ; initially, al==72
 
   .retf:
 ;       popfd

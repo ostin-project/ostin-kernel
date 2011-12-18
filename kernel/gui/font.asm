@@ -89,8 +89,8 @@ kproc sysfn.draw_number ;///////////////////////////////////////////////////////
         jne     .displnl1
         mov     ebp, ebx
         add     ebp, 4
-        mov     ebp, [ebp + std_application_base_address]
-        mov     ebx, [ebx + std_application_base_address]
+        mov     ebp, [ebp + new_app_base]
+        mov     ebx, [ebx + new_app_base]
 
   .displnl1:
         sub     esp, 64
@@ -112,7 +112,7 @@ kproc sysfn.draw_number ;///////////////////////////////////////////////////////
         xor     edx, edx
         call    division_64_bits
         div     ebx
-        add     dl, 48
+        add     dl, '0'
         mov     [edi], dl
         dec     edi
         loop    .d_desnum
@@ -176,7 +176,7 @@ hexletters = __fdo_hexdigits
         xor     edx, edx
         call    division_64_bits
         div     ebx
-        add     dl, 48
+        add     dl, '0'
         mov     [edi], dl
         dec     edi
         loop    .d_binnum
@@ -199,7 +199,7 @@ kproc normalize_number ;////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         test    ah, 0x080
         jz      .continue
-        mov     ecx, 48
+        mov     ecx, '0'
         and     eax, 0x3f
 
     @@: inc     edi

@@ -16,8 +16,6 @@
 
 include "charset.asm"
 
-;///include "include/sync.inc"
-
 include "blkdev/blkdev.inc"
 include "bus/bus.inc"
 include "core/core.inc"

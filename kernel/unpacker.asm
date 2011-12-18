@@ -20,8 +20,8 @@ kproc unpack ;//////////////////////////////////////////////////////////////////
 ;# void __stdcall unpack(void* packed_data, void* unpacked_data);
 ;-----------------------------------------------------------------------------------------------------------------------
         pushad
-        mov     esi, [esp + 32 + 4]
-        mov     edi, [esp + 32 + 8]
+        mov     esi, [esp + sizeof.regs_context32_t + 4]
+        mov     edi, [esp + sizeof.regs_context32_t + 8]
         mov     eax, [esi + 8]
         and     al, 0xc0
         cmp     al, 0xc0
@@ -51,7 +51,7 @@ kproc unpack ;//////////////////////////////////////////////////////////////////
         mov     ecx, eax
         jecxz   .ok
         mov     dl, [esi]
-        mov     esi, [esp + 32 + 8]
+        mov     esi, [esp + sizeof.regs_context32_t + 8]
 
   .c1:
         lodsb
@@ -66,7 +66,7 @@ kproc unpack ;//////////////////////////////////////////////////////////////////
         ror     eax, 16
         xchg    al, ah
         sub     eax, esi
-        add     eax, [esp + 32 + 8]
+        add     eax, [esp + sizeof.regs_context32_t + 8]
         mov     [esi - 4], eax
         loop    .c1
 
@@ -79,7 +79,7 @@ kproc unpack ;//////////////////////////////////////////////////////////////////
         mov     ecx, eax
         jecxz   .ok
         mov     dl, [esi]
-        mov     esi, [esp + 32 + 8]
+        mov     esi, [esp + sizeof.regs_context32_t + 8]
 
   .c2:
         lodsb
@@ -104,7 +104,7 @@ kproc unpack ;//////////////////////////////////////////////////////////////////
         ror     eax, 16
         xchg    al, ah
         sub     eax, esi
-        add     eax, [esp + 32 + 8]
+        add     eax, [esp + sizeof.regs_context32_t + 8]
         mov     [esi - 4], eax
         loop    .c2
         jmp     .ok

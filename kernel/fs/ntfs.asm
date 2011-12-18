@@ -1524,11 +1524,11 @@ kproc ntfs_HdReadFolder ;///////////////////////////////////////////////////////
         mov     ebx, [ebx]
         ; init header
         mov     edi, edx
-        mov     ecx, 32 / 4
+        mov     ecx, sizeof.fs.file_info_header_t / 4
         xor     eax, eax
         rep
         stosd
-        mov     byte[edx], 1 ; version
+        mov     byte[edx + fs.file_info_header_t.version], 1 ; version
         mov     ecx, [esp + 4 + regs_context32_t.ecx]
         push    edx
         mov     edx, esp
@@ -1656,17 +1656,17 @@ kproc ntfs_HdReadFolder ;///////////////////////////////////////////////////////
 
   .add_special_entry:
         mov     eax, [edx]
-        inc     dword[eax + 8] ; new file found
+        inc     [eax + fs.file_info_header_t.files_count] ; new file found
         dec     ebx
         jns     .ret
         dec     ecx
         js      .ret
-        inc     dword[eax + 4] ; new file block copied
+        inc     [eax + fs.file_info_header_t.files_read] ; new file block copied
         mov     eax, [edx + 4]
-        mov     [edi + 4], eax
+        mov     [edi + fs.file_info_t.flags], eax
 ;       mov     eax, dword[ntfs_bitmap_buf+0x20]
 ;       or      al, 0x10
-        mov     eax, 0x10
+        mov     eax, FS_INFO_ATTR_FOLDER
         stosd
         scasd
         push    edx
@@ -1686,7 +1686,7 @@ kproc ntfs_HdReadFolder ;///////////////////////////////////////////////////////
         mov     al, '.'
         push    edi ecx
         lea     ecx, [esi + 1]
-        test    byte[edi - 0x24], 1
+        test    byte[edi - fs.file_info_t.name + fs.file_info_t.flags], 1
         jz      @f
         rep
         stosw
@@ -1717,18 +1717,18 @@ kproc ntfs_HdReadFolder ;///////////////////////////////////////////////////////
         cmp     dword[esi], 0x10
         jb      .ret
         mov     eax, [edx]
-        inc     dword[eax + 8] ; new file found
+        inc     [eax + fs.file_info_header_t.files_count] ; new file found
         dec     ebx
         jns     .ret
         dec     ecx
         js      .ret
-        inc     dword[eax + 4] ; new file block copied
+        inc     [eax + fs.file_info_header_t.files_read] ; new file block copied
         mov     eax, [edx + 4] ; flags
         call    ntfs_direntry_to_bdfe
         push    ecx esi edi
         movzx   ecx, byte[esi + 0x50]
         add     esi, 0x52
-        test    byte[edi - 0x24], 1
+        test    byte[edi - fs.file_info_t.name + fs.file_info_t.flags], 1
         jz      .ansi
         shr     ecx, 1
         rep
@@ -1824,22 +1824,22 @@ kproc ntfs_datetime_to_bdfe ;///////////////////////////////////////////////////
         div     [_60]
         xchg    eax, [esp]
         div     [_60]
-        mov     [edi], dl
+        mov     [edi + fs.file_date_time_t.sec], dl
         pop     edx
         ; edx:eax = number of minutes
         div     [_60]
-        mov     [edi + 1], dl
+        mov     [edi + fs.file_date_time_t.min], dl
         ; eax = number of hours (note that 2^64/(10^7*60*60) < 2^32)
         xor     edx, edx
         div     [_24]
-        mov     [edi + 2], dl
-        mov     byte[edi + 3], 0
+        mov     [edi + fs.file_date_time_t.hour], dl
+        mov     byte[edi + fs.file_date_time_t.time + 3], 0
         ; eax = number of days since January 1, 1601
         xor     edx, edx
         div     [days400year]
         imul    eax, 400
         add     eax, 1601
-        mov     [edi + 6], ax
+        mov     [edi + fs.file_date_time_t.year], ax
         mov     eax, edx
         xor     edx, edx
         div     [days100year]
@@ -1849,12 +1849,12 @@ kproc ntfs_datetime_to_bdfe ;///////////////////////////////////////////////////
         add     edx, [days100year]
 
     @@: imul    eax, 100
-        add     [edi + 6], ax
+        add     [edi + fs.file_date_time_t.year], ax
         mov     eax, edx
         xor     edx, edx
         div     [days4year]
         shl     eax, 2
-        add     [edi + 6], ax
+        add     [edi + fs.file_date_time_t.year], ax
         mov     eax, edx
         xor     edx, edx
         div     [days1year]
@@ -1863,10 +1863,10 @@ kproc ntfs_datetime_to_bdfe ;///////////////////////////////////////////////////
         dec     eax
         add     edx, [days1year]
 
-    @@: add     [edi + 6], ax
+    @@: add     [edi + fs.file_date_time_t.year], ax
         push    esi edx
         mov     esi, months
-        movzx   eax, word[edi + 6]
+        movzx   eax, [edi + fs.file_date_time_t.year]
         test    al, 3
         jnz     .noleap
         xor     edx, edx
@@ -1897,9 +1897,9 @@ kproc ntfs_datetime_to_bdfe ;///////////////////////////////////////////////////
     @@: add     edx, [esi]
         pop     esi
         inc     edx
-        mov     [edi + 4], dl
-        mov     [edi + 5], al
-        add     edi, 8
+        mov     [edi + fs.file_date_time_t.day], dl
+        mov     [edi + fs.file_date_time_t.month], al
+        add     edi, sizeof.fs.file_date_time_t
         ret
 kendp
 

@@ -320,7 +320,7 @@ kproc drawwindow_IV ;///////////////////////////////////////////////////////////
         mov     edi, edx
 
         mov     ebp, skin_active
-        cmp     byte[esp + 32 + 4 + 4], 0
+        cmp     byte[esp + 4 + sizeof.regs_context32_t + 4], 0
         jne     @f
         mov     ebp, skin_inactive
 
@@ -371,7 +371,7 @@ kproc drawwindow_IV ;///////////////////////////////////////////////////////////
         call    [drawbar]
         jmp     .draw_clientbar
 
-    @@: mov     al, [esp + 32 + 4 + 4]
+    @@: mov     al, [esp + 4 + sizeof.regs_context32_t + 4]
         call    drawwindow_IV_caption
 
   .draw_clientbar:
@@ -447,7 +447,7 @@ kproc drawwindow_IV ;///////////////////////////////////////////////////////////
         mov     ebx, [CURRENT_TASK]
         mov     [eax + sys_button_t.pslot], ebx
 
-        mov     ebx, 65535 ; 999
+        mov     ebx, 65535
         mov     [eax + sys_button_t.id], ebx
         xor     ebx, ebx
         cmp     [skin_btn_minimize.left], 0

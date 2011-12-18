@@ -13,14 +13,8 @@
 ;; You should have received a copy of the GNU General Public License along with this program. If not, see
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
-;? Clear table area, find and save FDDs in table
+;? Find and save FDDs in table
 ;;======================================================================================================================
-
-        xor     eax, eax
-        mov     edi, DRIVE_DATA
-        mov     ecx, 16384
-        rep
-        stosd
 
         mov     al, 0x10
         out     0x70, al

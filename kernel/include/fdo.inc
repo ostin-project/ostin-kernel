@@ -117,13 +117,13 @@ macro DEBUGD_N _sign, _num, _dec {
  pushad
  if (~_num eq)
   if (_dec eqtype eax | _dec eqtype 0)
-   'Error: precision allowed only for in-memory variables'
+   err 'Error: precision allowed only for in-memory variables'
   end if
   if (~_num in <1, 2, 4>)
    if _sign
-    'Error: 1, 2 and 4 are only allowed for precision in %d'
+    err 'Error: 1, 2 and 4 are only allowed for precision in %d'
    else
-    'Error: 1, 2 and 4 are only allowed for precision in %u'
+    err 'Error: 1, 2 and 4 are only allowed for precision in %u'
    end if
   end if
  end if
@@ -182,7 +182,7 @@ macro DEBUGH_N _sign, _num, _hex {
  pushf
  pushad
  if (~_num eq) & (~_num in <1, 2, 3, 4, 5, 6, 7, 8>)
-  'Error: 1..8 are only allowed for precision in %x'
+  err 'Error: 1..8 are only allowed for precision in %x'
  end if
  if _hex eqtype eax
   if _hex in <eax, ebx, ecx, edx, esi, edi, ebp, esp>
@@ -350,7 +350,7 @@ macro DEBUGF _format, [_arg]
     __debugf_output_next_str
     if debugf@char
       if _arg eq
-        'Error: less arguments than expected'
+        err 'Error: less arguments than expected'
       end if
       debugf@pos = debugf@pos + 2
       if debugf@char = 's'
@@ -362,11 +362,11 @@ macro DEBUGF _format, [_arg]
       else if debugf@char = 'u'
         DEBUGD 0, _arg
       else
-        'Error: invalid format string'
+        err 'Error: invalid format string'
       end if
     else
       if ~ _arg eq
-        'Error: more arguments than expected'
+        err 'Error: more arguments than expected'
       end if
     end if
   common
