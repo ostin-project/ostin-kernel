@@ -40,6 +40,15 @@ uglobal
   rxd rd 3 * NUM_RX_DESC
 endg
 
+iglobal
+  net.sis900.vftbl dd \
+    SIS900_probe, \
+    SIS900_reset, \
+    SIS900_poll, \
+    SIS900_transmit, \
+    0
+endg
+
 txb                    = eth_data_start
 rxb                    = txb + NUM_TX_DESC * TX_BUFF_SZ
 SIS900_ETH_ALEN        = 6          ; Size of Ethernet address

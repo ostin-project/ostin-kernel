@@ -307,11 +307,11 @@ kproc scan_bus ;////////////////////////////////////////////////////////////////
         mov     esi, PCICards
 
   .sb_check:
-        cmp     dword[esi], 0
+        cmp     [esi + net.device_t.id], 0
         je      .sb_inc_devf ; Quit if at last entry
-        cmp     eax, [esi]
+        cmp     eax, [esi + net.device_t.id]
         je      .sb_got_card
-        add     esi, PCICARDS_ENTRY_SIZE
+        add     esi, sizeof.net.device_t
         jmp     .sb_check
 
   .sb_got_card:
@@ -321,18 +321,19 @@ kproc scan_bus ;////////////////////////////////////////////////////////////////
         mov     [pci_bus], ebx
 
         ; Define the driver functions
-        push    eax
-        mov     eax, [esi + 4]
+        push    eax esi
+        mov     esi, [esi + net.device_t.vftbl]
+        mov     eax, [esi + net.driver.vftbl_t.probe]
         mov     [drvr_probe], eax
-        mov     eax, [esi + 8]
+        mov     eax, [esi + net.driver.vftbl_t.reset]
         mov     [drvr_reset], eax
-        mov     eax, [esi + 12]
+        mov     eax, [esi + net.driver.vftbl_t.poll]
         mov     [drvr_poll], eax
-        mov     eax, [esi + 16]
+        mov     eax, [esi + net.driver.vftbl_t.transmit]
         mov     [drvr_transmit], eax
-        mov     eax, [esi + 20]
+        mov     eax, [esi + net.driver.vftbl_t.check_cable]
         mov     [drvr_cable], eax
-        pop     eax
+        pop     esi eax
 
         mov     edx, PCI_BASE_ADDRESS_0
 

@@ -226,6 +226,13 @@ HAS_HWCKSM          = 0x2000
 EXTRA_PREAMBLE      = 0x4000
 
 iglobal
+  net.3c59x.vftbl dd \
+    e3c59x_probe, \
+    e3c59x_reset, \
+    e3c59x_poll, \
+    e3c59x_transmit, \
+    0
+
   align 4
   e3c59x_hw_versions:
     dw 0x5900, IS_VORTEX ; 3c590 Vortex 10Mbps

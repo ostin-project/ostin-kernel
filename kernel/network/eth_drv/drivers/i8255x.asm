@@ -59,6 +59,13 @@ uglobal
 endg
 
 iglobal
+  net.i8255x.vftbl dd \
+    I8255x_probe, \
+    I8255x_reset, \
+    I8255x_poll, \
+    I8255x_transmit, \
+    0
+
   confcmd_data:
     db 22, 0x08, 0, 0, 0, 0x80, 0x32, 0x03, 1
     db 0, 0x2e, 0, 0x60, 0, 0xf2, 0x48, 0, 0x40, 0xf2

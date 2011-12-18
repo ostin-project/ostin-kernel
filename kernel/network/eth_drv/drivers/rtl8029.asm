@@ -134,6 +134,13 @@ uglobal
 endg
 
 iglobal
+  net.rtl8029.vftbl dd \
+    rtl8029_probe, \
+    rtl8029_reset, \
+    rtl8029_poll, \
+    rtl8029_transmit, \
+    0
+
   test_data:   db 'NE*000 memory', 0
   test_buffer: db '             ', 0
 endg

@@ -391,6 +391,15 @@ uglobal
   forcedeth_nocable         dd 0 ; no cable present
 endg
 
+iglobal
+  net.forcedeth.vfbtl dd \
+    forcedeth_probe, \
+    forcedeth_reset, \
+    forcedeth_poll, \
+    forcedeth_transmit, \
+    forcedeth_cable
+endg
+
 struct forcedeth_TxDesc
   PacketBuffer dd ?
   FlagLen      dd ?

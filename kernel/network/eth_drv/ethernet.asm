@@ -121,147 +121,158 @@ include "drivers/sis900.asm"
 ; be several lines which refer to the same functions.
 ; The first driver found on the PCI bus will be the one used.
 
-PCICARDS_ENTRY_SIZE = 24 ; Size of each PCICARDS entry
+struct net.driver.vftbl_t
+  probe       dd ?
+  reset       dd ?
+  poll        dd ?
+  transmit    dd ?
+  check_cable dd ?
+ends
+
+struct net.device_t
+  id    dd ?
+  vftbl dd ?
+ends
 
 iglobal
   PCICards:
 
 if KCONFIG_NET_DRIVER_I8255X
-    dd  0x12098086, I8255x_probe, I8255x_reset, I8255x_poll, I8255x_transmit, 0
-    dd  0x10298086, I8255x_probe, I8255x_reset, I8255x_poll, I8255x_transmit, 0
-    dd  0x12298086, I8255x_probe, I8255x_reset, I8255x_poll, I8255x_transmit, 0
-    dd  0x10308086, I8255x_probe, I8255x_reset, I8255x_poll, I8255x_transmit, 0
-    dd  0x24498086, I8255x_probe, I8255x_reset, I8255x_poll, I8255x_transmit, 0
+    dd 0x12098086, net.i8255x.vftbl
+    dd 0x10298086, net.i8255x.vftbl
+    dd 0x12298086, net.i8255x.vftbl
+    dd 0x10308086, net.i8255x.vftbl
+    dd 0x24498086, net.i8255x.vftbl
 end if
 
 if KCONFIG_NET_DRIVER_RTL8029
-    dd  0x802910ec, rtl8029_probe, rtl8029_reset, rtl8029_poll, rtl8029_transmit, 0
+    dd 0x802910ec, net.rtl8029.vftbl
 end if
 
 if KCONFIG_NET_DRIVER_RTL8139
-   dd  0x813910ec, rtl8139_probe, rtl8139_reset, rtl8139_poll, rtl8139_transmit, rtl8139_cable
-   dd  0x813810ec, rtl8139_probe, rtl8139_reset, rtl8139_poll, rtl8139_transmit, rtl8139_cable
-   dd  0x12111113, rtl8139_probe, rtl8139_reset, rtl8139_poll, rtl8139_transmit, rtl8139_cable
-   dd  0x13601500, rtl8139_probe, rtl8139_reset, rtl8139_poll, rtl8139_transmit, rtl8139_cable
-   dd  0x13604033, rtl8139_probe, rtl8139_reset, rtl8139_poll, rtl8139_transmit, rtl8139_cable
-   dd  0x13001186, rtl8139_probe, rtl8139_reset, rtl8139_poll, rtl8139_transmit, rtl8139_cable
-   dd  0x13401186, rtl8139_probe, rtl8139_reset, rtl8139_poll, rtl8139_transmit, rtl8139_cable
-   dd  0xab0613d1, rtl8139_probe, rtl8139_reset, rtl8139_poll, rtl8139_transmit, rtl8139_cable
-   dd  0xa1171259, rtl8139_probe, rtl8139_reset, rtl8139_poll, rtl8139_transmit, rtl8139_cable
-   dd  0xa11e1259, rtl8139_probe, rtl8139_reset, rtl8139_poll, rtl8139_transmit, rtl8139_cable
-   dd  0xab0614ea, rtl8139_probe, rtl8139_reset, rtl8139_poll, rtl8139_transmit, rtl8139_cable
-   dd  0xab0714ea, rtl8139_probe, rtl8139_reset, rtl8139_poll, rtl8139_transmit, rtl8139_cable
-   dd  0x123411db, rtl8139_probe, rtl8139_reset, rtl8139_poll, rtl8139_transmit, rtl8139_cable
-   dd  0x91301432, rtl8139_probe, rtl8139_reset, rtl8139_poll, rtl8139_transmit, rtl8139_cable
-   dd  0x101202ac, rtl8139_probe, rtl8139_reset, rtl8139_poll, rtl8139_transmit, rtl8139_cable
-   dd  0x0106018a, rtl8139_probe, rtl8139_reset, rtl8139_poll, rtl8139_transmit, rtl8139_cable
-   dd  0x1211126c, rtl8139_probe, rtl8139_reset, rtl8139_poll, rtl8139_transmit, rtl8139_cable
-   dd  0x81391743, rtl8139_probe, rtl8139_reset, rtl8139_poll, rtl8139_transmit, rtl8139_cable
-   dd  0x8139021b, rtl8139_probe, rtl8139_reset, rtl8139_poll, rtl8139_transmit, rtl8139_cable
+    dd 0x813910ec, net.rtl8139.vftbl
+    dd 0x813810ec, net.rtl8139.vftbl
+    dd 0x12111113, net.rtl8139.vftbl
+    dd 0x13601500, net.rtl8139.vftbl
+    dd 0x13604033, net.rtl8139.vftbl
+    dd 0x13001186, net.rtl8139.vftbl
+    dd 0x13401186, net.rtl8139.vftbl
+    dd 0xab0613d1, net.rtl8139.vftbl
+    dd 0xa1171259, net.rtl8139.vftbl
+    dd 0xa11e1259, net.rtl8139.vftbl
+    dd 0xab0614ea, net.rtl8139.vftbl
+    dd 0xab0714ea, net.rtl8139.vftbl
+    dd 0x123411db, net.rtl8139.vftbl
+    dd 0x91301432, net.rtl8139.vftbl
+    dd 0x101202ac, net.rtl8139.vftbl
+    dd 0x0106018a, net.rtl8139.vftbl
+    dd 0x1211126c, net.rtl8139.vftbl
+    dd 0x81391743, net.rtl8139.vftbl
+    dd 0x8139021b, net.rtl8139.vftbl
 end if
 
 if KCONFIG_NET_DRIVER_RTL8169
-    dd  0x816810ec, rtl8169_probe, rtl8169_reset, rtl8169_poll, rtl8169_transmit, 0
-    dd  0x816910ec, rtl8169_probe, rtl8169_reset, rtl8169_poll, rtl8169_transmit, 0
-    dd  0x011616ec, rtl8169_probe, rtl8169_reset, rtl8169_poll, rtl8169_transmit, 0
-    dd  0x43001186, rtl8169_probe, rtl8169_reset, rtl8169_poll, rtl8169_transmit, 0
-    dd  0x816710ec, rtl8169_probe, rtl8169_reset, rtl8169_poll, rtl8169_transmit, 0
+    dd 0x816810ec, net.rtl8169.vftbl
+    dd 0x816910ec, net.rtl8169.vftbl
+    dd 0x011616ec, net.rtl8169.vftbl
+    dd 0x43001186, net.rtl8169.vftbl
+    dd 0x816710ec, net.rtl8169.vftbl
 end if
 
 if KCONFIG_NET_DRIVER_E3C59X
-    dd  0x590010b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x592010b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x597010b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x595010b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x595110b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x595210b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x900010b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x900110b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x900410b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x900510b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x900610b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x900a10b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x905010b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x905110b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x905510b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x905810b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x905a10b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x920010b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x980010b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x980510b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x764610b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x505510b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x605510b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x605610b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x5b5710b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x505710b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x515710b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x525710b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x656010b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x656210b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x656410b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
-    dd  0x450010b7, e3c59x_probe, e3c59x_reset, e3c59x_poll, e3c59x_transmit, 0
+    dd 0x590010b7, net.3c59x.vftbl
+    dd 0x592010b7, net.3c59x.vftbl
+    dd 0x597010b7, net.3c59x.vftbl
+    dd 0x595010b7, net.3c59x.vftbl
+    dd 0x595110b7, net.3c59x.vftbl
+    dd 0x595210b7, net.3c59x.vftbl
+    dd 0x900010b7, net.3c59x.vftbl
+    dd 0x900110b7, net.3c59x.vftbl
+    dd 0x900410b7, net.3c59x.vftbl
+    dd 0x900510b7, net.3c59x.vftbl
+    dd 0x900610b7, net.3c59x.vftbl
+    dd 0x900a10b7, net.3c59x.vftbl
+    dd 0x905010b7, net.3c59x.vftbl
+    dd 0x905110b7, net.3c59x.vftbl
+    dd 0x905510b7, net.3c59x.vftbl
+    dd 0x905810b7, net.3c59x.vftbl
+    dd 0x905a10b7, net.3c59x.vftbl
+    dd 0x920010b7, net.3c59x.vftbl
+    dd 0x980010b7, net.3c59x.vftbl
+    dd 0x980510b7, net.3c59x.vftbl
+    dd 0x764610b7, net.3c59x.vftbl
+    dd 0x505510b7, net.3c59x.vftbl
+    dd 0x605510b7, net.3c59x.vftbl
+    dd 0x605610b7, net.3c59x.vftbl
+    dd 0x5b5710b7, net.3c59x.vftbl
+    dd 0x505710b7, net.3c59x.vftbl
+    dd 0x515710b7, net.3c59x.vftbl
+    dd 0x525710b7, net.3c59x.vftbl
+    dd 0x656010b7, net.3c59x.vftbl
+    dd 0x656210b7, net.3c59x.vftbl
+    dd 0x656410b7, net.3c59x.vftbl
+    dd 0x450010b7, net.3c59x.vftbl
 end if
 
 if KCONFIG_NET_DRIVER_SIS900
-    dd  0x09001039, SIS900_probe, SIS900_reset, SIS900_poll, SIS900_transmit, 0
-    dd  0x70161039, SIS900_probe, SIS900_reset, SIS900_poll, SIS900_transmit, 0
+    dd 0x09001039, net.sis900.vftbl
+    dd 0x70161039, net.sis900.vftbl
 end if
 
 if KCONFIG_NET_DRIVER_PCNET32
-    dd  0x20001022, pcnet32_probe, pcnet32_reset, pcnet32_poll, pcnet32_xmit, 0
-    dd  0x26251022, pcnet32_probe, pcnet32_reset, pcnet32_poll, pcnet32_xmit, 0
-    dd  0x20011022, pcnet32_probe, pcnet32_reset, pcnet32_poll, pcnet32_xmit, 0
+    dd 0x20001022, net.pcnet32.vftbl
+    dd 0x26251022, net.pcnet32.vftbl
+    dd 0x20011022, net.pcnet32.vftbl
 end if
 
 if KCONFIG_NET_DRIVER_FORCEDETH
-    dd  0x006610de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; nVidia Corporation nForce2 Ethernet Controller
-    dd  0x01c310de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x00d610de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x008610de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x008c10de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x00e610de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x00df10de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x005610de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x005710de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x003710de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x003810de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x026810de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x026910de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x037210de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x037310de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x03e510de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x03e610de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x03ee10de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x03ef10de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x045010de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x045110de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x045210de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x045310de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x054c10de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x054d10de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x054e10de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x054f10de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x07dc10de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x07dd10de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x07de10de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x07df10de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x076010de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; MCP77 Ethernet Controller
-    dd  0x076110de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x076210de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x076310de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x0ab010de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x0ab110de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x0ab210de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x0ab310de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
-    dd  0x0d7d10de, forcedeth_probe, forcedeth_reset, forcedeth_poll, forcedeth_transmit, forcedeth_cable ; not tested
+    dd 0x006610de, net.forcedeth.vfbtl ; nVidia Corporation nForce2 Ethernet Controller
+    dd 0x01c310de, net.forcedeth.vfbtl ; not tested
+    dd 0x00d610de, net.forcedeth.vfbtl ; not tested
+    dd 0x008610de, net.forcedeth.vfbtl ; not tested
+    dd 0x008c10de, net.forcedeth.vfbtl ; not tested
+    dd 0x00e610de, net.forcedeth.vfbtl ; not tested
+    dd 0x00df10de, net.forcedeth.vfbtl ; not tested
+    dd 0x005610de, net.forcedeth.vfbtl ; not tested
+    dd 0x005710de, net.forcedeth.vfbtl ; not tested
+    dd 0x003710de, net.forcedeth.vfbtl ; not tested
+    dd 0x003810de, net.forcedeth.vfbtl ; not tested
+    dd 0x026810de, net.forcedeth.vfbtl ; not tested
+    dd 0x026910de, net.forcedeth.vfbtl ; not tested
+    dd 0x037210de, net.forcedeth.vfbtl ; not tested
+    dd 0x037310de, net.forcedeth.vfbtl ; not tested
+    dd 0x03e510de, net.forcedeth.vfbtl ; not tested
+    dd 0x03e610de, net.forcedeth.vfbtl ; not tested
+    dd 0x03ee10de, net.forcedeth.vfbtl ; not tested
+    dd 0x03ef10de, net.forcedeth.vfbtl ; not tested
+    dd 0x045010de, net.forcedeth.vfbtl ; not tested
+    dd 0x045110de, net.forcedeth.vfbtl ; not tested
+    dd 0x045210de, net.forcedeth.vfbtl ; not tested
+    dd 0x045310de, net.forcedeth.vfbtl ; not tested
+    dd 0x054c10de, net.forcedeth.vfbtl ; not tested
+    dd 0x054d10de, net.forcedeth.vfbtl ; not tested
+    dd 0x054e10de, net.forcedeth.vfbtl ; not tested
+    dd 0x054f10de, net.forcedeth.vfbtl ; not tested
+    dd 0x07dc10de, net.forcedeth.vfbtl ; not tested
+    dd 0x07dd10de, net.forcedeth.vfbtl ; not tested
+    dd 0x07de10de, net.forcedeth.vfbtl ; not tested
+    dd 0x07df10de, net.forcedeth.vfbtl ; not tested
+    dd 0x076010de, net.forcedeth.vfbtl ; MCP77 Ethernet Controller
+    dd 0x076110de, net.forcedeth.vfbtl ; not tested
+    dd 0x076210de, net.forcedeth.vfbtl ; not tested
+    dd 0x076310de, net.forcedeth.vfbtl ; not tested
+    dd 0x0ab010de, net.forcedeth.vfbtl ; not tested
+    dd 0x0ab110de, net.forcedeth.vfbtl ; not tested
+    dd 0x0ab210de, net.forcedeth.vfbtl ; not tested
+    dd 0x0ab310de, net.forcedeth.vfbtl ; not tested
+    dd 0x0d7d10de, net.forcedeth.vfbtl ; not tested
 end if
 
 if KCONFIG_NET_DRIVER_R6040
-    dd  0x604017f3, r6040_probe, r6040_reset, r6040_poll, r6040_transmit, 0
+    dd 0x604017f3, net.r6040.vfbtl
 end if
 
-  rb PCICARDS_ENTRY_SIZE ; end of list marker, do not remove
+  rb sizeof.net.device_t ; end of list marker, do not remove
 endg
 
 uglobal

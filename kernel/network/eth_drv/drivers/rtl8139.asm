@@ -178,6 +178,13 @@ uglobal
 endg
 
 iglobal
+  net.rtl8139.vftbl dd \
+    rtl8139_probe, \
+    rtl8139_reset, \
+    rtl8139_poll, \
+    rtl8139_transmit, \
+    rtl8139_cable
+
   hw_ver_array:
     db VER_RTL8139, VER_RTL8139A, VER_RTL8139B, VER_RTL8139C
     db VER_RTL8100, VER_RTL8139D, VER_RTL8139CP, VER_RTL8101

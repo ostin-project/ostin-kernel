@@ -360,6 +360,13 @@ rtl8169_intr_mask = RTL8169_ISB_LinkChg or RTL8169_ISB_RxOverflow or RTL8169_ISB
 rtl8169_rx_config = (RX_FIFO_THRESH shl RTL8169_RXC_FIFOShift) or (RX_DMA_BURST shl RTL8169_RXC_DMAShift) or 0x0000000e
 
 iglobal
+  net.rtl8169.vftbl dd \
+    rtl8169_probe, \
+    rtl8169_reset, \
+    rtl8169_poll, \
+    rtl8169_transmit, \
+    0
+
   ;static struct {
   ;       const char *name;
   ;       u8 mcfg;                /* depend on RTL8169 docs */

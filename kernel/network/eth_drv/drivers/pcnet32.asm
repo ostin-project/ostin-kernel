@@ -98,6 +98,13 @@ uglobal
 endg
 
 iglobal
+  net.pcnet32.vftbl dd \
+    pcnet32_probe, \
+    pcnet32_reset, \
+    pcnet32_poll, \
+    pcnet32_xmit, \
+    0
+
   pcnet32_options_mapping:
     dd PCNET32_PORT_ASEL ; 0 Auto-select
     dd PCNET32_PORT_AUI ; 1 BNC/AUI
