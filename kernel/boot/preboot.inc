@@ -17,8 +17,6 @@
 
 ; video mode
 boot.params.vmode          boot_vmode_t
-; use VRR_M (0 - no, 1 - yes)
-boot.params.use_vrr        db 0
 ; use DMA for access to HDD (1 - always, 2 - only for read, 3 - never)
 boot.params.use_dma        db 1
 ; use V86 to access disks through BIOS (0 - no, 1 - yes)

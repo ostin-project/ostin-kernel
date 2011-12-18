@@ -610,9 +610,6 @@ include "boot/rdload.asm"
         mov     edi, RAMDISK_FAT
         call    fs.fat12.calculate_fat_chain
 
-; LOAD VMODE DRIVER
-include "vmodeld.asm"
-
 if 0
 
         mov     ax, [OS_BASE + 0x10000 + bx_from_load]
@@ -813,17 +810,6 @@ no_pal_ega:
         ; LOAD FIRST APPLICATION
         cli
 
-        cmp     [BOOT_VAR + BOOT_VRR], 1
-        jne     no_load_vrr_m
-
-        mov     ebp, vrr_m
-        call    fs_execute_from_sysdir
-
-;       cmp     eax, 2 ; if vrr_m app found (PID = 2)
-        sub     eax, 2
-        jz      first_app_found
-
-no_load_vrr_m:
         mov     ebp, firstapp
         call    fs_execute_from_sysdir
 
@@ -1303,7 +1289,7 @@ iglobal
     -, \
     low_level_hd_access, \ ; 11
     low_level_pci_access, \ ; 12
-    video_ctl ; 13
+    - ; 13
 endg
 ;-----------------------------------------------------------------------------------------------------------------------
         dec     ebx
@@ -1545,8 +1531,6 @@ kproc sysfn.set_config.low_level_pci_access ;///////////////////////////////////
         mov     [pci_access_enabled], ecx
         jmp     sysfn.set_config.exit
 kendp
-
-include "vmodeint.asm"
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc sysfn.get_config ;////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1792,7 +1776,7 @@ kproc sysfn.system_ctl.shutdown ;///////////////////////////////////////////////
         jl      exit_for_anyone
         cmp     ecx, 4
         jg      exit_for_anyone
-        mov     [BOOT_VAR + BOOT_VRR], cl
+        mov     [BOOT_VAR + BOOT_SHUTDOWN_PARAM], cl
 
         mov     eax, [TASK_COUNT]
         mov     [SYS_SHUTDOWN], al
@@ -1813,27 +1797,27 @@ kproc sysfn.system_ctl.kill_process_by_slot ;///////////////////////////////////
 ;? System function 18.2: terminate process by its slot number
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     ecx, 2
-        jb      noprocessterminate
+        jb      .noprocessterminate
         mov     edx, [TASK_COUNT]
         cmp     ecx, edx
-        ja      noprocessterminate
+        ja      .noprocessterminate
         mov     eax, [TASK_COUNT]
         shl     ecx, 5
         mov     edx, [TASK_DATA + ecx - sizeof.task_data_t + task_data_t.pid]
         add     ecx, TASK_DATA - sizeof.task_data_t + task_data_t.state
         cmp     byte[ecx], TSTATE_FREE
-        jz      noprocessterminate
+        jz      .noprocessterminate
 
 ;       call    MEM_Heap_Lock ; guarantee that process isn't working with heap
         mov     byte[ecx], TSTATE_ZOMBIE ; clear possible i40's
 ;       call    MEM_Heap_UnLock
 
         cmp     edx, [application_table_status] ; clear app table stat
-        jne     noatsc
+        jne     .noatsc
         and     [application_table_status], 0
 
-  noatsc:
-  noprocessterminate:
+  .noatsc:
+  .noprocessterminate:
         ret
 kendp
 
@@ -4015,7 +3999,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc system_shutdown ;/////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     [BOOT_VAR + BOOT_VRR], 1
+        cmp     [BOOT_VAR + BOOT_SHUTDOWN_PARAM], 1
         jne     @f
         ret
 
@@ -4083,7 +4067,7 @@ if 0
 
 else
 
-        cmp     [OS_BASE + BOOT_VRR], 1
+        cmp     [OS_BASE + BOOT_SHUTDOWN_PARAM], 1
         je      no_acpi_power_off
 
         ; scan for RSDP

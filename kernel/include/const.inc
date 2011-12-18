@@ -322,7 +322,7 @@ virtual at 0x9000
   BOOT_DIRECT_LFB       db ?  ; 0x0901e - 0 or 1: enable direct lfb write, paging disabled
   BOOT_DMA              db ?  ; 0x0901f - 0 or 1: enable DMA
   BOOT_PCI_DATA         rb 8  ; 0x09020 - pci data
-  BOOT_VRR              db ?  ; 0x09030 - VRR start enabled 1, 2-no
+  BOOT_SHUTDOWN_PARAM   db ?  ; 0x09030 - value of ecx passed to sysfn 18.9
   BOOT_IDE_BASE_ADDR    dw ?  ; 0x09031 - IDEContrRegsBaseAddr
   BOOT_APM_ENTRY_OFS    dd ?  ; 0x09040 - APM entry point offset
   BOOT_APM_VERSION      dw ?  ; 0x09044 - APM version
@@ -440,40 +440,6 @@ ends
 ;  heap_base dd ?
 ;  heap_top  dd ?
 ;  app_mem   dd ?
-;ends
-
-; unused
-;struct boot_data_t
-;  bpp           dd ?
-;  scanline      dd ?
-;  vesa_mode     dd ?
-;  x_res         dd ?
-;  y_res         dd ?
-;  mouse_port    dd ?
-;  bank_switch   dd ?
-;  lfb           dd ?
-;  vesa_mem      dd ?
-;  log           dd ?
-;  direct_lfb    dd ?
-;  pci_data      dd ?
-;;               dd ?
-;  vrr           dd ?
-;  ide_base      dd ?
-;  mem_amount    dd ?
-;  pages_count   dd ?
-;  pagemap_size  dd ?
-;  kernel_max    dd ?
-;  kernel_pages  dd ?
-;  kernel_tables dd ?
-;
-;  cpu_vendor    dd ?
-;                dd ?
-;                dd ?
-;  cpu_sign      dd ?
-;  cpu_info      dd ?
-;  cpu_caps      dd ?
-;                dd ?
-;                dd ?
 ;ends
 
 struct memory_state_t

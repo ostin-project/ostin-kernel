@@ -65,7 +65,7 @@ kproc pr_mode_exit ;////////////////////////////////////////////////////////////
   .temp_3456:
         xor     ax, ax
         mov     es, ax
-        mov     al, [es:BOOT_VRR]
+        mov     al, [es:BOOT_SHUTDOWN_PARAM]
         cmp     al, 1
         jl      .nbw
         cmp     al, 4

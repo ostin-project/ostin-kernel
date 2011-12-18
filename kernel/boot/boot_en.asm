@@ -28,7 +28,6 @@ boot.data.s_keys_notice             utf8 "Up/Down/Enter/Esc - navigation, [F10] 
 boot.data.s_current_settings        utf8 "Current settings", 0
 boot.data.s_video_mode              utf8 "Videomode", 0
 boot.data.s_use_bios_disks          utf8 "Add disks visible by BIOS", 0
-boot.data.s_use_vrr                 utf8 "Use VRR", 0
 boot.data.s_boot_source             utf8 "Floppy image", 0
 
 boot.data.s_save_and_boot           utf8 "Save and continue boot", 0
@@ -36,8 +35,6 @@ boot.data.s_just_boot               utf8 "Continue without saving", 0
 
 boot.data.s_video_mode_title        utf8 "Select a videomode", 0
 boot.data.s_use_bios_disks_title    utf8 "Add disks visible by BIOS emulated in V86-mode", 0
-boot.data.s_use_vrr_title           utf8 "Apply VRR (refresh rate >60Hz, only for 1024x768->800x600 and", 13, 10, \
-                                         " 800x600->640x480 transitions)", 0
 boot.data.s_boot_source_title       utf8 "Load ramdisk from", 0
 
 boot.data.s_vmode_bpp               utf8 " bpp, ", 0

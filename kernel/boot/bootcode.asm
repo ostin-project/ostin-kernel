@@ -786,8 +786,6 @@ end if
         call    boot.load_vmode_to_menu
         movzx   ax, [boot.params.use_bios_disks]
         mov     [boot.data.use_bios_disks_menu + boot_menu_data_t.current_index], ax
-        movzx   ax, [boot.params.use_vrr]
-        mov     [boot.data.use_vrr_menu + boot_menu_data_t.current_index], ax
         movzx   ax, [boot.params.boot_source]
         mov     [boot.data.boot_source_menu + boot_menu_data_t.current_index], ax
 
@@ -811,8 +809,6 @@ end if
         call    boot.save_vmode_from_menu
         mov     ax, [boot.data.use_bios_disks_menu + boot_menu_data_t.current_index]
         mov     [boot.params.use_bios_disks], al
-        mov     ax, [boot.data.use_vrr_menu + boot_menu_data_t.current_index]
-        mov     [boot.params.use_vrr], al
         mov     ax, [boot.data.boot_source_menu + boot_menu_data_t.current_index]
         mov     [boot.params.boot_source], al
         pop     cx ax
@@ -867,9 +863,6 @@ end if
         mov     al, [boot.params.use_dma]
         mov     [es:BOOT_DMA], al
 
-        ; VRR_M USE
-        mov     al, [boot.params.use_vrr]
-        mov     [es:BOOT_VRR], al
         mov     [es:BOOT_DIRECT_LFB], 1
 
         ; GET MEMORY MAP

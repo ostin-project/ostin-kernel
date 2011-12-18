@@ -27,10 +27,9 @@ ends
 ;-----------------------------------------------------------------------------------------------------------------------
 
 boot.data.main_menu_options dw \
-  7, \
+  6, \
   boot.data.s_video_mode, \
   boot.data.s_use_bios_disks, \
-  boot.data.s_use_vrr, \
   boot.data.s_boot_source, \
   0, \
   boot.data.s_save_and_boot, \
@@ -53,7 +52,6 @@ boot.data.boot_source_menu_options dw \
 boot.data.main_menu_submenus dw \
   boot.data.video_mode_menu, \
   boot.data.use_bios_disks_menu, \
-  boot.data.use_vrr_menu, \
   boot.data.boot_source_menu, \
   0, \
   0, \
@@ -77,13 +75,6 @@ boot.data.video_mode_menu: ; boot_menu_data_t
 
 boot.data.use_bios_disks_menu: ; boot_menu_data_t
   dw boot.data.s_use_bios_disks_title
-  dw boot.data.bool_menu_options
-  dw 0
-  dw 0
-  dw boot.print_simple_menu_item
-
-boot.data.use_vrr_menu: ; boot_menu_data_t
-  dw boot.data.s_use_vrr_title
   dw boot.data.bool_menu_options
   dw 0
   dw 0

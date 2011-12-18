@@ -28,7 +28,6 @@ boot.data.s_keys_notice             utf8 "Вверх/Вниз/Ввод/Esc - н�
 boot.data.s_current_settings        utf8 "Текущие настройки", 0
 boot.data.s_video_mode              utf8 "Видеорежим", 0
 boot.data.s_use_bios_disks          utf8 "Добавить диски, видимые через BIOS", 0
-boot.data.s_use_vrr                 utf8 "Использование VRR", 0
 boot.data.s_boot_source             utf8 "Образ дискеты", 0
 
 boot.data.s_save_and_boot           utf8 "Сохранить и продолжить загрузку", 0
@@ -36,8 +35,6 @@ boot.data.s_just_boot               utf8 "Продолжить без сохра
 
 boot.data.s_video_mode_title        utf8 "Выберите видеорежим", 0
 boot.data.s_use_bios_disks_title    utf8 "Добавить диски, видимые через BIOS в режиме V86", 0
-boot.data.s_use_vrr_title           utf8 "Использовать VRR (частота кадров >60Гц, только для переходов 1024x768->800x600", 13, 10, \
-                                         " и 800x600->640x480)", 0
 boot.data.s_boot_source_title       utf8 "Загрузить образ из", 0
 
 boot.data.s_vmode_bpp               utf8 " bpp, ", 0
