@@ -198,7 +198,6 @@ virtual at OS_BASE
 
 if KCONFIG_BLKDEV_FLOPPY
 
-  FLOPPY_BUFF           rb 0x2400
                         rb OS_BASE + 0x0000d000 - $
   FDC_DMA_BUFFER        rb FLOPPY_CTL_BYTES_PER_SECTOR
 
@@ -219,7 +218,7 @@ end if ; KCONFIG_BLKDEV_FLOPPY
   BIOS_RIP_AREA:        rb 0x50000
   RAMDISK:              rb 0x180000
   RAMDISK_FAT:          rb 0x2000
-  FLOPPY_FAT:           rb 0x2000
+                        rb OS_BASE + 0x00284000 - $
   IDE_DMA:              rb 32 * 1024
                         rb OS_BASE + 0x00298000 - $
   BgrAuxTable           rb 32 * 1024
