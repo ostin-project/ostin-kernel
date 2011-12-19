@@ -330,7 +330,7 @@ kproc Wait_events_ex ;//////////////////////////////////////////////////////////
         pop     edx
 
         mov     eax, [TASK_BASE]
-        mov     [eax + task_data_t.state], TSTATE_WAITING
+        mov     [eax + task_data_t.state], THREAD_STATE_WAITING
         call    change_task
         mov     eax, [esi + app_data_t.wait_param]
 

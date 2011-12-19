@@ -1,6 +1,7 @@
 ;;======================================================================================================================
-;;///// kglobals.inc /////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
+;;///// globals.inc //////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
 ;;======================================================================================================================
+;; (c) 2011 Ostin project <http://ostin.googlecode.com/>
 ;; (c) 2004-2008 KolibriOS team <http://kolibrios.org/>
 ;;======================================================================================================================
 ;; This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
@@ -17,38 +18,44 @@
 ;------------------------------------------------------------------
 ; use "iglobal" for inserting initialized global data definitions.
 ;------------------------------------------------------------------
-macro iglobal {
+macro iglobal
+{
   IGlobals equ IGlobals,
-  macro __IGlobalBlock { }
-
-macro iglobal_nested {
-  IGlobals equ IGlobals,
-  macro __IGlobalBlock \{ }
+  macro __IGlobalBlock
+  \{
+}
 
 ;-------------------------------------------------------------
 ; use 'uglobal' for inserting uninitialized global definitions.
 ; even when you define some data values, these variables
 ; will be stored as uninitialized data.
 ;-------------------------------------------------------------
-macro uglobal {
+macro uglobal
+{
   UGlobals equ UGlobals,
-  macro __UGlobalBlock { }
+  macro __UGlobalBlock
+  \{
+}
 
-macro uglobal_nested {
-  UGlobals equ UGlobals,
-  macro __UGlobalBlock \{ }
+endg fix } ; Use endg for ending iglobal and uglobal blocks.
 
-endg fix }      ; Use endg for ending iglobal and uglobal blocks.
-endg_nested fix \}
+macro IncludeIGlobals
+{
+  macro IGlobals dummy, [n]
+  \{
+    __IGlobalBlock
+    purge __IGlobalBlock
+  \}
+  match I, IGlobals
+  \{
+    I
+  \}
+}
 
-macro IncludeIGlobals{
-  macro IGlobals dummy,[n] \{ __IGlobalBlock
-     purge __IGlobalBlock  \}
-  match I, IGlobals \{ I \} }
-
-
-macro IncludeUGlobals{
-  macro UGlobals dummy,[n] \{
+macro IncludeUGlobals
+{
+  macro UGlobals dummy, [n]
+  \{
     \common
       \local begin, size
       begin = $
@@ -61,9 +68,14 @@ macro IncludeUGlobals{
     end virtual
     rb size
   \}
-  match U, UGlobals \{ U \} }
+  match U, UGlobals
+  \{
+    U
+  \}
+}
 
-macro IncludeAllGlobals {
+macro IncludeAllGlobals
+{
   IncludeIGlobals
   IncludeUGlobals
 }

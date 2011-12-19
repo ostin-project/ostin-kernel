@@ -24,12 +24,15 @@ include "include/macros.inc"
 
 include "config.inc"
 
-include "include/kernel.inc"
+include "include/types.inc"
 
-include "include/boot.inc"
-include "include/const.inc"
-include "include/kglobals.inc"
+include "include/sys/kernel.inc"
+include "include/sys/boot.inc"
+include "include/sys/const.inc"
+
+include "include/globals.inc"
 include "include/fs.inc"
+include "include/syscall.inc"
 
 max_processes   = 255
 
@@ -1720,7 +1723,7 @@ kproc sysfn.exit_process ;//////////////////////////////////////////////////////
         stdcall user_free, eax
 
     @@: mov     eax, [TASK_BASE]
-        mov     [eax + task_data_t.state], TSTATE_ZOMBIE ; terminate this program
+        mov     [eax + task_data_t.state], THREAD_STATE_ZOMBIE ; terminate this program
 
   .waitterm:
         ; wait here for termination
@@ -1805,11 +1808,11 @@ kproc sysfn.system_ctl.kill_process_by_slot ;///////////////////////////////////
         shl     ecx, 5
         mov     edx, [TASK_DATA + ecx - sizeof.task_data_t + task_data_t.pid]
         add     ecx, TASK_DATA - sizeof.task_data_t + task_data_t.state
-        cmp     byte[ecx], TSTATE_FREE
+        cmp     byte[ecx], THREAD_STATE_FREE
         jz      .noprocessterminate
 
 ;       call    MEM_Heap_Lock ; guarantee that process isn't working with heap
-        mov     byte[ecx], TSTATE_ZOMBIE ; clear possible i40's
+        mov     byte[ecx], THREAD_STATE_ZOMBIE ; clear possible i40's
 ;       call    MEM_Heap_UnLock
 
         cmp     edx, [application_table_status] ; clear app table stat
@@ -2226,11 +2229,11 @@ kproc sysfn.get_process_info ;//////////////////////////////////////////////////
 
         ; +4: word: position of the window of thread in the window stack
         mov     ax, [WIN_STACK + ecx * 2]
-        mov     [ebx + 4], ax
+        mov     [ebx + process_info_t.window_stack_position], ax
         ; +6: word: number of the thread slot, which window has in the window stack
         ;           position ecx (has no relation to the specific thread)
         mov     ax, [WIN_POS + ecx * 2]
-        mov     [ebx + 6], ax
+        mov     [ebx + process_info_t.window_stack_value], ax
 
         shl     ecx, 5
 
@@ -2243,13 +2246,13 @@ kproc sysfn.get_process_info ;//////////////////////////////////////////////////
 
         ; +0: dword: cpu usage
         mov     eax, [ebp + core.thread_t.stats.cpu_usage]
-        mov     [ebx], eax
+        mov     [ebx + process_info_t.thread_cpu_usage], eax
 
         ; +10: 11 bytes: name of the process
         push    ecx
         mov     eax, [ebp + core.thread_t.process_ptr]
         add     eax, core.process_t.name
-        add     ebx, 10
+        add     ebx, process_info_t.process_name
         mov     ecx, PROCESS_MAX_NAME_LEN
         call    memmove
         pop     ecx
@@ -2257,7 +2260,7 @@ kproc sysfn.get_process_info ;//////////////////////////////////////////////////
         ; +22: address of the process in memory
         ; +26: size of used memory - 1
         push    edi
-        lea     edi, [ebx + 12]
+        lea     edi, [ebx - process_info_t.process_name + process_info_t.process_memory_range]
         xor     eax, eax
         mov     edx, 0x100000 * 16
         cmp     ecx, 1 shl 5
@@ -2270,9 +2273,13 @@ kproc sysfn.get_process_info ;//////////////////////////////////////////////////
         lea     eax, [edx - 1]
         stosd
 
+static_assert process_info_t.thread_id = 30
+
         ; +30: PID/TID
         mov     eax, [TASK_DATA + ecx - sizeof.task_data_t + task_data_t.pid]
         stosd
+
+static_assert process_info_t.window_box = 34
 
         ; window position and size
         push    esi
@@ -2282,9 +2289,13 @@ kproc sysfn.get_process_info ;//////////////////////////////////////////////////
         movsd
         movsd
 
+static_assert process_info_t.thread_state = 50
+
         ; Process state (+50)
         movzx   eax, [TASK_DATA + ecx - sizeof.task_data_t + task_data_t.state]
         stosd
+
+static_assert process_info_t.window_client_box = 54
 
         ; Window client area box
         lea     esi, [SLOT_BASE + ecx * 8 + app_data_t.wnd_clientbox]
@@ -2293,9 +2304,13 @@ kproc sysfn.get_process_info ;//////////////////////////////////////////////////
         movsd
         movsd
 
+static_assert process_info_t.window_state = 70
+
         ; Window state
         mov     al, [window_data + ecx + window_data_t.fl_wstate]
         stosb
+
+static_assert process_info_t.thread_event_mask = 71
 
         ; Event mask (+71)
         mov     eax, [ebp + core.thread_t.events.event_mask]
@@ -2312,11 +2327,11 @@ kproc sysfn.get_process_info ;//////////////////////////////////////////////////
 
   .nofillbuf:
         mov     edi, ebx
-        mov     ecx, 1024 / 4
+        mov     ecx, sizeof.process_info_t / 4
         xor     eax, eax
         rep
         stosd
-        mov     dword[ebx + 50], TSTATE_FREE
+        mov     dword[ebx + process_info_t.thread_state], THREAD_STATE_FREE
         jmp     .exit
 kendp
 
@@ -2552,7 +2567,7 @@ kproc checkmisc ;///////////////////////////////////////////////////////////////
         jecxz   @f
 
   .markz:
-        mov     byte[edx + task_data_t.state], TSTATE_ZOMBIE
+        mov     byte[edx + task_data_t.state], THREAD_STATE_ZOMBIE
         add     edx, sizeof.task_data_t
         loop    .markz
 
@@ -2570,9 +2585,9 @@ kproc checkmisc ;///////////////////////////////////////////////////////////////
 
   .newct:
         mov     cl, [ebx]
-        cmp     cl, TSTATE_ZOMBIE
+        cmp     cl, THREAD_STATE_ZOMBIE
         jz      terminate
-        cmp     cl, TSTATE_TERMINATING
+        cmp     cl, THREAD_STATE_TERMINATING
         jz      terminate
 
         add     ebx, sizeof.task_data_t

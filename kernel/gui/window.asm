@@ -52,7 +52,7 @@ static_assert sizeof.gui.window_t mod 4 = 0
 window.BORDER_SIZE = 5
 
 uglobal
-  common_colours    rd 32
+  common_colours    system_colors_t
   draw_limits       rect32_t
   buttontype        rd 1
   windowtypechanged rd 1
@@ -280,8 +280,12 @@ kproc sysfn.display_settings_ctl.set_system_color_palette ;/////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         dec     ebx
         mov     esi, ecx
-        and     edx, 127
-        mov     edi, common_colours
+        cmp     edx, sizeof.system_colors_t
+        jb      @f
+
+        mov     edx, sizeof.system_colors_t
+
+    @@: mov     edi, common_colours
         mov     ecx, edx
         rep
         movsb
@@ -299,8 +303,12 @@ kproc sysfn.display_settings_ctl.get_system_color_palette ;/////////////////////
 ;> edx = size of color table buffer
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     edi, ecx
-        and     edx, 127
-        mov     esi, common_colours
+        cmp     edx, sizeof.system_colors_t
+        jb      @f
+
+        mov     edx, sizeof.system_colors_t
+
+    @@: mov     esi, common_colours
         mov     ecx, edx
         rep
         movsb
@@ -479,7 +487,7 @@ kproc sysfn.move_window ;///////////////////////////////////////////////////////
         test    [edi + window_data_t.fl_wdrawn], 1
         jz      .exit
 
-        test    [edi + window_data_t.fl_wstate], WSTATE_MAXIMIZED
+        test    [edi + window_data_t.fl_wstate], WINDOW_STATE_MAXIMIZED
         jnz     .exit
 
         cmp     ebx, -1
@@ -602,11 +610,11 @@ kproc calculatescreen ;/////////////////////////////////////////////////////////
         movzx   edi, [WIN_POS + esi * 2]
         shl     edi, 5
 
-        cmp     [TASK_DATA + edi - sizeof.task_data_t + task_data_t.state], TSTATE_FREE
+        cmp     [TASK_DATA + edi - sizeof.task_data_t + task_data_t.state], THREAD_STATE_FREE
         je      .skip_window
 
         add     edi, window_data
-        test    [edi + window_data_t.fl_wstate], WSTATE_MINIMIZED
+        test    [edi + window_data_t.fl_wstate], WINDOW_STATE_MINIMIZED
         jnz     .skip_window
 
         mov     eax, [edi + window_data_t.box.left]
@@ -672,7 +680,7 @@ kproc repos_windows ;///////////////////////////////////////////////////////////
 
   .next_window:
         mov     [edi + window_data_t.fl_redraw], 1
-        test    [edi + window_data_t.fl_wstate], WSTATE_MAXIMIZED
+        test    [edi + window_data_t.fl_wstate], WINDOW_STATE_MAXIMIZED
         jnz     .fix_maximized
 
         mov     eax, [edi + window_data_t.box.left]
@@ -711,7 +719,7 @@ kproc repos_windows ;///////////////////////////////////////////////////////////
         mov     [edi + window_data_t.box.width], eax
         mov     eax, [screen_workarea.top]
         mov     [edi + window_data_t.box.top], eax
-        test    [edi + window_data_t.fl_wstate], WSTATE_ROLLEDUP
+        test    [edi + window_data_t.fl_wstate], WINDOW_STATE_ROLLEDUP
         jnz     .fix_client_box
         sub     eax, [screen_workarea.bottom]
         neg     eax
@@ -1101,13 +1109,13 @@ kproc minimize_window ;/////////////////////////////////////////////////////////
         movzx   edi, [WIN_POS + eax * 2]
         shl     edi, 5
         add     edi, window_data
-        test    [edi + window_data_t.fl_wstate], WSTATE_MINIMIZED
+        test    [edi + window_data_t.fl_wstate], WINDOW_STATE_MINIMIZED
         jnz     .exit
 
         push    eax ebx ecx edx esi
 
         ; no it's not, let's do that
-        or      [edi + window_data_t.fl_wstate], WSTATE_MINIMIZED
+        or      [edi + window_data_t.fl_wstate], WINDOW_STATE_MINIMIZED
         mov     eax, [edi + window_data_t.box.left]
         mov     [draw_limits.left], eax
         mov     ecx, eax
@@ -1147,12 +1155,12 @@ kproc restore_minimized_window ;////////////////////////////////////////////////
         mov     edi, esi
         shl     edi, 5
         add     edi, window_data
-        test    [edi + window_data_t.fl_wstate], WSTATE_MINIMIZED
+        test    [edi + window_data_t.fl_wstate], WINDOW_STATE_MINIMIZED
         jz      .exit
 
         ; no it's not, let's do that
         mov     [edi + window_data_t.fl_redraw], 1
-        and     [edi + window_data_t.fl_wstate], not WSTATE_MINIMIZED
+        and     [edi + window_data_t.fl_wstate], not WINDOW_STATE_MINIMIZED
         mov     ebp, window._.set_screen
         cmp     eax, [TASK_COUNT]
         jz      @f
@@ -1218,10 +1226,10 @@ kproc sys_window_maximize_handler ;/////////////////////////////////////////////
 
         ; toggle normal/maximized window state
         mov     bl, [edi + window_data_t.fl_wstate]
-        xor     bl, WSTATE_MAXIMIZED
+        xor     bl, WINDOW_STATE_MAXIMIZED
 
         ; calculate and set appropriate window bounds
-        test    bl, WSTATE_MAXIMIZED
+        test    bl, WINDOW_STATE_MAXIMIZED
         jz      .restore_size
 
         mov     eax, [screen_workarea.left]
@@ -1246,7 +1254,7 @@ kproc sys_window_maximize_handler ;/////////////////////////////////////////////
         mov     eax, esp
 
   .set_box:
-        test    bl, WSTATE_ROLLEDUP
+        test    bl, WINDOW_STATE_ROLLEDUP
         jz      @f
 
         xchg    eax, ecx
@@ -1274,10 +1282,10 @@ kproc sys_window_rollup_handler ;///////////////////////////////////////////////
 
         ; toggle normal/rolled up window state
         mov     bl, [edi + window_data_t.fl_wstate]
-        xor     bl, WSTATE_ROLLEDUP
+        xor     bl, WINDOW_STATE_ROLLEDUP
 
         ; calculate and set appropriate window bounds
-        test    bl, WSTATE_ROLLEDUP
+        test    bl, WINDOW_STATE_ROLLEDUP
         jz      .restore_size
 
         call    window._.get_rolledup_height
@@ -1289,7 +1297,7 @@ kproc sys_window_rollup_handler ;///////////////////////////////////////////////
         jmp     .set_box
 
   .restore_size:
-        test    bl, WSTATE_MAXIMIZED
+        test    bl, WINDOW_STATE_MAXIMIZED
         jnz     @f
         add     esp, -sizeof.box32_t
         lea     eax, [edx + app_data_t.saved_box]
@@ -1519,7 +1527,7 @@ end if
         xchg    cl, [edi + window_data_t.fl_wstate]
 
         or      cl, ch
-        test    cl, WSTATE_MAXIMIZED
+        test    cl, WINDOW_STATE_MAXIMIZED
         jnz     .exit
 
         mov     eax, edi
@@ -1537,7 +1545,7 @@ end if
 
         xchg    esp, ebx
 
-        test    ch, WSTATE_ROLLEDUP
+        test    ch, WINDOW_STATE_ROLLEDUP
         jnz     .exit
 
         mov     [eax + app_data_t.saved_box.height], edx
@@ -2092,7 +2100,7 @@ kproc window._.check_window_draw ;//////////////////////////////////////////////
 
         movzx   edx, word[esi]
         shl     edx, 5
-        cmp     [TASK_DATA + edx - sizeof.task_data_t + task_data_t.state], TSTATE_FREE
+        cmp     [TASK_DATA + edx - sizeof.task_data_t + task_data_t.state], THREAD_STATE_FREE
         je      .next_window
 
         mov     eax, [edi + window_data_t.box.top]
@@ -2243,7 +2251,7 @@ kproc window._.draw_window_caption ;////////////////////////////////////////////
         add     ebx, ebp
 
   .dodraw:
-        mov     ecx, [common_colours + 16]
+        mov     ecx, [common_colours.grab_text]
         or      ecx, 0x80000000
         xor     edi, edi
         call    dtext_asciiz_esi

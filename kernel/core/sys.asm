@@ -159,7 +159,7 @@ reg_eip    equ esp + 0x20
         ; not debuggee => say error and terminate
         call    show_error_parameters ;; only ONE using, inline ???
 ;       mov     edx, [TASK_BASE]
-        mov     [edx + task_data_t.state], TSTATE_TERMINATING ; terminate
+        mov     [edx + task_data_t.state], THREAD_STATE_TERMINATING ; terminate
         jmp     change_task ; stack - here it does not matter at all, SEE: core/shed.inc
 
   .debug:
@@ -192,7 +192,7 @@ reg_eip    equ esp + 0x20
         call    debugger_notify ;; only ONE using, inline ??? SEE: core/debug.inc
         add     esp, 12
         mov     edx, [TASK_BASE]
-        mov     [edx + task_data_t.state], TSTATE_RUN_SUSPENDED ; suspended
+        mov     [edx + task_data_t.state], THREAD_STATE_RUN_SUSPENDED ; suspended
         call    change_task ; SEE: core/shed.inc
         restore_ring3_context
         iretd
@@ -423,7 +423,7 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         jne     @f
         pop     esi
         shl     esi, 5
-        mov     [TASK_DATA + esi - sizeof.task_data_t + task_data_t.state], TSTATE_FREE
+        mov     [TASK_DATA + esi - sizeof.task_data_t + task_data_t.state], THREAD_STATE_FREE
 
         pusha
         lea     eax, [TASK_DATA + esi - sizeof.task_data_t]
@@ -671,12 +671,12 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         lea     esi, [WIN_POS + eax * 2]
         movzx   edi, word[esi] ; edi = process
         shl     edi, 5
-        cmp     [TASK_DATA + edi - sizeof.task_data_t + task_data_t.state], TSTATE_FREE ; skip dead slots
+        cmp     [TASK_DATA + edi - sizeof.task_data_t + task_data_t.state], THREAD_STATE_FREE ; skip dead slots
         je      .check_next_window
         add     edi, window_data
 
         ; skip minimized windows
-        test    [edi + window_data_t.fl_wstate], WSTATE_MINIMIZED
+        test    [edi + window_data_t.fl_wstate], WINDOW_STATE_MINIMIZED
         jnz     .check_next_window
 
         call    waredraw
@@ -767,7 +767,7 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         popa
         mov     edi, esi ; do not run this process slot
         shl     edi, 5
-        mov     [TASK_DATA + edi - sizeof.task_data_t + task_data_t.state], TSTATE_FREE
+        mov     [TASK_DATA + edi - sizeof.task_data_t + task_data_t.state], THREAD_STATE_FREE
 
         pusha
         lea     eax, [TASK_DATA + edi - sizeof.task_data_t]

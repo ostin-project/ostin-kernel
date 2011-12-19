@@ -163,7 +163,7 @@ kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////
         jae     sysfn.not_implemented
 
         ; parse file name
-        lea     esi, [ebx + fs.query_t.file_path]
+        lea     esi, [ebx + fs.query_t.path]
         lodsb
         test    al, al
         jnz     @f
@@ -188,7 +188,7 @@ kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////
         call    process_replace_file_name
 
   .parse_normal:
-        cmp     dword[ebx], 7
+        cmp     [ebx + fs.query_t.function], FS_FUNC_EXECUTE
         jne     @f
         mov     edx, [ebx + fs.query_t.start_program.flags]
         mov     ebx, [ebx + fs.query_t.start_program.arguments_ptr]
@@ -228,7 +228,7 @@ kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////
         mov     esi, [edi + 4]
 
   .maindir_noesi:
-        cmp     dword[ebx], 1
+        cmp     [ebx + fs.query_t.function], FS_FUNC_READ_DIR
         jnz     .access_denied
         xor     eax, eax
         mov     ebp, [ebx + fs.query_t.read_directory.count] ; blocks to read
@@ -239,28 +239,28 @@ kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////
         ; ebx=flags, [esp]=first block, ebp=number of blocks, edx=return area, esi='Next' handler
         mov     edi, edx
         push    ecx
-        mov     ecx, 32 / 4
+        mov     ecx, sizeof.fs.file_info_header_t / 4
         rep
         stosd
         pop     ecx
-        mov     byte[edx], 1 ; version
+        mov     byte[edx + fs.file_info_header_t.version], 1 ; version
 
   .maindir_loop:
         call    esi
         jc      .maindir_done
-        inc     dword[edx + 8]
+        inc     [edx + fs.file_info_header_t.files_count]
         dec     dword[esp]
         jns     .maindir_loop
         dec     ebp
         js      .maindir_loop
-        inc     dword[edx + 4]
-        mov     dword[edi], 0x10 ; attributes: folder
-        mov     dword[edi + 4], 1 ; name type: UNICODE
+        inc     [edx + fs.file_info_header_t.files_read]
+        mov     [edi + fs.file_info_t.attributes], FS_INFO_ATTR_DIR ; attributes: folder
+        mov     [edi + fs.file_info_t.flags], FS_INFO_FLAG_UNICODE ; name type: UNICODE
         push    eax
         xor     eax, eax
         add     edi, 8
         push    ecx
-        mov     ecx, 40 / 4 - 2
+        mov     ecx, (sizeof.fs.file_info_t - 8) / 4
         rep
         stosd
         pop     ecx
@@ -281,7 +281,7 @@ kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////
     @@: pop     eax
         add     al, '0'
         stosb
-        test    bl, 1 ; UNICODE name?
+        test    bl, FS_INFO_FLAG_UNICODE ; UNICODE name?
         jz      .ansi2
         mov     byte[edi], 0
         inc     edi
@@ -294,7 +294,7 @@ kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////
         pop     edi
         ; UNICODE name length is 520 bytes, ANSI - 264
         add     edi, 520
-        test    bl, 1
+        test    bl, FS_INFO_FLAG_UNICODE
         jnz     @f
         sub     edi, 520 - 264
 
@@ -303,7 +303,7 @@ kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////
 
   .maindir_done:
         pop     eax
-        mov     ebx, [edx + 4]
+        mov     ebx, [edx + fs.file_info_header_t.files_read]
         xor     eax, eax
         dec     ebp
         js      @f
@@ -315,7 +315,7 @@ kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////
 
   .rootdir:
         ; directory /
-        cmp     dword[ebx], 1 ; read folder?
+        cmp     [ebx + fs.query_t.function], FS_FUNC_READ_DIR ; read folder?
         jz      .readroot
 
   .access_denied:
@@ -333,10 +333,10 @@ kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////
         xor     eax, eax
         ; eax=0, [esp]=first block, ebx=flags, ebp=number of blocks, edx=return area
         mov     edi, edx
-        mov     ecx, 32 / 4
+        mov     ecx, sizeof.fs.file_info_header_t / 4
         rep
         stosd
-        mov     byte[edx], 1 ; version
+        mov     byte[edx + fs.file_info_header_t.version], 1 ; version
 
   .readroot_loop:
         cmp     dword[esi], eax
@@ -355,23 +355,23 @@ kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////
         jmp     .readroot_loop
 
     @@: xor     eax, eax
-        inc     dword[edx + 8]
+        inc     [edx + fs.file_info_header_t.files_count]
         dec     dword[esp]
         jns     .readroot_next
         dec     ebp
         js      .readroot_next
-        inc     dword[edx + 4]
-        mov     dword[edi], 0x10 ; attributes: folder
-        mov     dword[edi + 4], ebx ; name type: UNICODE
+        inc     [edx + fs.file_info_header_t.files_read]
+        mov     [edi + fs.file_info_t.attributes], FS_INFO_ATTR_DIR ; attributes: folder
+        mov     [edi + fs.file_info_t.flags], ebx ; name type: UNICODE
         add     edi, 8
-        mov     ecx, 40 / 4 - 2
+        mov     ecx, (sizeof.fs.file_info_t - 8) / 4
         rep
         stosd
         push    edi
 
     @@: lodsb
         stosb
-        test    bl, 1
+        test    bl, FS_INFO_FLAG_UNICODE
         jz      .ansi
         mov     byte[edi], 0
         inc     edi
@@ -381,7 +381,7 @@ kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////
         jnz     @b
         pop     edi
         add     edi, 520
-        test    bl, 1
+        test    bl, FS_INFO_FLAG_UNICODE
         jnz     .readroot_loop
         sub     edi, 520 - 264
         jmp     .readroot_loop
@@ -403,18 +403,18 @@ kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////
         pop     edi
         test    eax, eax
         jz      .readroot_ah_loop
-        inc     dword[edx + 8]
+        inc     [edx + fs.file_info_header_t.files_count]
         dec     dword[esp + 16]
         jns     .readroot_ah_loop2
         dec     ebp
         js      .readroot_ah_loop2
         push    eax
         xor     eax, eax
-        inc     dword[edx + 4]
-        mov     dword[edi], 0x10 ; attributes: folder
-        mov     dword[edi + 4], ebx
+        inc     [edx + fs.file_info_header_t.files_read]
+        mov     [edi + fs.file_info_t.attributes], FS_INFO_ATTR_DIR ; attributes: folder
+        mov     [edi + fs.file_info_t.flags], ebx
         add     edi, 8
-        mov     ecx, 40 / 4 - 2
+        mov     ecx, (sizeof.fs.file_info_t - 8) / 4
         rep
         stosd
         push    esi edi
@@ -422,7 +422,7 @@ kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////
 
     @@: lodsb
         stosb
-        test    bl, 1
+        test    bl, FS_INFO_FLAG_UNICODE
         jz      .ansi3
         mov     byte[edi], 0
         inc     edi
@@ -432,7 +432,7 @@ kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////
         jnz     @b
         pop     edi esi eax
         add     edi, 520
-        test    bl, 1
+        test    bl, FS_INFO_FLAG_UNICODE
         jnz     .readroot_ah_loop2
         sub     edi, 520 - 264
         jmp     .readroot_ah_loop2
@@ -440,7 +440,7 @@ kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////
   .readroot_done:
         add     esp, 16
         pop     eax
-        mov     ebx, [edx + 4]
+        mov     ebx, [edx + fs.file_info_header_t.files_read]
         xor     eax, eax
         dec     ebp
         js      @f

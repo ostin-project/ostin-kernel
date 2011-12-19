@@ -608,7 +608,7 @@ kproc update_mem_size ;/////////////////////////////////////////////////////////
         jg      .search_threads_end
         mov     edx, eax
         shl     edx, 5
-        cmp     [TASK_DATA + edx - sizeof.task_data_t + task_data_t.state], TSTATE_FREE ; if slot empty?
+        cmp     [TASK_DATA + edx - sizeof.task_data_t + task_data_t.state], THREAD_STATE_FREE ; if slot empty?
         jz      .search_threads_next
         shl     edx, 3
         cmp     [SLOT_BASE + edx + app_data_t.dir_table], ecx ; if it is our thread?

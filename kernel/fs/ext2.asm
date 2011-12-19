@@ -664,9 +664,9 @@ kproc ext2_HdReadFolder ;///////////////////////////////////////////////////////
         stosd
         mov     eax, [ebx + ext2_inode_t.i_dir_acl] ; high size
         stosd
-        xor     [edx + fs.file_info_t.attributes], FS_INFO_ATTR_FOLDER
+        xor     [edx + fs.file_info_t.attributes], FS_INFO_ATTR_DIR
 
-    @@: xor     [edx + fs.file_info_t.attributes], FS_INFO_ATTR_FOLDER
+    @@: xor     [edx + fs.file_info_t.attributes], FS_INFO_ATTR_DIR
         pop     esi eax
 
         ; now copying the name, converting it from UTF-8 to CP866
@@ -964,9 +964,9 @@ kproc ext2_HdGetFileInfo ;//////////////////////////////////////////////////////
         mov     ebx, [ebp + ext2_inode_t.i_dir_acl] ; high size
         mov     [edx + fs.file_info_t.size.low], eax
         mov     [edx + fs.file_info_t.size.high], ebx
-        xor     [edx + fs.file_info_t.attributes], FS_INFO_ATTR_FOLDER
+        xor     [edx + fs.file_info_t.attributes], FS_INFO_ATTR_DIR
 
-    @@: xor     [edx + fs.file_info_t.attributes], FS_INFO_ATTR_FOLDER
+    @@: xor     [edx + fs.file_info_t.attributes], FS_INFO_ATTR_DIR
 
         lea     edi, [edx + fs.file_info_t.created_at]
         mov     eax, [ebx + ext2_inode_t.i_ctime]

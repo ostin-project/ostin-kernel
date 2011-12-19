@@ -179,9 +179,9 @@ kproc find_next_task ;//////////////////////////////////////////////////////////
     @@: inc     bh ; ebx += app_data_t.size
         add     edi, sizeof.task_data_t ; edi += sizeof.task_data_t
         mov     al, [edi + task_data_t.state]
-        test    al, al ; TSTATE_RUNNING
+        test    al, al ; THREAD_STATE_RUNNING
         jz      .found ; state == 0
-        cmp     al, TSTATE_WAITING
+        cmp     al, THREAD_STATE_WAITING
         jne     .loop ; state == 1,2,3,4,9
         ; state == 5
         pushad  ; more freedom for [app_data_t.wait_test]
@@ -201,7 +201,7 @@ kproc find_next_task ;//////////////////////////////////////////////////////////
         jb      .loop
 
     @@: mov     [ebx + app_data_t.wait_param], eax ; retval for wait
-        mov     [edi + task_data_t.state], TSTATE_RUNNING
+        mov     [edi + task_data_t.state], THREAD_STATE_RUNNING
 
   .found:
         mov     byte[CURRENT_TASK], bh

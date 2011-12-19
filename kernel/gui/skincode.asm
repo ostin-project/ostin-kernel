@@ -54,34 +54,6 @@ kproc read_skin_file ;//////////////////////////////////////////////////////////
         ret
 kendp
 
-struct skin_header_t
-  ident   dd ?
-  version dd ?
-  params  dd ?
-  buttons dd ?
-  bitmaps dd ?
-ends
-
-struct skin_params_t
-  skin_height    dd ?
-  margin         skin_margins_t
-  colors         skin_data_colors_t
-  colors_1       skin_data_colors_t
-  dtp.size       dd ?
-  dtp.data       db 40 dup (?)
-ends
-
-struct skin_buttons_t
-  type dd ?
-  box  box16_t
-ends
-
-struct skin_bitmaps_t
-  kind  dw ?
-  type  dw ?
-  data  dd ?
-ends
-
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc load_default_skin ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -123,8 +95,12 @@ kproc parse_skin_data ;/////////////////////////////////////////////////////////
         lea     esi, [ebx + skin_params_t.dtp.data]
         mov     edi, common_colours
         mov     ecx, [ebx + skin_params_t.dtp.size]
-        and     ecx, 127
-        rep
+        cmp     ecx, sizeof.system_colors_t
+        jb      @f
+
+        mov     ecx, sizeof.system_colors_t
+
+    @@: rep
         movsb
         mov     eax, dword[ebx + skin_params_t.margin.right]
         mov     dword[_skinmargins + 0], eax
@@ -367,7 +343,7 @@ kproc drawwindow_IV ;///////////////////////////////////////////////////////////
         mov     ecx, [esi + window_data_t.box.width]
         inc     ecx
         mov     edx, [_skinh]
-        mov     edi, [common_colours + 4] ; standard grab color
+        mov     edi, [common_colours.grab] ; standard grab color
         call    [drawbar]
         jmp     .draw_clientbar
 

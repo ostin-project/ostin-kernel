@@ -226,7 +226,7 @@ kproc mouse._.left_button_press_handler ;///////////////////////////////////////
         call    sys_window_maximize_handler
         jmp     .exit
 
-    @@: test    [edi + window_data_t.fl_wstate], WSTATE_MAXIMIZED
+    @@: test    [edi + window_data_t.fl_wstate], WINDOW_STATE_MAXIMIZED
         jnz     .exit
         mov     [mouse.active_sys_window.pslot], esi
         lea     eax, [edi + window_data_t.box]
@@ -649,7 +649,7 @@ kproc mouse._.check_sys_window_actions ;////////////////////////////////////////
         add     edx, -window.BORDER_SIZE
 
         ; is it rolled up?
-        test    [edi + window_data_t.fl_wstate], WSTATE_ROLLEDUP
+        test    [edi + window_data_t.fl_wstate], WINDOW_STATE_ROLLEDUP
         jnz     .resize_w_or_e_action
 
         cmp     eax, window.BORDER_SIZE

@@ -1666,7 +1666,7 @@ kproc ntfs_HdReadFolder ;///////////////////////////////////////////////////////
         mov     [edi + fs.file_info_t.flags], eax
 ;       mov     eax, dword[ntfs_bitmap_buf+0x20]
 ;       or      al, 0x10
-        mov     eax, FS_INFO_ATTR_FOLDER
+        mov     eax, FS_INFO_ATTR_DIR
         stosd
         scasd
         push    edx

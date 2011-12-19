@@ -359,7 +359,7 @@ proc get_new_process_place ;////////////////////////////////////////////////////
         cmp     eax, ebx
         jz      .endnewprocessplace ; empty slot after high boundary
         add     eax, sizeof.task_data_t
-        cmp     [eax + task_data_t.state], TSTATE_FREE ; check process state, 9 means that process slot is empty
+        cmp     [eax + task_data_t.state], THREAD_STATE_FREE ; check process state, 9 means that process slot is empty
         jnz     .newprocessplace
 
   .endnewprocessplace:
@@ -368,7 +368,7 @@ proc get_new_process_place ;////////////////////////////////////////////////////
         shr     eax, 5 ; calculate slot index
         cmp     eax, 256
         jge     .failed ; it should be <256
-        mov     [ebx + task_data_t.state], TSTATE_FREE ; set process state to 9 (for slot after hight boundary)
+        mov     [ebx + task_data_t.state], THREAD_STATE_FREE ; set process state to 9 (for slot after hight boundary)
         ret
 
   .failed:
@@ -580,7 +580,7 @@ proc destroy_app_space stdcall, pg_dir:dword, dlls_list:dword ;/////////////////
         ; eax = current slot of process
         mov     ecx, eax
         shl     ecx, 5
-        cmp     [TASK_DATA + ecx - sizeof.task_data_t + task_data_t.state], TSTATE_FREE ; if process running?
+        cmp     [TASK_DATA + ecx - sizeof.task_data_t + task_data_t.state], THREAD_STATE_FREE ; if process running?
         jz      @f ; skip empty slots
         shl     ecx, 3
         add     ecx, SLOT_BASE
@@ -664,7 +664,7 @@ kproc pid_to_slot ;/////////////////////////////////////////////////////////////
   .loop:
         ; ecx=offset of current process info entry
         ; ebx=maximum permitted offset
-        cmp     [TASK_DATA + ecx - sizeof.task_data_t + task_data_t.state], TSTATE_FREE
+        cmp     [TASK_DATA + ecx - sizeof.task_data_t + task_data_t.state], THREAD_STATE_FREE
         jz      .endloop ; skip empty slots
         cmp     [TASK_DATA + ecx - sizeof.task_data_t + task_data_t.pid], eax ; check PID
         jz      .pid_found
@@ -713,7 +713,7 @@ kproc check_region ;////////////////////////////////////////////////////////////
         test    edx, edx
         jle     .ok
         shl     eax, 5
-        cmp     [TASK_DATA + eax - sizeof.task_data_t + task_data_t.state], TSTATE_RUNNING
+        cmp     [TASK_DATA + eax - sizeof.task_data_t + task_data_t.state], THREAD_STATE_RUNNING
         jnz     .failed
         shl     eax, 3
         mov     eax, [SLOT_BASE + eax + app_data_t.dir_table]
@@ -1181,7 +1181,7 @@ endl
         mov     edx, tls_app_entry
 
     @@: ; set window state to 'normal' (non-minimized/maximized/rolled-up) state
-        mov     [window_data + ebx + window_data_t.fl_wstate], WSTATE_NORMAL
+        mov     [window_data + ebx + window_data_t.fl_wstate], WINDOW_STATE_NORMAL
         mov     [window_data + ebx + window_data_t.fl_redraw], 1
         add     ebx, TASK_DATA - sizeof.task_data_t ; ebx - pointer to information about process
         mov     [ebx + task_data_t.wnd_number], al ; set window number on screen = process slot
@@ -1231,11 +1231,11 @@ endl
         shl     ebx, 5
         mov     [SLOT_BASE + ebx * 8 + app_data_t.saved_esp], ecx
 
-        xor     ecx, ecx ; TSTATE_RUNNING, process state - running
+        xor     ecx, ecx ; THREAD_STATE_RUNNING, process state - running
         ; set if debuggee
         test    byte[flags], 1
         jz      .no_debug
-        inc     ecx ; TSTATE_RUN_SUSPENDED, process state - suspended
+        inc     ecx ; THREAD_STATE_RUN_SUSPENDED, process state - suspended
         mov     eax, [CURRENT_TASK]
         mov     [SLOT_BASE + ebx * 8 + app_data_t.debugger_slot], eax
 

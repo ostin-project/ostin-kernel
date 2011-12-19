@@ -186,8 +186,6 @@ struct tss_t
   io_map_1 rb 4096
 ends
 
-diff10 'sizeof.tss_t', 0, sizeof.tss_t - 4096 * 2
-
 OS_BASE = 0x80000000
 
 virtual at OS_BASE
