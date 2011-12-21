@@ -79,7 +79,8 @@ kproc core.process.alloc ;//////////////////////////////////////////////////////
         xchg    eax, edi
         xor     eax, eax
         mov     ecx, sizeof.core.process_t / 4
-        rep     stosd
+        rep
+        stosd
 
         call    core.process.lock_tree
 

@@ -121,7 +121,8 @@ kproc core.thread.alloc ;///////////////////////////////////////////////////////
         xchg    eax, edi
         xor     eax, eax
         mov     ecx, sizeof.core.thread_t / 4
-        rep     stosd
+        rep
+        stosd
 
         call    core.thread.lock_tree
 
