@@ -34,14 +34,21 @@ match =1, KCONFIG_BLK_ATA
 {
 include "ata.asm"
 }
+
 match =1, KCONFIG_BLK_ATAPI
 {
+match =0, KCONFIG_BLK_ATA
+\{
+include "ata.asm"
+\}
 include "atapi.asm"
 }
+
 match =1, KCONFIG_BLK_FLOPPY
 {
 include "floppy.asm"
 }
+
 match =1, KCONFIG_BLK_MEMORY
 {
 include "memory.asm"
