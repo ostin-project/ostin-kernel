@@ -943,11 +943,11 @@ end if
         ; STACK AND FDC
         call    stack_init
 
-if KCONFIG_BLKDEV_FLOPPY
+if KCONFIG_BLK_FLOPPY
 
-        call    blkdev.floppy.ctl.initialize
+        call    blk.floppy.ctl.initialize
 
-end if ; KCONFIG_BLKDEV_FLOPPY
+end if ; KCONFIG_BLK_FLOPPY
 
         jmp     osloop
 
@@ -994,11 +994,11 @@ osloop:
         call    stack_handler
         call    checkidle
 
-if KCONFIG_BLKDEV_FLOPPY
+if KCONFIG_BLK_FLOPPY
 
-        call    blkdev.floppy.ctl.process_events
+        call    blk.floppy.ctl.process_events
 
-end if ; KCONFIG_BLKDEV_FLOPPY
+end if ; KCONFIG_BLK_FLOPPY
 
         call    check_ATAPI_device_event
         jmp     osloop

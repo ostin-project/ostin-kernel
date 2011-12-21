@@ -20,7 +20,7 @@ iglobal
   ; in this table names must be in lowercase
   rootdirs:
 
-if KCONFIG_BLKDEV_MEMORY
+if KCONFIG_BLK_MEMORY
 
     db 2, 'rd'
     dd fs_OnGenericQuery ; fs_OnRamdisk
@@ -29,9 +29,9 @@ if KCONFIG_BLKDEV_MEMORY
     dd fs_OnGenericQuery ; fs_OnRamdisk
     dd fs_NextRamdisk
 
-end if ; KCONFIG_BLKDEV_MEMORY
+end if ; KCONFIG_BLK_MEMORY
 
-if KCONFIG_BLKDEV_FLOPPY
+if KCONFIG_BLK_FLOPPY
 
     db 2, 'fd'
     dd fs_OnGenericQuery2 ; fs_OnFloppy
@@ -40,7 +40,7 @@ if KCONFIG_BLKDEV_FLOPPY
     dd fs_OnGenericQuery2 ; fs_OnFloppy
     dd fs_NextFloppy
 
-end if ; KCONFIG_BLKDEV_FLOPPY
+end if ; KCONFIG_BLK_FLOPPY
 
     db 3, 'hd0'
     dd fs_OnHd0
@@ -70,19 +70,19 @@ end if ; KCONFIG_BLKDEV_FLOPPY
 
   virtual_root_query:
 
-if KCONFIG_BLKDEV_MEMORY
+if KCONFIG_BLK_MEMORY
 
     dd fs_HasRamdisk
     db 'rd', 0
 
-end if ; KCONFIG_BLKDEV_MEMORY
+end if ; KCONFIG_BLK_MEMORY
 
-if KCONFIG_BLKDEV_FLOPPY
+if KCONFIG_BLK_FLOPPY
 
     dd fs_HasFloppy
     db 'fd', 0
 
-end if ; KCONFIG_BLKDEV_FLOPPY
+end if ; KCONFIG_BLK_FLOPPY
 
     dd fs_HasHd0
     db 'hd0', 0
@@ -545,10 +545,10 @@ kproc fs.generic_query_handler ;////////////////////////////////////////////////
 kendp
 
 iglobal
-  if KCONFIG_BLKDEV_MEMORY
+  if KCONFIG_BLK_MEMORY
 
   align 4
-  ; blkdev.memory.device_data_t
+  ; blk.memory.device_data_t
   static_test_ram_device_data:
     ; data
     dd RAMDISK ; offset
@@ -557,10 +557,10 @@ iglobal
     db 0
 
   align 4
-  ; blkdev.device_t
+  ; blk.device_t
   static_test_ram_device:
     ; vftbl
-    dd blkdev.memory.vftbl
+    dd blk.memory.vftbl
     ; name
     db 'rd', 30 dup(0)
     ; user_data
@@ -583,21 +583,21 @@ iglobal
     ; user_data
     dd static_test_ram_partition_data
 
-  end if ; KCONFIG_BLKDEV_MEMORY
+  end if ; KCONFIG_BLK_MEMORY
 endg
 
 uglobal
-  if KCONFIG_BLKDEV_MEMORY
+  if KCONFIG_BLK_MEMORY
 
   align 4
   ; fs.fat12.partition_data_t
   static_test_ram_partition_data:
     rb sizeof.fs.fat12.partition_data_t
 
-  end if ; KCONFIG_BLKDEV_MEMORY
+  end if ; KCONFIG_BLK_MEMORY
 endg
 
-if KCONFIG_BLKDEV_MEMORY
+if KCONFIG_BLK_MEMORY
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs_OnGenericQuery ;///////////////////////////////////////////////////////////////////////////////////////////////
@@ -606,28 +606,28 @@ kproc fs_OnGenericQuery ;///////////////////////////////////////////////////////
         jmp     fs.generic_query_handler
 kendp
 
-end if ; KCONFIG_BLKDEV_MEMORY
+end if ; KCONFIG_BLK_MEMORY
 
 iglobal
-  if KCONFIG_BLKDEV_FLOPPY
+  if KCONFIG_BLK_FLOPPY
 
   align 4
-  ; blkdev.floppy.device_data_t
+  ; blk.floppy.device_data_t
   static_test_floppy_device_data:
     ; position
-    db sizeof.blkdev.floppy.chs_t dup(0)
+    db sizeof.blk.floppy.chs_t dup(0)
     ; status
-    db sizeof.blkdev.floppy.status_t dup(0)
+    db sizeof.blk.floppy.status_t dup(0)
     ; drive_number
     db 0
     ; motor_timer
     dd 0
 
   align 4
-  ; blkdev.device_t
+  ; blk.device_t
   static_test_floppy_device:
     ; vftbl
-    dd blkdev.floppy.vftbl
+    dd blk.floppy.vftbl
     ; name
     db 'fd', 30 dup(0)
     ; user_data
@@ -650,21 +650,21 @@ iglobal
     ; user_data
     dd static_test_floppy_partition_data
 
-  end if ; KCONFIG_BLKDEV_FLOPPY
+  end if ; KCONFIG_BLK_FLOPPY
 endg
 
 uglobal
-  if KCONFIG_BLKDEV_FLOPPY
+  if KCONFIG_BLK_FLOPPY
 
   align 4
   ; fs.fat12.partition_data_t
   static_test_floppy_partition_data:
     rb sizeof.fs.fat12.partition_data_t
 
-  end if ; KCONFIG_BLKDEV_FLOPPY
+  end if ; KCONFIG_BLK_FLOPPY
 endg
 
-if KCONFIG_BLKDEV_FLOPPY
+if KCONFIG_BLK_FLOPPY
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs_OnGenericQuery2 ;//////////////////////////////////////////////////////////////////////////////////////////////
@@ -673,7 +673,7 @@ kproc fs_OnGenericQuery2 ;//////////////////////////////////////////////////////
         jmp     fs.generic_query_handler
 kendp
 
-end if ; KCONFIG_BLKDEV_FLOPPY
+end if ; KCONFIG_BLK_FLOPPY
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs_OnHd0 ;////////////////////////////////////////////////////////////////////////////////////////////////////////

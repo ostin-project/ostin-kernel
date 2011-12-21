@@ -14,38 +14,38 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-struct blkdev.memory.device_data_t
+struct blk.memory.device_data_t
   data       memory_range32_t
   needs_free db ?
 ends
 
 iglobal
-  jump_table blkdev.memory, vftbl, , \
+  jump_table blk.memory, vftbl, blk.not_implemented, \
     destroy, \
     read, \
     write
 endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc blkdev.memory.create ;////////////////////////////////////////////////////////////////////////////////////////////
+kproc blk.memory.create ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Create memory device.
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax ^= data (0 to allocate)
 ;> ecx #= size (in blocks)
 ;-----------------------------------------------------------------------------------------------------------------------
-;< eax ^= blkdev.memory.device_data_t (0 on error)
+;< eax ^= blk.memory.device_data_t (0 on error)
 ;-----------------------------------------------------------------------------------------------------------------------
         push    ebx ecx eax
 
-        mov     eax, sizeof.blkdev.memory.device_data_t
+        mov     eax, sizeof.blk.memory.device_data_t
         call    malloc
         test    eax, eax
         jz      .cant_alloc_device_data_error
 
         xchg    eax, ebx
 
-        and     [ebx + blkdev.memory.device_data_t.needs_free], 0
+        and     [ebx + blk.memory.device_data_t.needs_free], 0
 
         pop     eax
         test    eax, eax
@@ -61,11 +61,11 @@ kproc blkdev.memory.create ;////////////////////////////////////////////////////
         test    eax, eax
         jz      .cant_alloc_data_error
 
-        inc     [ebx + blkdev.memory.device_data_t.needs_free]
+        inc     [ebx + blk.memory.device_data_t.needs_free]
 
   .set_data:
-        mov     [ebx + blkdev.memory.device_data_t.data.address], eax
-        pop     [ebx + blkdev.memory.device_data_t.data.size]
+        mov     [ebx + blk.memory.device_data_t.data.address], eax
+        pop     [ebx + blk.memory.device_data_t.data.size]
 
         xchg    eax, ebx
         pop     ebx
@@ -85,16 +85,16 @@ kproc blkdev.memory.create ;////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc blkdev.memory.destroy ;///////////////////////////////////////////////////////////////////////////////////////////
+kproc blk.memory.destroy ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Destroy memory device.
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= blkdev.memory.device_data_t
+;> ebx ^= blk.memory.device_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     [ebx + blkdev.memory.device_data_t.needs_free], 0
+        cmp     [ebx + blk.memory.device_data_t.needs_free], 0
         je      .free_device_data
 
-        push    [ebx + blkdev.memory.device_data_t.data.address]
+        push    [ebx + blk.memory.device_data_t.data.address]
         call    kernel_free
 
   .free_device_data:
@@ -104,14 +104,14 @@ kproc blkdev.memory.destroy ;///////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc blkdev.memory.read ;//////////////////////////////////////////////////////////////////////////////////////////////
+kproc blk.memory.read ;/////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Read from memory device.
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> edi ^= buffer
 ;> ecx #= buffer size (number of blocks to read)
 ;> edx:eax #= offset (in blocks)
-;> ebx ^= blkdev.memory.device_data_t
+;> ebx ^= blk.memory.device_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -127,12 +127,12 @@ kproc blkdev.memory.read ;//////////////////////////////////////////////////////
         jc      .overflow_error
         test    edx, not (0xffffffff shr 9)
         jnz     .overflow_error
-        cmp     edx, [ebx + blkdev.memory.device_data_t.data.size]
+        cmp     edx, [ebx + blk.memory.device_data_t.data.size]
         ja      .overflow_error
 
         ; copy data to the supplied buffer
         push    esi edi
-        mov     esi, [ebx + blkdev.memory.device_data_t.data.address]
+        mov     esi, [ebx + blk.memory.device_data_t.data.address]
         shl     eax, 9
         add     esi, eax
         shl     ecx, 9
@@ -149,14 +149,14 @@ kproc blkdev.memory.read ;//////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc blkdev.memory.write ;/////////////////////////////////////////////////////////////////////////////////////////////
+kproc blk.memory.write ;////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Write to memory device.
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> esi ^= buffer
 ;> ecx #= buffer size (number of blocks to write)
 ;> edx:eax #= offset (in blocks)
-;> ebx ^= blkdev.memory.device_data_t
+;> ebx ^= blk.memory.device_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -172,12 +172,12 @@ kproc blkdev.memory.write ;/////////////////////////////////////////////////////
         jc      .overflow_error
         test    edx, not (0xffffffff shr 9)
         jnz     .overflow_error
-        cmp     edx, [ebx + blkdev.memory.device_data_t.data.size]
+        cmp     edx, [ebx + blk.memory.device_data_t.data.size]
         ja      .overflow_error
 
         ; copy data from the supplied buffer
         push    esi edi
-        mov     edi, [ebx + blkdev.memory.device_data_t.data.address]
+        mov     edi, [ebx + blk.memory.device_data_t.data.address]
         shl     eax, 9
         add     edi, eax
         shl     ecx, 9

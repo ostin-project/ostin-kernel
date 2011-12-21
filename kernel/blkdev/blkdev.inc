@@ -14,27 +14,35 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-BLKDEV_MAX_NAME_LEN = 32
+BLK_MAX_DEVICE_NAME_LEN = 32
 
-struct blkdev.vftbl_t
+struct blk.device_vftbl_t
   destroy dd ?
   read    dd ?
   write   dd ?
 ends
 
-struct blkdev.device_t
-  vftbl     dd ? ; ^= blkdev.vftbl_t
-  name      rb BLKDEV_MAX_NAME_LEN
-  user_data dd ? ; ^= blkdev.?.device_data_t
+struct blk.device_t
+  vftbl     dd ? ; ^= blk.device_vftbl_t
+  name      rb BLK_MAX_DEVICE_NAME_LEN
+  user_data dd ? ; ^= blk.?.device_data_t
 ends
 
 include "blkdev.asm"
 
-match =1, KCONFIG_BLKDEV_FLOPPY
+match =1, KCONFIG_BLK_ATA
+{
+include "ata.asm"
+}
+match =1, KCONFIG_BLK_ATAPI
+{
+include "atapi.asm"
+}
+match =1, KCONFIG_BLK_FLOPPY
 {
 include "floppy.asm"
 }
-match =1, KCONFIG_BLKDEV_MEMORY
+match =1, KCONFIG_BLK_MEMORY
 {
 include "memory.asm"
 }

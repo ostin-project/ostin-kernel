@@ -58,7 +58,7 @@ kproc fs.read ;/////////////////////////////////////////////////////////////////
         add     eax, dword[ebx + fs.partition_t.range.offset]
         adc     edx, dword[ebx + fs.partition_t.range.offset + 4]
         mov     ebx, [ebx + fs.partition_t.device]
-        call    blkdev.read
+        call    blk.read
         pop     edx ebx
 
         ret
@@ -91,7 +91,7 @@ kproc fs.write ;////////////////////////////////////////////////////////////////
         add     eax, dword[ebx + fs.partition_t.range.offset]
         adc     edx, dword[ebx + fs.partition_t.range.offset + 4]
         mov     ebx, [ebx + fs.partition_t.device]
-        call    blkdev.write
+        call    blk.write
         pop     edx ebx
 
         ret

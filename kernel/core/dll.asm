@@ -242,16 +242,16 @@ align 16
         cmp     [v86_irqhooks + eax * 8], 0
         jnz     v86_irq
 
-if KCONFIG_BLKDEV_FLOPPY
+if KCONFIG_BLK_FLOPPY
 
         cmp     al, 6
         jnz     @f
         push    eax
-        call    [blkdev.floppy.ctl.irq_func]
+        call    [blk.floppy.ctl.irq_func]
         mov     [check_idle_semaphore], 5
         pop     eax
 
-end if ; KCONFIG_BLKDEV_FLOPPY
+end if ; KCONFIG_BLK_FLOPPY
 
     @@: cmp     al, 14
         jnz     @f
