@@ -1,5 +1,5 @@
 ;;======================================================================================================================
-;;///// fs.inc ///////////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
+;;///// cdfs.inc /////////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
 ;;======================================================================================================================
 ;; (c) 2011 Ostin project <http://ostin.googlecode.com/>
 ;;======================================================================================================================
@@ -14,49 +14,7 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-FS_PARTITION_TYPE_UNKNOWN = 0
-FS_PARTITION_TYPE_FAT12   = 1
-FS_PARTITION_TYPE_FAT16   = 2
-FS_PARTITION_TYPE_FAT32   = 3
-FS_PARTITION_TYPE_NTFS    = 4
-FS_PARTITION_TYPE_EXT2    = 5
-FS_PARTITION_TYPE_CDFS    = 6
+include "iso13490.inc"
+include "iso9660.inc"
 
-struct fs.vftbl_t
-  read_file        dd ?
-  read_directory   dd ?
-  create_file      dd ?
-  write_file       dd ?
-  truncate_file    dd ?
-  get_file_info    dd ?
-  set_file_info    dd ?
-                   dd ?
-  delete_file      dd ?
-  create_directory dd ?
-ends
-
-struct fs.partition_t
-  vftbl     dd ? ; ^= fs.vftbl_t
-  device    dd ? ; ^= blk.device_t
-  range     range64_t
-  type      db ? ; #= one of FS_PARTITION_TYPE_*
-  number    db ?
-  user_data dd ? ; ^= fs.?.partition_data_t
-ends
-
-include "fs.asm"
-
-match =1, KCONFIG_FS_FAT
-{
-include "fat/fat.inc"
-}
-
-match =1, KCONFIG_FS_CDFS
-{
-include "cdfs/cdfs.inc"
-}
-
-include "ext2.asm"
-include "fs_lfn.asm"
-include "iso9660.asm"
-include "ntfs.asm"
+include "cdfs.asm"

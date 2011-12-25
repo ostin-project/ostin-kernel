@@ -55,7 +55,7 @@ end if ; KCONFIG_BLK_FLOPPY
     dd fs_OnHd3
     dd fs_NextHd3
     db 3, 'cd0'
-    dd fs_OnCd0
+    dd fs_OnGenericQuery4 ; fs_OnCd0
     dd fs_NextCd
     db 3, 'cd1'
     dd fs_OnCd1
@@ -674,6 +674,78 @@ kproc fs_OnGenericQuery2 ;//////////////////////////////////////////////////////
 kendp
 
 end if ; KCONFIG_BLK_FLOPPY
+
+iglobal
+  if KCONFIG_BLK_ATAPI
+
+  align 4
+  ; blk.atapi.device_data_t
+  static_test_atapi_device_data:
+    ; channel_number
+    db 0
+    ; drive_number
+    db 0
+    ; base_reg
+    dw 0x01f0
+    ; dev_ctl_reg
+    dw 0x03f6
+
+  align 4
+  ; blk.device_t
+  static_test_atapi_device:
+    ; vftbl
+    dd blk.atapi.vftbl
+    ; name
+    db 'cd', 30 dup(0)
+    ; user_data
+    dd static_test_atapi_device_data
+
+  align 4
+  ; fs.partition_t
+  static_test_atapi_partition:
+    ; vftbl
+    dd fs.cdfs.vftbl
+    ; device
+    dd static_test_atapi_device
+    ; range
+    dq 0 ; offset
+    dq 360000 * 4 ; length
+    ; type
+    db FS_PARTITION_TYPE_CDFS
+    ; number
+    db 1
+    ; user_data
+    dd static_test_atapi_partition_data
+
+  end if ; KCONFIG_BLK_ATAPI
+endg
+
+uglobal
+  if KCONFIG_BLK_ATAPI
+
+  align 4
+  ; fs.iso9660.partition_data_t
+  static_test_atapi_partition_data:
+    rb sizeof.fs.cdfs.partition_data_t
+
+  end if ; KCONFIG_BLK_ATAPI
+endg
+
+if KCONFIG_BLK_ATAPI
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs_OnGenericQuery4 ;//////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        jmp     fs_OnCd0
+
+;       cmp     [ebx + fs.query_t.function], FS_FUNC_READ_DIR
+;       jne     fs_OnCd0
+
+;       mov     edx, static_test_atapi_partition
+;       jmp     fs.generic_query_handler
+kendp
+
+end if ; KCONFIG_BLK_ATAPI
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs_OnHd0 ;////////////////////////////////////////////////////////////////////////////////////////////////////////

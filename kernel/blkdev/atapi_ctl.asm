@@ -198,10 +198,15 @@ kproc blk.atapi.ctl._.send_no_dat_command ;/////////////////////////////////////
 
         xor     ecx, ecx
         push    dword[esp + 4 + 4]
-        call    blk.atapi.ctl._.send_dat_command
+        call    blk.atapi.ctl._.send_packet_command
+        test    eax, eax
+        jnz     .exit
 
+        call    blk.ata.ctl._.wait_for_drdy
+
+  .exit:
         pop     ecx
-        ret
+        ret     4
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -212,49 +217,62 @@ kproc blk.atapi.ctl._.send_dat_command ;////////////////////////////////////////
 ;> ecx #= buffer size
 ;> [esp + 4] ^= command buffer callback, f(esi)
 ;-----------------------------------------------------------------------------------------------------------------------
-        push    ecx edx esi
-
-        call    blk.ata.ctl.packet
+        push    dword[esp + 4]
+        call    blk.atapi.ctl._.send_packet_command
         test    eax, eax
         jnz     .exit
 
-        push    eax eax eax
-        mov     esi, esp
+        call    blk.ata.ctl._.wait_for_drq
+        test    eax, eax
+        jnz     .exit
 
-        lea     eax, [esp + 12 + 12 + 4 + 4]
-        pusha
-        call    dword[eax - 4]
-        popa
+        push    ecx edx
 
-        push    ecx
         mov     dx, [ebx + blk.atapi.device_data_t.base_reg]
-        mov     ecx, 12 / 2
-        rep
-        outsw
-        pop     ecx
-
-        add     esp, 12
-
-        test    ecx, ecx
-        jnz     @f
-
-        call    blk.ata.ctl._.wait_for_drdy
-        jmp     .wait_completed
-
-    @@: call    blk.ata.ctl._.wait_for_drq
-
-  .wait_completed:
-        test    eax, eax
-        jnz     .exit
-
-        test    ecx, ecx
-        jz      .exit
-
         shr     ecx, 1
         rep
         insw
 
+        pop     edx ecx
+
   .exit:
-        pop     esi edx ecx
+        ret     4
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc blk.atapi.ctl._.send_packet_command ;/////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= blk.atapi.ctl.device_data_t
+;> ecx #= buffer size
+;> [esp + 4] ^= command buffer callback, f(esi)
+;-----------------------------------------------------------------------------------------------------------------------
+        call    blk.ata.ctl.packet
+        test    eax, eax
+        jnz     .exit
+
+        push    esi
+        push    eax eax eax
+        mov     esi, esp
+
+        lea     eax, [esp + 12 + 4 + 4 + 4]
+        pusha
+        call    dword[eax - 4]
+        popa
+
+        push    ecx edx
+
+        mov     dx, [ebx + blk.atapi.device_data_t.base_reg]
+        mov     ecx, 12 / 2
+        rep
+        outsw
+
+        pop     edx ecx
+
+        add     esp, 12
+        pop     esi
+
+        xor     eax, eax
+
+  .exit:
         ret     4
 kendp
