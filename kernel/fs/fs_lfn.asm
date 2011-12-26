@@ -736,8 +736,8 @@ if KCONFIG_BLK_ATAPI
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs_OnGenericQuery4 ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     [ebx + fs.query_t.function], FS_FUNC_READ_DIR
-        jne     fs_OnCd0
+        cmp     [ebx + fs.query_t.function], FS_FUNC_READ_FILE
+        je      fs_OnCd0
 
         mov     edx, static_test_atapi_partition
         jmp     fs.generic_query_handler

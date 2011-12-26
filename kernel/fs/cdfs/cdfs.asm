@@ -130,7 +130,24 @@ kproc fs.cdfs.get_file_info ;///////////////////////////////////////////////////
 ;> edx ^= fs.get_file_info_query_params_t
 ;> ebx ^= fs.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov_s_  eax, ERROR_NOT_IMPLEMENTED
+        cmp     byte[esi], 0
+        je      .not_implemented_error
+
+        call    fs.cdfs._.find_file_lfn
+        jc      .exit
+
+        xor     eax, eax
+        mov     esi, edi
+        mov     edi, [edx + fs.get_file_info_query_params_t.buffer_ptr]
+        call    fs.cdfs._.dir_entry_to_file_info
+
+        xor     eax, eax ; ERROR_SUCCESS
+
+  .exit:
+        ret
+
+  .not_implemented_error:
+        mov     eax, ERROR_NOT_IMPLEMENTED
         ret
 kendp
 
