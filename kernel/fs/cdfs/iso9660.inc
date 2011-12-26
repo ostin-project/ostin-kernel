@@ -36,6 +36,16 @@ FS_ISO9660_PERM_GRP_OWNER_EXEC = 0000010000000000b
 FS_ISO9660_PERM_GROUP_READ     = 0001000000000000b
 FS_ISO9660_PERM_GROUP_EXEC     = 0100000000000000b
 
+struct fs.iso9660.sys_number16_t
+  lsb dw ?
+  msb dw ?
+ends
+
+struct fs.iso9660.sys_number32_t
+  lsb dd ?
+  msb dd ?
+ends
+
 struct fs.iso9660.long_date_time_t
   year   dd ?
   month  dw ?
@@ -76,16 +86,16 @@ struct fs.iso9660.pri_vol_descr_t fs.iso9660.vol_descr_t
   system_ident           rb 32
   ident                  rb 32
                          rb 8
-  size                   dq ?
+  size                   fs.iso9660.sys_number32_t
                          rb 32
-  set_size               dd ?
-  seq_number             dd ?
-  logical_block_size     dd ?
-  path_tbl_size          dq ?
-  lsb_path_table_loc     dd ?
-  lsb_path_table_opt_loc dd ?
-  msb_path_table_loc     dd ?
-  msb_path_table_opt_loc dd ?
+  set_size               fs.iso9660.sys_number16_t
+  seq_number             fs.iso9660.sys_number16_t
+  logical_block_size     fs.iso9660.sys_number16_t
+  path_tbl_size          fs.iso9660.sys_number32_t
+  path_table_loc.lsb     dd ?
+  path_table_opt_loc.lsb dd ?
+  path_table_loc.msb     dd ?
+  path_table_opt_loc.msb dd ?
   root_dir_entry         rb 34
   set_ident              rb 128
   publisher_ident        rb 128
@@ -109,16 +119,16 @@ struct fs.iso9660.sup_vol_descr_t fs.iso9660.vol_descr_t
   system_ident           rb 32
   ident                  rb 32
                          rb 8
-  size                   dq ?
+  size                   fs.iso9660.sys_number32_t
   escape_sequences       rb 32
-  set_size               dd ?
-  seq_number             dd ?
-  logical_block_size     dd ?
-  path_tbl_size          dq ?
-  lsb_path_table_loc     dd ?
-  lsb_path_table_opt_loc dd ?
-  msb_path_table_loc     dd ?
-  msb_path_table_opt_loc dd ?
+  set_size               fs.iso9660.sys_number16_t
+  seq_number             fs.iso9660.sys_number16_t
+  logical_block_size     fs.iso9660.sys_number16_t
+  path_tbl_size          fs.iso9660.sys_number32_t
+  path_table_loc.lsb     dd ?
+  path_table_opt_loc.lsb dd ?
+  path_table_loc.msb     dd ?
+  path_table_opt_loc.msb dd ?
   root_dir_entry         rb 34
   set_ident              rb 128
   publisher_ident        rb 128
@@ -141,21 +151,21 @@ struct fs.iso9660.vol_part_descr_t fs.iso9660.vol_descr_t
                db ?
   system_ident rb 32
   ident        rb 32
-  loc          dq ?
-  size         dq ?
+  loc          fs.iso9660.sys_number32_t
+  size         fs.iso9660.sys_number32_t
   sys_use      rb 1960
 ends
 
 struct fs.iso9660.dir_entry_t
   entry_size          db ?
   ext_attr_entry_size db ?
-  extent_loc          dq ?
-  size                dq ?
+  extent_loc          fs.iso9660.sys_number32_t
+  size                fs.iso9660.sys_number32_t
   recorded_at         fs.iso9660.short_date_time_t
   attributes          db ? ; combination of FS_ISO9660_ATTR_*
   unit_size           db ?
   il_gap_size         db ?
-  vol_seq_number      dd ?
+  vol_seq_number      fs.iso9660.sys_number16_t
   name_size           db ?
   name                rb 0
 ends
@@ -169,8 +179,8 @@ struct fs.iso9660.path_tbl_entry_t
 ends
 
 struct fs.iso9660.ext_attr_entry_t
-  owner_id        dd ?
-  group_id        dd ?
+  owner_id        fs.iso9660.sys_number16_t
+  group_id        fs.iso9660.sys_number16_t
   permissions     dw ? ; combination of FS_ISO9660_PERM_*
   created_at      fs.iso9660.long_date_time_t
   modified_at     fs.iso9660.long_date_time_t
@@ -178,12 +188,12 @@ struct fs.iso9660.ext_attr_entry_t
   effective_at    fs.iso9660.long_date_time_t
   format          db ?
   attributes      db ?
-  size            dd ?
+  size            fs.iso9660.sys_number16_t
   system_ident    rb 32
                   rb 64
   version         db ?
   escape_seq_size db ?
                   rb 64
-  app_use_size    dd ?
+  app_use_size    fs.iso9660.sys_number16_t
   app_use         rb 0
 ends

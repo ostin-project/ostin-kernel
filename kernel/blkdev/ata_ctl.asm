@@ -174,7 +174,7 @@ kproc blk.ata.ctl._.wait_for_drq ;//////////////////////////////////////////////
         mov     dx, [ebx + blk.ata.device_data_t.base_reg]
         add     dx, BLK_ATA_CTL_REG_STATUS
 
-        mov     ecx, 0x0000ffff
+        mov     ecx, 0x00ffffff
 
   .wait_loop:
         dec     ecx

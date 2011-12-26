@@ -72,9 +72,9 @@ kproc blk.atapi.read ;//////////////////////////////////////////////////////////
         push    ecx edi
 
         shrd    eax, edx, 2
-        shl     ecx, 2
+        shr     ecx, 2
 
-        call    blk.atapi.read
+        call    blk.atapi.ctl.read
 
         pop     edi ecx
         ret

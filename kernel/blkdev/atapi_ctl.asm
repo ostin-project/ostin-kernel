@@ -49,11 +49,11 @@ kproc blk.atapi.ctl.read ;//////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
   .fill_command_buffer_10: ;::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ;-----------------------------------------------------------------------------------------------------------------------
-;> eax ^= params
+;> edx ^= params
 ;> esi ^= empty command buffer
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     byte[esi], BLK_ATAPI_CTL_CMD_READ_10
-        mov     ecx, [eax]
+        mov     ecx, [edx]
         xchg    cl, ch
         mov     [esi + 7], cx
         jmp     .fill_command_buffer_common
@@ -61,16 +61,16 @@ kproc blk.atapi.ctl.read ;//////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
   .fill_command_buffer_12: ;::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ;-----------------------------------------------------------------------------------------------------------------------
-;> eax ^= params
+;> edx ^= params
 ;> esi ^= empty command buffer
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     byte[esi], BLK_ATAPI_CTL_CMD_READ_12
-        mov     ecx, [eax]
+        mov     ecx, [edx]
         bswap   ecx
         mov     [esi + 6], ecx
 
   .fill_command_buffer_common:
-        mov     ecx, [eax + 4]
+        mov     ecx, [edx + 4]
         bswap   ecx
         mov     [esi + 2], ecx
         ret
@@ -197,7 +197,7 @@ kproc blk.atapi.ctl._.send_no_dat_command ;/////////////////////////////////////
         push    ecx
 
         xor     ecx, ecx
-        push    dword[esp + 4 + 4]
+        lea     eax, [esp + 4 + 4]
         call    blk.atapi.ctl._.send_packet_command
         test    eax, eax
         jnz     .exit
@@ -217,7 +217,7 @@ kproc blk.atapi.ctl._.send_dat_command ;////////////////////////////////////////
 ;> ecx #= buffer size
 ;> [esp + 4] ^= command buffer callback, f(esi)
 ;-----------------------------------------------------------------------------------------------------------------------
-        push    dword[esp + 4]
+        lea     eax, [esp + 4]
         call    blk.atapi.ctl._.send_packet_command
         test    eax, eax
         jnz     .exit
@@ -229,7 +229,7 @@ kproc blk.atapi.ctl._.send_dat_command ;////////////////////////////////////////
         push    ecx edx
 
         mov     dx, [ebx + blk.atapi.device_data_t.base_reg]
-        shr     ecx, 1
+        shl     ecx, 11 - 1
         rep
         insw
 
@@ -243,30 +243,34 @@ kendp
 kproc blk.atapi.ctl._.send_packet_command ;/////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> ebx ^= blk.atapi.ctl.device_data_t
+;> eax ^= command buffer callback address, f(esi)
 ;> ecx #= buffer size
-;> [esp + 4] ^= command buffer callback, f(esi)
 ;-----------------------------------------------------------------------------------------------------------------------
+        push    edx
+
+        push    eax
         call    blk.ata.ctl.packet
         test    eax, eax
+        pop     edx
         jnz     .exit
 
         push    esi
         push    eax eax eax
         mov     esi, esp
 
-        lea     eax, [esp + 12 + 4 + 4 + 4]
         pusha
-        call    dword[eax - 4]
+        add     edx, 4
+        call    dword[edx - 4]
         popa
 
-        push    ecx edx
+        push    ecx
 
         mov     dx, [ebx + blk.atapi.device_data_t.base_reg]
         mov     ecx, 12 / 2
         rep
         outsw
 
-        pop     edx ecx
+        pop     ecx
 
         add     esp, 12
         pop     esi
@@ -274,5 +278,6 @@ kproc blk.atapi.ctl._.send_packet_command ;/////////////////////////////////////
         xor     eax, eax
 
   .exit:
-        ret     4
+        pop     edx
+        ret
 kendp
