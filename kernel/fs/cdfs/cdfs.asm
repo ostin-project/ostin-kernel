@@ -43,7 +43,127 @@ kproc fs.cdfs.read_file ;///////////////////////////////////////////////////////
 ;< eax #= error code
 ;< ebx #= bytes read (on success)
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov_s_  eax, ERROR_NOT_IMPLEMENTED
+        cmp     byte[esi], 0
+        je      .access_denied_error
+
+        ; TODO: support offsets up to 8 TiB (43-bit)
+        cmp     dword[edx + fs.read_file_query_params_t.range.offset + 4], 0
+        jne     .end_of_file_error
+
+        call    fs.cdfs._.find_file_lfn
+        jc      .exit
+
+        ; do not allow reading directories
+        test    [edi + fs.iso9660.dir_entry_t.attributes], FS_ISO9660_ATTR_DIRECTORY
+        jnz     .access_denied_error
+
+        mov     ebp, dword[edx + fs.read_file_query_params_t.range.offset]
+        mov     eax, [edi + fs.iso9660.dir_entry_t.size.lsb]
+        cmp     ebp, eax
+        jae     .end_of_file_error
+
+        push    ERROR_SUCCESS 0
+
+        mov     ecx, [edx + fs.read_file_query_params_t.range.length]
+        sub     eax, ebp
+        cmp     ecx, eax
+        jbe     @f
+
+        mov     ecx, eax
+        mov     byte[esp + 4], ERROR_END_OF_FILE
+
+    @@: mov     eax, ebp
+        shr     eax, 11 ; / 2048
+        add     eax, [edi + fs.iso9660.dir_entry_t.extent_loc.lsb]
+
+        mov     edi, [edx + fs.read_file_query_params_t.buffer_ptr]
+
+        and     ebp, 2048 - 1
+        jnz     .incomplete_sector
+
+        dec     eax
+
+  .next_sector:
+        inc     eax
+
+        cmp     ecx, 2048
+        jb      .incomplete_sector
+
+        push    eax ecx
+
+        xor     edx, edx
+        shld    eax, edx, 2
+        mov_s_  ecx, 4
+        call    fs.read
+        test    eax, eax
+        jnz     .device_error_2
+
+        pop     ecx eax
+
+        add     dword[esp], 2048
+        add     edi, 2048
+        add     ecx, -2048
+        jz      .done
+        jmp     .next_sector
+
+  .incomplete_sector:
+        push    eax edi
+        call    fs.cdfs._.read_sector
+        lea     esi, [edi + ebp]
+        pop     edi eax
+        jnz     .device_error
+
+        not     ebp
+        add     ebp, 2048
+
+        push    ecx
+        cmp     ecx, ebp
+        jbe     @f
+
+        mov     ecx, ebp
+
+    @@: add     [esp + 4], ecx
+        rep
+        movsb
+        pop     ecx
+
+        sub     ecx, ebp
+        jbe     .done
+
+        xor     ebp, ebp
+        jmp     .next_sector
+
+  .done:
+        pop     ebx eax
+
+  .exit:
+        ret
+
+  .access_denied_error_2:
+        pop     eax edx ecx
+
+  .access_denied_error:
+        mov     eax, ERROR_ACCESS_DENIED
+        or      ebx, -1
+        ret
+
+  .eof:
+        mov     ebx, edx
+        pop     eax edx ecx
+        sub     ebx, edx
+
+  .end_of_file_error:
+        mov     eax, ERROR_END_OF_FILE
+        or      ebx, -1
+        ret
+
+  .device_error_2:
+        add     esp, 8
+
+  .device_error:
+        add     esp, 8
+        mov     eax, ERROR_DEVICE_FAIL
+        or      ebx, -1
         ret
 kendp
 

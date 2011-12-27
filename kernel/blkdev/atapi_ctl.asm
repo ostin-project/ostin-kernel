@@ -31,6 +31,7 @@ kproc blk.atapi.ctl.read ;//////////////////////////////////////////////////////
 ;> ebx ^= blk.atapi.device_data_t
 ;> eax #= offset (in blocks)
 ;> ecx #= size (in blocks)
+;> edi ^= buffer
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax ecx
 
@@ -214,7 +215,7 @@ kproc blk.atapi.ctl._.send_dat_command ;////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> ebx ^= blk.atapi.ctl.device_data_t
 ;> edi ^= buffer
-;> ecx #= buffer size
+;> ecx #= buffer size (in blocks)
 ;> [esp + 4] ^= command buffer callback, f(esi)
 ;-----------------------------------------------------------------------------------------------------------------------
         lea     eax, [esp + 4]
@@ -222,17 +223,25 @@ kproc blk.atapi.ctl._.send_dat_command ;////////////////////////////////////////
         test    eax, eax
         jnz     .exit
 
-        call    blk.ata.ctl._.wait_for_drq
-        test    eax, eax
-        jnz     .exit
-
         push    ecx edx
 
         mov     dx, [ebx + blk.atapi.device_data_t.base_reg]
-        shl     ecx, 11 - 1
+        shl     ecx, 2 ; 2048 B blocks -> 512 B blocks
+
+  .read_next_block:
+        call    blk.ata.ctl._.wait_for_drq
+        test    eax, eax
+        jnz     .done
+
+        push    ecx
+        mov     ecx, 512 / 2
         rep
         insw
+        pop     ecx
 
+        loop    .read_next_block
+
+  .done:
         pop     edx ecx
 
   .exit:
@@ -244,7 +253,7 @@ kproc blk.atapi.ctl._.send_packet_command ;/////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> ebx ^= blk.atapi.ctl.device_data_t
 ;> eax ^= command buffer callback address, f(esi)
-;> ecx #= buffer size
+;> ecx #= buffer size (in blocks)
 ;-----------------------------------------------------------------------------------------------------------------------
         push    edx
 

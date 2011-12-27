@@ -54,9 +54,15 @@ end if ; KCONFIG_BLK_FLOPPY
     db 3, 'hd3'
     dd fs_OnHd3
     dd fs_NextHd3
+
+if KCONFIG_BLK_ATAPI
+
     db 3, 'cd0'
     dd fs_OnGenericQuery4 ; fs_OnCd0
     dd fs_NextCd
+
+end if ; KCONFIG_BLK_ATAPI
+
     db 3, 'cd1'
     dd fs_OnCd1
     dd fs_NextCd
@@ -736,9 +742,6 @@ if KCONFIG_BLK_ATAPI
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs_OnGenericQuery4 ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     [ebx + fs.query_t.function], FS_FUNC_READ_FILE
-        je      fs_OnCd0
-
         mov     edx, static_test_atapi_partition
         jmp     fs.generic_query_handler
 kendp

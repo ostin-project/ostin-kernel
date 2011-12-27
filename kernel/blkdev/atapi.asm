@@ -69,14 +69,29 @@ kproc blk.atapi.read ;//////////////////////////////////////////////////////////
         test    cl, 0x03
         jnz     .alignment_error
 
-        push    ecx edi
+        push    ecx edx
 
         shrd    eax, edx, 2
         shr     ecx, 2
 
-        call    blk.atapi.ctl.read
+        push    10 ; retry count
 
-        pop     edi ecx
+  .retry:
+        push    eax ecx edx edi
+
+        call    blk.atapi.ctl.read
+        test    eax, eax
+        jz      .exit
+
+        pop     edi edx ecx eax
+
+        dec     byte[esp]
+        jnz     .retry
+
+  .exit:
+        pop     edi edx ecx
+        add     esp, 4 + 4
+        pop     edx ecx
         ret
 
   .overflow_error:
