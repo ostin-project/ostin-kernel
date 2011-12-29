@@ -618,18 +618,26 @@ iglobal
   if KCONFIG_BLK_FLOPPY
 
   align 4
-  ; blk.floppy.device_data_t
-  static_test_floppy_device_data:
+  ; blk.floppy.ctl.device_data_t
+  static_test_floppy_ctl_device_data:
     ; base_reg
     dw 0x03f0
     ; position
-    db sizeof.blk.floppy.chs_t dup(0)
+    db sizeof.chs8x8x8_t dup(0)
     ; status
-    db sizeof.blk.floppy.status_t dup(0)
+    db sizeof.blk.floppy.ctl.status_t dup(0)
+    ; motor_timer
+    dd 4 dup(0)
+    ; drive_number
+    db -1
+
+  align 4
+  ; blk.floppy.device_data_t
+  static_test_floppy_device_data:
+    ; ctl
+    dd static_test_floppy_ctl_device_data
     ; drive_number
     db 0
-    ; motor_timer
-    dd 0
 
   align 4
   ; blk.device_t

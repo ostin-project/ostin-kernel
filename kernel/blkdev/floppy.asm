@@ -15,28 +15,9 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-struct blk.floppy.chs_t
-  ; sector coordinates
-  cylinder db ?
-  head     db ?
-  sector   db ?
-ends
-
-struct blk.floppy.status_t
-  ; operation result block
-  st0         db ?
-  st1         db ?
-  st2         db ?
-  position    blk.floppy.chs_t
-  sector_size db ?
-ends
-
 struct blk.floppy.device_data_t
-  base_reg     dw ?
-  position     blk.floppy.chs_t
-  status       blk.floppy.status_t
+  ctl          dd ? ; ^= blk.floppy.ctl.device_data_t
   drive_number db ?
-  motor_timer  dd ?
 ends
 
 iglobal
@@ -87,11 +68,16 @@ kproc blk.floppy.read ;/////////////////////////////////////////////////////////
         test    eax, not (0xffffffff shr 9)
         jnz     .overflow_error
 
+        ; TODO: lock controller
+
+        call    blk.floppy._.select_drive
+
         push    ecx esi edi
 
   .next_sector:
-        push    eax
-        call    blk.floppy._.calculate_chs
+        push    eax ecx
+
+        call    blk.floppy._.lba_to_chs
 
         ; read sector
         mov     eax, blk.floppy._.read_sector
@@ -100,14 +86,12 @@ kproc blk.floppy.read ;/////////////////////////////////////////////////////////
         jnz     .exit
 
         ; copy sector data from FDC DMA buffer to the supplied buffer
-        push    ecx
         mov     ecx, BLK_FLOPPY_CTL_BYTES_PER_SECTOR / 4
         mov     esi, FDC_DMA_BUFFER
         rep
         movsd
-        pop     ecx
 
-        pop     eax
+        pop     ecx eax
         inc     eax
         dec     ecx
         jnz     .next_sector
@@ -116,6 +100,8 @@ kproc blk.floppy.read ;/////////////////////////////////////////////////////////
         push    eax
 
   .exit:
+        ; TODO: unlock controller
+
         add     esp, 4
         pop     edi esi ecx
         ret
@@ -143,19 +129,22 @@ kproc blk.floppy.write ;////////////////////////////////////////////////////////
         test    eax, not (0xffffffff shr 9)
         jnz     .overflow_error
 
+        ; TODO: lock controller
+
+        call    blk.floppy._.select_drive
+
         push    ecx esi edi
 
   .next_sector:
-        push    eax
-        call    blk.floppy._.calculate_chs
+        push    eax ecx
 
         ; copy sector data from the supplied buffer to FDC DMA buffer
-        push    ecx
         mov     ecx, BLK_FLOPPY_CTL_BYTES_PER_SECTOR / 4
         mov     edi, FDC_DMA_BUFFER
         rep
         movsd
-        pop     ecx
+
+        call    blk.floppy._.lba_to_chs
 
         ; write sector
         mov     eax, blk.floppy._.write_sector
@@ -163,7 +152,7 @@ kproc blk.floppy.write ;////////////////////////////////////////////////////////
         test    eax, eax
         jnz     .exit
 
-        pop     eax
+        pop     ecx eax
         inc     eax
         dec     ecx
         jnz     .next_sector
@@ -172,6 +161,8 @@ kproc blk.floppy.write ;////////////////////////////////////////////////////////
         push    eax
 
   .exit:
+        ; TODO: unlock controller
+
         add     esp, 4
         pop     edi esi ecx
         ret
@@ -186,11 +177,26 @@ kendp
 ;;======================================================================================================================
 
 ;-----------------------------------------------------------------------------------------------------------------------
+kproc blk.floppy._.select_drive ;///////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Select floppy drive.
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= blk.floppy.device_data_t
+;-----------------------------------------------------------------------------------------------------------------------
+        push    eax ebx
+        mov     al, [ebx + blk.floppy.device_data_t.drive_number]
+        mov     ebx, [ebx + blk.floppy.device_data_t.ctl]
+        call    blk.floppy.ctl.select_drive
+        pop     ebx eax
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
 kproc blk.floppy._.read_sector ;////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Read sector from floppy device.
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= blk.floppy.device_data_t
+;> ebx ^= blk.floppy.ctl.device_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;< FDC_DMA_BUFFER ^= sector content (on success)
@@ -204,7 +210,7 @@ kproc blk.floppy._.write_sector ;///////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Write sector to floppy device.
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= blk.floppy.device_data_t
+;> ebx ^= blk.floppy.ctl.device_data_t
 ;> FDC_DMA_BUFFER ^= sector content to write
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
@@ -220,11 +226,13 @@ kproc blk.floppy._.perform_operation_with_retry ;///////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax ^= operation callback (read/write sector)
 ;> ebx ^= blk.floppy.device_data_t
+;> ecx @= pack[8(?), 8(sector), 8(head), 8(cylinder)]
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;-----------------------------------------------------------------------------------------------------------------------
-        push    ecx ebp
+        push    ebx ecx ebp
 
+        mov     ebx, [ebx + blk.floppy.device_data_t.ctl]
         mov     ebp, eax
 
         ; try recalibrating 3 times
@@ -233,8 +241,10 @@ kproc blk.floppy._.perform_operation_with_retry ;///////////////////////////////
   .next_seek_attempt:
         push    ecx
 
+        mov     eax, [esp + 4 + 4]
         call    blk.floppy.ctl.seek
-        ; TODO: check for seek error
+        test    eax, eax
+        jnz     .recalibrate
 
         ; try reading 3 times
         mov_s_  ecx, 3
@@ -255,6 +265,7 @@ kproc blk.floppy._.perform_operation_with_retry ;///////////////////////////////
         dec     ecx
         jnz     .next_read_attempt
 
+  .recalibrate:
         call    blk.floppy.ctl.recalibrate
 
         pop     ecx
@@ -268,32 +279,39 @@ kproc blk.floppy._.perform_operation_with_retry ;///////////////////////////////
         add     esp, 8
 
   .exit:
-        pop     ebp ecx
+        pop     ebp ecx ebx
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc blk.floppy._.calculate_chs ;//////////////////////////////////////////////////////////////////////////////////////
+kproc blk.floppy._.lba_to_chs ;/////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Convert physical address to CHS.
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax #= LBA
 ;> ebx ^= blk.floppy.device_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
-        push    eax ecx edx
+;< ecx @= pack[8(?), 8(sector), 8(head), 8(cylinder)]
+;-----------------------------------------------------------------------------------------------------------------------
+        push    eax edx
 
         mov     ecx, BLK_FLOPPY_CTL_SECTORS_PER_TRACK
         xor     edx, edx
         div     ecx
         inc     edx
-        mov     [ebx + blk.floppy.device_data_t.position.sector], dl
+
+        push    edx
+
         xor     edx, edx
         mov     ecx, BLK_FLOPPY_CTL_HEADS_PER_CYLINDER
         div     ecx
-        mov     [ebx + blk.floppy.device_data_t.position.cylinder], al
-        mov     [ebx + blk.floppy.device_data_t.position.head], dl
+
+        pop     ecx
+        shl     ecx, 16
+        mov     ch, dl
+        mov     cl, al
 
   .exit:
-        pop     edx ecx eax
+        pop     edx eax
         ret
 kendp
