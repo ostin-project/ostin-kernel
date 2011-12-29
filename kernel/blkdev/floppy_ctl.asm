@@ -23,10 +23,15 @@ BLK_FLOPPY_CTL_ERROR_TRACK_NOT_FOUND  = 3 ; track not found
 BLK_FLOPPY_CTL_ERROR_SECTOR_NOT_FOUND = 4 ; sector not found
 
 ; FDC registers
-BLK_FLOPPY_CTL_DOR  = 0x3f2
-BLK_FLOPPY_CTL_MSR  = 0x3f4
-BLK_FLOPPY_CTL_FIFO = 0x3f5
-BLK_FLOPPY_CTL_CCR  = 0x3f7
+BLK_FLOPPY_CTL_REG_STATUS_A        = 0 ; 'SRA', read-only
+BLK_FLOPPY_CTL_REG_STATUS_B        = 1 ; 'SRB', read-only
+BLK_FLOPPY_CTL_REG_DIGITAL_OUTPUT  = 2 ; 'DOR'
+BLK_FLOPPY_CTL_REG_TAPE_DRIVE      = 3 ; 'TDR'
+BLK_FLOPPY_CTL_REG_MAIN_STATUS     = 4 ; 'MSR', read-only
+BLK_FLOPPY_CTL_REG_DATARATE_SELECT = 4 ; 'DSR', write-only
+BLK_FLOPPY_CTL_REG_DATA_FIFO       = 5 ; 'FIFO'
+BLK_FLOPPY_CTL_REG_DIGITAL_INPUT   = 7 ; 'DIR', read-only
+BLK_FLOPPY_CTL_REG_CONFIG_CTL      = 7 ; 'CCR', write-only
 
 ; FDC [not so] constants
 BLK_FLOPPY_CTL_HEADS_PER_CYLINDER = 2
@@ -57,7 +62,8 @@ kproc blk.floppy.ctl.reset ;////////////////////////////////////////////////////
         call    blk.floppy.ctl._.prepare_for_interrupt
 
         push    eax edx
-        mov     dx, BLK_FLOPPY_CTL_DOR
+        mov     dx, [ebx + blk.floppy.device_data_t.base_reg]
+        add     dx, BLK_FLOPPY_CTL_REG_DIGITAL_OUTPUT
         mov     al, 0
         out     dx, al
         mov     al, 0x0c
@@ -86,7 +92,8 @@ kproc blk.floppy.ctl.perform_dma_transfer ;/////////////////////////////////////
 
         ; set transfer speed to 500 KB/s
         shl     eax, 8
-        mov     dx, BLK_FLOPPY_CTL_CCR
+        mov     dx, [ebx + blk.floppy.device_data_t.base_reg]
+        add     dx, BLK_FLOPPY_CTL_REG_CONFIG_CTL
         out     dx, al
 
         ; initialize DMA channel
@@ -290,7 +297,8 @@ kproc blk.floppy.ctl._.stop_motor ;/////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     cl, [ebx + blk.floppy.device_data_t.drive_number]
 
-        mov     dx, BLK_FLOPPY_CTL_DOR
+        mov     dx, [ebx + blk.floppy.device_data_t.base_reg]
+        add     dx, BLK_FLOPPY_CTL_REG_DIGITAL_OUTPUT
         mov     al, cl
         or      al, 00001100b
         out     dx, al
@@ -319,7 +327,8 @@ kproc blk.floppy.ctl._.select_drive ;///////////////////////////////////////////
 
   .select_and_start_motor:
         ; TODO: check if this stops other drives' motors (which is not acceptable)
-        mov     dx, BLK_FLOPPY_CTL_DOR
+        mov     dx, [ebx + blk.floppy.device_data_t.base_reg]
+        add     dx, BLK_FLOPPY_CTL_REG_DIGITAL_OUTPUT
         mov     al, 00010000b
         shl     al, cl
         or      al, cl
@@ -392,13 +401,15 @@ kproc blk.floppy.ctl._.out_byte ;///////////////////////////////////////////////
 ;? Write byte to FDC data port.
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> al #= byte to write
+;> ebx ^= blk.floppy.device_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< Cf ~= timeout error
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax ecx edx
         mov     ah, al ; save byte in AH
         ; check if controller is ready to transfer data
-        mov     dx, BLK_FLOPPY_CTL_MSR ; (FDC status port)
+        mov     dx, [ebx + blk.floppy.device_data_t.base_reg]
+        add     dx, BLK_FLOPPY_CTL_REG_MAIN_STATUS
         mov     ecx, 0x10000 ; set timeout counter
 
   .test_rs:
@@ -429,12 +440,15 @@ kproc blk.floppy.ctl._.in_byte ;////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Read byte from FDC data port.
 ;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= blk.floppy.device_data_t
+;-----------------------------------------------------------------------------------------------------------------------
 ;< al #= byte read (on success)
 ;< Cf ~= timeout error
 ;-----------------------------------------------------------------------------------------------------------------------
         push    ecx edx
         ; check if controller is ready to transfer data
-        mov     dx, BLK_FLOPPY_CTL_MSR ; (FDC status port)
+        mov     dx, [ebx + blk.floppy.device_data_t.base_reg]
+        add     dx, BLK_FLOPPY_CTL_REG_MAIN_STATUS
         mov     ecx, 0x10000 ; set timeout counter
 
   .test_rs:

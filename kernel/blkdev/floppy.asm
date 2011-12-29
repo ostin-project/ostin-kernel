@@ -32,6 +32,7 @@ struct blk.floppy.status_t
 ends
 
 struct blk.floppy.device_data_t
+  base_reg     dw ?
   position     blk.floppy.chs_t
   status       blk.floppy.status_t
   drive_number db ?

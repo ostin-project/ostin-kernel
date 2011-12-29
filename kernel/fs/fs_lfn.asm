@@ -620,6 +620,8 @@ iglobal
   align 4
   ; blk.floppy.device_data_t
   static_test_floppy_device_data:
+    ; base_reg
+    dw 0x03f0
     ; position
     db sizeof.blk.floppy.chs_t dup(0)
     ; status
