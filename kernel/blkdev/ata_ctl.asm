@@ -37,23 +37,20 @@ BLK_ATA_CTL_CMD_PACKET                 = 0xa0
 BLK_ATA_CTL_CMD_IDENTIFY_PACKET_DEVICE = 0xa1
 BLK_ATA_CTL_CMD_IDENTIFY_DEVICE        = 0xec
 
-;-----------------------------------------------------------------------------------------------------------------------
-kproc blk.ata.ctl.initialize ;//////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        or      [blk.ata.ctl._.data.last_drive_number], -1
-        ret
-kendp
+struct blk.ata.ctl.device_data_t
+  base_reg       dw ?
+  dev_ctl_reg    dw ?
+  drive_number   db ?
+ends
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc blk.ata.ctl.reset_device ;////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= blk.ata.device_data_t
+;> ebx ^= blk.ata.ctl.device_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
         push    ecx edx
 
-        call    blk.ata.ctl._.select_drive
-
-        mov     dx, [ebx + blk.ata.device_data_t.base_reg]
+        mov     dx, [ebx + blk.ata.ctl.device_data_t.base_reg]
         add     dx, BLK_ATA_CTL_REG_COMMAND
         mov     al, BLK_ATA_CTL_CMD_DEVICE_RESET
         out     dx, al
@@ -83,7 +80,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc blk.ata.ctl.identify_device ;/////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= blk.ata.device_data_t
+;> ebx ^= blk.ata.ctl.device_data_t
 ;> edi ^= buffer
 ;-----------------------------------------------------------------------------------------------------------------------
         push    BLK_ATA_CTL_CMD_IDENTIFY_DEVICE
@@ -93,14 +90,12 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc blk.ata.ctl.packet ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= blk.ata.device_data_t
+;> ebx ^= blk.ata.ctl.device_data_t
 ;> cx #= data size (in blocks)
 ;-----------------------------------------------------------------------------------------------------------------------
         push    ecx edx
 
-        call    blk.ata.ctl._.select_drive
-
-        mov     dx, [ebx + blk.ata.device_data_t.base_reg]
+        mov     dx, [ebx + blk.ata.ctl.device_data_t.base_reg]
         add     dx, BLK_ATA_CTL_REG_LBA_MID
         mov     al, cl
         out     dx, al
@@ -122,38 +117,30 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc blk.ata.ctl.identify_packet_device ;//////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= blk.ata.device_data_t
+;> ebx ^= blk.ata.ctl.device_data_t
 ;> edi ^= buffer
 ;-----------------------------------------------------------------------------------------------------------------------
         push    BLK_ATA_CTL_CMD_IDENTIFY_PACKET_DEVICE
         jmp     blk.ata.ctl._.identify
 kendp
 
-uglobal
-  blk.ata.ctl._.data:
-    .last_drive_number dd ?
-endg
-
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc blk.ata.ctl._.select_drive ;//////////////////////////////////////////////////////////////////////////////////////
+kproc blk.ata.ctl.select_drive ;////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= blk.ata.device_data_t
+;> al #= drive number
+;> ebx ^= blk.ata.ctl.device_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
-        push    eax
-
-        mov     eax, dword[ebx + blk.ata.device_data_t.base_reg - 2]
-        mov     al, [ebx + blk.ata.device_data_t.drive_number]
-        cmp     eax, [blk.ata.ctl._.data.last_drive_number]
+        cmp     al, [ebx + blk.ata.ctl.device_data_t.drive_number]
         je      .exit
 
         push    eax edx
 
-        mov     dx, [ebx + blk.ata.device_data_t.base_reg]
+        mov     dx, [ebx + blk.ata.ctl.device_data_t.base_reg]
         add     dx, BLK_ATA_CTL_REG_DEVICE
         shl     al, 4
         out     dx, al
 
-        mov     dx, [ebx + blk.ata.device_data_t.dev_ctl_reg]
+        mov     dx, [ebx + blk.ata.ctl.device_data_t.dev_ctl_reg]
         in      al, dx
         in      al, dx
         in      al, dx
@@ -161,24 +148,21 @@ kproc blk.ata.ctl._.select_drive ;//////////////////////////////////////////////
 
         pop     edx eax
 
-        mov     [blk.ata.ctl._.data.last_drive_number], eax
+        mov     [ebx + blk.ata.ctl.device_data_t.drive_number], al
 
   .exit:
-        pop     eax
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc blk.ata.ctl._.identify ;//////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= blk.ata.device_data_t
+;> ebx ^= blk.ata.ctl.device_data_t
 ;> [esp] #= command
 ;-----------------------------------------------------------------------------------------------------------------------
         push    ecx edx
 
-        call    blk.ata.ctl._.select_drive
-
-        mov     dx, [ebx + blk.ata.device_data_t.base_reg]
+        mov     dx, [ebx + blk.ata.ctl.device_data_t.base_reg]
         add     dx, BLK_ATA_CTL_REG_COMMAND
         mov     al, [esp + 8]
         out     dx, al
@@ -187,7 +171,7 @@ kproc blk.ata.ctl._.identify ;//////////////////////////////////////////////////
         test    eax, eax
         jnz     .exit
 
-        mov     dx, [ebx + blk.ata.device_data_t.base_reg]
+        mov     dx, [ebx + blk.ata.ctl.device_data_t.base_reg]
         mov     ecx, 512 / 2
         rep
         insw
@@ -201,14 +185,14 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc blk.ata.ctl._.wait_for_drq ;//////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= blk.ata.device_data_t
+;> ebx ^= blk.ata.ctl.device_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     ah, BLK_ATA_CTL_STATUS_DRQ
 
   .direct:
         push    ecx edx
 
-        mov     dx, [ebx + blk.ata.device_data_t.dev_ctl_reg]
+        mov     dx, [ebx + blk.ata.ctl.device_data_t.dev_ctl_reg]
         mov     ecx, 4
 
   .dummy_loop:
@@ -222,7 +206,7 @@ kproc blk.ata.ctl._.wait_for_drq ;//////////////////////////////////////////////
         jz      .dummy_loop
 
   .wait:
-        mov     dx, [ebx + blk.ata.device_data_t.base_reg]
+        mov     dx, [ebx + blk.ata.ctl.device_data_t.base_reg]
         add     dx, BLK_ATA_CTL_REG_COMMAND
         mov     ecx, 0x00ffffff
 
@@ -257,7 +241,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc blk.ata.ctl._.wait_for_drdy ;/////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= blk.ata.device_data_t
+;> ebx ^= blk.ata.ctl.device_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     ah, BLK_ATA_CTL_STATUS_DRDY
         jmp     blk.ata.ctl._.wait_for_drq.direct

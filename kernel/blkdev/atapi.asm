@@ -69,7 +69,15 @@ kproc blk.atapi.read ;//////////////////////////////////////////////////////////
         test    cl, 0x03
         jnz     .alignment_error
 
-        push    ecx edx
+        ; TODO: lock controller
+
+        push    ebx ecx edx
+
+        push    eax
+        mov     al, [ebx + blk.atapi.device_data_t.drive_number]
+        mov     ebx, [ebx + blk.atapi.device_data_t.ctl]
+        call    blk.ata.ctl.select_drive
+        pop     eax
 
         shrd    eax, edx, 2
         shr     ecx, 2
@@ -91,7 +99,10 @@ kproc blk.atapi.read ;//////////////////////////////////////////////////////////
   .exit:
         pop     edi edx ecx
         add     esp, 4 + 4
-        pop     edx ecx
+        pop     edx ecx ebx
+
+        ; TODO: unlock controller
+
         ret
 
   .overflow_error:

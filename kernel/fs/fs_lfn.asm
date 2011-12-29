@@ -695,16 +695,22 @@ iglobal
   if KCONFIG_BLK_ATAPI
 
   align 4
+    ; blk.atapi.device_data_t
+    static_test_atapi_ctl_device_data:
+      ; base_reg
+      dw 0x01f0
+      ; dev_ctl_reg
+      dw 0x03f6
+      ; drive_number
+      db -1
+
+  align 4
   ; blk.atapi.device_data_t
   static_test_atapi_device_data:
-    ; channel_number
-    db 0
+    ; ctl
+    dd static_test_atapi_ctl_device_data
     ; drive_number
     db 0
-    ; base_reg
-    dw 0x01f0
-    ; dev_ctl_reg
-    dw 0x03f6
 
   align 4
   ; blk.device_t

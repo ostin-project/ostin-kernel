@@ -15,10 +15,8 @@
 ;;======================================================================================================================
 
 struct blk.ata.device_data_t
-  channel_number db ?
-  drive_number   db ?
-  base_reg       dw ?
-  dev_ctl_reg    dw ?
+  ctl          dd ? ; ^= blk.ata.ctl.device_data_t
+  drive_number db ?
 ends
 
 iglobal

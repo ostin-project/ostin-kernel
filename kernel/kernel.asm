@@ -943,12 +943,6 @@ end if
         ; STACK AND FDC
         call    stack_init
 
-if KCONFIG_BLK_ATA
-
-        call    blk.ata.ctl.initialize
-
-end if ; KCONFIG_BLK_ATA
-
 if KCONFIG_BLK_FLOPPY
 
         call    blk.floppy.ctl.initialize
