@@ -287,8 +287,8 @@ uglobal
   hdrtype:         db 0
   vendor_device:   dd 0
   pci_data:        dd 0
-  pci_dev:         dd 0
-  pci_bus:         dd 0
+  pci_dev          db 0
+  pci_bus          db 0
 
   ; These will hold pointers to the selected driver functions
   drvr_probe:      dd 0
