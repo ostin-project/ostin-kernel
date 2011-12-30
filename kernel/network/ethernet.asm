@@ -303,7 +303,7 @@ iglobal
   subnet_mask:   dd 0x00ffffff ; 255.255.255.0
 endg
 
-include "arp.asm" ; arp-protocol functions
+include "proto/arp.asm" ; arp-protocol functions
 include "pci.asm" ; PCI bus access functions
 
 ;-----------------------------------------------------------------------------------------------------------------------
