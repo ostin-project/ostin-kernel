@@ -89,16 +89,20 @@ kproc blk.atapi.read ;//////////////////////////////////////////////////////////
 
         call    blk.atapi.ctl.read
         test    eax, eax
-        jz      .exit
+        jz      .done
 
         pop     edi edx ecx eax
 
         dec     byte[esp]
         jnz     .retry
+        jmp     .exit
+
+  .done:
+        pop     edi edx ecx
+        add     esp, 4
 
   .exit:
-        pop     edi edx ecx
-        add     esp, 4 + 4
+        add     esp, 4
         pop     edx ecx ebx
 
         ; TODO: unlock controller

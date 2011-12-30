@@ -238,7 +238,7 @@ kproc fs.cdfs.read_directory ;//////////////////////////////////////////////////
         ret
 
   .device_error:
-        add     esp, 4
+        add     esp, 8
         mov     eax, ERROR_DEVICE_FAIL
         ret
 kendp
