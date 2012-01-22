@@ -304,7 +304,6 @@ iglobal
 endg
 
 include "proto/arp.asm" ; arp-protocol functions
-include "pci.asm" ; PCI bus access functions
 
 ;-----------------------------------------------------------------------------------------------------------------------
 proc eth_tx stdcall uses ebx esi edi ;//////////////////////////////////////////////////////////////////////////////////

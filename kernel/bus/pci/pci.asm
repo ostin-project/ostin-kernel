@@ -15,6 +15,47 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
+; PCI Bus defines
+PCI_HEADER_TYPE                = 0x0e ; 8 bit
+PCI_BASE_ADDRESS_0             = 0x10 ; 32 bit
+PCI_BASE_ADDRESS_5             = 0x24 ; 32 bits
+PCI_BASE_ADDRESS_SPACE_IO      = 0x01
+PCI_VENDOR_ID                  = 0x00 ; 16 bit
+PCI_BASE_ADDRESS_IO_MASK       = 0xfffffffc
+
+PCI_COMMAND_IO                 = 0x1   ; Enable response in I/O space
+PCI_COMMAND_MEM                = 0x2   ; Enable response in mem space
+PCI_COMMAND_MASTER             = 0x4   ; Enable bus mastering
+PCI_LATENCY_TIMER              = 0x0d  ; 8 bits
+PCI_COMMAND_SPECIAL            = 0x8   ; Enable response to special cycles
+PCI_COMMAND_INVALIDATE         = 0x10  ; Use memory write and invalidate
+PCI_COMMAND_VGA_PALETTE        = 0x20  ; Enable palette snooping
+PCI_COMMAND_PARITY             = 0x40  ; Enable parity checking
+PCI_COMMAND_WAIT               = 0x80  ; Enable address/data stepping
+PCI_COMMAND_SERR               = 0x100 ; Enable SERR
+PCI_COMMAND_FAST_BACK          = 0x200 ; Enable back-to-back writes
+
+PCI_VENDOR_ID                  = 0x00  ; 16 bits
+PCI_DEVICE_ID                  = 0x02  ; 16 bits
+PCI_COMMAND                    = 0x04  ; 16 bits
+
+PCI_BASE_ADDRESS_0             = 0x10  ; 32 bits
+PCI_BASE_ADDRESS_1             = 0x14  ; 32 bits
+PCI_BASE_ADDRESS_2             = 0x18  ; 32 bits
+PCI_BASE_ADDRESS_3             = 0x1c  ; 32 bits
+PCI_BASE_ADDRESS_4             = 0x20  ; 32 bits
+PCI_BASE_ADDRESS_5             = 0x24  ; 32 bits
+
+PCI_BASE_ADDRESS_MEM_TYPE_MASK = 0x06
+PCI_BASE_ADDRESS_MEM_TYPE_32   = 0x00 ; 32 bit address
+PCI_BASE_ADDRESS_MEM_TYPE_1M   = 0x02 ; Below 1M [obsolete]
+PCI_BASE_ADDRESS_MEM_TYPE_64   = 0x04 ; 64 bit address
+
+PCI_BASE_ADDRESS_IO_MASK       = not 0x03
+PCI_BASE_ADDRESS_MEM_MASK      = not 0x0f
+PCI_BASE_ADDRESS_SPACE_IO      = 0x01
+PCI_ROM_ADDRESS                = 0x30 ; 32 bits
+
 ;mmio_pci_addr = 0x400 ; set actual PCI address here to activate user-MMIO
 
 uglobal
@@ -734,3 +775,260 @@ kproc sysfn.pci_bios32_ctl ;////////////////////////////////////////////////////
         mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc scan_bus ;////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Scans the PCI bus for a supported device
+;? If a supported device is found, the drvr_ variables are initialised
+;? to that drivers functions ( as defined in the PCICards table)
+;-----------------------------------------------------------------------------------------------------------------------
+;> [io_addr] = holds card I/O space. 32 bit, but only LS 16 bits valid
+;> [pci_data] = holds the PCI vendor + device code
+;> [pci_dev] = holds PCI bus dev #
+;> [pci_bus] = holds PCI bus #
+;-----------------------------------------------------------------------------------------------------------------------
+;< [io_addr] = 0 (no card found)
+;-----------------------------------------------------------------------------------------------------------------------
+        xor     eax, eax
+        mov     [hdrtype], al
+        mov     [pci_data], eax
+
+        xor     ebx, ebx ; ebx = bus# 0 .. 255
+
+  .sb_bus_loop:
+        mov     [pci_bus], bl
+
+        xor     ecx, ecx ; ecx = devfn# 0 .. 254  ( not 255? )
+
+  .sb_devf_loop:
+        mov     [pci_dev], cl
+
+        mov     eax, ecx
+        and     eax, 0x07
+
+        cmp     eax, 0
+        jne     .sb_001
+
+        stdcall pci_read_config_byte, PCI_HEADER_TYPE
+        mov     [hdrtype], al
+        jmp     .sb_002
+
+  .sb_001:
+        mov     al, [hdrtype]
+        and     al, 0x080
+        cmp     al, 0x080
+        jne     .sb_inc_devf
+
+  .sb_002:
+        stdcall pci_read_config_dword, PCI_VENDOR_ID
+        mov     [vendor_device], eax
+        cmp     eax, 0xffffffff
+        je      .sb_empty
+        cmp     eax, 0
+        jne     .sb_check_vendor
+
+  .sb_empty:
+        mov     byte[hdrtype], 0
+        jmp     .sb_inc_devf
+
+  .sb_check_vendor:
+        ; iterate though PCICards until end or match found
+        mov     esi, PCICards
+
+  .sb_check:
+        cmp     [esi + net.device_t.id], 0
+        je      .sb_inc_devf ; Quit if at last entry
+        cmp     eax, [esi + net.device_t.id]
+        je      .sb_got_card
+        add     esi, sizeof.net.device_t
+        jmp     .sb_check
+
+  .sb_got_card:
+        ; indicate that we have found the card
+        mov     [pci_data], eax
+
+        ; Define the driver functions
+        push    eax esi
+        mov     esi, [esi + net.device_t.vftbl]
+        mov     eax, [esi + net.driver.vftbl_t.probe]
+        mov     [drvr_probe], eax
+        mov     eax, [esi + net.driver.vftbl_t.reset]
+        mov     [drvr_reset], eax
+        mov     eax, [esi + net.driver.vftbl_t.poll]
+        mov     [drvr_poll], eax
+        mov     eax, [esi + net.driver.vftbl_t.transmit]
+        mov     [drvr_transmit], eax
+        mov     eax, [esi + net.driver.vftbl_t.check_cable]
+        mov     [drvr_cable], eax
+        pop     esi eax
+
+        mov     edx, PCI_BASE_ADDRESS_0
+
+  .sb_reg_check:
+        stdcall pci_read_config_dword, edx
+        mov     [io_addr], eax
+        and     eax, PCI_BASE_ADDRESS_IO_MASK
+        cmp     eax, 0
+        je      .sb_inc_reg
+        mov     eax, [io_addr]
+        and     eax, PCI_BASE_ADDRESS_SPACE_IO
+        cmp     eax, 0
+        je      .sb_inc_reg
+
+        mov     eax, [io_addr]
+        and     eax, PCI_BASE_ADDRESS_IO_MASK
+        mov     [io_addr], eax
+
+  .sb_exit1:
+        ret
+
+  .sb_inc_reg:
+        add     edx, 4
+        cmp     edx, PCI_BASE_ADDRESS_5
+        jbe     .sb_reg_check
+
+  .sb_inc_devf:
+        inc     ecx
+        cmp     ecx, 255
+        jb      .sb_devf_loop
+        inc     ebx
+        cmp     ebx, 256
+        jb      .sb_bus_loop
+
+        ; We get here if we didn't find our card
+        ; set io_addr to 0 as an indication
+        xor     eax, eax
+        mov     [io_addr], eax
+
+  .sb_exit2:
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+proc pci_read_config_byte, where:byte ;/////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        push    ebx ecx edx
+        mov     al, 0
+        mov     ah, [pci_bus]
+        mov     bh, [pci_dev]
+        mov     bl, byte[where]
+        call    pci_read_reg
+        pop     edx ecx ebx
+        ret
+endp
+
+;-----------------------------------------------------------------------------------------------------------------------
+proc pci_read_config_word, where:byte ;/////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        push    ebx ecx edx
+        mov     al, 1
+        mov     ah, [pci_bus]
+        mov     bh, [pci_dev]
+        mov     bl, byte[where]
+        call    pci_read_reg
+        pop     edx ecx ebx
+        ret
+endp
+
+;-----------------------------------------------------------------------------------------------------------------------
+proc pci_read_config_dword, where:byte ;////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        push    ebx ecx edx
+        mov     al, 2
+        mov     ah, [pci_bus]
+        mov     bh, [pci_dev]
+        mov     bl, byte[where]
+        call    pci_read_reg
+        pop     edx ecx ebx
+        ret
+endp
+
+;-----------------------------------------------------------------------------------------------------------------------
+proc pci_write_config_byte, where:byte, value:byte ;////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        push    ebx ecx edx
+        mov     al, 0
+        mov     ah, [pci_bus]
+        mov     bh, [pci_dev]
+        mov     bl, byte[where]
+        mov     cl, [value]
+        call    pci_write_reg
+        pop     edx ecx ebx
+        ret
+endp
+
+;-----------------------------------------------------------------------------------------------------------------------
+proc pci_write_config_word, where:byte, value:word ;////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        push    ebx ecx edx
+        mov     al, 1
+        mov     ah, [pci_bus]
+        mov     bh, [pci_dev]
+        mov     bl, byte[where]
+        mov     cx, [value]
+        call    pci_write_reg
+        pop     edx ecx ebx
+        ret
+endp
+
+;-----------------------------------------------------------------------------------------------------------------------
+proc adjust_pci_device ;////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Set device to be a busmaster in case BIOS neglected to do so.
+;? Also adjust PCI latency timer to a reasonable value, 32.
+;-----------------------------------------------------------------------------------------------------------------------
+;       klog_   LOG_DEBUG, "adjust_pci_device\n"
+
+        stdcall pci_read_config_word, PCI_COMMAND
+        mov     bx, ax
+        or      bx, PCI_COMMAND_MASTER or PCI_COMMAND_IO
+        cmp     ax, bx
+        je      @f
+;       klog_   LOG_WARNING, "adjust_pci_device: The PCI BIOS has not enabled this device!\n"
+;       klog_   LOG_WARNING, "Updating PCI command %x->%x. pci_bus %x pci_device_fn %x\n", ax, bx, [pci_bus]:2, \
+;               [pci_dev]:2
+        stdcall pci_write_config_word, PCI_COMMAND, ebx
+
+    @@: stdcall pci_read_config_byte, PCI_LATENCY_TIMER
+        cmp     al, 32
+        jae     @f
+;       klog_   LOG_WARNING, "adjust_pci_device: PCI latency timer (CFLT) is unreasonably low at %d.\n", al
+;       klog_   LOG_WARNING, "Setting to 32 clocks.\n", al
+        stdcall pci_write_config_byte, PCI_LATENCY_TIMER, 32
+
+    @@: ret
+endp
+
+;-----------------------------------------------------------------------------------------------------------------------
+proc pci_bar_start, index:dword ;///////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Find the start of a pci resource
+;-----------------------------------------------------------------------------------------------------------------------
+        stdcall pci_read_config_dword, [index]
+        test    eax, PCI_BASE_ADDRESS_SPACE_IO
+        jz      @f
+        and     eax, PCI_BASE_ADDRESS_IO_MASK
+        jmp     .exit
+
+    @@: push    eax
+        and     eax, PCI_BASE_ADDRESS_MEM_TYPE_MASK
+        cmp     eax, PCI_BASE_ADDRESS_MEM_TYPE_64
+        jne     .not64
+        mov     eax, [index]
+        add     eax, 4
+        stdcall pci_read_config_dword, eax
+        or      eax, eax
+        jz      .not64
+;       klog_   LOG_WARNING, "pci_bar_start: Unhandled 64bit BAR\n"
+        add     esp, 4
+        or      eax, -1
+        ret
+
+  .not64:
+        pop     eax
+        and     eax, PCI_BASE_ADDRESS_MEM_MASK
+
+  .exit:
+        ret
+endp
