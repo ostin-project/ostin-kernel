@@ -336,8 +336,7 @@ kproc r6040_probe ;/////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         klog_   LOG_DEBUG, "Probing r6040\n"
 
-        call    adjust_pci_device
-
+        stdcall adjust_pci_device, dword[pci_bus], dword[pci_dev]
 
         ; If PHY status change register is still set to zero
         ; it means the bootloader didn't initialize it

@@ -284,7 +284,6 @@ uglobal
   eth_rx_data_len  dw 0
   eth_status:      dd 0
   io_addr:         dd 0
-  hdrtype:         db 0
   vendor_device:   dd 0
   pci_data:        dd 0
   pci_dev          db 0
@@ -445,17 +444,86 @@ kproc eth_probe ;///////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax = 0 (no hardware found) or I/O address
 ;-----------------------------------------------------------------------------------------------------------------------
-        ; Find a card on the PCI bus, and get it's address
-        call    scan_bus ; Find the ethernet cards PIC address
         xor     eax, eax
-        cmp     [io_addr], eax
-        je      .ep_00x ; Return 0 in eax if no cards found
+        mov     [pci_data], eax
+        mov     [io_addr], eax
+
+        ; Find a card on the PCI bus, and get it's address
+        mov     eax, check_for_net_driver
+        call    scan_bus ; Find the ethernet cards PIC address
+        test    eax, eax
+        jz      .ep_00x ; Return 0 in eax if no cards found
 
         call    dword[drvr_probe] ; Call the drivers probe function
 
         mov     eax, [io_addr] ; return a non zero value
 
   .ep_00x:
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc check_for_net_driver ;////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> eax @= pack[16(device ID), 16(vendor ID)]
+;> bl #= PCI bus
+;> cl #= PCI devfn
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax #= 0 (continue) or not 0 (stop enumeration)
+;-----------------------------------------------------------------------------------------------------------------------
+        mov     [vendor_device], eax
+        mov     [pci_bus], bl
+        mov     [pci_dev], cl
+
+        ; iterate though PCICards until end or match found
+        mov     esi, PCICards
+
+  .sb_check:
+        cmp     [esi + net.device_t.id], 0
+        je      .sb_inc_devf ; Quit if at last entry
+        cmp     eax, [esi + net.device_t.id]
+        je      .sb_got_card
+        add     esi, sizeof.net.device_t
+        jmp     .sb_check
+
+  .sb_got_card:
+        ; indicate that we have found the card
+        mov     [pci_data], eax
+
+        ; Define the driver functions
+        push    eax esi
+        mov     esi, [esi + net.device_t.vftbl]
+        mov     eax, [esi + net.driver.vftbl_t.probe]
+        mov     [drvr_probe], eax
+        mov     eax, [esi + net.driver.vftbl_t.reset]
+        mov     [drvr_reset], eax
+        mov     eax, [esi + net.driver.vftbl_t.poll]
+        mov     [drvr_poll], eax
+        mov     eax, [esi + net.driver.vftbl_t.transmit]
+        mov     [drvr_transmit], eax
+        mov     eax, [esi + net.driver.vftbl_t.check_cable]
+        mov     [drvr_cable], eax
+        pop     esi eax
+
+        mov     edx, PCI_BASE_ADDRESS_0
+
+  .sb_reg_check:
+        stdcall pci_read_config_dword, ebx, ecx, edx
+        test    eax, PCI_BASE_ADDRESS_SPACE_IO
+        jz      .sb_inc_reg
+        and     eax, PCI_BASE_ADDRESS_IO_MASK
+        jz      .sb_inc_reg
+
+        mov     [io_addr], eax
+        ret
+
+  .sb_inc_reg:
+        add     edx, 4
+        cmp     edx, PCI_BASE_ADDRESS_5
+        jbe     .sb_reg_check
+
+  .sb_inc_devf:
+        xor     eax, eax
         ret
 kendp
 

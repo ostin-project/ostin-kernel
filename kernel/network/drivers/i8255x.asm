@@ -318,9 +318,9 @@ kproc I8255x_probe ;////////////////////////////////////////////////////////////
         klog_   LOG_DEBUG, "Probing i8255x device\n"
         mov     eax, [io_addr]
 
-        stdcall pci_read_config_word, PCI_COMMAND_MASTER
+        stdcall pci_read_config_word, dword[pci_bus], dword[pci_dev], PCI_COMMAND_MASTER
         or      al, 0x05
-        stdcall pci_write_config_word, PCI_COMMAND_MASTER, eax
+        stdcall pci_write_config_word, dword[pci_bus], dword[pci_dev], PCI_COMMAND_MASTER, eax
 
         mov     ebx, 0x6000000
         mov     ecx, 27

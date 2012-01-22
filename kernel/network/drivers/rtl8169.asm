@@ -402,9 +402,9 @@ kproc rtl8169_init_board ;//////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;       klog_   LOG_DEBUG, "rtl8169_init_board\n"
 
-        call    adjust_pci_device
+        stdcall adjust_pci_device, dword[pci_bus], dword[pci_dev]
 
-        stdcall pci_bar_start, PCI_BASE_ADDRESS_0
+        stdcall pci_bar_start, dword[pci_bus], dword[pci_dev], PCI_BASE_ADDRESS_0
         mov     [rtl8169_tpc.mmio_addr], eax
         ; Soft reset the chip
         RTL_W8  RTL8169_REG_ChipCmd, RTL8169_CMD_Reset
@@ -800,7 +800,7 @@ kproc rtl8169_probe ;///////////////////////////////////////////////////////////
         cmp     [rtl8169_tpc.mcfg], MCFG_METHOD_03
         jae     @f
 ;       klog_   LOG_DEBUG, "  Set PCI Latency=0x40\n"
-;       stdcall pci_write_config_byte, PCI_LATENCY_TIMER, 0x40
+;       stdcall pci_write_config_byte, dword[pci_bus], dword[pci_dev], PCI_LATENCY_TIMER, 0x40
 
     @@: cmp     [rtl8169_tpc.mcfg], MCFG_METHOD_02
         jne     @f
