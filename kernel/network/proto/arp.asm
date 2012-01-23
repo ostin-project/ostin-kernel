@@ -443,7 +443,7 @@ kproc arp_handler ;/////////////////////////////////////////////////////////////
         mov     ecx, 28 ; data size
         mov     esi, ETH_FRAME.data ; ptr to data
         push    ebp
-        call    dword[drvr_transmit] ; transmit packet
+        call    [net_drvr_funcs.transmit] ; transmit packet
         pop     ebp
 
   .exit:
@@ -494,7 +494,7 @@ proc arp_request stdcall uses ebx esi edi, TargetIP:DWORD, SenderIP_ptr:DWORD, S
         mov     ecx, 28 ; size of packet
         lea     esi, [esp] ; pointer to packet data
         push    ebp
-        call    dword[drvr_transmit] ; Call the drivers transmit function
+        call    [net_drvr_funcs.transmit] ; Call the drivers transmit function
         pop     ebp
 
         add     esp, 28 ; free memory, allocated before for arp_packet_t

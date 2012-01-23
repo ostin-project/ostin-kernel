@@ -289,12 +289,8 @@ uglobal
   pci_dev          db 0
   pci_bus          db 0
 
-  ; These will hold pointers to the selected driver functions
-  drvr_probe:      dd 0
-  drvr_reset:      dd 0
-  drvr_poll:       dd 0
-  drvr_transmit:   dd 0
-  drvr_cable:      dd 0
+  ; This will hold pointers to the selected driver functions
+  net_drvr_funcs   net.driver.vftbl_t
 endg
 
 iglobal
@@ -370,7 +366,7 @@ local MACAddress dp ? ; allocate 6 bytes in the stack
         mov     esi, ebx ; Pointer to packet data
         mov     bx, ETHER_IP ; Type of packet
         push    ebp
-        call    dword[drvr_transmit] ; Call the drivers transmit function
+        call    [net_drvr_funcs.transmit] ; Call the drivers transmit function
         pop     ebp
 
         ; OK, we have sent a packet, so increment the count
@@ -454,7 +450,7 @@ kproc eth_probe ;///////////////////////////////////////////////////////////////
         test    eax, eax
         jz      .ep_00x ; Return 0 in eax if no cards found
 
-        call    dword[drvr_probe] ; Call the drivers probe function
+        call    [net_drvr_funcs.probe] ; Call the drivers probe function
 
         mov     eax, [io_addr] ; return a non zero value
 
@@ -464,6 +460,9 @@ kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc check_for_net_driver ;////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? Checks if PCI device is a supported network device; if it is, `net_drvr_funcs` is initialised to hold driver's
+;? function pointers (as defined in the PCICards table)
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax @= pack[16(device ID), 16(vendor ID)]
 ;> bl #= PCI bus
@@ -491,19 +490,13 @@ kproc check_for_net_driver ;////////////////////////////////////////////////////
         mov     [pci_data], eax
 
         ; Define the driver functions
-        push    eax esi
+        push    ecx
         mov     esi, [esi + net.device_t.vftbl]
-        mov     eax, [esi + net.driver.vftbl_t.probe]
-        mov     [drvr_probe], eax
-        mov     eax, [esi + net.driver.vftbl_t.reset]
-        mov     [drvr_reset], eax
-        mov     eax, [esi + net.driver.vftbl_t.poll]
-        mov     [drvr_poll], eax
-        mov     eax, [esi + net.driver.vftbl_t.transmit]
-        mov     [drvr_transmit], eax
-        mov     eax, [esi + net.driver.vftbl_t.check_cable]
-        mov     [drvr_cable], eax
-        pop     esi eax
+        mov     edi, net_drvr_funcs
+        mov     ecx, sizeof.net.driver.vftbl_t / 4
+        rep
+        movsd
+        pop     ecx
 
         mov     edx, PCI_BASE_ADDRESS_0
 
@@ -555,7 +548,7 @@ kproc eth_rx ;//////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         xor     ax, ax
         mov     [eth_rx_data_len], ax
-        call    dword[drvr_poll] ; Call the drivers poll function
+        call    [net_drvr_funcs.poll] ; Call the drivers poll function
 
         mov     ax, [eth_rx_data_len]
         cmp     ax, 0

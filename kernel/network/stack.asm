@@ -555,13 +555,11 @@ kproc app_socket_handler ;//////////////////////////////////////////////////////
         jmp     dword[f53call + eax * 4]
 
   .10:
-        mov     eax, dword[drvr_cable]
+        mov     eax, [net_drvr_funcs.check_cable]
         test    eax, eax
-        jnz     @f ; if function is not implented, return -1
-        or      al, -1
-        ret
+        jz      .fail ; if function is not implented, return -1
 
-    @@: jmp     dword[drvr_cable]
+        jmp     eax
 
   .fail:
         or      eax, -1
