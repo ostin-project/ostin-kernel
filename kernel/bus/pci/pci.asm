@@ -821,10 +821,10 @@ kproc scan_bus ;////////////////////////////////////////////////////////////////
         jmp     .sb_inc_devf
 
   .sb_check_vendor:
-        push    eax ebx ecx edx
+        push    ebx ecx edx
         call    edx
+        pop     edx ecx ebx
         test    eax, eax
-        pop     edx ecx ebx eax
         jnz     .sb_exit2
 
   .sb_inc_devf:
