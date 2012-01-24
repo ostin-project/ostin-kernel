@@ -490,13 +490,13 @@ kproc check_for_net_driver ;////////////////////////////////////////////////////
         mov     [pci_data], eax
 
         ; Define the driver functions
-        push    ecx
+        push    ecx esi
         mov     esi, [esi + net.device_t.vftbl]
         mov     edi, net_drvr_funcs
         mov     ecx, sizeof.net.driver.vftbl_t / 4
         rep
         movsd
-        pop     ecx
+        pop     esi ecx
 
         mov     edx, PCI_BASE_ADDRESS_0
 
