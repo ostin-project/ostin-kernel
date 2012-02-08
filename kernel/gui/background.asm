@@ -402,13 +402,13 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc force_redraw_background ;/////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        and     [draw_data + sizeof.rect32_t + rect32_t.left], 0
-        and     [draw_data + sizeof.rect32_t + rect32_t.top], 0
+        and     [draw_data + sizeof.draw_data_t + draw_data_t.left], 0
+        and     [draw_data + sizeof.draw_data_t + draw_data_t.top], 0
         push    eax ebx
         mov     eax, [Screen_Max_Pos.x]
         mov     ebx, [Screen_Max_Pos.y]
-        mov     [draw_data + sizeof.rect32_t + rect32_t.right], eax
-        mov     [draw_data + sizeof.rect32_t + rect32_t.bottom], ebx
+        mov     [draw_data + sizeof.draw_data_t + draw_data_t.right], eax
+        mov     [draw_data + sizeof.draw_data_t + draw_data_t.bottom], ebx
         pop     ebx eax
         inc     [REDRAW_BACKGROUND]
         ret

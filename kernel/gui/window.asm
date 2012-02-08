@@ -122,12 +122,12 @@ kproc sysfn.set_draw_state.end_drawing ;////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     edx, [TASK_BASE]
         add     edx, draw_data - (TASK_DATA - sizeof.task_data_t)
-        mov     [edx + rect32_t.left], 0
-        mov     [edx + rect32_t.top], 0
+        mov     [edx + draw_data_t.left], 0
+        mov     [edx + draw_data_t.top], 0
         mov     eax, [Screen_Max_Pos.x]
-        mov     [edx + rect32_t.right], eax
+        mov     [edx + draw_data_t.right], eax
         mov     eax, [Screen_Max_Pos.y]
-        mov     [edx + rect32_t.bottom], eax
+        mov     [edx + draw_data_t.bottom], eax
         ret
 kendp
 

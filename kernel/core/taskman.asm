@@ -1195,12 +1195,12 @@ endl
 
         ; set draw data to full screen
         xor     eax, eax
-        mov     [ecx + rect32_t.left], eax
-        mov     [ecx + rect32_t.top], eax
+        mov     [ecx + draw_data_t.left], eax
+        mov     [ecx + draw_data_t.top], eax
         mov     eax, [Screen_Max_Pos.x]
-        mov     [ecx + rect32_t.right], eax
+        mov     [ecx + draw_data_t.right], eax
         mov     eax, [Screen_Max_Pos.y]
-        mov     [ecx + rect32_t.bottom], eax
+        mov     [ecx + draw_data_t.bottom], eax
 
         mov     ebx, [pl0_stack]
         mov     esi, [params]

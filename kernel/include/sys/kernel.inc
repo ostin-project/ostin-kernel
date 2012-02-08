@@ -85,6 +85,15 @@ struct window_data_t
   fl_redraw     db ?
 ends
 
+static_assert sizeof.window_data_t = 32
+
+struct draw_data_t rect32_t
+ rb 16
+ends
+
+static_assert sizeof.draw_data_t = sizeof.task_data_t
+static_assert sizeof.draw_data_t = sizeof.window_data_t
+
 struct app_data_debug_regs_t
   dr0 dd ?
   dr1 dd ?

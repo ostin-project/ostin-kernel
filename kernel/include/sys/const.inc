@@ -239,7 +239,7 @@ end if ; KCONFIG_BLK_FLOPPY
   resendQ:              rb 32 * 1024
   VMODE_BASE:           rb 32 * 1024
   skin_data:            rb 32 * 1024
-  draw_data:            rb 256 * sizeof.rect32_t
+  draw_data:            rb 256 * sizeof.draw_data_t
                         rb OS_BASE + 0x00340000 - $
   BOOT_VAR:             rb BOOT_VARS_END - BOOT_VARS_BEGIN
                         rb OS_BASE + 0x00350000 - $

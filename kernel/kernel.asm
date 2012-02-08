@@ -2534,22 +2534,22 @@ kproc checkmisc ;///////////////////////////////////////////////////////////////
         jz      .nobackgr
         cmp     [background_defined], 0
         jz      .nobackgr
-;       mov     [draw_data + sizeof.rect32_t + rect32_t.left], 0
-;       mov     [draw_data + sizeof.rect32_t + rect32_t.top], 0
+;       mov     [draw_data + sizeof.draw_data_t + draw_data_t.left], 0
+;       mov     [draw_data + sizeof.draw_data_t + draw_data_t.top], 0
 ;       mov     eax, [Screen_Max_Pos.x]
 ;       mov     ebx, [Screen_Max_Pos.y]
-;       mov     [draw_data + sizeof.rect32_t + rect32_t.right], eax
-;       mov     [draw_data + sizeof.rect32_t + rect32_t.bottom], ebx
+;       mov     [draw_data + sizeof.draw_data_t + draw_data_t.right], eax
+;       mov     [draw_data + sizeof.draw_data_t + draw_data_t.bottom], ebx
 
     @@: call    drawbackground
         xor     eax, eax
         xchg    al, [REDRAW_BACKGROUND]
         test    al, al ; got new update request?
         jnz     @b
-        mov     [draw_data + 2 * sizeof.rect32_t + rect32_t.left], eax
-        mov     [draw_data + 2 * sizeof.rect32_t + rect32_t.top], eax
-        mov     [draw_data + 2 * sizeof.rect32_t + rect32_t.right], eax
-        mov     [draw_data + 2 * sizeof.rect32_t + rect32_t.bottom], eax
+        mov     [draw_data + sizeof.draw_data_t + draw_data_t.left], eax
+        mov     [draw_data + sizeof.draw_data_t + draw_data_t.top], eax
+        mov     [draw_data + sizeof.draw_data_t + draw_data_t.right], eax
+        mov     [draw_data + sizeof.draw_data_t + draw_data_t.bottom], eax
 ;       mov     [MOUSE_BACKGROUND], 0
 
   .nobackgr:
@@ -2668,27 +2668,27 @@ kproc redrawscreen ;////////////////////////////////////////////////////////////
         mov     dl, 0
         lea     eax, [edi + draw_data - window_data]
         mov     ebx, [draw_limits.left]
-        cmp     ebx, [eax + rect32_t.left]
+        cmp     ebx, [eax + draw_data_t.left]
         jae     @f
-        mov     [eax + rect32_t.left], ebx
+        mov     [eax + draw_data_t.left], ebx
         mov     dl, 1
 
     @@: mov     ebx, [draw_limits.top]
-        cmp     ebx, [eax + rect32_t.top]
+        cmp     ebx, [eax + draw_data_t.top]
         jae     @f
-        mov     [eax + rect32_t.top], ebx
+        mov     [eax + draw_data_t.top], ebx
         mov     dl, 1
 
     @@: mov     ebx, [draw_limits.right]
-        cmp     ebx, [eax + rect32_t.right]
+        cmp     ebx, [eax + draw_data_t.right]
         jbe     @f
-        mov     [eax + rect32_t.right], ebx
+        mov     [eax + draw_data_t.right], ebx
         mov     dl, 1
 
     @@: mov     ebx, [draw_limits.bottom]
-        cmp     ebx, [eax + rect32_t.bottom]
+        cmp     ebx, [eax + draw_data_t.bottom]
         jbe     @f
-        mov     [eax + rect32_t.bottom], ebx
+        mov     [eax + draw_data_t.bottom], ebx
         mov     dl, 1
 
     @@: add     [REDRAW_BACKGROUND], dl
@@ -2700,13 +2700,13 @@ kproc redrawscreen ;////////////////////////////////////////////////////////////
 
         ; set limits
         mov     ebx, [draw_limits.left]
-        mov     [eax + rect32_t.left], ebx
+        mov     [eax + draw_data_t.left], ebx
         mov     ebx, [draw_limits.top]
-        mov     [eax + rect32_t.top], ebx
+        mov     [eax + draw_data_t.top], ebx
         mov     ebx, [draw_limits.right]
-        mov     [eax + rect32_t.right], ebx
+        mov     [eax + draw_data_t.right], ebx
         mov     ebx, [draw_limits.bottom]
-        mov     [eax + rect32_t.bottom], ebx
+        mov     [eax + draw_data_t.bottom], ebx
 
         sub     eax, draw_data - window_data
 

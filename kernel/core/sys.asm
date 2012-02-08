@@ -601,7 +601,7 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         mov     [esi + window_data_t.cl_frames], eax
         mov     dword[esi + window_data_t.reserved], eax ; clear all flags: wstate, redraw, wdrawn
         lea     edi, [esi - window_data + draw_data]
-        mov     ecx, 32 / 4
+        mov     ecx, sizeof.draw_data_t / 4
         rep
         stosd
         popa
