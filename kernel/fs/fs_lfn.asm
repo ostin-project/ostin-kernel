@@ -544,9 +544,17 @@ kproc fs.generic_query_handler ;////////////////////////////////////////////////
 
         xchg    ebx, edx
         add     edx, fs.query_t.generic ; ^= fs.?_query_params_t
+
+        call    fs.lock
+        push    ebx
+
         call    eax
-        mov     [esp + 4 + regs_context32_t.eax], eax
-        mov     [esp + 4 + regs_context32_t.ebx], ebx
+        mov     [esp + 4 + 4 + regs_context32_t.eax], eax
+        mov     [esp + 4 + 4 + regs_context32_t.ebx], ebx
+
+        pop     ebx
+        call    fs.unlock
+
         ret
 kendp
 
@@ -562,6 +570,8 @@ iglobal
     ; needs_free
     db 0
 
+  static_assert $ - static_test_ram_device_data = sizeof.blk.memory.device_data_t
+
   align 4
   ; blk.device_t
   static_test_ram_device:
@@ -572,11 +582,15 @@ iglobal
     ; user_data
     dd static_test_ram_device_data
 
+  static_assert $ - static_test_ram_device = sizeof.blk.device_t
+
   align 4
   ; fs.partition_t
   static_test_ram_partition:
     ; vftbl
     dd fs.fat12.vftbl
+    ; mutex
+    rb sizeof.mutex_t
     ; device
     dd static_test_ram_device
     ; range
@@ -589,6 +603,8 @@ iglobal
     ; user_data
     dd static_test_ram_partition_data
 
+  static_assert $ - static_test_ram_partition = sizeof.fs.partition_t
+
   end if ; KCONFIG_BLK_MEMORY
 endg
 
@@ -599,6 +615,8 @@ uglobal
   ; fs.fat12.partition_data_t
   static_test_ram_partition_data:
     rb sizeof.fs.fat12.partition_data_t
+
+  static_assert $ - static_test_ram_partition_data = sizeof.fs.fat12.partition_data_t
 
   end if ; KCONFIG_BLK_MEMORY
 endg
@@ -631,6 +649,8 @@ iglobal
     ; drive_number
     db -1
 
+  static_assert $ - static_test_floppy_ctl_device_data = sizeof.blk.floppy.ctl.device_data_t
+
   align 4
   ; blk.floppy.device_data_t
   static_test_floppy_device_data:
@@ -638,6 +658,8 @@ iglobal
     dd static_test_floppy_ctl_device_data
     ; drive_number
     db 0
+
+  static_assert $ - static_test_floppy_device_data = sizeof.blk.floppy.device_data_t
 
   align 4
   ; blk.device_t
@@ -649,11 +671,15 @@ iglobal
     ; user_data
     dd static_test_floppy_device_data
 
+  static_assert $ - static_test_floppy_device = sizeof.blk.device_t
+
   align 4
   ; fs.partition_t
   static_test_floppy_partition:
     ; vftbl
     dd fs.fat12.vftbl
+    ; mutex
+    rb sizeof.mutex_t
     ; device
     dd static_test_floppy_device
     ; range
@@ -666,6 +692,8 @@ iglobal
     ; user_data
     dd static_test_floppy_partition_data
 
+  static_assert $ - static_test_floppy_partition = sizeof.fs.partition_t
+
   end if ; KCONFIG_BLK_FLOPPY
 endg
 
@@ -676,6 +704,8 @@ uglobal
   ; fs.fat12.partition_data_t
   static_test_floppy_partition_data:
     rb sizeof.fs.fat12.partition_data_t
+
+  static_assert $ - static_test_floppy_partition_data = sizeof.fs.fat12.partition_data_t
 
   end if ; KCONFIG_BLK_FLOPPY
 endg
@@ -695,14 +725,16 @@ iglobal
   if KCONFIG_BLK_ATAPI
 
   align 4
-    ; blk.atapi.device_data_t
-    static_test_atapi_ctl_device_data:
-      ; base_reg
-      dw 0x01f0
-      ; dev_ctl_reg
-      dw 0x03f6
-      ; drive_number
-      db -1
+  ; blk.atapi.device_data_t
+  static_test_atapi_ctl_device_data:
+    ; base_reg
+    dw 0x01f0
+    ; dev_ctl_reg
+    dw 0x03f6
+    ; drive_number
+    db -1
+
+  static_assert $ - static_test_atapi_ctl_device_data = sizeof.blk.atapi.device_data_t
 
   align 4
   ; blk.atapi.device_data_t
@@ -711,6 +743,8 @@ iglobal
     dd static_test_atapi_ctl_device_data
     ; drive_number
     db 0
+
+  static_assert $ - static_test_atapi_device_data = sizeof.blk.atapi.device_data_t
 
   align 4
   ; blk.device_t
@@ -722,11 +756,15 @@ iglobal
     ; user_data
     dd static_test_atapi_device_data
 
+  static_assert $ - static_test_atapi_device = sizeof.blk.device_t
+
   align 4
   ; fs.partition_t
   static_test_atapi_partition:
     ; vftbl
     dd fs.cdfs.vftbl
+    ; mutex
+    rb sizeof.mutex_t
     ; device
     dd static_test_atapi_device
     ; range
@@ -739,6 +777,8 @@ iglobal
     ; user_data
     dd static_test_atapi_partition_data
 
+  static_assert $ - static_test_atapi_partition = sizeof.fs.partition_t
+
   end if ; KCONFIG_BLK_ATAPI
 endg
 
@@ -746,9 +786,11 @@ uglobal
   if KCONFIG_BLK_ATAPI
 
   align 4
-  ; fs.iso9660.partition_data_t
+  ; fs.cdfs.partition_data_t
   static_test_atapi_partition_data:
     rb sizeof.fs.cdfs.partition_data_t
+
+  static_assert $ - static_test_atapi_partition_data = sizeof.fs.cdfs.partition_data_t
 
   end if ; KCONFIG_BLK_ATAPI
 endg

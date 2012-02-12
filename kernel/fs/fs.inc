@@ -37,6 +37,7 @@ ends
 
 struct fs.partition_t
   vftbl     dd ? ; ^= fs.vftbl_t
+  mutex     mutex_t
   device    dd ? ; ^= blk.device_t
   range     range64_t
   type      db ? ; #= one of FS_PARTITION_TYPE_*

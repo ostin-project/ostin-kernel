@@ -14,13 +14,12 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-struct mutex_t
-  count    dd ?
-  list     linked_list_t
+struct mutex_t linked_list_t
+  count dd ?
 ends
 
 struct mutex_waiter_t linked_list_t
-  task     dd ?
+  task dd ?
 ends
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -28,10 +27,9 @@ kproc mutex_init ;//////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;# void  __fastcall mutex_init(struct mutex* lock)
 ;-----------------------------------------------------------------------------------------------------------------------
-        lea     eax, [ecx + mutex_t.list]
+        mov     [ecx + mutex_t.next_ptr], ecx
+        mov     [ecx + mutex_t.prev_ptr], ecx
         mov     [ecx + mutex_t.count], 1
-        mov     [ecx + mutex_t.list.next_ptr], eax
-        mov     [ecx + mutex_t.list.prev_ptr], eax
         ret
 kendp
 
@@ -46,16 +44,9 @@ kproc mutex_lock ;//////////////////////////////////////////////////////////////
         pushfd
         cli
 
-        push    esi
         sub     esp, sizeof.mutex_waiter_t
 
-        mov     eax, [ecx + mutex_t.list.prev_ptr]
-        lea     esi, [ecx + mutex_t.list]
-
-        mov     [ecx + mutex_t.list.prev_ptr], esp
-        mov     [esp + mutex_waiter_t.next_ptr], esi
-        mov     [esp + mutex_waiter_t.prev_ptr], eax
-        mov     [eax], esp
+        list_add_tail esp, ecx ; esp = new waiter, ecx = list head
 
         mov     edx, [TASK_BASE]
         mov     [esp + mutex_waiter_t.task], edx
@@ -74,15 +65,14 @@ kproc mutex_lock ;//////////////////////////////////////////////////////////////
         mov     eax, [esp + mutex_waiter_t.prev_ptr]
 
         mov     [eax + mutex_waiter_t.next_ptr], edx
-        cmp     [ecx + mutex_t.list.next_ptr], esi
         mov     [edx + mutex_waiter_t.prev_ptr], eax
+        cmp     [ecx + mutex_t.next_ptr], ecx
         jne     @f
 
         mov     [ecx + mutex_t.count], 0
 
     @@: add     esp, sizeof.mutex_waiter_t
 
-        pop     esi
         popfd
 
   .done:
@@ -97,8 +87,8 @@ kproc mutex_unlock ;////////////////////////////////////////////////////////////
         pushfd
         cli
 
-        lea     eax, [ecx + mutex_t.list]
-        cmp     eax, [ecx + mutex_t.list.next_ptr]
+        mov     eax, [ecx + mutex_t.next_ptr]
+        cmp     eax, ecx
         mov     [ecx + mutex_t.count], 1
         je      @f
 

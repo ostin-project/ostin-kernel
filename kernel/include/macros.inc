@@ -90,6 +90,34 @@ macro Mov op1, op2, op3 ; op1 = op2 = op3
         mov     op1, op2
 }
 
+macro __list_add new, prev, next
+{
+        mov     [next + linked_list_t.prev_ptr], new
+        mov     [new + linked_list_t.next_ptr], next
+        mov     [new + linked_list_t.prev_ptr], prev
+        mov     [prev + linked_list_t.next_ptr], new
+}
+
+macro list_add new, head
+{
+        mov     eax, [head + linked_list_t.next_ptr]
+        __list_add new, head, eax
+}
+
+macro list_add_tail new, head
+{
+        mov     eax, [head + linked_list_t.prev_ptr]
+        __list_add new, eax, head
+}
+
+macro list_del entry
+{
+        mov     edx, [entry + list_fd]
+        mov     ecx, [entry + list_bk]
+        mov     [edx + list_bk], ecx
+        mov     [ecx + list_fd], edx
+}
+
 macro save_ring3_context
 {
         pushad

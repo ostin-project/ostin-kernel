@@ -537,6 +537,13 @@ high_code:
         mov     ecx, core.thread._.tree_mutex
         call    mutex_init
 
+        mov     ecx, static_test_ram_partition + fs.partition_t.mutex
+        call    mutex_init
+        mov     ecx, static_test_floppy_partition + fs.partition_t.mutex
+        call    mutex_init
+        mov     ecx, static_test_atapi_partition + fs.partition_t.mutex
+        call    mutex_init
+
         xor     eax, eax
         inc     eax
         mov     [CURRENT_TASK], eax ; 1
