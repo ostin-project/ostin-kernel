@@ -1,0 +1,4 @@
+[patterns]
+**.asm = native
+**.inc = native
+**.txt = native
