@@ -250,7 +250,7 @@ end if ; KCONFIG_BLK_FLOPPY
   HEAP_BASE:
 end virtual
 
-static_assert (SLOT_BASE and 0x0000ff00) = 0
+assert (SLOT_BASE and 0x0000ff00) = 0
 
 CLEAN_ZONE          = 0x284000
 

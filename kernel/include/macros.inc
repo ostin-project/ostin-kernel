@@ -72,18 +72,6 @@ macro xchg_s_ a, b
         pop     a b
 }
 
-macro static_assert cond, message
-{
-  local ..static_assert_pass
-  if defined ..static_assert_pass & ~ (cond)
-    if ~ message eq
-      display "Assertion failed: ", message, 13, 10
-    end if
-    err
-  end if
-  ..static_assert_pass:
-}
-
 macro Mov op1, op2, op3 ; op1 = op2 = op3
 {
         mov     op2, op3

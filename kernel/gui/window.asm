@@ -47,7 +47,7 @@ struct gui.window_t
   cursor        dd ? ; ^= cursor_t
 ends
 
-static_assert sizeof.gui.window_t mod 4 = 0
+assert sizeof.gui.window_t mod 4 = 0
 
 window.BORDER_SIZE = 5
 

@@ -33,7 +33,7 @@ struct core.process_t rb_tree_node_t
   threads       linked_list_t
 ends
 
-static_assert sizeof.core.process_t mod 4 = 0
+assert sizeof.core.process_t mod 4 = 0
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc core.process.lock_tree ;//////////////////////////////////////////////////////////////////////////////////////////

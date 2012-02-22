@@ -66,7 +66,7 @@ struct task_data_t
   new_pid    dd ?
 ends
 
-static_assert sizeof.task_data_t = 32
+assert sizeof.task_data_t = 32
 
 struct window_data_t
   box           box32_t
@@ -85,14 +85,14 @@ struct window_data_t
   fl_redraw     db ?
 ends
 
-static_assert sizeof.window_data_t = 32
+assert sizeof.window_data_t = 32
 
 struct draw_data_t rect32_t
- rb 16
+  rb 16
 ends
 
-static_assert sizeof.draw_data_t = sizeof.task_data_t
-static_assert sizeof.draw_data_t = sizeof.window_data_t
+assert sizeof.draw_data_t = sizeof.task_data_t
+assert sizeof.draw_data_t = sizeof.window_data_t
 
 struct app_data_debug_regs_t
   dr0 dd ?
@@ -145,7 +145,7 @@ struct app_data_t
                   rb 256 - $
 ends
 
-static_assert sizeof.app_data_t = 256
+assert sizeof.app_data_t = 256
 
 struct app_io_ports_range_t
   pid        dd ?

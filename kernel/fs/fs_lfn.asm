@@ -570,7 +570,7 @@ iglobal
     ; needs_free
     db 0
 
-  static_assert $ - static_test_ram_device_data = sizeof.blk.memory.device_data_t
+  assert $ - static_test_ram_device_data = sizeof.blk.memory.device_data_t
 
   align 4
   ; blk.device_t
@@ -582,7 +582,7 @@ iglobal
     ; user_data
     dd static_test_ram_device_data
 
-  static_assert $ - static_test_ram_device = sizeof.blk.device_t
+  assert $ - static_test_ram_device = sizeof.blk.device_t
 
   align 4
   ; fs.partition_t
@@ -603,7 +603,7 @@ iglobal
     ; user_data
     dd static_test_ram_partition_data
 
-  static_assert $ - static_test_ram_partition = sizeof.fs.partition_t
+  assert $ - static_test_ram_partition = sizeof.fs.partition_t
 
   end if ; KCONFIG_BLK_MEMORY
 endg
@@ -616,7 +616,7 @@ uglobal
   static_test_ram_partition_data:
     rb sizeof.fs.fat12.partition_data_t
 
-  static_assert $ - static_test_ram_partition_data = sizeof.fs.fat12.partition_data_t
+  assert $ - static_test_ram_partition_data = sizeof.fs.fat12.partition_data_t
 
   end if ; KCONFIG_BLK_MEMORY
 endg
@@ -649,7 +649,7 @@ iglobal
     ; drive_number
     db -1
 
-  static_assert $ - static_test_floppy_ctl_device_data = sizeof.blk.floppy.ctl.device_data_t
+  assert $ - static_test_floppy_ctl_device_data = sizeof.blk.floppy.ctl.device_data_t
 
   align 4
   ; blk.floppy.device_data_t
@@ -659,7 +659,7 @@ iglobal
     ; drive_number
     db 0
 
-  static_assert $ - static_test_floppy_device_data = sizeof.blk.floppy.device_data_t
+  assert $ - static_test_floppy_device_data = sizeof.blk.floppy.device_data_t
 
   align 4
   ; blk.device_t
@@ -671,7 +671,7 @@ iglobal
     ; user_data
     dd static_test_floppy_device_data
 
-  static_assert $ - static_test_floppy_device = sizeof.blk.device_t
+  assert $ - static_test_floppy_device = sizeof.blk.device_t
 
   align 4
   ; fs.partition_t
@@ -692,7 +692,7 @@ iglobal
     ; user_data
     dd static_test_floppy_partition_data
 
-  static_assert $ - static_test_floppy_partition = sizeof.fs.partition_t
+  assert $ - static_test_floppy_partition = sizeof.fs.partition_t
 
   end if ; KCONFIG_BLK_FLOPPY
 endg
@@ -705,7 +705,7 @@ uglobal
   static_test_floppy_partition_data:
     rb sizeof.fs.fat12.partition_data_t
 
-  static_assert $ - static_test_floppy_partition_data = sizeof.fs.fat12.partition_data_t
+  assert $ - static_test_floppy_partition_data = sizeof.fs.fat12.partition_data_t
 
   end if ; KCONFIG_BLK_FLOPPY
 endg
@@ -734,7 +734,7 @@ iglobal
     ; drive_number
     db -1
 
-  static_assert $ - static_test_atapi_ctl_device_data = sizeof.blk.atapi.device_data_t
+  assert $ - static_test_atapi_ctl_device_data = sizeof.blk.atapi.device_data_t
 
   align 4
   ; blk.atapi.device_data_t
@@ -744,7 +744,7 @@ iglobal
     ; drive_number
     db 0
 
-  static_assert $ - static_test_atapi_device_data = sizeof.blk.atapi.device_data_t
+  assert $ - static_test_atapi_device_data = sizeof.blk.atapi.device_data_t
 
   align 4
   ; blk.device_t
@@ -756,7 +756,7 @@ iglobal
     ; user_data
     dd static_test_atapi_device_data
 
-  static_assert $ - static_test_atapi_device = sizeof.blk.device_t
+  assert $ - static_test_atapi_device = sizeof.blk.device_t
 
   align 4
   ; fs.partition_t
@@ -777,7 +777,7 @@ iglobal
     ; user_data
     dd static_test_atapi_partition_data
 
-  static_assert $ - static_test_atapi_partition = sizeof.fs.partition_t
+  assert $ - static_test_atapi_partition = sizeof.fs.partition_t
 
   end if ; KCONFIG_BLK_ATAPI
 endg
@@ -790,7 +790,7 @@ uglobal
   static_test_atapi_partition_data:
     rb sizeof.fs.cdfs.partition_data_t
 
-  static_assert $ - static_test_atapi_partition_data = sizeof.fs.cdfs.partition_data_t
+  assert $ - static_test_atapi_partition_data = sizeof.fs.cdfs.partition_data_t
 
   end if ; KCONFIG_BLK_ATAPI
 endg

@@ -71,7 +71,7 @@ struct core.thread_t rb_tree_node_t
   debug         core.thread_debug_t
 ends
 
-static_assert sizeof.core.thread_t mod 4 = 0
+assert sizeof.core.thread_t mod 4 = 0
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc core.thread.lock_tree ;///////////////////////////////////////////////////////////////////////////////////////////

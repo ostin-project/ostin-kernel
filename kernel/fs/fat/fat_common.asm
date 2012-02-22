@@ -45,7 +45,7 @@ struct fs.fat.dir_entry_t
   size               dd ?
 ends
 
-static_assert sizeof.fs.fat.dir_entry_t = 32
+assert sizeof.fs.fat.dir_entry_t = 32
 
 struct fs.fat.lfn_dir_entry_t
   sequence_number db ?
@@ -58,7 +58,7 @@ struct fs.fat.lfn_dir_entry_t
   name.part_3     du 2 dup(?)
 ends
 
-static_assert sizeof.fs.fat.lfn_dir_entry_t = sizeof.fs.fat.dir_entry_t
+assert sizeof.fs.fat.lfn_dir_entry_t = sizeof.fs.fat.dir_entry_t
 
 struct fs.fat.dir_handlers_t
   first_entry dd ?

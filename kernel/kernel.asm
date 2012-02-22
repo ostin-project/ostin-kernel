@@ -2280,13 +2280,13 @@ kproc sysfn.get_process_info ;//////////////////////////////////////////////////
         lea     eax, [edx - 1]
         stosd
 
-static_assert process_info_t.thread_id = 30
+assert process_info_t.thread_id = 30
 
         ; +30: PID/TID
         mov     eax, [TASK_DATA + ecx - sizeof.task_data_t + task_data_t.pid]
         stosd
 
-static_assert process_info_t.window_box = 34
+assert process_info_t.window_box = 34
 
         ; window position and size
         push    esi
@@ -2296,13 +2296,13 @@ static_assert process_info_t.window_box = 34
         movsd
         movsd
 
-static_assert process_info_t.thread_state = 50
+assert process_info_t.thread_state = 50
 
         ; Process state (+50)
         movzx   eax, [TASK_DATA + ecx - sizeof.task_data_t + task_data_t.state]
         stosd
 
-static_assert process_info_t.window_client_box = 54
+assert process_info_t.window_client_box = 54
 
         ; Window client area box
         lea     esi, [SLOT_BASE + ecx * 8 + app_data_t.wnd_clientbox]
@@ -2311,13 +2311,13 @@ static_assert process_info_t.window_client_box = 54
         movsd
         movsd
 
-static_assert process_info_t.window_state = 70
+assert process_info_t.window_state = 70
 
         ; Window state
         mov     al, [window_data + ecx + window_data_t.fl_wstate]
         stosb
 
-static_assert process_info_t.thread_event_mask = 71
+assert process_info_t.thread_event_mask = 71
 
         ; Event mask (+71)
         mov     eax, [ebp + core.thread_t.events.event_mask]
