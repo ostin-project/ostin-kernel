@@ -537,12 +537,26 @@ high_code:
         mov     ecx, core.thread._.tree_mutex
         call    mutex_init
 
+if KCONFIG_BLK_MEMORY
+
         mov     ecx, static_test_ram_partition + fs.partition_t.mutex
         call    mutex_init
+
+end if ; KCONFIG_BLK_MEMORY
+
+if KCONFIG_BLK_FLOPPY
+
         mov     ecx, static_test_floppy_partition + fs.partition_t.mutex
         call    mutex_init
+
+end if ; KCONFIG_BLK_FLOPPY
+
+if KCONFIG_BLK_ATAPI
+
         mov     ecx, static_test_atapi_partition + fs.partition_t.mutex
         call    mutex_init
+
+end if ; KCONFIG_BLK_ATAPI
 
         xor     eax, eax
         inc     eax

@@ -98,6 +98,9 @@ end if ; KCONFIG_BLK_FLOPPY
     db 'hd2', 0
     dd fs_HasHd3
     db 'hd3', 0
+
+if KCONFIG_BLK_ATAPI
+
     dd fs_HasCd0
     db 'cd0', 0
     dd fs_HasCd1
@@ -106,6 +109,9 @@ end if ; KCONFIG_BLK_FLOPPY
     db 'cd2', 0
     dd fs_HasCd3
     db 'cd3', 0
+
+end if ; KCONFIG_BLK_ATAPI
+
     dd 0
 
   fs_additional_handlers:
