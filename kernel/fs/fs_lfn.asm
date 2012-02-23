@@ -60,18 +60,18 @@ if KCONFIG_BLK_ATAPI
     db 3, 'cd0'
     dd fs_OnGenericQuery4 ; fs_OnCd0
     dd fs_NextCd
+    db 3, 'cd1'
+    dd fs_OnGenericQuery4 ; fs_OnCd1
+    dd fs_NextCd
+    db 3, 'cd2'
+    dd fs_OnGenericQuery4 ; fs_OnCd2
+    dd fs_NextCd
+    db 3, 'cd3'
+    dd fs_OnGenericQuery4 ; fs_OnCd3
+    dd fs_NextCd
 
 end if ; KCONFIG_BLK_ATAPI
 
-    db 3, 'cd1'
-    dd fs_OnCd1
-    dd fs_NextCd
-    db 3, 'cd2'
-    dd fs_OnCd2
-    dd fs_NextCd
-    db 3, 'cd3'
-    dd fs_OnCd3
-    dd fs_NextCd
     db 0
 
   virtual_root_query:
@@ -125,19 +125,6 @@ end if ; KCONFIG_BLK_FLOPPY
     dd fs_HdDelete
     dd fs_HdCreateFolder
   fs_NumHdServices = ($ - fs_HdServices) / 4
-
-  fs_CdServices:
-    dd fs_CdRead
-    dd fs_CdReadFolder
-    dd fs.error.not_implemented
-    dd fs.error.not_implemented
-    dd fs.error.not_implemented
-    dd fs_CdGetFileInfo
-    dd fs.error.not_implemented
-    dd 0
-    dd fs.error.not_implemented
-    dd fs.error.not_implemented
-  fs_NumCdServices = ($ - fs_CdServices) / 4
 endg
 
 uglobal
@@ -1025,85 +1012,6 @@ kproc fs_HdCreateFolder ;///////////////////////////////////////////////////////
         mov     al, 1
         mov     edi, fs.vftbl_t.create_directory
         jmp     fs_HdRewrite.direct
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc fs_OnCd0 ;////////////////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        call    reserve_cd
-        mov     [ChannelNumber], 0
-        mov     [DiskNumber], 0
-        push    6
-        push    1
-        jmp     fs_OnCd
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc fs_OnCd1 ;////////////////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        call    reserve_cd
-        mov     [ChannelNumber], 0
-        mov     [DiskNumber], 1
-        push    4
-        push    2
-        jmp     fs_OnCd
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc fs_OnCd2 ;////////////////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        call    reserve_cd
-        mov     [ChannelNumber], 1
-        mov     [DiskNumber], 0
-        push    2
-        push    3
-        jmp     fs_OnCd
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc fs_OnCd3 ;////////////////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        call    reserve_cd
-        mov     [ChannelNumber], 1
-        mov     [DiskNumber], 1
-        push    0
-        push    4
-kendp
-
-kproc fs_OnCd
-        call    reserve_cd_channel
-        pop     eax
-        mov     [cdpos], eax
-        pop     eax
-        cmp     ecx, 0x100
-        jae     .nf
-        push    ecx ebx
-        mov     cl, al
-        mov     bl, [DRIVE_DATA + 1]
-        shr     bl, cl
-        test    bl, 2
-        pop     ebx ecx
-
-        jnz     @f
-
-  .nf:
-        mov     [esp + 4 + regs_context32_t.eax], ERROR_FILE_NOT_FOUND ; not found
-        jmp     .free
-
-    @@: mov     eax, [ebx + fs.query_t.function]
-        mov     ecx, [ebx + fs.query_t.generic.param3]
-        mov     edx, [ebx + fs.query_t.generic.param4]
-        add     ebx, fs.query_t.generic
-
-        call    dword[fs_CdServices + eax * 4]
-
-        mov     [esp + 4 + regs_context32_t.eax], eax
-        mov     [esp + 4 + regs_context32_t.ebx], ebx
-
-  .free:
-        call    free_cd_channel
-        and     [cd_status], 0
-        ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------

@@ -59,5 +59,4 @@ include "cdfs/cdfs.inc"
 
 include "ext2.asm"
 include "fs_lfn.asm"
-include "iso9660.asm"
 include "ntfs.asm"
