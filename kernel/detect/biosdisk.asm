@@ -18,7 +18,7 @@
 
         xor     cx, cx
         mov     es, cx
-        mov     di, BOOT_BIOS_DISKS
+        mov     di, boot_var.low.bios_disks
         mov     byte[es:di - 1], cl
         cmp     [boot.params.use_bios_disks], 1
         jnz     bdde
@@ -42,7 +42,7 @@ bdds:
         int     0x13
         pop     ds
         jc      bddc2
-        inc     [es:BOOT_BIOS_DISKS_CNT]
+        inc     [es:boot_var.low.bios_disks_cnt]
         cmp     word[es:si], 0x1e
         jb      bddl
         cmp     word[es:si + 0x1a], 0xffff

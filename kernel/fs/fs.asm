@@ -144,15 +144,15 @@ kproc choice_necessity_partition_1 ;////////////////////////////////////////////
         mov     [hd_entries], eax ; entries in hd cache
         mov     edx, DRIVE_DATA + 2
         cmp     ecx, 0x80
-        jb      search_partition_array
+        jb      .search_partition_array
         mov     ecx, 4
 
-  search_partition_array:
+  .search_partition_array:
         mov     bl, [edx]
         movzx   ebx, bl
         add     eax, ebx
         inc     edx
-        loop    search_partition_array
+        loop    .search_partition_array
         mov     ecx, [hdpos]
         mov     edx, BiosDiskPartitions
         sub     ecx, 0x80

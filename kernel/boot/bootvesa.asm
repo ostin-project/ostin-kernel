@@ -399,15 +399,15 @@ kproc boot.set_vmode_boot_vars ;////////////////////////////////////////////////
         mov_s_  es, 0 ; 0x1000
 
         mov     cx, [boot.params.vmode.number]
-        mov     [es:BOOT_VESA_MODE], cx
+        mov     [es:boot_var.low.vesa_mode], cx
 
         cmp     cx, 0x12
         je      .mode_x12_x13
         cmp     cx, 0x13
         je      .mode_x12_x13
 
-        mov_s_  [es:BOOT_SCREEN_RES.width], [boot.params.vmode.resolution.width]
-        mov_s_  [es:BOOT_SCREEN_RES.height], [boot.params.vmode.resolution.height]
+        mov_s_  [es:boot_var.low.screen_res.width], [boot.params.vmode.resolution.width]
+        mov_s_  [es:boot_var.low.screen_res.height], [boot.params.vmode.resolution.height]
 
         cmp     byte[es:vi.vesa_version + 1], 2
         jb      .vesa12
@@ -417,8 +417,8 @@ kproc boot.set_vmode_boot_vars ;////////////////////////////////////////////////
         and     cx, 0x0fff
         mov     di, mi ; 0xa000
         int     0x10
-        mov_s_  [es:BOOT_LFB], [es:mi.phys_base_ptr]
-        mov_s_  [es:BOOT_SCANLINE], [es:mi.bytes_per_scanline]
+        mov_s_  [es:boot_var.low.vesa_20_lfb_addr], [es:mi.phys_base_ptr]
+        mov_s_  [es:boot_var.low.scanline_len], [es:mi.bytes_per_scanline]
         mov     al, [es:mi.bits_per_pixel]
 ;       cmp     al, 16
 ;       jne     @f
@@ -427,14 +427,14 @@ kproc boot.set_vmode_boot_vars ;////////////////////////////////////////////////
 ;       mov     al, 15
 ;
 ;   @@:
-        mov     [es:BOOT_BPP], al
+        mov     [es:boot_var.low.bpp], al
         jmp     .exit
 
   .mode_x12_x13:
-        mov     [es:BOOT_SCREEN_RES.width], 640
-        mov     [es:BOOT_SCREEN_RES.height], 480
-        mov     [es:BOOT_BPP], 32
-        or      [es:BOOT_LFB], -1
+        mov     [es:boot_var.low.screen_res.width], 640
+        mov     [es:boot_var.low.screen_res.height], 480
+        mov     [es:boot_var.low.bpp], 32
+        or      [es:boot_var.low.vesa_20_lfb_addr], -1
 
   .vesa12:
         ;  VESA 1.2 PM BANK SWITCH ADDRESS
@@ -448,7 +448,7 @@ kproc boot.set_vmode_boot_vars ;////////////////////////////////////////////////
         add     eax, ebx
         movzx   ebx, word[es:di]
         add     eax, ebx
-        mov     [es:BOOT_BANK_SW], eax
+        mov     [es:boot_var.low.vesa_12_bank_sw], eax
 
   .exit:
         pop     es

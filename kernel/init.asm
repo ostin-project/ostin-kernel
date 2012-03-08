@@ -22,7 +22,7 @@ MEM_UC = 0 ; uncached memory
 kproc mem_test ;////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         ; if we have BIOS with fn E820, skip the test
-        cmp     [BOOT_VAR - OS_BASE + BOOT_PHOENIX_SMAP_CNT], 0
+        cmp     [boot_var.phoenix_smap_cnt - OS_BASE], 0
         jnz     .ret
 
         mov     eax, cr0
@@ -42,12 +42,12 @@ kproc mem_test ;////////////////////////////////////////////////////////////////
 
         and     eax, not (CR0_CD + CR0_NW) ; enable caching
         mov     cr0, eax
-        inc     [BOOT_VAR - OS_BASE + BOOT_PHOENIX_SMAP_CNT]
+        inc     [boot_var.phoenix_smap_cnt - OS_BASE]
         xor     eax, eax
-        mov     dword[BOOT_VAR - OS_BASE + BOOT_PHOENIX_SMAP + phoenix_smap_addr_range_t.address], eax
-        mov     dword[BOOT_VAR - OS_BASE + BOOT_PHOENIX_SMAP + phoenix_smap_addr_range_t.address + 4], eax
-        mov     dword[BOOT_VAR - OS_BASE + BOOT_PHOENIX_SMAP + phoenix_smap_addr_range_t.size], edi
-        mov     dword[BOOT_VAR - OS_BASE + BOOT_PHOENIX_SMAP + phoenix_smap_addr_range_t.size + 4], eax
+        mov     dword[boot_var.phoenix_smap - OS_BASE + phoenix_smap_addr_range_t.address], eax
+        mov     dword[boot_var.phoenix_smap - OS_BASE + phoenix_smap_addr_range_t.address + 4], eax
+        mov     dword[boot_var.phoenix_smap - OS_BASE + phoenix_smap_addr_range_t.size], edi
+        mov     dword[boot_var.phoenix_smap - OS_BASE + phoenix_smap_addr_range_t.size + 4], eax
 
   .ret:
         ret
@@ -57,7 +57,7 @@ kendp
 kproc init_mem ;////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         ; calculate maximum allocatable address and number of allocatable pages
-        mov     edi, BOOT_VAR - OS_BASE + BOOT_PHOENIX_SMAP
+        mov     edi, boot_var.phoenix_smap - OS_BASE
         mov     ecx, [edi - 4]
         xor     esi, esi ; esi will hold total amount of memory
         xor     edx, edx ; edx will hold maximum allocatable address
@@ -211,7 +211,7 @@ kproc init_page_map ;///////////////////////////////////////////////////////////
         stosd
 
         ; scan through memory map and mark free areas as available
-        mov     ebx, BOOT_VAR - OS_BASE + BOOT_PHOENIX_SMAP
+        mov     ebx, boot_var.phoenix_smap - OS_BASE
         mov     edx, [ebx - 4]
 
   .scanmap:

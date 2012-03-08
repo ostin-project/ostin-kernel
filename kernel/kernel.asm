@@ -183,7 +183,7 @@ B32:
 
         ; SAVE & CLEAR 0-0xffff
         xor     esi, esi
-        mov     edi, BOOT_VAR - OS_BASE
+        mov     edi, boot_data_area - OS_BASE
         mov     ecx, 0x10000 / 4
         rep
         movsd
@@ -260,16 +260,16 @@ high_code:
         mov     cr3, eax           ; flush TLB
 
         ; SAVE REAL MODE VARIABLES
-        mov     ax, [BOOT_VAR + BOOT_IDE_BASE_ADDR]
+        mov     ax, [boot_var.ide_base_addr]
         mov     [IDEContrRegsBaseAddr], ax
 
         ; --------------- APM ---------------------
 
         ; init selectors
-        mov     ebx, [BOOT_VAR + BOOT_APM_ENTRY_OFS] ; offset of APM entry point
-        movzx   eax, [BOOT_VAR + BOOT_APM_CODE32_SEG] ; real-mode segment base address of protected-mode 32-bit code segment
-        movzx   ecx, [BOOT_VAR + BOOT_APM_CODE16_SEG] ; real-mode segment base address of protected-mode 16-bit code segment
-        movzx   edx, [BOOT_VAR + BOOT_APM_DATA16_SEG] ; real-mode segment base address of protected-mode 16-bit data segment
+        mov     ebx, [boot_var.apm_entry_ofs] ; offset of APM entry point
+        movzx   eax, [boot_var.apm_code32_seg] ; real-mode segment base address of protected-mode 32-bit code segment
+        movzx   ecx, [boot_var.apm_code16_seg] ; real-mode segment base address of protected-mode 16-bit code segment
+        movzx   edx, [boot_var.apm_data16_seg] ; real-mode segment base address of protected-mode 16-bit data segment
 
         shl     eax, 4
         mov     [apm_code_32 + 2], ax
@@ -289,42 +289,42 @@ high_code:
         mov     dword[apm_entry], ebx
         mov     word[apm_entry + 4], apm_code_32 - gdts
 
-        mov     eax, dword[BOOT_VAR + BOOT_APM_VERSION] ; version & flags
+        mov     eax, dword[boot_var.apm_version] ; version & flags
         mov     [apm_vf], eax
 
         ; -----------------------------------------
 
-;       movzx   eax, [BOOT_VAR + BOOT_MOUSE_PORT] ; mouse port
+;       movzx   eax, [boot_var.mouse_port] ; mouse port
 ;       mov     byte[0xf604], 1 ; al
-        mov     al, [BOOT_VAR + BOOT_DMA] ; DMA access
+        mov     al, [boot_var.enable_dma] ; DMA access
         mov     [allow_dma_access], al
-        movzx   eax, [BOOT_VAR + BOOT_BPP] ; bpp
+        movzx   eax, [boot_var.bpp] ; bpp
         mov     [ScreenBPP], al
 
         mov     [_display.bpp], eax
         mov     [_display.vrefresh], 60
         mov     [_display.disable_mouse], __sys_disable_mouse
 
-        movzx   eax, [BOOT_VAR + BOOT_SCREEN_RES.width] ; X max
+        movzx   eax, [boot_var.screen_res.width] ; X max
         mov     [_display.box.width], eax
         dec     eax
         mov     [Screen_Max_Pos.x], eax
         mov     [screen_workarea.right], eax
-        movzx   eax, [BOOT_VAR + BOOT_SCREEN_RES.height] ; Y max
+        movzx   eax, [boot_var.screen_res.height] ; Y max
         mov     [_display.box.height], eax
         dec     eax
         mov     [Screen_Max_Pos.y], eax
         mov     [screen_workarea.bottom], eax
-        mov     ax, [BOOT_VAR + BOOT_VESA_MODE] ; screen mode
+        mov     ax, [boot_var.vesa_mode] ; screen mode
         mov     [SCR_MODE], ax
-;       mov     eax, [BOOT_VAR + BOOT_BANK_SW]; Vesa 1.2 bnk sw add
+;       mov     eax, [boot_var.vesa_12_bank_sw]; Vesa 1.2 bnk sw add
 ;       mov     [BANK_SWITCH], eax
         mov     [BytesPerScanLine], 640 * 4 ; Bytes PerScanLine
         cmp     [SCR_MODE], 0x13 ; 320x200
         je      @f
         cmp     [SCR_MODE], 0x12 ; VGA 640x480
         je      @f
-        movzx   eax, [BOOT_VAR + BOOT_SCANLINE] ; for other modes
+        movzx   eax, [boot_var.scanline_len] ; for other modes
         mov     [BytesPerScanLine], eax
         mov     [_display.pitch], eax
 
@@ -332,7 +332,7 @@ high_code:
         mul     [_display.box.height]
         mov     [_WinMapRange.size], eax
 
-        mov     esi, BOOT_VAR + BOOT_BIOS_DISKS
+        mov     esi, boot_var.bios_disks
         movzx   ecx, byte[esi - 1]
         mov     [NumBiosDisks], ecx
         mov     edi, BiosDisksData
@@ -340,8 +340,8 @@ high_code:
         movsd
 
         ; GRAPHICS ADDRESSES
-        and     [BOOT_VAR + BOOT_DIRECT_LFB], 0
-        mov     eax, [BOOT_VAR + BOOT_LFB]
+        and     [boot_var.enable_direct_lfb], 0
+        mov     eax, [boot_var.vesa_20_lfb_addr]
         mov     [LFBRange.address], eax
 
         cmp     [SCR_MODE], 0100000000000000b
@@ -1213,10 +1213,10 @@ kproc set_variables ;///////////////////////////////////////////////////////////
         loop    .fl60
 
         push    eax
-        movzx   eax, [BOOT_VAR + BOOT_SCREEN_RES.width]
+        movzx   eax, [boot_var.screen_res.width]
         shr     eax, 1
         mov     [MOUSE_CURSOR_POS.x], eax
-        movzx   eax, [BOOT_VAR + BOOT_SCREEN_RES.height]
+        movzx   eax, [boot_var.screen_res.height]
         shr     eax, 1
         mov     [MOUSE_CURSOR_POS.y], eax
 
@@ -1800,7 +1800,7 @@ kproc sysfn.system_ctl.shutdown ;///////////////////////////////////////////////
         jl      exit_for_anyone
         cmp     ecx, 4
         jg      exit_for_anyone
-        mov     [BOOT_VAR + BOOT_SHUTDOWN_PARAM], cl
+        mov     [boot_var.shutdown_param], cl
 
         mov     eax, [TASK_COUNT]
         mov     [SYS_SHUTDOWN], al
@@ -4035,7 +4035,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc system_shutdown ;/////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     [BOOT_VAR + BOOT_SHUTDOWN_PARAM], 1
+        cmp     [boot_var.shutdown_param], 1
         jne     @f
         ret
 
@@ -4071,7 +4071,7 @@ end if
         rep
         movsb
 
-        mov     esi, BOOT_VAR ; restore 0x0 - 0xffff
+        mov     esi, boot_data_area ; restore 0x0 - 0xffff
         mov     edi, OS_BASE
         mov     ecx, 0x10000 / 4
         rep
@@ -4103,8 +4103,8 @@ if 0
 
 else
 
-        cmp     [OS_BASE + BOOT_SHUTDOWN_PARAM], 1
-        je      no_acpi_power_off
+        cmp     [OS_BASE + boot_var.low.shutdown_param], 1
+        je      .no_acpi_power_off
 
         ; scan for RSDP
         ; 1) The first 1 Kb of the Extended BIOS Data Area (EBDA).
@@ -4112,14 +4112,14 @@ else
         shl     eax, 4
         jz      @f
         mov     ecx, 1024 / 16
-        call    scan_rsdp
+        call    .scan_rsdp
         jnc     .rsdp_found
 
     @@: ; 2) The BIOS read-only memory space between 0E0000h and 0FFFFFh.
         mov     eax, 0xe0000
         mov     ecx, 0x2000
-        call    scan_rsdp
-        jc      no_acpi_power_off
+        call    .scan_rsdp
+        jc      .no_acpi_power_off
 
   .rsdp_found:
         mov     esi, [eax + 16] ; esi contains physical address of the RSDT
@@ -4131,10 +4131,10 @@ else
         and     esi, 0x0fff
         add     esi, ebp
         cmp     dword[esi], 'RSDT'
-        jnz     no_acpi_power_off
+        jnz     .no_acpi_power_off
         mov     ecx, [esi + 4]
         sub     ecx, 0x24
-        jbe     no_acpi_power_off
+        jbe     .no_acpi_power_off
         shr     ecx, 2
         add     esi, 0x24
 
@@ -4151,7 +4151,7 @@ else
         cmp     dword[ebx], 'FACP'
         jz      .fadt_found
         loop    .scan_fadt
-        jmp     no_acpi_power_off
+        jmp     .no_acpi_power_off
 
   .fadt_found:
         ; ebx is linear address of FADT
@@ -4164,10 +4164,10 @@ else
         and     esi, 0x0fff
         sub     edi, esi
         cmp     dword[esi + ebp + 0x4000], 'DSDT'
-        jnz     no_acpi_power_off
+        jnz     .no_acpi_power_off
         mov     eax, [esi + ebp + 0x4004] ; DSDT length
         sub     eax, 36 + 4
-        jbe     no_acpi_power_off
+        jbe     .no_acpi_power_off
         add     esi, 36
 
   .scan_dsdt:
@@ -4185,7 +4185,7 @@ else
         cmp     byte[esi], 0 ; 0 means zero byte, 0Ah xx means byte xx
         jz      @f
         cmp     byte[esi], 0x0a
-        jnz     no_acpi_power_off
+        jnz     .no_acpi_power_off
         inc     esi
         mov     cl, [esi]
 
@@ -4195,11 +4195,11 @@ else
         cmp     byte[esi], 0
         jz      @f
         cmp     byte[esi], 0x0a
-        jnz     no_acpi_power_off
+        jnz     .no_acpi_power_off
         inc     esi
         mov     ch, [esi]
 
-    @@: jmp     do_acpi_power_off
+    @@: jmp     .do_acpi_power_off
 
   .scan_dsdt_cont:
         inc     esi
@@ -4220,9 +4220,9 @@ else
 
     @@: dec     eax
         jnz     .scan_dsdt
-        jmp     no_acpi_power_off
+        jmp     .no_acpi_power_off
 
-do_acpi_power_off:
+  .do_acpi_power_off:
         mov     edx, [ebx + 48]
         test    edx, edx
         jz      .nosmi
@@ -4253,7 +4253,7 @@ do_acpi_power_off:
 
     @@: jmp     $
 
-no_acpi_power_off:
+  .no_acpi_power_off:
         mov     word[OS_BASE + 0x467 + 0], pr_mode_exit
         mov     word[OS_BASE + 0x467 + 2], 0x1000
 
@@ -4268,7 +4268,7 @@ no_acpi_power_off:
         hlt
         jmp     $ - 1
 
-scan_rsdp:
+  .scan_rsdp:
         add     eax, OS_BASE
 
   .s:

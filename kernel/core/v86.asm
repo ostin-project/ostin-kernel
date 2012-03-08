@@ -881,7 +881,7 @@ kendp
 ; .2:
 ;       mov     dx, 0x30f7
 ;       in      al, dx
-;       mov     byte[BOOT_VAR + 0x48e], 0xff
+;       mov     byte[boot_var + 0x48e], 0xff
 ;       ret
 ;kendp
 

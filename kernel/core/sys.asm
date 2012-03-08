@@ -555,18 +555,18 @@ kproc terminate ;///////////////////////////////////////////////////////////////
 
         mov     ecx, esi ; remove buttons
 
-  bnewba2:
+  .bnewba2:
         mov     edi, [BTN_ADDR]
         mov     eax, edi
         movzx   ebx, word[edi]
         inc     bx
 
-  bnewba:
+  .bnewba:
         dec     bx
-        jz      bnmba
+        jz      .bnmba
         add     eax, 0x10
         cmp     cx, [eax]
-        jnz     bnewba
+        jnz     .bnewba
         pusha
         mov     ecx, ebx
         inc     ecx
@@ -576,9 +576,9 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         call    memmove
         dec     dword[edi]
         popa
-        jmp     bnewba2
+        jmp     .bnewba2
 
-  bnmba:
+  .bnmba:
         pusha   ; save window coordinates for window restoring
         shl     esi, 5
         add     esi, window_data
@@ -712,17 +712,17 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         xor     ebx, ebx
         xor     edx, edx
 
-  newirqfree:
+  .newirqfree:
         cmp     [edi + ebx * 4], eax
-        jne     nofreeirq
+        jne     .nofreeirq
         mov     [edi + ebx * 4], edx ; remove irq reservation
         mov     [irq_tab + ebx * 4], edx ; remove irq handler
         mov     [irq_rights + ebx * 4], edx ; set access rights to full access
 
-  nofreeirq:
+  .nofreeirq:
         inc     ebx
         cmp     ebx, 16
-        jb      newirqfree
+        jb      .newirqfree
         popa
 
         pusha   ; remove all port reservations
@@ -730,26 +730,26 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         shl     edx, 5
         mov     edx, [TASK_DATA + edx - sizeof.task_data_t + task_data_t.pid]
 
-  rmpr0:
+  .rmpr0:
         mov     esi, [RESERVED_PORTS]
 
         test    esi, esi
-        jz      rmpr9
+        jz      .rmpr9
 
-  rmpr3:
+  .rmpr3:
         mov     edi, esi
         shl     edi, 4
         add     edi, RESERVED_PORTS
 
         cmp     edx, [edi + app_io_ports_range_t.pid]
-        je      rmpr4
+        je      .rmpr4
 
         dec     esi
-        jnz     rmpr3
+        jnz     .rmpr3
 
-        jmp     rmpr9
+        jmp     .rmpr9
 
-  rmpr4:
+  .rmpr4:
         mov     ecx, 256
         sub     ecx, esi
         shl     ecx, 4
@@ -761,9 +761,9 @@ kproc terminate ;///////////////////////////////////////////////////////////////
 
         dec     dword[RESERVED_PORTS]
 
-        jmp     rmpr0
+        jmp     .rmpr0
 
-  rmpr9:
+  .rmpr9:
         popa
         mov     edi, esi ; do not run this process slot
         shl     edi, 5
@@ -791,7 +791,7 @@ kproc terminate ;///////////////////////////////////////////////////////////////
 
         ; debugger test - terminate all debuggees
         mov     eax, 2
-        mov     ecx, SLOT_BASE + 2 * sizeof.task_data_t + app_data_t.debugger_slot
+        mov     ecx, SLOT_BASE + 2 * sizeof.app_data_t + app_data_t.debugger_slot
 
   .xd0:
         cmp     eax, [TASK_COUNT]

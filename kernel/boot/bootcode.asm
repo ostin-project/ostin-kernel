@@ -649,7 +649,7 @@ end if
         movzx   esp, sp
 
         mov_s_  es, 0
-        and     [es:BOOT_IDE_BASE_ADDR], 0
+        and     [es:boot_var.low.ide_base_addr], 0
 
         ; find HDD IDE DMA PCI device
         ; check for PCI BIOS
@@ -687,7 +687,7 @@ end if
         int     0x1a
         jc      .nopci
         and     cx, 0xfff0 ; clear address decode type
-        mov     [es:BOOT_IDE_BASE_ADDR], cx
+        mov     [es:boot_var.low.ide_base_addr], cx
 
   .nopci:
         mov     al, 0xf6 ; reset keyboard, allow scanning
@@ -718,15 +718,15 @@ end if
         loopnz  @b
 
         ; --------------- APM ---------------------
-        and     [es:BOOT_APM_VERSION], 0 ; ver = 0.0 (APM not found)
+        and     [es:boot_var.low.apm_version], 0 ; ver = 0.0 (APM not found)
         mov     ax, 0x5300
         xor     bx, bx
         int     0x15
         jc      .apm_end ; APM not found
         test    cx, 2
         jz      .apm_end ; APM 32-bit protected-mode interface not supported
-        mov     [es:BOOT_APM_VERSION], ax ; Save APM Version
-        mov     [es:BOOT_APM_FLAGS], cx ; Save APM flags
+        mov     [es:boot_var.low.apm_version], ax ; Save APM Version
+        mov     [es:boot_var.low.apm_flags], cx ; Save APM flags
 
 ;///        ; Write APM ver ----
 ;///        and     ax, 0x0f0f
@@ -746,10 +746,10 @@ end if
         xor     bx, bx
         int     0x15
 
-        mov     [es:BOOT_APM_ENTRY_OFS], ebx
-        mov     [es:BOOT_APM_CODE32_SEG], ax
-        mov     [es:BOOT_APM_CODE16_SEG], cx
-        mov     [es:BOOT_APM_DATA16_SEG], dx
+        mov     [es:boot_var.low.apm_entry_ofs], ebx
+        mov     [es:boot_var.low.apm_code32_seg], ax
+        mov     [es:boot_var.low.apm_code16_seg], cx
+        mov     [es:boot_var.low.apm_data16_seg], dx
 
   .apm_end:
         ; CHECK current of code
@@ -857,13 +857,13 @@ end if
 
         ; GRAPHICS ACCELERATION
         ; force yes
-        mov     [es:BOOT_MTRR], 1
+        mov     [es:boot_var.low.enable_mtrr], 1
 
         ; DMA ACCESS TO HD
         mov     al, [boot.params.use_dma]
-        mov     [es:BOOT_DMA], al
+        mov     [es:boot_var.low.enable_dma], al
 
-        mov     [es:BOOT_DIRECT_LFB], 1
+        mov     [es:boot_var.low.enable_direct_lfb], 1
 
         ; GET MEMORY MAP
         call    get_memory_map_from_bios
@@ -896,7 +896,7 @@ end if
         ; SET GRAPHICS
         mov_s_  es, 0
 
-        mov     ax, [es:BOOT_VESA_MODE] ; vga & 320x200
+        mov     ax, [es:boot_var.low.vesa_mode] ; vga & 320x200
         mov     bx, ax
         cmp     ax, 0x13
         je      .setgr

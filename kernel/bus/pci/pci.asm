@@ -126,7 +126,7 @@ kproc sysfn.pci_ctl.get_version ;///////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 62.0: get PCI version (AH.AL)
 ;-----------------------------------------------------------------------------------------------------------------------
-        movzx   eax, word[BOOT_VAR + BOOT_PCI_DATA + 2]
+        movzx   eax, word[boot_var.pci_data + 2]
         mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
@@ -136,7 +136,7 @@ kproc sysfn.pci_ctl.get_last_bus ;//////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 62.1: get last PCI bus in AL
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     al, [BOOT_VAR + BOOT_PCI_DATA + 1]
+        mov     al, [boot_var.pci_data + 1]
         mov     [esp + 4 + regs_context32_t.al], al
         ret
 kendp
@@ -146,7 +146,7 @@ kproc sysfn.pci_ctl.get_access_mode ;///////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 62.2: get PCI access mechanism
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     al, [BOOT_VAR + BOOT_PCI_DATA]
+        mov     al, [boot_var.pci_data]
         mov     [esp + 4 + regs_context32_t.al], al
         ret
 kendp
@@ -204,7 +204,7 @@ kproc pci_read_reg ;////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax/ax/al = value read
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     [BOOT_VAR + BOOT_PCI_DATA], 2 ; what mechanism will we use?
+        cmp     [boot_var.pci_data], 2 ; what mechanism will we use?
         je      .pci_read_reg_2
 
         ; mechanism 1
@@ -358,8 +358,7 @@ kproc pci_write_reg ;///////////////////////////////////////////////////////////
 ;> bl = register address (dword aligned)
 ;> ecx/cx/cl = value to write
 ;-----------------------------------------------------------------------------------------------------------------------
-
-        cmp     [BOOT_VAR + BOOT_PCI_DATA], 2 ; what mechanism will we use?
+        cmp     [boot_var.pci_data], 2 ; what mechanism will we use?
         je      .pci_write_reg_2
 
         ; mechanism 1
@@ -674,9 +673,9 @@ kproc sysfn.pci_bios32_ctl ;////////////////////////////////////////////////////
         cmp     ebp, 1 ; PCI_FUNCTION_ID
         jnz     .not_PCI_BIOS_PRESENT
         mov     edx, 'PCI '
-        mov     al, [BOOT_VAR + BOOT_PCI_DATA]
-        mov     bx, word[BOOT_VAR + BOOT_PCI_DATA + 2]
-        mov     cl, [BOOT_VAR + BOOT_PCI_DATA + 1]
+        mov     al, [boot_var.pci_data]
+        mov     bx, word[boot_var.pci_data + 2]
+        mov     cl, [boot_var.pci_data + 1]
         xor     ah, ah
         jmp     .return_abcd
 

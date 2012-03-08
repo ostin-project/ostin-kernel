@@ -153,6 +153,31 @@ SSE_FZ        = 0x8000
 
 SSE_INIT      = SSE_IM + SSE_DM + SSE_ZM + SSE_OM + SSE_UM + SSE_PM
 
+struct boot_vars_t
+  bpp               db ? ; bits per pixel
+  scanline_len      dw ? ; scanline length
+  vesa_mode         dw ? ; vesa video mode
+  screen_res        size16_t ; screen resolution
+  vesa_12_bank_sw   dd ? ; Vesa 1.2 pm bank switch
+  vesa_20_lfb_addr  dd ? ; Vesa 2.0 LFB address
+  enable_mtrr       db ? ; 0 or 1: enable MTRR graphics acceleration
+  enable_direct_lfb db ? ; 0 or 1: enable direct lfb write, paging disabled
+  enable_dma        db ? ; 0 or 1: enable DMA
+  pci_data          rb 8 ; pci data
+  shutdown_param    db ? ; value of ecx passed to sysfn 18.9
+  ide_base_addr     dw ? ; IDEContrRegsBaseAddr
+  apm_entry_ofs     dd ? ; APM entry point offset
+  apm_version       dw ? ; APM version
+  apm_flags         dw ? ; APM flags
+  apm_code32_seg    dw ? ; APM RM segment base address of PM 32-bit code segment
+  apm_code16_seg    dw ? ; APM RM segment base address of PM 16-bit code segment
+  apm_data16_seg    dw ? ; APM RM segment base address of PM 16-bit data segment
+  bios_disks_cnt    db ? ; BIOS disks count
+  bios_disks        rd 32 ; BIOS disks data
+  phoenix_smap_cnt  dd ?
+  phoenix_smap      rb 32 * sizeof.phoenix_smap_addr_range_t
+ends
+
 struct tss_t
   back     rw 2
   esp0     dd ?
@@ -241,7 +266,9 @@ end if ; KCONFIG_BLK_FLOPPY
   skin_data:            rb 32 * 1024
   draw_data:            rb 256 * sizeof.draw_data_t
                         rb OS_BASE + 0x00340000 - $
-  BOOT_VAR:             rb BOOT_VARS_END - BOOT_VARS_BEGIN
+  boot_data_area:
+                        rb BOOT_VAR_LOW_BASE
+  boot_var              boot_vars_t
                         rb OS_BASE + 0x00350000 - $
   sys_pgmap:
                         rb OS_BASE + 0x005fff80 - $
@@ -251,6 +278,18 @@ end if ; KCONFIG_BLK_FLOPPY
 end virtual
 
 assert (SLOT_BASE and 0x0000ff00) = 0
+
+;;----------------------------------------------------------------------------------------------------------------------
+;;///// boot time variables ////////////////////////////////////////////////////////////////////////////////////////////
+;;----------------------------------------------------------------------------------------------------------------------
+
+BOOT_VAR_LOW_BASE = 0x9000
+
+virtual at BOOT_VAR_LOW_BASE
+  boot_var.low boot_vars_t
+end virtual
+
+;;----------------------------------------------------------------------------------------------------------------------
 
 CLEAN_ZONE          = 0x284000
 
@@ -301,39 +340,6 @@ PG_SHARED           = 0x200
 FREE_BLOCK          = 0x04
 USED_BLOCK          = 0x08
 DONT_FREE_BLOCK     = 0x10
-
-;;----------------------------------------------------------------------------------------------------------------------
-;;///// boot time variables ////////////////////////////////////////////////////////////////////////////////////////////
-;;----------------------------------------------------------------------------------------------------------------------
-
-virtual at 0x9000
-  BOOT_VARS_BEGIN:
-
-  BOOT_BPP              db ?  ; 0x09000 - bits per pixel
-  BOOT_SCANLINE         dw ?  ; 0x09001 - scanline length
-  BOOT_VESA_MODE        dw ?  ; 0x09008 - vesa video mode
-  BOOT_SCREEN_RES       size16_t ; 0x0900a - X/X res
-  BOOT_BANK_SW          dd ?  ; 0x09014 - Vesa 1.2 pm bank switch
-  BOOT_LFB              dd ?  ; 0x09018 - Vesa 2.0 LFB address
-  BOOT_MTRR             db ?  ; 0x0901c - 0 or 1: enable MTRR graphics acceleration
-  BOOT_DIRECT_LFB       db ?  ; 0x0901e - 0 or 1: enable direct lfb write, paging disabled
-  BOOT_DMA              db ?  ; 0x0901f - 0 or 1: enable DMA
-  BOOT_PCI_DATA         rb 8  ; 0x09020 - pci data
-  BOOT_SHUTDOWN_PARAM   db ?  ; 0x09030 - value of ecx passed to sysfn 18.9
-  BOOT_IDE_BASE_ADDR    dw ?  ; 0x09031 - IDEContrRegsBaseAddr
-  BOOT_APM_ENTRY_OFS    dd ?  ; 0x09040 - APM entry point offset
-  BOOT_APM_VERSION      dw ?  ; 0x09044 - APM version
-  BOOT_APM_FLAGS        dw ?  ; 0x09046 - APM flags
-  BOOT_APM_CODE32_SEG   dw ?  ; 0x09050 - APM RM segment base address of PM 32-bit code segment
-  BOOT_APM_CODE16_SEG   dw ?  ; 0x09052 - APM RM segment base address of PM 16-bit code segment
-  BOOT_APM_DATA16_SEG   dw ?  ; 0x09054 - APM RM segment base address of PM 16-bit data segment
-  BOOT_BIOS_DISKS_CNT   db ?  ; 0x0907f - BIOS disks count
-  BOOT_BIOS_DISKS       rd 32 ; 0x09080 - BIOS disks data
-  BOOT_PHOENIX_SMAP_CNT dd ?  ; 0x09100
-  BOOT_PHOENIX_SMAP     rb 32 * sizeof.phoenix_smap_addr_range_t ; 0x09104
-
-  BOOT_VARS_END:
-end virtual
 
 ;;----------------------------------------------------------------------------------------------------------------------
 

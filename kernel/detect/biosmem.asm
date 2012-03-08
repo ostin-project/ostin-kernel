@@ -25,7 +25,7 @@ kproc get_memory_map_from_bios ;////////////////////////////////////////////////
         xor     ebx, ebx
         mov     es, bx
         mov     ds, bx
-        mov     di, BOOT_PHOENIX_SMAP
+        mov     di, boot_var.low.phoenix_smap
         mov     [di - 4], ebx ; no blocks yet
         mov     ecx, sizeof.phoenix_smap_addr_range_t
         mov     edx, 0x534d4150
@@ -37,14 +37,14 @@ kproc get_memory_map_from_bios ;////////////////////////////////////////////////
   .e820_mem_loop:
         cmp     byte[di + phoenix_smap_addr_range_t.type], PHOENIX_SMAP_TYPE_AVAILABLE ; ignore non-free areas
         jnz     .e820_mem_next
-        inc     byte[BOOT_PHOENIX_SMAP_CNT]
+        inc     byte[boot_var.low.phoenix_smap_cnt]
         add     di, sizeof.phoenix_smap_addr_range_t
 
   .e820_mem_next:
         ; consequent calls to fn E820
         test    ebx, ebx
         jz      .e820_test_done
-        cmp     byte[BOOT_PHOENIX_SMAP_CNT], 32
+        cmp     byte[boot_var.low.phoenix_smap_cnt], 32
         jae     .e820_test_done
         mov     eax, 0xe820
         int     0x15

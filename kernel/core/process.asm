@@ -194,10 +194,13 @@ kproc core.process.compat.init_with_app_data ;//////////////////////////////////
 ;> ebx ^= app_data_t
 ;-----------------------------------------------------------------------------------------------------------------------
         push    ebx
+
+assert (PROCESS_MAX_NAME_LEN + 3) / 4 = 3
+
         push    dword[ebx + app_data_t.app_name] dword[ebx + app_data_t.app_name + 4] \
-                dword[ebx + app_data_t.app_name + 8] dword[ebx + app_data_t.app_name + 12]
-        pop     dword[eax + core.process_t.name + 12] dword[eax + core.process_t.name + 8] \
-                dword[eax + core.process_t.name + 4] dword[eax + core.process_t.name]
+                dword[ebx + app_data_t.app_name + 8]
+        pop     dword[eax + core.process_t.name + 8] dword[eax + core.process_t.name + 4] \
+                dword[eax + core.process_t.name]
 
         mov_s_  [eax + core.process_t.mem_range.size], [ebx + app_data_t.mem_size]
         mov_s_  [eax + core.process_t.heap_base], [ebx + app_data_t.heap_base]
