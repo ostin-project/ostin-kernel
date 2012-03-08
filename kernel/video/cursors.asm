@@ -366,19 +366,13 @@ kproc create_cursor ;///////////////////////////////////////////////////////////
 
         stdcall init_cursor, eax, esi
 
-        mov     eax, [.hcursor]
-        lea     eax, [eax + cursor_t.list.next_ptr]
-        lea     edx, [_display.cr_list.next_ptr]
+        mov     ecx, [.hcursor]
+        lea     ecx, [ecx + cursor_t.list]
+        lea     edx, [_display.cr_list]
 
         pushfd
         cli
-        mov     ecx, [edx]
-
-        mov     [eax], ecx
-        mov     [eax + 4], edx
-
-        mov     [ecx + 4], eax
-        mov     [edx], eax
+        list_add ecx, edx
         popfd
 
         mov     eax, [.hcursor]
@@ -503,8 +497,16 @@ kproc destroy_cursor ;//////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax
         stdcall kernel_free, [eax + cursor_t.base]
-        pop     eax
 
+        mov     eax, [esp]
+        lea     eax, [eax + cursor_t.list]
+
+        pushfd
+        cli
+        list_del eax
+        popfd
+
+        pop     eax
         call    destroy_kernel_object
         ret
 kendp
@@ -823,7 +825,7 @@ kproc init_display ;////////////////////////////////////////////////////////////
         mov     [edi + display_t.move_cursor], eax
         mov     [edi + display_t.restore_cursor], eax
 
-        lea     ecx, [edi + display_t.cr_list.next_ptr]
+        lea     ecx, [edi + display_t.cr_list]
         mov     [edi + display_t.cr_list.next_ptr], ecx
         mov     [edi + display_t.cr_list.prev_ptr], ecx
 

@@ -449,7 +449,13 @@ dl_dy equ esp + 0
         cdq     ; extend eax sing to edx
         shl     eax, 16 ; using 16bit fix-point maths
         idiv    ebp ; eax = ((x2-x1)*65536)/(y2-y1)
-        mov     edx, ebp ; edx = counter (number of pixels to draw)
+        shl     edx, 1 ; correction for the remainder of the division
+        cmp     ebp, edx
+        jb      @f
+
+        inc     eax
+
+    @@: mov     edx, ebp ; edx = counter (number of pixels to draw)
         mov     ebp, 1 * 65536 ; <<16   ; ebp = dy = 1.0
         mov     esi, eax ; esi = dx
         jmp     .y_rules
@@ -471,7 +477,13 @@ dl_dy equ esp + 0
         cdq     ; extend eax sing to edx
         shl     eax, 16 ; using 16bit fix-point maths
         idiv    esi ; eax = ((y2-y1)*65536)/(x2-x1)
-        mov     edx, esi ; edx = counter (number of pixels to draw)
+        shl     edx, 1 ; correction for the remainder of the division
+        cmp     esi, edx
+        jb      @f
+
+        inc     eax
+
+    @@: mov     edx, esi ; edx = counter (number of pixels to draw)
         mov     esi, 1 * 65536 ; << 16 ; esi = dx = 1.0
         mov     ebp, eax ; ebp = dy
 
@@ -484,8 +496,18 @@ dl_dy equ esp + 0
 align 4
   .draw:
         push    eax ebx
-        shr     eax, 16
-        shr     ebx, 16
+        test    ah, 0x80 ; correction for the remainder of the division
+        jz      @f
+
+        add     eax, 1 shl 16
+
+    @@: shr     eax, 16
+        test    bh, 0x80 ; correction for the remainder of the division
+        jz      @f
+
+        add     ebx, 1 shl 16
+
+    @@: shr     ebx, 16
         call    [putpixel]
         pop     ebx eax
         add     ebx, ebp ; y = y+dy

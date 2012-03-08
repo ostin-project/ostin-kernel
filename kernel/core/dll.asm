@@ -20,8 +20,8 @@ DRV_CURRENT = 5 ; current drivers model version
 DRV_VERSION = (DRV_COMPAT shl 16) or DRV_CURRENT
 PID_KERNEL  = 1 ; os_idle thread
 
-MAX_DEFAULT_DLL_ADDR = 0x20000000
-MIN_DEFAULT_DLL_ADDR = 0x10000000
+MAX_DEFAULT_DLL_ADDR = 0x80000000
+MIN_DEFAULT_DLL_ADDR = 0x70000000
 
 struct coff_header_t
   machine      dw ?

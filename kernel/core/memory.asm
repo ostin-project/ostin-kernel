@@ -386,7 +386,9 @@ endl
         cmp     [LFBRange.address], -1
         jne     @f
         mov     [boot_var.enable_mtrr], 2
-        stdcall alloc_pages, 0x280000 / 4096
+        ; max VGA = 640 * 480 * 4 = 1228800 bytes
+        ;         + 32 * 640 * 4 = 81920 bytes for mouse pointer
+        stdcall alloc_pages, (640 * 480 * 4 + 32 * 640 * 4 + 4095) / 4096
 
         push    eax
         call    alloc_page
@@ -394,7 +396,9 @@ endl
         pop     eax
         or      eax, PG_UW
         mov     ebx, LFB_BASE
-        mov     ecx, 0x280000 / 4096
+        ; max VGA = 640 * 480 * 4 = 1228800 bytes
+        ;         + 32 * 640 * 4 = 81920 bytes for mouse pointer
+        mov     ecx, (640 * 480 * 4 + 32 * 640 * 4 + 4095) / 4096
         call    commit_pages
         mov     [LFBRange.address], LFB_BASE
         ret
@@ -1336,7 +1340,8 @@ iglobal
     shmem_open, \ ; 22
     shmem_close, \ ; 23
     set_exception_handler, \ ; 24
-    set_fpu_exception_handler ; 25
+    unmask_exception, \ ; 25
+    user_unmap ; 25
 endg
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     ebx, .countof.subfn
@@ -1512,7 +1517,7 @@ kproc sysfn.system_service.set_exception_handler ;//////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc sysfn.system_service.set_fpu_exception_handler ;//////////////////////////////////////////////////////////////////
+kproc sysfn.system_service.unmask_exception ;///////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 68.25
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -1526,6 +1531,16 @@ kproc sysfn.system_service.set_fpu_exception_handler ;//////////////////////////
         bts     [eax + app_data_t.except_mask], ecx
 
   .exit:
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc sysfn.system_service.user_unmap ;/////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;? System function 68.26
+;-----------------------------------------------------------------------------------------------------------------------
+        stdcall user_unmap, ecx, edx, esi
+        mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
 

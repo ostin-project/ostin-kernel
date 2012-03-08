@@ -100,10 +100,10 @@ macro list_add_tail new, head
 
 macro list_del entry
 {
-        mov     edx, [entry + list_fd]
-        mov     ecx, [entry + list_bk]
-        mov     [edx + list_bk], ecx
-        mov     [ecx + list_fd], edx
+        mov     edx, [entry + linked_list_t.next_ptr]
+        mov     ecx, [entry + linked_list_t.prev_ptr]
+        mov     [edx + linked_list_t.prev_ptr], ecx
+        mov     [ecx + linked_list_t.next_ptr], edx
 }
 
 macro save_ring3_context
