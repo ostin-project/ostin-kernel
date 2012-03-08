@@ -266,10 +266,10 @@ kproc do_change_task ;//////////////////////////////////////////////////////////
         cmp     edx, [esi + app_data_t.tls_base]
         je      @f
 
-        mov     [tls_data_l + 2], dx
+        mov     [gdts.tls_data.base_low], dx
         shr     edx, 16
-        mov     [tls_data_l + 4], dl
-        mov     [tls_data_l + 7], dh
+        mov     [gdts.tls_data.base_mid], dl
+        mov     [gdts.tls_data.base_high], dh
 
         mov     dx, app_tls
         mov     fs, dx

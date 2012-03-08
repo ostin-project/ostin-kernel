@@ -1057,10 +1057,10 @@ kproc tls_app_entry ;///////////////////////////////////////////////////////////
 
         mov     edx, [current_slot]
         mov     [edx + app_data_t.tls_base], eax
-        mov     [tls_data_l + 2], ax
+        mov     [gdts.tls_data.base_low], ax
         shr     eax, 16
-        mov     [tls_data_l + 4], al
-        mov     [tls_data_l + 7], ah
+        mov     [gdts.tls_data.base_mid], al
+        mov     [gdts.tls_data.base_high], ah
         mov     dx, app_tls
         mov     fs, dx
         popad

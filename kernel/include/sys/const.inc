@@ -15,14 +15,26 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-dpl0           = 10010000b ; data read       dpl0
-drw0           = 10010010b ; data read/write dpl0
-drw3           = 11110010b ; data read/write dpl3
-cpl0           = 10011010b ; code read dpl0
-cpl3           = 11111010b ; code read dpl3
+GDT_ACCESS_INIT   = 00010000b
+GDT_ACCESS_AC     = 00000001b
+GDT_ACCESS_RW     = 00000010b
+GDT_ACCESS_DC     = 00000100b
+GDT_ACCESS_EX     = 00001000b
+GDT_ACCESS_PRIVL0 = 00000000b
+GDT_ACCESS_PRIVL1 = 00100000b
+GDT_ACCESS_PRIVL2 = 01000000b
+GDT_ACCESS_PRIVL3 = 01100000b
+GDT_ACCESS_PR     = 10000000b
 
-D32            = 01000000b ; 32bit segment
-G32            = 10000000b ; page gran
+GDT_FLAG_A = 0001b
+GDT_FLAG_D = 0100b
+GDT_FLAG_G = 1000b
+
+dpl0 = GDT_ACCESS_INIT + GDT_ACCESS_PRIVL0 + GDT_ACCESS_PR ; data read dpl0
+drw0 = GDT_ACCESS_INIT + GDT_ACCESS_PRIVL0 + GDT_ACCESS_RW + GDT_ACCESS_PR ; data read/write dpl0
+drw3 = GDT_ACCESS_INIT + GDT_ACCESS_PRIVL3 + GDT_ACCESS_RW + GDT_ACCESS_PR ; data read/write dpl3
+cpl0 = GDT_ACCESS_INIT + GDT_ACCESS_PRIVL0 + GDT_ACCESS_RW + GDT_ACCESS_EX + GDT_ACCESS_PR ; code read dpl0
+cpl3 = GDT_ACCESS_INIT + GDT_ACCESS_PRIVL3 + GDT_ACCESS_RW + GDT_ACCESS_EX + GDT_ACCESS_PR ; code read dpl3
 
 ;;----------------------------------------------------------------------------------------------------------------------
 ;;///// cpu_caps flags /////////////////////////////////////////////////////////////////////////////////////////////////

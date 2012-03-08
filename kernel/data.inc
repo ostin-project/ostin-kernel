@@ -123,111 +123,25 @@ end if
 
 IncludeIGlobals
 
-align 16
-gdts:
-  dw gdte - $ - 1
-  dd gdts
-  dw 0
-
-; Attention! Do not change the order of the first four selectors. They are used in Fast System Call
-; must be : os_code, os_data, app_code, app_data, ....
-
-int_code_l:
-os_code_l:
-  dw 0xffff
-  dw 0x0000
-  db 0x00
-  dw 11011111b * 256 + 10011010b
-  db 0x00
-
-int_data_l:
-os_data_l:
-  dw 0xffff
-  dw 0x0000
-  db 0x00
-  dw 11011111b * 256 + 10010010b
-  db 0x00
-
-app_code_l:
-  dw 0xffff
-  dw 0
-  db 0
-  db cpl3
-  dw G32 + D32 + 0xf;
-
-app_data_l:
-  dw 0xffff
-  dw 0
-  db 0
-  db drw3
-  dw G32 + D32 + 0xf;
-
-;;----------------------------------------------------------------------------------------------------------------------
-;;///// PCI BIOS ///////////////////////////////////////////////////////////////////////////////////////////////////////
-;;----------------------------------------------------------------------------------------------------------------------
-
-pci_code_32:
-  dw 0       ; lim  0-15
-  dw 0       ; base 0-15
-  db 0       ; base 16-23
-  db cpl0    ; type
-  db D32     ; lim 16-19 + props
-  db 0       ; base 24-31
-
-pci_data_32:
-  dw 0       ; lim  0-15
-  dw 0       ; base 0-15
-  db 0       ; base 16-23
-  db dpl0    ; type
-  db D32     ; lim 16-19 + props
-  db 0       ; base 24-31
-
-;;----------------------------------------------------------------------------------------------------------------------
-;;///// APM ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-;;----------------------------------------------------------------------------------------------------------------------
-
-apm_code_32:
-  dw 0x0f                        ; limit 64kb
-  db 0, 0, 0
-  dw 11010000b * 256 + 10011010b
-  db 0x00
-
-apm_code_16:
-  dw 0x0f
-  db 0, 0, 0
-  dw 10010000b * 256 + 10011010b
-  db 0x00
-
-apm_data_16:
-  dw 0x0f
-  db 0, 0, 0
-  dw 10010000b * 256 + 10010010b
-  db 0x00
-
-;-----------------------------------------------------------------------------------------------------------------------
-
-graph_data_l:
-  dw 0x7ff
-  dw 0x0000
-  db 0x00
-  dw 11010000b * 256 + 11110010b
-  db 0x00
-
-tss0_l:
-  dw sizeof.tss_t - 1
-  dw tss and 0xffff
-  db (tss shr 16) and 0xff
-  db 10001001b
-  dw (tss shr 16) and 0xff00
-
-tls_data_l:
-  dw 0x0fff
-  dw 0
-  db 0
-  db drw3
-  dw D32
-
-gdte:
+gdt_begin gdts
+  ; Attention! Do not change the order of the first four selectors. They are used in Fast System Call
+  ; must be: os_code, os_data, app_code, app_data, ....
+  gdt_entry os_code, 0, 0xfffff, cpl0, GDT_FLAG_A + GDT_FLAG_D + GDT_FLAG_G
+  gdt_entry os_data, 0, 0xfffff, drw0, GDT_FLAG_A + GDT_FLAG_D + GDT_FLAG_G
+  gdt_entry app_code, 0, 0xfffff, cpl3, GDT_FLAG_D + GDT_FLAG_G
+  gdt_entry app_data, 0, 0xfffff, drw3, GDT_FLAG_D + GDT_FLAG_G
+  ; PCI BIOS
+  gdt_entry pci_code_32, 0, 0, cpl0, GDT_FLAG_D
+  gdt_entry pci_data_32, 0, 0, dpl0, GDT_FLAG_D
+  ; APM (limit 64 KB)
+  gdt_entry apm_code_32, 0, 0xf, cpl0, GDT_FLAG_A + GDT_FLAG_D + GDT_FLAG_G
+  gdt_entry apm_code_16, 0, 0xf, cpl0, GDT_FLAG_A + GDT_FLAG_G
+  gdt_entry apm_data_16, 0, 0xf, drw0, GDT_FLAG_A + GDT_FLAG_G
+  ; ...
+  gdt_entry graph_data, 0, 0x7ff, drw3, GDT_FLAG_A + GDT_FLAG_D + GDT_FLAG_G
+  gdt_entry tss0, tss, sizeof.tss_t - 1, GDT_ACCESS_AC + GDT_ACCESS_EX + GDT_ACCESS_PR, 0
+  gdt_entry tls_data, 0, 0xfff, drw3, GDT_FLAG_D
+gdt_end
 
 endofcode:
 

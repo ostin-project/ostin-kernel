@@ -337,22 +337,22 @@ kproc init_BIOS32 ;/////////////////////////////////////////////////////////////
         ; create descriptors for PCI BIOS
         add     ebx, OS_BASE
         dec     ecx
-        mov     [pci_code_32 - OS_BASE], cx ; limit 0-15
-        mov     [pci_data_32 - OS_BASE], cx ; limit 0-15
+        mov     [gdts.pci_code_32.limit_low - OS_BASE], cx ; limit 0-15
+        mov     [gdts.pci_data_32.limit_low - OS_BASE], cx ; limit 0-15
 
-        mov     [pci_code_32 - OS_BASE + 2], bx ; base 0-15
-        mov     [pci_data_32 - OS_BASE + 2], bx ; base 0-15
+        mov     [gdts.pci_code_32.base_low - OS_BASE], bx ; base 0-15
+        mov     [gdts.pci_data_32.base_low - OS_BASE], bx ; base 0-15
 
         shr     ebx, 16
-        mov     [pci_code_32 - OS_BASE + 4], bl ; base 16-23
-        mov     [pci_data_32 - OS_BASE + 4], bl ; base 16-23
+        mov     [gdts.pci_code_32.base_mid - OS_BASE], bl ; base 16-23
+        mov     [gdts.pci_data_32.base_mid - OS_BASE], bl ; base 16-23
 
         shr     ecx, 16
         and     cl, 0x0f
         mov     ch, bh
-        add     cx, D32
-        mov     [pci_code_32 - OS_BASE + 6], cx ; lim 16-19
-        mov     [pci_data_32 - OS_BASE + 6], cx ; base 24-31
+        or      cl, GDT_FLAG_D shl 4
+        mov     word[gdts.pci_code_32.limit_high - OS_BASE], cx ; lim 16-19
+        mov     word[gdts.pci_data_32.limit_high - OS_BASE], cx ; base 24-31
 
         mov     [pci_bios_entry - OS_BASE], edx
 ;       jmp     .end

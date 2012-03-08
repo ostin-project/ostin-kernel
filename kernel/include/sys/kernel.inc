@@ -153,3 +153,55 @@ struct app_io_ports_range_t
   end_port   dd ?
              rd 1
 ends
+
+struct gdt_entry_t
+  limit_low    dw ?
+  base_low     dw ?
+  base_mid     db ?
+  access       db ?
+  union
+    limit_high db ? ; low 4 bits
+    flags      db ? ; high 4 bits
+  ends
+  base_high    db ?
+ends
+
+macro gdt_begin table_name, table_base = 0
+{
+  name@gdt equ table_name
+
+  align 16
+  label table_name
+  dw table_name#.end - $ - 1
+  dd table_name + (table_base)
+  dw 0
+
+  macro gdt_entry entry_name, entry_base, limit, access, flags
+  \{
+    match gdt_name, name@gdt
+    \\{
+      virtual at $
+        gdt_name\\#.\\#entry_name gdt_entry_t
+      end virtual
+      offsetof.\\#gdt_name\\#.\\#entry_name = $ - gdt_name
+    \\}
+
+    dw (limit) and 0xffff
+    dw (entry_base) and 0xffff
+    db ((entry_base) shr 16) and 0xff
+    db access
+    db ((flags) shl 4) or (((limit) shr 16) and 0xf)
+    db (entry_base) shr 24
+  \}
+}
+
+macro gdt_end
+{
+  match table_name, name@gdt
+  \{
+    label table_name\#.end
+  \}
+
+  restore name@gdt
+  purge gdt_entry
+}

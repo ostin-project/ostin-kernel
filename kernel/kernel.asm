@@ -36,15 +36,15 @@ include "include/syscall.inc"
 
 max_processes   = 255
 
-os_stack        = os_data_l - gdts ; GDTs
-os_code         = os_code_l - gdts
-graph_data      = 3 + graph_data_l - gdts
-tss0            = tss0_l - gdts
-app_code        = 3 + app_code_l - gdts
-app_data        = 3 + app_data_l - gdts
-app_tls         = 3 + tls_data_l - gdts
-pci_code_sel    = pci_code_32 - gdts
-pci_data_sel    = pci_data_32 - gdts
+os_stack        = offsetof.gdts.os_data ; GDTs
+os_code         = offsetof.gdts.os_code
+graph_data      = offsetof.gdts.graph_data + 3
+tss0            = offsetof.gdts.tss0
+app_code        = offsetof.gdts.app_code + 3
+app_data        = offsetof.gdts.app_data + 3
+app_tls         = offsetof.gdts.tls_data + 3
+pci_code_sel    = offsetof.gdts.pci_code_32
+pci_data_sel    = offsetof.gdts.pci_data_32
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -121,30 +121,17 @@ include "detect/biosdisk.asm"
         mov     al, 0xff
         out     0x64, al
 
-        lgdt    [cs:tmp_gdt] ; Load GDT
+        lgdt    [cs:tmp_gdts] ; Load GDT
         mov     eax, cr0 ; protected mode
         or      eax, ecx
         and     eax, not (CR0_NW + CR0_CD) ; caching enabled
         mov     cr0, eax
         jmp     pword os_code:B32 ; jmp to enable 32 bit mode
 
-align 8
-tmp_gdt:
-  dw 23
-  dd tmp_gdt + 0x10000
-  dw 0
-
-  dw 0xffff
-  dw 0x0000
-  db 0x00
-  dw 11011111b * 256 + 10011010b
-  db 0x00
-
-  dw 0xffff
-  dw 0x0000
-  db 0x00
-  dw 11011111b * 256 + 10010010b
-  db 0x00
+gdt_begin tmp_gdts, KERNEL_CODE - OS_BASE
+  gdt_entry os_code, 0, 0xfffff, cpl0, GDT_FLAG_A + GDT_FLAG_D + GDT_FLAG_G
+  gdt_entry os_data, 0, 0xfffff, drw0, GDT_FLAG_A + GDT_FLAG_D + GDT_FLAG_G
+gdt_end
 
 include "data16.inc"
 
@@ -272,22 +259,22 @@ high_code:
         movzx   edx, [boot_var.apm_data16_seg] ; real-mode segment base address of protected-mode 16-bit data segment
 
         shl     eax, 4
-        mov     [apm_code_32 + 2], ax
+        mov     [gdts.apm_code_32.base_low], ax
         shr     eax, 16
-        mov     [apm_code_32 + 4], al
+        mov     [gdts.apm_code_32.base_mid], al
 
         shl     ecx, 4
-        mov     [apm_code_16 + 2], cx
+        mov     [gdts.apm_code_16.base_low], cx
         shr     ecx, 16
-        mov     [apm_code_16 + 4], cl
+        mov     [gdts.apm_code_16.base_mid], cl
 
         shl     edx, 4
-        mov     [apm_data_16 + 2], dx
+        mov     [gdts.apm_data_16.base_low], dx
         shr     edx, 16
-        mov     [apm_data_16 + 4], dl
+        mov     [gdts.apm_data_16.base_mid], dl
 
         mov     dword[apm_entry], ebx
-        mov     word[apm_entry + 4], apm_code_32 - gdts
+        mov     word[apm_entry + 4], offsetof.gdts.apm_code_32
 
         mov     eax, dword[boot_var.apm_version] ; version & flags
         mov     [apm_vf], eax
@@ -524,10 +511,10 @@ high_code:
 
         ; Set base of graphic segment to linear address of LFB
         mov     eax, [LFBRange.address] ; set for gs
-        mov     [graph_data_l + 2], ax
+        mov     [gdts.graph_data.base_low], ax
         shr     eax, 16
-        mov     [graph_data_l + 4], al
-        mov     [graph_data_l + 7], ah
+        mov     [gdts.graph_data.base_mid], al
+        mov     [gdts.graph_data.base_high], ah
 
         stdcall kernel_alloc, [_WinMapRange.size]
         mov     [_WinMapRange.address], eax
