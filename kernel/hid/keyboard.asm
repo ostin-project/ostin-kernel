@@ -1,6 +1,7 @@
 ;;======================================================================================================================
 ;;///// keyboard.asm /////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
 ;;======================================================================================================================
+;; (c) 2012 Ostin project <http://ostin.googlecode.com/>
 ;; (c) 2004-2011 KolibriOS team <http://kolibrios.org/>
 ;; (c) 2000-2004 MenuetOS <http://menuetos.net/>
 ;;======================================================================================================================
@@ -234,18 +235,17 @@ kproc sysfn.get_key ;///////////////////////////////////////////////////////////
         jmp     .ret_eax
 kendp
 
-iglobal
-  hotkey_tests dd \
-    hotkey_do_test.test0, \
-    hotkey_do_test.test1, \
-    hotkey_do_test.test2, \
-    hotkey_do_test.test3, \
-    hotkey_do_test.test4
-  hotkey_tests_num = 5
-endg
-
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc hotkey_do_test ;//////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+iglobal
+  jump_table hotkey_do_test, subfn, , \
+    test0, \
+    test1, \
+    test2, \
+    test3, \
+    test4
+endg
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax
         mov     edx, [kb_state]
@@ -254,11 +254,11 @@ kproc hotkey_do_test ;//////////////////////////////////////////////////////////
         mov     eax, [eax + 4]
         shr     eax, cl
         and     eax, 15
-        cmp     al, hotkey_tests_num
+        cmp     al, .countof.subfn
         jae     .fail
         xchg    eax, edx
         and     al, 3
-        call    [hotkey_tests + edx * 4]
+        call    [.subfn + edx * 4]
         cmp     al, 1
         pop     eax
         ret
@@ -560,11 +560,140 @@ kproc send_scancode ;///////////////////////////////////////////////////////////
         ret
 kendp
 
-kproc set_lights
+;-----------------------------------------------------------------------------------------------------------------------
+kproc set_lights ;//////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
         mov     al, 0xed
         call    kb_write
         mov     al, [kb_lights]
         call    kb_write
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc kb_read ;/////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        push    ecx edx
+
+        mov     ecx, 0x1ffff ; last 0xffff, new value in view of fast CPU's
+
+  .kr_loop:
+        in      al, 0x64
+        test    al, 1
+        jnz     .kr_ready
+        loop    .kr_loop
+        mov     ah, 1
+        jmp     .kr_exit
+
+  .kr_ready:
+        push    ecx
+        mov     ecx, 32
+
+  .kr_delay:
+        loop    .kr_delay
+        pop     ecx
+        in      al, 0x60
+        xor     ah, ah
+
+  .kr_exit:
+        pop     edx ecx
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc kb_write ;////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        push    ecx edx
+
+        mov     dl, al
+;       mov     ecx, 0x1ffff ; last 0xffff, new value in view of fast CPU's
+;
+; .kw_loop1:
+;       in      al, 0x64
+;       test    al, 0x20
+;       jz      .kw_ok1
+;       loop    .kw_loop1
+;       mov     ah, 1
+;       jmp     .kw_exit
+;
+; .kw_ok1:
+        in      al, 0x60
+        mov     ecx, 0x1ffff ; last 0xffff, new value in view of fast CPU's
+
+  .kw_loop:
+        in      al, 0x64
+        test    al, 2
+        jz      .kw_ok
+        loop    .kw_loop
+        mov     ah, 1
+        jmp     .kw_exit
+
+  .kw_ok:
+        mov     al, dl
+        out     0x60, al
+        mov     ecx, 0x1ffff ; last 0xffff, new value in view of fast CPU's
+
+  .kw_loop3:
+        in      al, 0x64
+        test    al, 2
+        jz      .kw_ok3
+        loop    .kw_loop3
+        mov     ah, 1
+        jmp     .kw_exit
+
+  .kw_ok3:
+        mov     ah, 8
+
+  .kw_loop4:
+        mov     ecx, 0x1ffff ; last 0xffff, new value in view of fast CPU's
+
+  .kw_loop5:
+        in      al, 0x64
+        test    al, 1
+        jnz     .kw_ok4
+        loop    .kw_loop5
+        dec     ah
+        jnz     .kw_loop4
+
+  .kw_ok4:
+        xor     ah, ah
+
+  .kw_exit:
+        pop     edx ecx
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc kb_cmd ;//////////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        mov     ecx, 0x1ffff ; last 0xffff, new value in view of fast CPU's
+
+  .c_wait:
+        in      al, 0x64
+        test    al, 2
+        jz      .c_send
+        loop    .c_wait
+        jmp     .c_error
+
+  .c_send:
+        mov     al, bl
+        out     0x64, al
+        mov     ecx, 0x1ffff ; last 0xffff, new value in view of fast CPU's
+
+  .c_accept:
+        in      al, 0x64
+        test    al, 2
+        jz      .c_ok
+        loop    .c_accept
+
+  .c_error:
+        mov     ah, 1
+        jmp     .c_exit
+
+  .c_ok:
+        xor     ah, ah
+
+  .c_exit:
         ret
 kendp
 
