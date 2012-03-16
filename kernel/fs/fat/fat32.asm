@@ -764,7 +764,7 @@ kproc hd_find_lfn ;/////////////////////////////////////////////////////////////
         jz      .fat32
 
   .loop:
-        call    fs.fat.find_long_name
+        call    fs.fat.util.find_long_name
         jc      .notfound
         cmp     byte[esi], 0
         jz      .found
@@ -1044,7 +1044,7 @@ kproc fat32_HdReadFolder ;//////////////////////////////////////////////////////
         push    eax
 
   .l1:
-        call    fs.fat.get_name
+        call    fs.fat.util.get_name
         jc      .l2
         cmp     [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_LONG_NAME
         jnz     .do_bdfe
@@ -1090,7 +1090,7 @@ kproc fat32_HdReadFolder ;//////////////////////////////////////////////////////
         dec     ecx
         js      .l2
         inc     dword[edx + fs.file_info_header_t.files_read] ; new file block copied
-        call    fs.fat.fat_entry_to_bdfe
+        call    fs.fat.util.fat_entry_to_bdfe
 
   .l2:
         add     edi, sizeof.fs.fat.dir_entry_t
@@ -1500,7 +1500,7 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         push    fat_notroot_next
 
   .common1:
-        call    fs.fat.find_long_name
+        call    fs.fat.util.find_long_name
         jc      .notfound
         ; found
         test    [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY
@@ -1549,9 +1549,9 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
 
   .done1:
         pop     edi
-        call    fs.fat.get_time_for_file
+        call    fs.fat.util.get_time_for_file
         mov     [edi + fs.fat.dir_entry_t.modified_at.time], ax
-        call    fs.fat.get_date_for_file
+        call    fs.fat.util.get_date_for_file
         mov     [edi + fs.fat.dir_entry_t.modified_at.date], ax
         mov     [edi + fs.fat.dir_entry_t.accessed_at.date], ax
         or      [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_ARCHIVE ; set 'archive' attribute
@@ -1559,7 +1559,7 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
 
   .notfound:
         ; file is not found; generate short name
-        call    fs.fat.name_is_legal
+        call    fs.fat.util.name_is_legal
         jc      @f
         add     esp, 32
         popad
@@ -1567,7 +1567,7 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
 
     @@: sub     esp, 12
         mov     edi, esp
-        call    fs.fat.gen_short_name
+        call    fs.fat.util.gen_short_name
 
   .test_short_name_loop:
         push    esi edi ecx
@@ -1596,7 +1596,7 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
 
   .short_name_found:
         pop     ecx edi esi
-        call    fs.fat.next_short_name
+        call    fs.fat.util.next_short_name
         jnc     .test_short_name_loop
 
   .disk_full:
@@ -1693,7 +1693,7 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         ; found!
         ; calculate name checksum
         mov     eax, [esp + 12]
-        call    fs.fat.calculate_name_checksum
+        call    fs.fat.util.calculate_name_checksum
         pop     edi
         pop     dword[esp + 8 + 12 + 12]
         pop     dword[esp + 8 + 12 + 12]
@@ -1715,17 +1715,17 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         add     esi, ecx
         stosb
         mov     cl, 5
-        call    fs.fat.read_symbols
+        call    fs.fat.util.read_symbols
         mov     ax, FS_FAT_ATTR_LONG_NAME
         stosw
         mov     al, [esp + 4]
         stosb
         mov     cl, 6
-        call    fs.fat.read_symbols
+        call    fs.fat.util.read_symbols
         xor     eax, eax
         stosw
         mov     cl, 2
-        call    fs.fat.read_symbols
+        call    fs.fat.util.read_symbols
         pop     ecx
         lea     eax, [esp + 8 + 8 + 12 + 8]
         call    dword[eax + 12] ; next write
@@ -1746,10 +1746,10 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         pop     esi ecx
         add     esp, 12
         mov     [edi + fs.fat.dir_entry_t.created_at.time_ms], 0 ; tenths of a second at file creation time
-        call    fs.fat.get_time_for_file
+        call    fs.fat.util.get_time_for_file
         mov     [edi + fs.fat.dir_entry_t.created_at.time], ax ; creation time
         mov     [edi + fs.fat.dir_entry_t.modified_at.time], ax ; last write time
-        call    fs.fat.get_date_for_file
+        call    fs.fat.util.get_date_for_file
         mov     [edi + fs.fat.dir_entry_t.created_at.date], ax ; creation date
         mov     [edi + fs.fat.dir_entry_t.modified_at.date], ax ; last write date
         mov     [edi + fs.fat.dir_entry_t.accessed_at.date], ax ; last access date
@@ -1998,9 +1998,9 @@ kproc fat32_HdWrite ;///////////////////////////////////////////////////////////
         push    eax ; save directory sector
         push    ERROR_SUCCESS ; return value=0
 
-        call    fs.fat.get_time_for_file
+        call    fs.fat.util.get_time_for_file
         mov     [edi + fs.fat.dir_entry_t.modified_at.time], ax ; last write time
-        call    fs.fat.get_date_for_file
+        call    fs.fat.util.get_date_for_file
         mov     [edi + fs.fat.dir_entry_t.modified_at.date], ax ; last write date
         mov     [edi + fs.fat.dir_entry_t.accessed_at.date], ax ; last access date
 
@@ -2355,7 +2355,7 @@ kproc fat32_HdSetFileEnd ;//////////////////////////////////////////////////////
 
     @@: push    eax ; save directory sector
         ; set file modification date/time to current
-        call    fs.fat.update_datetime
+        call    fs.fat.util.update_datetime
         mov     eax, [ebx]
         cmp     eax, [edi + fs.fat.dir_entry_t.size]
         jb      .truncate
@@ -2582,7 +2582,7 @@ kproc fat32_HdGetFileInfo ;/////////////////////////////////////////////////////
         xor     ebp, ebp
         mov     esi, edx
         and     dword[esi + 4], 0
-        call    fs.fat.fat_entry_to_bdfe.direct
+        call    fs.fat.util.fat_entry_to_bdfe.direct
         pop     ebp esi
         pop     edi
         xor     eax, eax ; ERROR_SUCCESS
@@ -2613,7 +2613,7 @@ kproc fat32_HdSetFileInfo ;/////////////////////////////////////////////////////
         jmp     fs.error.file_not_found
 
     @@: push    eax
-        call    fs.fat.bdfe_to_fat_entry
+        call    fs.fat.util.bdfe_to_fat_entry
         pop     eax
         mov     ebx, buffer
         call    hd_write

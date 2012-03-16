@@ -1,6 +1,7 @@
 ;;======================================================================================================================
 ;;///// fs_lfn.asm ///////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
 ;;======================================================================================================================
+;; (c) 2011-2012 Ostin project <http://ostin.googlecode.com/>
 ;; (c) 2006-2010 KolibriOS team <http://kolibrios.org/>
 ;;======================================================================================================================
 ;; This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
@@ -581,7 +582,7 @@ iglobal
   ; fs.partition_t
   static_test_ram_partition:
     ; vftbl
-    dd fs.fat12.vftbl
+    dd fs.fat.vftbl
     ; mutex
     rb sizeof.mutex_t
     ; device
@@ -605,11 +606,7 @@ uglobal
   if KCONFIG_BLK_MEMORY
 
   align 4
-  ; fs.fat12.partition_data_t
-  static_test_ram_partition_data:
-    rb sizeof.fs.fat12.partition_data_t
-
-  assert $ - static_test_ram_partition_data = sizeof.fs.fat12.partition_data_t
+  static_test_ram_partition_data fs.fat.fat12.partition_data_t
 
   end if ; KCONFIG_BLK_MEMORY
 endg
@@ -620,6 +617,8 @@ if KCONFIG_BLK_MEMORY
 kproc fs_OnGenericQuery ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     edx, static_test_ram_partition
+        mov     [static_test_ram_partition_data.vftbl], fs.fat.fat12.vftbl
+
         jmp     fs.generic_query_handler
 kendp
 
@@ -670,7 +669,7 @@ iglobal
   ; fs.partition_t
   static_test_floppy_partition:
     ; vftbl
-    dd fs.fat12.vftbl
+    dd fs.fat.vftbl
     ; mutex
     rb sizeof.mutex_t
     ; device
@@ -694,11 +693,7 @@ uglobal
   if KCONFIG_BLK_FLOPPY
 
   align 4
-  ; fs.fat12.partition_data_t
-  static_test_floppy_partition_data:
-    rb sizeof.fs.fat12.partition_data_t
-
-  assert $ - static_test_floppy_partition_data = sizeof.fs.fat12.partition_data_t
+  static_test_floppy_partition_data fs.fat.fat12.partition_data_t
 
   end if ; KCONFIG_BLK_FLOPPY
 endg
@@ -709,6 +704,8 @@ if KCONFIG_BLK_FLOPPY
 kproc fs_OnGenericQuery2 ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     edx, static_test_floppy_partition
+        mov     [static_test_floppy_partition_data.vftbl], fs.fat.fat12.vftbl
+
         jmp     fs.generic_query_handler
 kendp
 
@@ -779,11 +776,7 @@ uglobal
   if KCONFIG_BLK_ATAPI
 
   align 4
-  ; fs.cdfs.partition_data_t
-  static_test_atapi_partition_data:
-    rb sizeof.fs.cdfs.partition_data_t
-
-  assert $ - static_test_atapi_partition_data = sizeof.fs.cdfs.partition_data_t
+  static_test_atapi_partition_data fs.cdfs.partition_data_t
 
   end if ; KCONFIG_BLK_ATAPI
 endg
