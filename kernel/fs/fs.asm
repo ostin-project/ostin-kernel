@@ -41,7 +41,7 @@ kproc fs.lock ;/////////////////////////////////////////////////////////////////
 ;> ebx ^= fs.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax ecx edx
-        lea     ecx, [ebx + fs.partition_t.mutex]
+        lea     ecx, [ebx + fs.partition_t._.mutex]
         call    mutex_lock
         pop     edx ecx eax
         ret
@@ -53,7 +53,7 @@ kproc fs.unlock ;///////////////////////////////////////////////////////////////
 ;> ebx ^= fs.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax ecx edx
-        lea     ecx, [ebx + fs.partition_t.mutex]
+        lea     ecx, [ebx + fs.partition_t._.mutex]
         call    mutex_unlock
         pop     edx ecx eax
         ret
@@ -72,16 +72,16 @@ kproc fs.read ;/////////////////////////////////////////////////////////////////
         push    eax edx
         add     eax, ecx
         adc     edx, 0
-        push    dword[ebx + fs.partition_t.range.length + 4]
-        push    dword[ebx + fs.partition_t.range.length]
+        push    dword[ebx + fs.partition_t._.range.length + 4]
+        push    dword[ebx + fs.partition_t._.range.length]
         call    util.64bit.compare
         pop     edx eax
         ja      .overflow_error
 
         push    ebx edx
-        add     eax, dword[ebx + fs.partition_t.range.offset]
-        adc     edx, dword[ebx + fs.partition_t.range.offset + 4]
-        mov     ebx, [ebx + fs.partition_t.device]
+        add     eax, dword[ebx + fs.partition_t._.range.offset]
+        adc     edx, dword[ebx + fs.partition_t._.range.offset + 4]
+        mov     ebx, [ebx + fs.partition_t._.device]
         call    blk.read
         pop     edx ebx
 
@@ -105,16 +105,16 @@ kproc fs.write ;////////////////////////////////////////////////////////////////
         push    eax edx
         add     eax, ecx
         adc     edx, 0
-        push    dword[ebx + fs.partition_t.range.length + 4]
-        push    dword[ebx + fs.partition_t.range.length]
+        push    dword[ebx + fs.partition_t._.range.length + 4]
+        push    dword[ebx + fs.partition_t._.range.length]
         call    util.64bit.compare
         pop     edx eax
         ja      .overflow_error
 
         push    ebx edx
-        add     eax, dword[ebx + fs.partition_t.range.offset]
-        adc     edx, dword[ebx + fs.partition_t.range.offset + 4]
-        mov     ebx, [ebx + fs.partition_t.device]
+        add     eax, dword[ebx + fs.partition_t._.range.offset]
+        adc     edx, dword[ebx + fs.partition_t._.range.offset + 4]
+        mov     ebx, [ebx + fs.partition_t._.device]
         call    blk.write
         pop     edx ebx
 
@@ -174,7 +174,7 @@ kproc choice_necessity_partition_1 ;////////////////////////////////////////////
         xor     edx, edx
         imul    eax, 100
         add     eax, DRIVE_DATA + 0x0a
-        mov     [transfer_adress], eax
+        mov     [transfer_address], eax
         call    partition_data_transfer_1
         ret
 kendp

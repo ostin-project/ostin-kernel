@@ -68,11 +68,11 @@ kproc write_cache ;/////////////////////////////////////////////////////////////
         jne     .write_chain
         mov     dword[esi + 4], 1 ; same as in hd
         mov     eax, [esi] ; eax = sector to write
-        cmp     eax, dword[current_partition.range.offset]
+        cmp     eax, dword[current_partition._.range.offset]
         jb      .danger
         push    eax
-        sub     eax, dword[current_partition.range.offset]
-        sub     eax, dword[current_partition.range.length]
+        sub     eax, dword[current_partition._.range.offset]
+        sub     eax, dword[current_partition._.range.length]
         pop     eax
         ja      .danger
         cmp     [hdpos], 0x80

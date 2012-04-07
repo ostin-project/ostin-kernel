@@ -24,7 +24,28 @@ BSYWaitTime    = 10 * KCONFIG_SYS_TIMER_FREQ ; maximum wait time for busy -> rea
 NoTickWaitTime = 0x000fffff
 CDBlockSize    = 2048
 
+iglobal
+  StandardATABases dw 0x1f0, 0x170 ; channels 1 and 2 standard base addresses
+endg
+
 uglobal
+  ChannelNumber   dw ? ; channel number
+  DiskNumber      db ? ; drive number
+  ATABasePortAddr dw ? ; base address of ATA controller ports group
+
+  ; ATA command arguments
+  ATAFeatures     db ? ; capabilities
+  ATASectorCount  db ? ; number of sectors to work on
+  ATASectorNumber db ? ; start sector number
+  ATACylinder     dw ? ; start cylinder number
+  ATAHead         db ? ; start head number
+  ATAAddressMode  db ? ; addressing mode (0 - CHS, 1 - LBA)
+  ATACommand      db ? ; command code to execute
+
+  ; Error code (0 - success, 1 - timeout, 2 - invalid addressing mode, 3 - invalid channel number,
+  ; 4 - invalid drive number, 5 - invalid head number, 6 - command execution error)
+  DevErrorCode    dd ?
+
   cdpos              rd 1
   cd_status          dd 0
   IDE_Channel_1      db 0

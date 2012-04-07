@@ -85,7 +85,7 @@ kproc set_FAT ;/////////////////////////////////////////////////////////////////
         jb      .sfc_error
         cmp     eax, [fat16x_data.last_cluster]
         ja      .sfc_error
-        cmp     [current_partition.type], FS_PARTITION_TYPE_FAT16
+        cmp     [current_partition._.type], FS_PARTITION_TYPE_FAT16
         je      .sfc_1
         add     eax, eax
 
@@ -113,7 +113,7 @@ kproc set_FAT ;/////////////////////////////////////////////////////////////////
         jne     .sfc_error
 
   .sfc_in_cache:
-        cmp     [current_partition.type], FS_PARTITION_TYPE_FAT16
+        cmp     [current_partition._.type], FS_PARTITION_TYPE_FAT16
         jne     .sfc_test32
 
   .sfc_set16:
@@ -151,7 +151,7 @@ kproc get_FAT ;/////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    ebx esi
 
-        cmp     [current_partition.type], FS_PARTITION_TYPE_FAT16
+        cmp     [current_partition._.type], FS_PARTITION_TYPE_FAT16
         je      .gfc_1
         add     eax, eax
 
@@ -293,7 +293,7 @@ kproc analyze_directory ;///////////////////////////////////////////////////////
         jnb     .adr_data_cluster
 
         mov     eax, [fat16x_data.root_cluster] ; if cluster < 2 then read rootdir
-        cmp     [current_partition.type], FS_PARTITION_TYPE_FAT16
+        cmp     [current_partition._.type], FS_PARTITION_TYPE_FAT16
         jne     .adr_data_cluster
         mov     eax, [fat16x_data.root_start]
         mov     edx, [fat16x_data.root_sectors]
@@ -389,7 +389,7 @@ kproc get_data_cluster ;////////////////////////////////////////////////////////
         jnb     .gdc_cluster
 
         mov     eax, [fat16x_data.root_cluster] ; if cluster < 2 then read rootdir
-        cmp     [current_partition.type], FS_PARTITION_TYPE_FAT16
+        cmp     [current_partition._.type], FS_PARTITION_TYPE_FAT16
         jne     .gdc_cluster
         mov     eax, [fat16x_data.root_start]
         mov     ecx, [fat16x_data.root_sectors] ; Note: not cluster size
@@ -491,7 +491,7 @@ kproc add_disk_free_space ;/////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         test    ecx, ecx ; no change
         je      .add_dfs_no
-        cmp     [current_partition.type], FS_PARTITION_TYPE_FAT32 ; free disk space only used by fat32
+        cmp     [current_partition._.type], FS_PARTITION_TYPE_FAT32 ; free disk space only used by fat32
         jne     .add_dfs_no
 
         push    eax ebx
@@ -538,9 +538,9 @@ kproc file_read ;///////////////////////////////////////////////////////////////
 ;#  9 - fat table corrupted
 ;#  10 - access denied
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     [current_partition.type], FS_PARTITION_TYPE_FAT16
+        cmp     [current_partition._.type], FS_PARTITION_TYPE_FAT16
         jz      .fat_ok_for_reading
-        cmp     [current_partition.type], FS_PARTITION_TYPE_FAT32
+        cmp     [current_partition._.type], FS_PARTITION_TYPE_FAT32
         jz      .fat_ok_for_reading
         xor     ebx, ebx
         mov     eax, ERROR_UNKNOWN_FS
@@ -665,7 +665,7 @@ kproc get_dir_size ;////////////////////////////////////////////////////////////
 
         mov     eax, [fat16x_data.root_sectors]
         shl     eax, 9 ; fat16 rootdir size in bytes
-        cmp     [current_partition.type], FS_PARTITION_TYPE_FAT16
+        cmp     [current_partition._.type], FS_PARTITION_TYPE_FAT16
         je      .dir_size_ret
         mov     eax, [fat16x_data.root_cluster]
 
@@ -760,7 +760,7 @@ kproc hd_find_lfn ;/////////////////////////////////////////////////////////////
         push    fat16_root_first
         push    fat16_root_next
         mov     eax, [fat16x_data.root_cluster]
-        cmp     [current_partition.type], FS_PARTITION_TYPE_FAT32
+        cmp     [current_partition._.type], FS_PARTITION_TYPE_FAT32
         jz      .fat32
 
   .loop:
@@ -1020,7 +1020,7 @@ kproc fat32_HdReadFolder ;//////////////////////////////////////////////////////
         mov     [cluster_tmp], eax
         test    eax, eax
         jnz     @f
-        cmp     [current_partition.type], FS_PARTITION_TYPE_FAT32
+        cmp     [current_partition._.type], FS_PARTITION_TYPE_FAT32
         jz      .notfound
         mov     eax, [fat16x_data.root_start]
         push    [fat16x_data.root_sectors]
@@ -1432,7 +1432,7 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         test    ebp, ebp
         jnz     .hasebp
         mov     ebp, [fat16x_data.root_cluster]
-        cmp     [current_partition.type], FS_PARTITION_TYPE_FAT32
+        cmp     [current_partition._.type], FS_PARTITION_TYPE_FAT32
         jz      .pushnotroot
         push    fat16_root_extend_dir
         push    fat16_root_end_write

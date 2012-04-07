@@ -14,7 +14,7 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-struct fs.fat.fat12.partition_data_t fs.fat.partition_data_t
+struct fs.fat.fat12.partition_t fs.fat.partition_t
   sectors_cache        rb 3 * 512
   cached_sector_number dd ?
   cached_sectors_count dd ?
@@ -36,7 +36,7 @@ kproc fs.fat.fat12.allocate_cluster ;///////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Finds free cluster in FAT and marks it as EOF.
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.fat12.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< cF ~= 0 (ok) or 1 (fail)
 ;< eax #= allocated cluster sector number (ok) or FS error code (fail)
@@ -132,7 +132,7 @@ kproc fs.fat.fat12.get_next_cluster ;///////////////////////////////////////////
 ;? Finds next cluster sector in FAT chain. Takes FAT12 root directory special case into account.
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax #= current cluster sector number
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.fat12.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< cF ~= 0 (ok) or 1 (fail)
 ;< eax #= next cluster sector number (ok) or FS error code (fail)
@@ -237,7 +237,7 @@ kproc fs.fat.fat12.get_or_allocate_next_cluster ;///////////////////////////////
 ;? Takes FAT12 root directory special case into account.
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax #= current cluster sector number
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.fat12.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< cF ~= 0 (ok) or 1 (fail)
 ;< eax #= next (or newly allocated) cluster sector number (ok) or FS error code (fail)
@@ -306,7 +306,7 @@ kendp
 kproc fs.fat.fat12.check_for_enough_clusters ;//////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax #= needed free clusters count
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.fat12.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< cF ~= 0 (ok) or 1 (fail)
 ;< eax #= FS error code (fail)
@@ -324,7 +324,7 @@ kproc fs.fat.fat12.delete_chain ;///////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax #= start cluster number
 ;> edx ~= 0 (mark first cluster free) or not 0 (mark first cluster EOF)
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.fat12.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< cF ~= 0 (ok) or 1 (fail)
 ;< eax #= FS error code (fail)
@@ -383,7 +383,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs.fat.fat12.flush ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.fat12.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< cF ~= 0 (ok) or 1 (fail)
 ;< eax #= FS error code (fail)
@@ -408,17 +408,17 @@ kproc fs.fat.fat12._.fetch_sectors ;////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax #= sector number
 ;> ecx #= sectors count (1..2)
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.fat12.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< cF ~= 0 (ok) or 1 (fail)
 ;< edi ^= buffer
 ;-----------------------------------------------------------------------------------------------------------------------
 ;       klog_   LOG_DEBUG, "  fs.fat.fat12._.fetch_sectors(0x%x, %u)\n", eax, ecx
 
-        mov     edi, [ebx + fs.partition_t.user_data]
-        cmp     eax, [edi + fs.fat.fat12.partition_data_t.cached_sector_number]
+        mov     edi, ebx
+        cmp     eax, [ebx + fs.fat.fat12.partition_t.cached_sector_number]
         jne     .fetch
-        cmp     ecx, [edi + fs.fat.fat12.partition_data_t.cached_sectors_count]
+        cmp     ecx, [ebx + fs.fat.fat12.partition_t.cached_sectors_count]
         ja      .fetch
 
         jmp     .exit
@@ -429,20 +429,20 @@ kproc fs.fat.fat12._.fetch_sectors ;////////////////////////////////////////////
 
         push    eax ecx edx
         xor     edx, edx
-        add     edi, fs.fat.fat12.partition_data_t.sectors_cache
+        add     edi, fs.fat.fat12.partition_t.sectors_cache
 ;       klog_   LOG_DEBUG, "    read\n"
         call    fs.read
         test    eax, eax
         pop     edx ecx eax
         jnz     .error
 
-        add     edi, -fs.fat.fat12.partition_data_t.sectors_cache
+        add     edi, -fs.fat.fat12.partition_t.sectors_cache
 
-        mov     [edi + fs.fat.fat12.partition_data_t.cached_sector_number], eax
-        mov     [edi + fs.fat.fat12.partition_data_t.cached_sectors_count], ecx
+        mov     [edi + fs.fat.fat12.partition_t.cached_sector_number], eax
+        mov     [edi + fs.fat.fat12.partition_t.cached_sectors_count], ecx
 
   .exit:
-        add     edi, fs.fat.fat12.partition_data_t.sectors_cache
+        add     edi, fs.fat.fat12.partition_t.sectors_cache
         clc
         ret
 
@@ -454,14 +454,13 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs.fat.fat12._.flush_dirty_sectors ;//////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.fat12.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax ecx esi
-        mov     esi, [ebx + fs.partition_t.user_data]
 
 ;       klog_   LOG_DEBUG, "  fs.fat.fat12._.flush_dirty_sectors(0x%x, %u)\n", \
-;               [esi + fs.fat.fat12.partition_data_t.cached_sector_number], \
-;               [esi + fs.fat.fat12.partition_data_t.cached_sectors_count]
+;               [ebx + fs.fat.fat12.partition_t.cached_sector_number], \
+;               [ebx + fs.fat.fat12.partition_t.cached_sectors_count]
 
         xor     eax, eax
         call    .flush_sector_if_dirty
@@ -481,14 +480,14 @@ kproc fs.fat.fat12._.flush_dirty_sectors ;//////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
   .flush_sector_if_dirty: ;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ;-----------------------------------------------------------------------------------------------------------------------
-        test    [esi + fs.fat.fat12.partition_data_t.dirty_sectors + eax], 1
+        test    [ebx + fs.fat.fat12.partition_t.dirty_sectors + eax], 1
         jz      @f
 
         push    eax ecx edx esi
         shl     eax, 9
-        lea     ecx, [esi + fs.fat.fat12.partition_data_t.sectors_cache + eax]
+        lea     ecx, [ebx + fs.fat.fat12.partition_t.sectors_cache + eax]
         shr     eax, 9
-        add     eax, [esi + fs.fat.fat12.partition_data_t.cached_sector_number]
+        add     eax, [ebx + fs.fat.fat12.partition_t.cached_sector_number]
         xor     edx, edx
         mov     esi, ecx
         mov_s_  ecx, 1
@@ -497,7 +496,7 @@ kproc fs.fat.fat12._.flush_dirty_sectors ;//////////////////////////////////////
         pop     esi edx ecx eax
         jc      @f
 
-        and     [esi + fs.fat.fat12.partition_data_t.dirty_sectors + eax], 0 ; cF = 0
+        and     [ebx + fs.fat.fat12.partition_t.dirty_sectors + eax], 0 ; cF = 0
 
 ;       klog_   LOG_DEBUG, "    ok\n"
 
@@ -509,20 +508,19 @@ kproc fs.fat.fat12._.mark_cluster_sectors_dirty ;///////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? ...
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.fat12.partition_t
 ;> edi ^= cluster inside cached sector
 ;-----------------------------------------------------------------------------------------------------------------------
 ;       klog_   LOG_DEBUG, "  fs.fat.fat12._.mark_cluster_sectors_dirty()\n"
 
-        push    eax edx edi
-        mov     edx, [ebx + fs.partition_t.user_data]
-        sub     edi, edx
-        add     edi, -fs.fat.fat12.partition_data_t.sectors_cache
+        push    eax edi
+        sub     edi, ebx
+        add     edi, -fs.fat.fat12.partition_t.sectors_cache
 ;       klog_   LOG_DEBUG, "    offset 0x%x (%u)\n", edi, edi
         mov     eax, edi
         shr     eax, 9
 ;       klog_   LOG_DEBUG, "    mark %u\n", eax
-        or      [edx + fs.fat.fat12.partition_data_t.dirty_sectors + eax], 1
+        or      [ebx + fs.fat.fat12.partition_t.dirty_sectors + eax], 1
         cmp     edi, 512 - 1
         je      @f
         cmp     edi, 1024 - 2
@@ -530,10 +528,10 @@ kproc fs.fat.fat12._.mark_cluster_sectors_dirty ;///////////////////////////////
 
     @@: inc     eax
 ;       klog_   LOG_DEBUG, "    mark %u\n", eax
-        or      [edx + fs.fat.fat12.partition_data_t.dirty_sectors + eax], 1
+        or      [ebx + fs.fat.fat12.partition_t.dirty_sectors + eax], 1
 
   .exit:
-        pop     edi edx eax
+        pop     edi eax
         ret
 kendp
 
@@ -542,7 +540,7 @@ kproc fs.fat.fat12._.set_cluster ;//////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax #= cluster number
 ;> edx #= value
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.fat12.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< cF ~= 0 (ok) or 1 (fail)
 ;< eax #= FS error code (fail)

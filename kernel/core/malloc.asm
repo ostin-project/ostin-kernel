@@ -35,7 +35,7 @@ kproc malloc ;//////////////////////////////////////////////////////////////////
 ;#   esi = nb
 ;#   ebx = idx
 ;-----------------------------------------------------------------------------------------------------------------------
-        push    esi
+        push    ebx esi
 
         ; nb = ((size+7)&~7)+8;
         mov     esi, eax ; size
@@ -101,7 +101,7 @@ kproc malloc ;//////////////////////////////////////////////////////////////////
         pop     ebp
 
   .done:
-        pop     esi
+        pop     esi ebx
         mov     [mst.mutex], 0
         ret
 
@@ -141,7 +141,7 @@ kproc malloc ;//////////////////////////////////////////////////////////////////
         mov     [eax + 8], edx ; r->fd = F;
         mov     [eax + 12], ecx ; r->bk = B;
         mov     eax, ebx
-        pop     esi
+        pop     esi ebx
         mov     [mst.mutex], 0
         ret
 
@@ -155,7 +155,7 @@ kproc malloc ;//////////////////////////////////////////////////////////////////
         call    malloc_small
         test    eax, eax
         jz      .from_top
-        pop     esi
+        pop     esi ebx
         and     [mst.mutex], 0
         ret
 
@@ -190,13 +190,13 @@ kproc malloc ;//////////////////////////////////////////////////////////////////
         mov     [edx + 4], eax
         mov     [ecx + 4], esi
         lea     eax, [ecx + 8]
-        pop     esi
+        pop     esi ebx
         and     [mst.mutex], 0
         ret
 
   .fail:
         xor     eax, eax
-        pop     esi
+        pop     esi ebx
         and     [mst.mutex], 0
         ret
 kendp

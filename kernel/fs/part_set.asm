@@ -240,22 +240,22 @@ kproc set_partition_variables ;/////////////////////////////////////////////////
 
   .hd_and_partition_ok:
         ; eax = PARTITION_START edx=PARTITION_LENGTH cl=current_partition.type
-        mov     [current_partition.type], cl
-        mov     dword[current_partition.range.offset], eax
-        mov     dword[current_partition.range.length], edx
+        mov     [current_partition._.type], cl
+        mov     dword[current_partition._.range.offset], eax
+        mov     dword[current_partition._.range.length], edx
 
         mov     ebx, buffer
         call    hd_read ; read boot sector of partition
         cmp     [hd_error], 0
         jz      .boot_read_ok
-        cmp     [current_partition.type], 7
+        cmp     [current_partition._.type], 7
         jnz     .problem_fat_dec_count
         ; NTFS duplicates bootsector:
         ;   NT4/2k/XP+ saves bootsector copy in the end of disk
         ;   NT 3.51 saves bootsector copy in the middle of disk
         and     [hd_error], 0
-        mov     eax, dword[current_partition.range.offset]
-        add     eax, dword[current_partition.range.length]
+        mov     eax, dword[current_partition._.range.offset]
+        add     eax, dword[current_partition._.range.length]
         dec     eax
         call    hd_read
         cmp     [hd_error], 0
@@ -266,7 +266,7 @@ kproc set_partition_variables ;/////////////////////////////////////////////////
     @@: and     [hd_error], 0
         mov     eax, edx
         shr     eax, 1
-        add     eax, dword[current_partition.range.offset]
+        add     eax, dword[current_partition._.range.offset]
         call    hd_read
         cmp     [hd_error], 0
         jnz     .problem_fat_dec_count ; no chance...
@@ -280,7 +280,7 @@ kproc set_partition_variables ;/////////////////////////////////////////////////
         call    ext2_test_superblock ; test ext2fs
         jnc     ext2_setup
 
-        mov     eax, dword[current_partition.range.offset] ; ext2 test changes [buffer]
+        mov     eax, dword[current_partition._.range.offset] ; ext2 test changes [buffer]
         call    hd_read
         cmp     [hd_error], 0
         jnz     .problem_fat_dec_count
@@ -289,7 +289,7 @@ kproc set_partition_variables ;/////////////////////////////////////////////////
         jnz     .problem_fat_dec_count
 
         movzx   eax, word[ebx + 0x0e] ; sectors reserved
-        add     eax, dword[current_partition.range.offset]
+        add     eax, dword[current_partition._.range.offset]
         mov     [fat16x_data.fat_start], eax ; fat_start = partition_start + reserved
 
         movzx   eax, byte[ebx + 0x0d] ; sectors per cluster
@@ -335,8 +335,8 @@ kproc set_partition_variables ;/////////////////////////////////////////////////
         mov     eax, [ebx + 0x20] ; total sector count
 
   .fat16_total:
-        mov     dword[current_partition.range.length], eax
-        add     eax, dword[current_partition.range.offset]
+        mov     dword[current_partition._.range.length], eax
+        add     eax, dword[current_partition._.range.offset]
         sub     eax, [fat16x_data.data_start] ; eax = count of data sectors
         xor     edx, edx
         div     dword[fat16x_data.sectors_per_cluster]
@@ -355,7 +355,7 @@ kproc set_partition_variables ;/////////////////////////////////////////////////
         mov     eax, [ebx + 0x2c] ; rootdir cluster
         mov     [fat16x_data.root_cluster], eax
         movzx   eax, word[ebx + 0x30] ; fs info sector
-        add     eax, dword[current_partition.range.offset]
+        add     eax, dword[current_partition._.range.offset]
         mov     [fat16x_data.adr_fsinfo], eax
         call    hd_read
         mov     eax, [ebx + 0x1ec]
@@ -369,7 +369,7 @@ kproc set_partition_variables ;/////////////////////////////////////////////////
         mov     [fat16x_data.fatBAD], 0x0ffffff7
         mov     [fat16x_data.fatEND], 0x0ffffff8
         mov     [fat16x_data.fatMASK], 0x0fffffff
-        mov     [current_partition.type], FS_PARTITION_TYPE_FAT32 ; Fat32
+        mov     [current_partition._.type], FS_PARTITION_TYPE_FAT32 ; Fat32
         call    free_hd_channel
         mov     [hd1_status], 0 ; free
         ret
@@ -384,7 +384,7 @@ kproc set_partition_variables ;/////////////////////////////////////////////////
         mov     [fat16x_data.fatBAD], 0x0000fff7
         mov     [fat16x_data.fatEND], 0x0000fff8
         mov     [fat16x_data.fatMASK], 0x0000ffff
-        mov     [current_partition.type], FS_PARTITION_TYPE_FAT16 ; Fat16
+        mov     [current_partition._.type], FS_PARTITION_TYPE_FAT16 ; Fat16
         call    free_hd_channel
         mov     [hd1_status], 0 ; free
         ret

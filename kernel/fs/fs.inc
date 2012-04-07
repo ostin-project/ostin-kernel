@@ -36,13 +36,12 @@ struct fs.vftbl_t
 ends
 
 struct fs.partition_t
-  vftbl     dd ? ; ^= fs.vftbl_t
-  mutex     mutex_t
-  device    dd ? ; ^= blk.device_t
-  range     range64_t
-  type      db ? ; #= one of FS_PARTITION_TYPE_*
-  number    db ?
-  user_data dd ? ; ^= fs.?.partition_data_t
+  _.vftbl     dd ? ; ^= fs.vftbl_t
+  _.mutex     mutex_t
+  _.device    dd ? ; ^= blk.device_t
+  _.range     range64_t
+  _.type      db ? ; #= one of FS_PARTITION_TYPE_*
+  _.number    db ?
 ends
 
 include "fs.asm"

@@ -22,10 +22,9 @@ struct blk.device_vftbl_t
   write   dd ?
 ends
 
-struct blk.device_t
-  vftbl     dd ? ; ^= blk.device_vftbl_t
-  name      rb BLK_MAX_DEVICE_NAME_LEN
-  user_data dd ? ; ^= blk.?.device_data_t
+struct blk.device_t linked_list_t
+  _.vftbl     dd ? ; ^= blk.device_vftbl_t
+  _.name      rb BLK_MAX_DEVICE_NAME_LEN
 ends
 
 include "blkdev.asm"

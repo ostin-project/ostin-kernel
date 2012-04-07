@@ -14,10 +14,13 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-struct blk.atapi.device_data_t blk.ata.device_data_t
+struct blk.atapi.device_t blk.ata.device_t
 ends
 
 iglobal
+  blk.atapi.last_index  dd 0
+  blk.atapi.name_prefix db 'atapi', 0
+
   jump_table blk.atapi, vftbl, blk.not_implemented, \
     destroy, \
     read, \
@@ -31,9 +34,46 @@ kproc blk.atapi.create ;////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Create ATAPI device.
 ;-----------------------------------------------------------------------------------------------------------------------
-;< eax ^= blk.atapi.device_data_t (0 on error)
+;> eax ^= blk.atapi.ctl.device_t
+;> cl #= drive number
+;> edx ^= ident buffer
 ;-----------------------------------------------------------------------------------------------------------------------
-        xor     eax, eax
+;< eax ^= blk.atapi.device_t (0 on error)
+;-----------------------------------------------------------------------------------------------------------------------
+        push    ebx
+        push    eax ecx edx
+
+        mov     eax, sizeof.blk.atapi.device_t
+        call    malloc
+        test    eax, eax
+        jz      .exit
+
+        xchg    eax, ebx
+
+        mov     [ebx + blk.atapi.device_t._.vftbl], blk.atapi.vftbl
+
+        mov     eax, [esp + 8]
+        mov     [ebx + blk.atapi.device_t.ctl], eax
+        mov     al, [esp + 4]
+        mov     [ebx + blk.atapi.device_t.drive_number], al
+
+        mov     esi, [esp]
+        lea     edi, [ebx + blk.atapi.device_t.ident]
+        mov     ecx, 512 / 4
+        rep
+        movsd
+
+        mov     eax, blk.atapi.name_prefix
+        mov     ecx, [blk.atapi.last_index]
+        call    blk.set_device_name
+
+        inc     [blk.atapi.last_index]
+
+        xchg    eax, ebx
+
+  .exit:
+        add     esp, 12
+        pop     ebx
         ret
 kendp
 
@@ -42,8 +82,10 @@ kproc blk.atapi.destroy ;///////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Destroy ATAPI device.
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= blk.atapi.device_data_t
+;> ebx ^= blk.atapi.device_t
 ;-----------------------------------------------------------------------------------------------------------------------
+        mov     eax, ebx
+        call    free
         ret
 kendp
 
@@ -55,7 +97,7 @@ kproc blk.atapi.read ;//////////////////////////////////////////////////////////
 ;> edi ^= buffer
 ;> ecx #= buffer size (number of blocks to read)
 ;> edx:eax #= offset (in blocks)
-;> ebx ^= blk.atapi.device_data_t
+;> ebx ^= blk.atapi.device_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -74,8 +116,8 @@ kproc blk.atapi.read ;//////////////////////////////////////////////////////////
         push    ebx ecx edx
 
         push    eax
-        mov     al, [ebx + blk.atapi.device_data_t.drive_number]
-        mov     ebx, [ebx + blk.atapi.device_data_t.ctl]
+        mov     al, [ebx + blk.atapi.device_t.drive_number]
+        mov     ebx, [ebx + blk.atapi.device_t.ctl]
         call    blk.ata.ctl.select_drive
         pop     eax
 

@@ -15,7 +15,7 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-struct fs.cdfs.partition_data_t
+struct fs.cdfs.partition_t fs.partition_t
   buffer rb 4096
 ends
 
@@ -38,7 +38,7 @@ kproc fs.cdfs.read_file ;///////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> esi ^= path to file
 ;> edx ^= fs.read_file_query_params_t
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.cdfs.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;< ebx #= bytes read (on success)
@@ -172,7 +172,7 @@ kproc fs.cdfs.read_directory ;//////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> esi ^= path to directory
 ;> edx ^= fs.read_directory_query_params_t
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.cdfs.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;< ebx #= directory entries read (on success)
@@ -248,7 +248,7 @@ kproc fs.cdfs.get_file_info ;///////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> esi ^= path to file or directory
 ;> edx ^= fs.get_file_info_query_params_t
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.cdfs.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     byte[esi], 0
         je      .not_implemented_error
@@ -276,7 +276,7 @@ kproc fs.cdfs._.find_file_lfn ;/////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> esi ^= path
 ;> ebp ^= filename
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.cdfs.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< Cf = 1,
 ;<   eax #= error code
@@ -389,7 +389,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs.cdfs._.get_names_from_buffer ;/////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.cdfs.partition_t
 ;> ecx #= entries to read
 ;> edx ^= fs.file_info_header_t
 ;> esi ^= input buffer
@@ -401,8 +401,7 @@ kproc fs.cdfs._.get_names_from_buffer ;/////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax ebx
 
-        mov     eax, [ebx + fs.partition_t.user_data]
-        add     eax, fs.cdfs.partition_data_t.buffer
+        lea     eax, [ebx + fs.cdfs.partition_t.buffer]
 
         mov     ebx, esp
 
@@ -637,8 +636,7 @@ kproc fs.cdfs._.find_name_in_buffer ;///////////////////////////////////////////
 
         push    .compare
         xor     ebp, ebp
-        mov     eax, [ebx + fs.partition_t.user_data]
-        add     eax, fs.cdfs.partition_data_t.buffer
+        lea     eax, [ebx + fs.cdfs.partition_t.buffer]
         call    fs.cdfs._.enumerate_buffer_entries
         test    ebp, ebp
         jz      .not_found
@@ -738,7 +736,7 @@ kendp
 kproc fs.cdfs._.read_sector ;///////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax #= sector number
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.cdfs.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;< edi ^= buffer
@@ -749,8 +747,7 @@ kproc fs.cdfs._.read_sector ;///////////////////////////////////////////////////
         xor     edx, edx
         shld    eax, edx, 2
         mov_s_  ecx, 4
-        mov     edi, [ebx + fs.partition_t.user_data]
-        add     edi, fs.cdfs.partition_data_t.buffer
+        lea     edi, [ebx + fs.cdfs.partition_t.buffer]
         call    fs.read
 
         test    eax, eax

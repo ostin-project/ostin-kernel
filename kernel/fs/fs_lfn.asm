@@ -117,6 +117,7 @@ end if ; KCONFIG_BLK_ATAPI
 
   fs_additional_handlers:
     dd biosdisk_handler, biosdisk_enum_root
+    dd blkdev_handler, blkdev_enum_root
     ; add new handlers here
     dd 0
 
@@ -388,7 +389,7 @@ kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////
 
   .readroot_done_static:
         mov     esi, fs_additional_handlers - 8
-        sub     esp, 16
+        sub     esp, BLK_MAX_DEVICE_NAME_LEN
 
   .readroot_ah_loop:
         add     esi, 8
@@ -404,7 +405,7 @@ kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////
         test    eax, eax
         jz      .readroot_ah_loop
         inc     [edx + fs.file_info_header_t.files_count]
-        dec     dword[esp + 16]
+        dec     dword[esp + BLK_MAX_DEVICE_NAME_LEN]
         jns     .readroot_ah_loop2
         dec     ebp
         js      .readroot_ah_loop2
@@ -438,7 +439,7 @@ kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////
         jmp     .readroot_ah_loop2
 
   .readroot_done:
-        add     esp, 16
+        add     esp, BLK_MAX_DEVICE_NAME_LEN
         pop     eax
         mov     ebx, [edx + fs.file_info_header_t.files_read]
         xor     eax, eax
@@ -531,7 +532,7 @@ kproc fs.generic_query_handler ;////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, [ebx + fs.query_t.function]
         shl     eax, 2
-        add     eax, [edx + fs.partition_t.vftbl]
+        add     eax, [edx + fs.partition_t._.vftbl]
         mov     eax, [eax]
         test    eax, eax
         jz      sysfn.not_implemented
@@ -556,57 +557,42 @@ iglobal
   if KCONFIG_BLK_MEMORY
 
   align 4
-  ; blk.memory.device_data_t
-  static_test_ram_device_data:
+  ; blk.memory.device_t
+  static_test_ram_device:
+    ; linked_list_t
+    dd 0, 0
+    ; _.vftbl
+    dd blk.memory.vftbl
+    ; _.name
+    db 'rd', 30 dup(0)
     ; data
-    dd RAMDISK ; offset
-    dd 2 * 80 * 18 ; length
+    dd RAMDISK ; address
+    dd 2 * 80 * 18 ; size
     ; needs_free
     db 0
 
-  assert $ - static_test_ram_device_data = sizeof.blk.memory.device_data_t
+  assert $ - static_test_ram_device = sizeof.blk.memory.device_t
 
   align 4
-  ; blk.device_t
-  static_test_ram_device:
-    ; vftbl
-    dd blk.memory.vftbl
-    ; name
-    db 'rd', 30 dup(0)
-    ; user_data
-    dd static_test_ram_device_data
-
-  assert $ - static_test_ram_device = sizeof.blk.device_t
-
-  align 4
-  ; fs.partition_t
+  ; fs.fat.fat12.partition_t
   static_test_ram_partition:
-    ; vftbl
+    ; _.vftbl
     dd fs.fat.vftbl
-    ; mutex
+    ; _.mutex
     rb sizeof.mutex_t
-    ; device
+    ; _.device
     dd static_test_ram_device
-    ; range
+    ; _.range
     dq 0 ; offset
     dq 2 * 80 * 18 ; length
-    ; type
+    ; _.type
     db FS_PARTITION_TYPE_FAT12
-    ; number
+    ; _.number
     db 1
-    ; user_data
-    dd static_test_ram_partition_data
+    ; partition-specific data
+    rb sizeof.fs.fat.fat12.partition_t - sizeof.fs.partition_t
 
-  assert $ - static_test_ram_partition = sizeof.fs.partition_t
-
-  end if ; KCONFIG_BLK_MEMORY
-endg
-
-uglobal
-  if KCONFIG_BLK_MEMORY
-
-  align 4
-  static_test_ram_partition_data fs.fat.fat12.partition_data_t
+  assert $ - static_test_ram_partition = sizeof.fs.fat.fat12.partition_t
 
   end if ; KCONFIG_BLK_MEMORY
 endg
@@ -617,7 +603,7 @@ if KCONFIG_BLK_MEMORY
 kproc fs_OnGenericQuery ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     edx, static_test_ram_partition
-        mov     [static_test_ram_partition_data.vftbl], fs.fat.fat12.vftbl
+        mov     [static_test_ram_partition + fs.fat.fat12.partition_t.vftbl], fs.fat.fat12.vftbl
 
         jmp     fs.generic_query_handler
 kendp
@@ -628,7 +614,7 @@ iglobal
   if KCONFIG_BLK_FLOPPY
 
   align 4
-  ; blk.floppy.ctl.device_data_t
+  ; blk.floppy.ctl.device_t
   static_test_floppy_ctl_device_data:
     ; base_reg
     dw 0x03f0
@@ -641,59 +627,44 @@ iglobal
     ; drive_number
     db -1
 
-  assert $ - static_test_floppy_ctl_device_data = sizeof.blk.floppy.ctl.device_data_t
+  assert $ - static_test_floppy_ctl_device_data = sizeof.blk.floppy.ctl.device_t
 
   align 4
-  ; blk.floppy.device_data_t
-  static_test_floppy_device_data:
+  ; blk.floppy.device_t
+  static_test_floppy_device:
+    ; linked_list_t
+    dd 0, 0
+    ; _.vftbl
+    dd blk.floppy.vftbl
+    ; _.name
+    db 'fd', 30 dup(0)
     ; ctl
     dd static_test_floppy_ctl_device_data
     ; drive_number
     db 0
 
-  assert $ - static_test_floppy_device_data = sizeof.blk.floppy.device_data_t
+  assert $ - static_test_floppy_device = sizeof.blk.floppy.device_t
 
   align 4
-  ; blk.device_t
-  static_test_floppy_device:
-    ; vftbl
-    dd blk.floppy.vftbl
-    ; name
-    db 'fd', 30 dup(0)
-    ; user_data
-    dd static_test_floppy_device_data
-
-  assert $ - static_test_floppy_device = sizeof.blk.device_t
-
-  align 4
-  ; fs.partition_t
+  ; fs.fat.fat12.partition_t
   static_test_floppy_partition:
-    ; vftbl
+    ; _.vftbl
     dd fs.fat.vftbl
-    ; mutex
+    ; _.mutex
     rb sizeof.mutex_t
-    ; device
+    ; _.device
     dd static_test_floppy_device
-    ; range
+    ; _.range
     dq 0 ; offset
     dq 2 * 80 * 18 ; length
-    ; type
+    ; _.type
     db FS_PARTITION_TYPE_FAT12
-    ; number
+    ; _.number
     db 1
-    ; user_data
-    dd static_test_floppy_partition_data
+    ; partition-specific data
+    rb sizeof.fs.fat.fat12.partition_t - sizeof.fs.partition_t
 
-  assert $ - static_test_floppy_partition = sizeof.fs.partition_t
-
-  end if ; KCONFIG_BLK_FLOPPY
-endg
-
-uglobal
-  if KCONFIG_BLK_FLOPPY
-
-  align 4
-  static_test_floppy_partition_data fs.fat.fat12.partition_data_t
+  assert $ - static_test_floppy_partition = sizeof.fs.fat.fat12.partition_t
 
   end if ; KCONFIG_BLK_FLOPPY
 endg
@@ -704,7 +675,7 @@ if KCONFIG_BLK_FLOPPY
 kproc fs_OnGenericQuery2 ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     edx, static_test_floppy_partition
-        mov     [static_test_floppy_partition_data.vftbl], fs.fat.fat12.vftbl
+        mov     [static_test_floppy_partition + fs.fat.fat12.partition_t.vftbl], fs.fat.fat12.vftbl
 
         jmp     fs.generic_query_handler
 kendp
@@ -720,63 +691,50 @@ iglobal
     ; base_reg
     dw 0x01f0
     ; dev_ctl_reg
-    dw 0x03f6
+    dw 0x03f4
     ; drive_number
     db -1
 
-  assert $ - static_test_atapi_ctl_device_data = sizeof.blk.atapi.device_data_t
+  assert $ - static_test_atapi_ctl_device_data = sizeof.blk.atapi.ctl.device_t
 
   align 4
-  ; blk.atapi.device_data_t
-  static_test_atapi_device_data:
+  ; blk.atapi.device_t
+  static_test_atapi_device:
+    ; linked_list_t
+    dd 0, 0
+    ; _.vftbl
+    dd blk.atapi.vftbl
+    ; _.name
+    db 'cd', 30 dup(0)
     ; ctl
     dd static_test_atapi_ctl_device_data
     ; drive_number
     db 0
+    ; ident
+    rb 512
 
-  assert $ - static_test_atapi_device_data = sizeof.blk.atapi.device_data_t
-
-  align 4
-  ; blk.device_t
-  static_test_atapi_device:
-    ; vftbl
-    dd blk.atapi.vftbl
-    ; name
-    db 'cd', 30 dup(0)
-    ; user_data
-    dd static_test_atapi_device_data
-
-  assert $ - static_test_atapi_device = sizeof.blk.device_t
+  assert $ - static_test_atapi_device = sizeof.blk.atapi.device_t
 
   align 4
-  ; fs.partition_t
+  ; fs.cdfs.partition_t
   static_test_atapi_partition:
-    ; vftbl
+    ; _.vftbl
     dd fs.cdfs.vftbl
-    ; mutex
+    ; _.mutex
     rb sizeof.mutex_t
-    ; device
+    ; _.device
     dd static_test_atapi_device
-    ; range
+    ; _.range
     dq 0 ; offset
     dq 360000 * 4 ; length
-    ; type
+    ; _.type
     db FS_PARTITION_TYPE_CDFS
-    ; number
+    ; _.number
     db 1
-    ; user_data
-    dd static_test_atapi_partition_data
+    ; partition-specific data
+    rb sizeof.fs.cdfs.partition_t - sizeof.fs.partition_t
 
-  assert $ - static_test_atapi_partition = sizeof.fs.partition_t
-
-  end if ; KCONFIG_BLK_ATAPI
-endg
-
-uglobal
-  if KCONFIG_BLK_ATAPI
-
-  align 4
-  static_test_atapi_partition_data fs.cdfs.partition_data_t
+  assert $ - static_test_atapi_partition = sizeof.fs.cdfs.partition_t
 
   end if ; KCONFIG_BLK_ATAPI
 endg
@@ -912,17 +870,17 @@ kendp
 kproc fs_OnGenericQuery3 ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         add     edi, fs.ntfs.vftbl
-        cmp     [current_partition.type], FS_PARTITION_TYPE_NTFS
+        cmp     [current_partition._.type], FS_PARTITION_TYPE_NTFS
         je      .known_fs
 
         add     edi, fs.ext2.vftbl - fs.ntfs.vftbl
-        cmp     [current_partition.type], FS_PARTITION_TYPE_EXT2
+        cmp     [current_partition._.type], FS_PARTITION_TYPE_EXT2
         je      .known_fs
 
         add     edi, fs.fat16x.vftbl - fs.ext2.vftbl
-        cmp     [current_partition.type], FS_PARTITION_TYPE_FAT16
+        cmp     [current_partition._.type], FS_PARTITION_TYPE_FAT16
         je      .known_fs
-        cmp     [current_partition.type], FS_PARTITION_TYPE_FAT32
+        cmp     [current_partition._.type], FS_PARTITION_TYPE_FAT32
         je      .known_fs
 
         jmp     fs.error.unknown_filesystem
@@ -1312,6 +1270,58 @@ kproc fs_OnBd ;/////////////////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
+kproc blkdev_handler ;//////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        push    edi
+        mov     ecx, blkdev_list
+
+  .next_device:
+        mov     ecx, [ecx + linked_list_t.next_ptr]
+        test    ecx, ecx
+        jz      .not_found
+
+        lea     edi, [ecx + blk.device_t._.name]
+        push    esi
+
+    @@: lodsb
+        or      al, 0x20
+        scasb
+        je      @b
+
+        cmp     byte[esi - 1], '/'
+        jne     @f
+
+        inc     esi
+
+    @@: cmp     byte[esi - 1], 0
+        pop     esi
+        jne     .next_device
+        cmp     byte[edi - 1], 0
+        jne     .next_device
+
+        pop     edi
+        add     esp, 4
+        mov     esi, blkdev_next_partition
+        jmp     sysfn.file_system_lfn.maindir_noesi
+
+  .not_found:
+        pop     edi
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc blkdev_next_partition ;///////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> eax #= partition number
+;> ecx ^= blk.device_t
+;-----------------------------------------------------------------------------------------------------------------------
+        cmp     eax, 1 ; 1 dummy partition for now
+        inc     eax
+        cmc
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
 ;? This handler is called when virtual root is enumerated and must return all items which can be handled by this.
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax = 0 for first call, previously returned value for subsequent calls
@@ -1371,6 +1381,36 @@ kproc biosdisk_enum_root ;//////////////////////////////////////////////////////
         pop     edx ecx
         pop     eax
         inc     eax
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc blkdev_enum_root ;////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        test    eax, eax
+        jnz     @f
+
+        mov     eax, blkdev_list
+
+    @@: mov     eax, [eax + linked_list_t.next_ptr]
+        cmp     eax, blkdev_list
+        je      .end
+
+        push    eax esi
+        lea     esi, [eax + blk.device_t._.name]
+
+    @@: lodsb
+        stosb
+        test    al, al
+        jz      .exit
+        jmp     @b
+
+  .exit:
+        pop     esi eax
+        ret
+
+  .end:
+        xor     eax, eax
         ret
 kendp
 

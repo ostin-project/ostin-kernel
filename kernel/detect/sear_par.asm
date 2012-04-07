@@ -21,7 +21,7 @@ uglobal
   known_part dd ? ; for boot 0x1
 endg
 
-        mov     [transfer_adress], DRIVE_DATA + 0x0a
+        mov     [transfer_address], DRIVE_DATA + 0x0a
 
 search_partitions_ide0:
         test    byte[DRIVE_DATA + 1], 0x40
@@ -37,11 +37,9 @@ search_partitions_ide0_1:
         jnz     search_partitions_ide1 ; not found part
         test    [problem_partition], 1
         jnz     @f ; not found known_part
-;       cmp     [problem_partition], 0
-;       jne     search_partitions_ide1
         inc     byte[DRIVE_DATA + 2]
         call    partition_data_transfer
-        add     [transfer_adress], 100
+        add     [transfer_address], 100
 
     @@: inc     [known_part]
         jmp     search_partitions_ide0_1
@@ -60,11 +58,9 @@ search_partitions_ide1_1:
         jnz     search_partitions_ide2
         test    [problem_partition], 1
         jnz     @f
-;       cmp     [problem_partition], 0
-;       jne     search_partitions_ide2
         inc     byte[DRIVE_DATA + 3]
         call    partition_data_transfer
-        add     [transfer_adress], 100
+        add     [transfer_address], 100
 
     @@: inc     [known_part]
         jmp     search_partitions_ide1_1
@@ -83,11 +79,9 @@ search_partitions_ide2_1:
         jnz     search_partitions_ide3
         test    [problem_partition], 1
         jnz     @f
-;       cmp     [problem_partition], 0
-;       jne     search_partitions_ide3
         inc     byte[DRIVE_DATA + 4]
         call    partition_data_transfer
-        add     [transfer_adress], 100
+        add     [transfer_address], 100
 
     @@: inc     [known_part]
         jmp     search_partitions_ide2_1
@@ -106,11 +100,9 @@ search_partitions_ide3_1:
         jnz     end_search_partitions_ide
         test    [problem_partition], 1
         jnz     @f
-;       cmp     [problem_partition], 0
-;       jne     end_search_partitions_ide
         inc     byte[DRIVE_DATA + 5]
         call    partition_data_transfer
-        add     [transfer_adress], 100
+        add     [transfer_address], 100
 
     @@: inc     [known_part]
         jmp     search_partitions_ide3_1
@@ -133,12 +125,10 @@ search_partitions_bd:
         jnz     end_search_partitions_bd
         test    [problem_partition], 1
         jnz     @f
-;       cmp     [problem_partition], 0
-;       jne     end_search_partitions_bd
         mov     eax, [hdpos]
         inc     [BiosDiskPartitions + (eax - 0x80) * 4]
         call    partition_data_transfer
-        add     [transfer_adress], 100
+        add     [transfer_address], 100
 
     @@: inc     [known_part]
         jmp     search_partitions_bd
@@ -152,13 +142,13 @@ end_search_partitions_bd:
 include  "fs/part_set.asm"
 
 uglobal
-  transfer_adress dd ?
+  transfer_address dd ?
 endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc partition_data_transfer ;/////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     edi, [transfer_adress]
+        mov     edi, [transfer_address]
         mov     esi, current_partition ; start of file_system_data
         mov     ecx, (file_system_data_size + 3) / 4
         rep
@@ -172,7 +162,7 @@ kproc partition_data_transfer_1 ;///////////////////////////////////////////////
 ;       cli
         push    edi
         mov     edi, current_partition
-        mov     esi, [transfer_adress]
+        mov     esi, [transfer_address]
         mov     ecx, (file_system_data_size + 3) / 4
         rep
         movsd

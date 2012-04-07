@@ -16,12 +16,6 @@
 ;;======================================================================================================================
 
 ; PCI Bus defines
-PCI_HEADER_TYPE                = 0x0e ; 8 bit
-PCI_BASE_ADDRESS_0             = 0x10 ; 32 bit
-PCI_BASE_ADDRESS_5             = 0x24 ; 32 bits
-PCI_BASE_ADDRESS_SPACE_IO      = 0x01
-PCI_VENDOR_ID                  = 0x00 ; 16 bit
-PCI_BASE_ADDRESS_IO_MASK       = 0xfffffffc
 
 PCI_COMMAND_IO                 = 0x1   ; Enable response in I/O space
 PCI_COMMAND_MEM                = 0x2   ; Enable response in mem space
@@ -38,6 +32,14 @@ PCI_COMMAND_FAST_BACK          = 0x200 ; Enable back-to-back writes
 PCI_VENDOR_ID                  = 0x00  ; 16 bits
 PCI_DEVICE_ID                  = 0x02  ; 16 bits
 PCI_COMMAND                    = 0x04  ; 16 bits
+PCI_STATUS                     = 0x06  ; 16 bits
+PCI_REV_ID                     = 0x08  ; 8 bits
+PCI_PROG_IF                    = 0x09  ; 8 bits
+PCI_SUBCLASS                   = 0x0a  ; 8 bits
+PCI_CLASS                      = 0x0b  ; 8 bits
+PCI_CACHE_LINE_SIZE            = 0x0c  ; 8 bits
+PCI_LATENCY_TIMER              = 0x0d  ; 8 bits
+PCI_HEADER_TYPE                = 0x0e  ; 8 bits
 
 PCI_BASE_ADDRESS_0             = 0x10  ; 32 bits
 PCI_BASE_ADDRESS_1             = 0x14  ; 32 bits
@@ -51,7 +53,7 @@ PCI_BASE_ADDRESS_MEM_TYPE_32   = 0x00 ; 32 bit address
 PCI_BASE_ADDRESS_MEM_TYPE_1M   = 0x02 ; Below 1M [obsolete]
 PCI_BASE_ADDRESS_MEM_TYPE_64   = 0x04 ; 64 bit address
 
-PCI_BASE_ADDRESS_IO_MASK       = not 0x03
+PCI_BASE_ADDRESS_IO_MASK       = 0xfffffffc
 PCI_BASE_ADDRESS_MEM_MASK      = not 0x0f
 PCI_BASE_ADDRESS_SPACE_IO      = 0x01
 PCI_ROM_ADDRESS                = 0x30 ; 32 bits

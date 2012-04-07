@@ -15,7 +15,7 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-struct fs.fat.partition_vftbl_t
+struct fs.fat.vftbl_t
   allocate_cluster             dd ?
   get_next_cluster             dd ?
   get_or_allocate_next_cluster dd ?
@@ -24,8 +24,8 @@ struct fs.fat.partition_vftbl_t
   flush                        dd ?
 ends
 
-struct fs.fat.partition_data_t
-  vftbl  dd ? ; ^= fs.fat.partition_vftbl_t
+struct fs.fat.partition_t fs.partition_t
+  vftbl  dd ? ; ^= fs.fat.vftbl_t
   buffer rb 2 * 512
 ends
 
@@ -136,7 +136,7 @@ kproc fs.fat.read_file ;////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> esi ^= path to file
 ;> edx ^= fs.read_file_query_params_t
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;< ebx #= bytes read (on success)
@@ -202,9 +202,8 @@ kproc fs.fat.read_file ;////////////////////////////////////////////////////////
 
         push    ecx
         mov     eax, esi
-        mov     esi, [ebx + fs.partition_t.user_data]
-        mov     esi, [esi + fs.fat.partition_data_t.vftbl]
-        call    [esi + fs.fat.partition_vftbl_t.get_next_cluster]
+        mov     esi, [ebx + fs.fat.partition_t.vftbl]
+        call    [esi + fs.fat.vftbl_t.get_next_cluster]
         pop     ecx
         jc      .end_of_file_error_in_loop
 
@@ -251,7 +250,7 @@ kproc fs.fat.read_directory ;///////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> esi ^= path to directory
 ;> edx ^= fs.read_directory_query_params_t
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;< ebx #= directory entries read (on success)
@@ -327,8 +326,7 @@ kproc fs.fat.read_directory ;///////////////////////////////////////////////////
         call    fs.fat.util.fat_entry_to_bdfe
 
   .move_to_next_entry:
-        mov     eax, [ebx + fs.partition_t.user_data]
-        add     eax, fs.fat.partition_data_t.buffer + 512
+        lea     eax, [ebx + fs.fat.partition_t.buffer + 512]
         add     edi, sizeof.fs.fat.dir_entry_t
         cmp     edi, eax
         jb      .get_entry_name
@@ -336,9 +334,8 @@ kproc fs.fat.read_directory ;///////////////////////////////////////////////////
         ; read next sector from FAT
         push    ecx ebp
         mov     eax, [esp + 12 + 262 * 2 + 8]
-        mov     ebp, [ebx + fs.partition_t.user_data]
-        mov     ebp, [ebp + fs.fat.partition_data_t.vftbl]
-        call    [ebp + fs.fat.partition_vftbl_t.get_next_cluster]
+        mov     ebp, [ebx + fs.fat.partition_t.vftbl]
+        call    [ebp + fs.fat.vftbl_t.get_next_cluster]
         pop     ebp ecx
         jnc     @f
 
@@ -380,7 +377,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs.fat._.begin_cluster_write ;////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
         pusha
         mov     eax, [eax]
@@ -392,7 +389,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs.fat._.end_cluster_write ;//////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
         pusha
         mov     eax, [eax]
@@ -404,11 +401,10 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs.fat._.prev_cluster_write ;/////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax
-        mov     eax, [ebx + fs.partition_t.user_data]
-        add     eax, fs.fat.partition_data_t.buffer
+        lea     eax, [ebx + fs.fat.partition_t.buffer]
         cmp     edi, eax
         pop     eax
         jb      @f
@@ -421,11 +417,10 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs.fat._.next_cluster_write ;/////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax
-        mov     eax, [ebx + fs.partition_t.user_data]
-        add     eax, fs.fat.partition_data_t.buffer + 512
+        lea     eax, [ebx + fs.fat.partition_t.buffer + 512]
         cmp     edi, eax
         pop     eax
         jae     @f
@@ -438,7 +433,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs.fat._.extend_dir ;/////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
         ; FIXME: not implemented
 
@@ -453,8 +448,7 @@ kproc fs.fat._.extend_dir ;/////////////////////////////////////////////////////
 ;///
 ;///        mov     word[edi], 0x0fff ; mark as last cluster
 ;///
-;///        mov     edx, [ebx + fs.partition_t.user_data]
-;///        add     edx, fs.fat.partition_data_t.fat
+;///        lea     edx, [ebx + fs.fat.partition_t.fat]
 ;///
 ;///        mov     edi, [esp + regs_context32_t.eax]
 ;///        mov     ecx, [edi]
@@ -462,16 +456,14 @@ kproc fs.fat._.extend_dir ;/////////////////////////////////////////////////////
 ;///        mov     [edi], eax
 ;///
 ;///        xor     eax, eax
-;///        mov     edi, [ebx + fs.partition_t.user_data]
-;///        add     edi, fs.fat.partition_data_t.buffer
+;///        lea     edi, [ebx + fs.fat.partition_t.buffer]
 ;///        mov     ecx, 512 / 4
 ;///        rep
 ;///        stosd
 ;///
 ;///        popa
 ;///        call    fs.fat._.end_cluster_write
-;///        mov     edi, [ebx + fs.partition_t.user_data]
-;///        add     edi, fs.fat.partition_data_t.buffer
+;///        lea     edi, [ebx + fs.fat.partition_t.buffer]
 ;///        clc
 ;///        ret
 ;///
@@ -485,7 +477,7 @@ kendp
 kproc fs.fat._.find_parent_dir ;////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> esi ^= path to file or directory
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;< ebp #= parent directory start cluster
@@ -566,7 +558,7 @@ kendp
 ;///;-----------------------------------------------------------------------------------------------------------------------
 ;///kproc fs.fat12._.find_free_cluster ;////////////////////////////////////////////////////////////////////////////////////
 ;///;-----------------------------------------------------------------------------------------------------------------------
-;///;> ebx ^= fs.partition_t
+;///;> ebx ^= fs.fat.partition_t
 ;///;-----------------------------------------------------------------------------------------------------------------------
 ;///;< Cf ~= 0 (ok) or 1 (error)
 ;///;< eax #= free cluster number
@@ -574,8 +566,7 @@ kendp
 ;///;-----------------------------------------------------------------------------------------------------------------------
 ;///        push    ecx
 ;///        mov     ecx, 2849
-;///        mov     edi, [ebx + fs.partition_t.user_data]
-;///        add     edi, fs.fat.partition_data_t.fat
+;///        lea     edi, [ebx + fs.fat.partition_t.fat]
 ;///
 ;///        xor     eax, eax
 ;///        repne
@@ -585,8 +576,8 @@ kendp
 ;///
 ;///        dec     edi
 ;///        dec     edi
-;///        lea     eax, [edi - fs.fat.partition_data_t.fat]
-;///        sub     eax, [ebx + fs.partition_t.user_data]
+;///        lea     eax, [edi - fs.fat.partition_t.fat]
+;///        sub     eax, ebx
 ;///        shr     eax, 1
 ;///
 ;///        clc
@@ -600,7 +591,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs.fat._.create_dir_entry ;///////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.partition_t
 ;> edx #= number of free clusters
 ;> esi ^= entry name
 ;> [esp + 4] #= parent directory start cluster
@@ -808,9 +799,8 @@ kproc fs.fat._.create_dir_entry ;///////////////////////////////////////////////
         mov     [edi + fs.fat.dir_entry_t.modified_at.date], ax
         mov     [edi + fs.fat.dir_entry_t.accessed_at.date], ax
 
-        mov     eax, [ebx + fs.partition_t.user_data]
-        mov     eax, [eax + fs.fat.partition_data_t.vftbl]
-        call    [eax + fs.fat.partition_vftbl_t.allocate_cluster]
+        mov     eax, [ebx + fs.fat.partition_t.vftbl]
+        call    [eax + fs.fat.vftbl_t.allocate_cluster]
         jc      .disk_full_error_3
 
         mov     eax, edx
@@ -857,7 +847,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs.fat._.write_file ;/////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.partition_t
 ;> eax #= data offset
 ;> ecx #= data size
 ;> esi ^= data
@@ -895,8 +885,7 @@ kproc fs.fat._.write_file ;/////////////////////////////////////////////////////
         pop     eax
         jnz     .device_error
 
-    @@: mov     edi, [ebx + fs.partition_t.user_data]
-        add     edi, fs.fat.partition_data_t.buffer
+    @@: lea     edi, [ebx + fs.fat.partition_t.buffer]
         neg     eax
         add     eax, 512
         add     edi, eax
@@ -917,9 +906,8 @@ kproc fs.fat._.write_file ;/////////////////////////////////////////////////////
 
   .skip_cluster:
         mov     eax, ebp
-        mov     edx, [ebx + fs.partition_t.user_data]
-        mov     edx, [edx + fs.fat.partition_data_t.vftbl]
-        call    [edx + fs.fat.partition_vftbl_t.get_or_allocate_next_cluster]
+        mov     edx, [ebx + fs.fat.partition_t.vftbl]
+        call    [edx + fs.fat.vftbl_t.get_or_allocate_next_cluster]
         jc      .disk_full_error
 
         mov     ebp, eax
@@ -949,9 +937,8 @@ kproc fs.fat._.write_file ;/////////////////////////////////////////////////////
     @@: lea     eax, [esp + sizeof.regs_context32_t + 4]
         call    fs.fat._.end_cluster_write
 
-        mov     eax, [ebx + fs.partition_t.user_data]
-        mov     eax, [eax + fs.fat.partition_data_t.vftbl]
-        call    [eax + fs.fat.partition_vftbl_t.flush]
+        mov     eax, [ebx + fs.fat.partition_t.vftbl]
+        call    [eax + fs.fat.vftbl_t.flush]
 
         popa
 
@@ -976,7 +963,7 @@ kendp
 kproc fs.fat.create_directory ;/////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> esi ^= path to directory
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -1030,15 +1017,14 @@ kproc fs.fat.create_directory ;/////////////////////////////////////////////////
   .get_dir_data: ;::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> esi ^= fs.fat.dir_entry_t
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< esi ^= data
 ;< ecx #= data size
 ;-----------------------------------------------------------------------------------------------------------------------
         push    edi
 
-        mov     edi, [ebx + fs.partition_t.user_data]
-        add     edi, fs.fat.partition_data_t.buffer + 512
+        lea     edi, [ebx + fs.fat.partition_t.buffer + 512]
         push    edi
 
         mov_s_  ecx, sizeof.fs.fat.dir_entry_t / 4
@@ -1079,7 +1065,7 @@ kproc fs.fat.create_file ;//////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> esi ^= path to file
 ;> edx ^= fs.create_file_query_params_t
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;< ebx #= bytes written (on success)
@@ -1122,9 +1108,8 @@ kproc fs.fat.create_file ;//////////////////////////////////////////////////////
         add     esp, 4
 
         push    eax ecx
-        mov     eax, [ebx + fs.partition_t.user_data]
-        mov     eax, [eax + fs.fat.partition_data_t.vftbl]
-        call    [eax + fs.fat.partition_vftbl_t.flush]
+        mov     eax, [ebx + fs.fat.partition_t.vftbl]
+        call    [eax + fs.fat.vftbl_t.flush]
         pop     ecx eax
         jc      .device_error
 
@@ -1158,7 +1143,7 @@ kproc fs.fat.write_file ;///////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> esi ^= path to file
 ;> edx ^= fs.write_file_query_params_t
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;< ebx #= bytes written (on success)
@@ -1249,7 +1234,7 @@ kproc fs.fat.truncate_file ;////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> esi ^= path to file
 ;> edx ^= fs.truncate_file_query_params_t
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -1292,8 +1277,7 @@ kproc fs.fat.truncate_file ;////////////////////////////////////////////////////
         mov     eax, [edi + fs.fat.dir_entry_t.size]
         call    fs.fat._.bytes_to_clusters
 
-        mov     ebp, [ebx + fs.partition_t.user_data]
-        mov     ebp, [ebp + fs.fat.partition_data_t.vftbl]
+        mov     ebp, [ebx + fs.fat.partition_t.vftbl]
 
         test    ecx, ecx
         jl      .truncate
@@ -1313,7 +1297,7 @@ kproc fs.fat.truncate_file ;////////////////////////////////////////////////////
         add     eax, 31 ; FAT12 data area start sector
 
     @@: push    ecx
-        call    [ebp + fs.fat.partition_vftbl_t.get_or_allocate_next_cluster]
+        call    [ebp + fs.fat.vftbl_t.get_or_allocate_next_cluster]
         pop     ecx
         jc      .disk_full_error_2
         loop    @b
@@ -1326,14 +1310,14 @@ kproc fs.fat.truncate_file ;////////////////////////////////////////////////////
         add     eax, 31 ; FAT12 data area start sector
 
     @@: push    ecx
-        call    [ebp + fs.fat.partition_vftbl_t.get_next_cluster]
+        call    [ebp + fs.fat.vftbl_t.get_next_cluster]
         pop     ecx
         jc      .fat_table_error
         loop    @b
 
         add     eax, -31 ; FAT12 data area start sector
         or      edx, -1 ; mark EOF
-        call    [ebp + fs.fat.partition_vftbl_t.delete_chain]
+        call    [ebp + fs.fat.vftbl_t.delete_chain]
         jc      .device_error_2
 
   .exit:
@@ -1341,7 +1325,7 @@ kproc fs.fat.truncate_file ;////////////////////////////////////////////////////
         call    fs.fat._.end_cluster_write
         jc      .device_error_2
 
-        call    [ebp + fs.fat.partition_vftbl_t.flush]
+        call    [ebp + fs.fat.vftbl_t.flush]
         jc      .device_error_2
 
         add     esp, 4
@@ -1384,7 +1368,7 @@ kproc fs.fat.get_file_info ;////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> esi ^= path to file or directory
 ;> edx ^= fs.get_file_info_query_params_t
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;       klog_   LOG_DEBUG, "fs.fat.get_file_info('%s')\n", esi
 
@@ -1420,7 +1404,7 @@ kproc fs.fat.set_file_info ;////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> esi ^= path to file or directory
 ;> edx ^= fs.set_file_info_query_params_t
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;       klog_   LOG_DEBUG, "fs.fat.set_file_info('%s')\n", esi
 
@@ -1458,7 +1442,7 @@ kendp
 kproc fs.fat.delete_file ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> esi ^= path to file or directory
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -1555,9 +1539,8 @@ kproc fs.fat.delete_file ;//////////////////////////////////////////////////////
         add     eax, -31 ; FAT12 data area start sector
 
         xor     edx, edx ; mark free
-        mov     ebp, [ebx + fs.partition_t.user_data]
-        mov     ebp, [ebp + fs.fat.partition_data_t.vftbl]
-        call    [ebp + fs.fat.partition_vftbl_t.delete_chain]
+        mov     ebp, [ebx + fs.fat.partition_t.vftbl]
+        call    [ebp + fs.fat.vftbl_t.delete_chain]
         jc      .device_error
 
         xor     eax, eax ; ERROR_SUCCESS
@@ -1593,7 +1576,7 @@ kproc fs.fat._.find_file_lfn ;//////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> esi ^= path
 ;> ebp ^= filename
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< CF = 1 - file not found
 ;< CF = 0,
@@ -1641,15 +1624,14 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs.fat._.prev_dir_entry ;/////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
         ; FIXME: not implemented
         stc
         ret
 
 ;///        push    eax
-;///        mov     eax, [ebx + fs.partition_t.user_data]
-;///        add     eax, fs.fat.partition_data_t.buffer
+;///        lea     eax, [ebx + fs.fat.partition_t.buffer]
 ;///        cmp     edi, eax
 ;///        pop     eax
 ;///        jbe     .prev_sector
@@ -1662,16 +1644,15 @@ kproc fs.fat._.prev_dir_entry ;/////////////////////////////////////////////////
 ;///
 ;///        push    eax
 ;///        mov     eax, [eax]
-;///        mov     edi, [ebx + fs.partition_t.user_data]
-;///        add     edi, fs.fat.partition_data_t.fat
+;///        lea     edi, [ebx + fs.fat.partition_t.fat]
 ;///        mov     ecx, 2849
 ;///        repne
 ;///        scasw
 ;///        pop     eax
 ;///        jne     .eof
 ;///
-;///        sub     edi, fs.fat.partition_data_t.fat + 2
-;///        sub     edi, [ebx + fs.partition_t.user_data]
+;///        sub     edi, fs.fat.partition_t.fat + 2
+;///        sub     edi, ebx
 ;///        shr     edi, 1
 ;///        xchg    eax, edi
 ;///        stosd
@@ -1695,11 +1676,10 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs.fat._.next_dir_entry ;/////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax
-        mov     eax, [ebx + fs.partition_t.user_data]
-        add     eax, fs.fat.partition_data_t.buffer + 512 - sizeof.fs.fat.dir_entry_t
+        lea     eax, [ebx + fs.fat.partition_t.buffer + 512 - sizeof.fs.fat.dir_entry_t]
         cmp     edi, eax
         pop     eax
         jae     .next_sector
@@ -1712,9 +1692,8 @@ kproc fs.fat._.next_dir_entry ;/////////////////////////////////////////////////
 
         mov     edx, eax
         mov     eax, [edx]
-        mov     ecx, [ebx + fs.partition_t.user_data]
-        mov     ecx, [ecx + fs.fat.partition_data_t.vftbl]
-        call    [ecx + fs.fat.partition_vftbl_t.get_next_cluster]
+        mov     ecx, [ebx + fs.fat.partition_t.vftbl]
+        call    [ecx + fs.fat.vftbl_t.get_next_cluster]
         jc      .eof
 
         mov     [edx], eax
@@ -1734,7 +1713,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs.fat._.first_dir_entry ;////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, [eax]
         call    fs.fat._.read_cluster
@@ -1745,7 +1724,7 @@ kendp
 kproc fs.fat._.read_cluster ;///////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax #= cluster number
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
         call    fs.fat._.read_sector
         jnz     .error
@@ -1762,7 +1741,7 @@ kendp
 kproc fs.fat._.read_sector ;////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax #= sector number
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;< edi ^= buffer
@@ -1773,8 +1752,7 @@ kproc fs.fat._.read_sector ;////////////////////////////////////////////////////
 
         xor     edx, edx
         mov_s_  ecx, 1
-        mov     edi, [ebx + fs.partition_t.user_data]
-        add     edi, fs.fat.partition_data_t.buffer
+        lea     edi, [ebx + fs.fat.partition_t.buffer]
         call    fs.read
 
         test    eax, eax
@@ -1786,7 +1764,7 @@ kendp
 kproc fs.fat._.write_sector ;///////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax #= sector number
-;> ebx ^= fs.partition_t
+;> ebx ^= fs.fat.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;< eflags[zf] = 1 (ok) or 0 (error)
@@ -1796,8 +1774,7 @@ kproc fs.fat._.write_sector ;///////////////////////////////////////////////////
 
         xor     edx, edx
         mov_s_  ecx, 1
-        mov     esi, [ebx + fs.partition_t.user_data]
-        add     esi, fs.fat.partition_data_t.buffer
+        lea     esi, [ebx + fs.fat.partition_t.buffer]
         call    fs.write
 
         test    eax, eax

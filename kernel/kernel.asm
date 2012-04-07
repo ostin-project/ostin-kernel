@@ -216,6 +216,8 @@ include "init.asm"
 
 org $ + OS_BASE
 
+include "include/fdo.inc"
+
 align 4
 high_code:
         mov     ax, os_stack
@@ -526,21 +528,21 @@ high_code:
 
 if KCONFIG_BLK_MEMORY
 
-        mov     ecx, static_test_ram_partition + fs.partition_t.mutex
+        mov     ecx, static_test_ram_partition + fs.partition_t._.mutex
         call    mutex_init
 
 end if ; KCONFIG_BLK_MEMORY
 
 if KCONFIG_BLK_FLOPPY
 
-        mov     ecx, static_test_floppy_partition + fs.partition_t.mutex
+        mov     ecx, static_test_floppy_partition + fs.partition_t._.mutex
         call    mutex_init
 
 end if ; KCONFIG_BLK_FLOPPY
 
 if KCONFIG_BLK_ATAPI
 
-        mov     ecx, static_test_atapi_partition + fs.partition_t.mutex
+        mov     ecx, static_test_atapi_partition + fs.partition_t._.mutex
         call    mutex_init
 
 end if ; KCONFIG_BLK_ATAPI
@@ -964,7 +966,6 @@ end if ; KCONFIG_BLK_FLOPPY
         ; Fly :)
 
 include "unpacker.asm"
-include "include/fdo.inc"
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc boot_log ;////////////////////////////////////////////////////////////////////////////////////////////////////////
