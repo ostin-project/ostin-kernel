@@ -72,6 +72,34 @@ kproc blk.ata.create ;//////////////////////////////////////////////////////////
 
         inc     [blk.ata.last_index]
 
+        ; --------------------------------------------------------------------------------------------------------------
+        pushad
+        xor     eax, eax
+        cdq
+        mov     edi, Sector512
+        mov     ecx, 1
+        call    blk.ata.read
+        test    eax, eax
+        jnz     @f
+
+        mov     ecx, 32
+        mov     edi, Sector512
+
+        klog_   LOG_DEBUG, "-------------------------------------\n"
+
+  .next_line:
+        klog_   LOG_DEBUG, "%x%x%x%x %x%x%x%x - %x%x%x%x %x%x%x%x\n", [edi]:2, [edi + 1]:2, [edi + 2]:2, [edi + 3]:2, \
+                [edi + 4]:2, [edi + 5]:2, [edi + 6]:2, [edi + 7]:2, [edi + 8]:2, [edi + 9]:2, [edi + 10]:2, \
+                [edi + 11]:2, [edi + 12]:2, [edi + 13]:2, [edi + 14]:2, [edi + 15]:2
+        add     edi, 16
+        dec     ecx
+        jnz    .next_line
+
+        klog_   LOG_DEBUG, "-------------------------------------\n"
+
+    @@: popad
+        ; --------------------------------------------------------------------------------------------------------------
+
         xchg    eax, ebx
 
   .exit:
@@ -104,7 +132,11 @@ kproc blk.ata.read ;////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov_s_  eax, ERROR_NOT_IMPLEMENTED
+        ; TODO: sanity checks, PIO/DMA mode selection
+        push    ebx
+        mov     ebx, [ebx + blk.ata.device_t.ctl]
+        call    blk.ata.ctl.read_pio
+        pop     ebx
         ret
 kendp
 

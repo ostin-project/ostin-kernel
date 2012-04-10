@@ -32,9 +32,11 @@ BLK_ATA_CTL_STATUS_DMRD = BLK_ATA_CTL_STATUS_DF
 BLK_ATA_CTL_STATUS_DRDY = 01000000b
 BLK_ATA_CTL_STATUS_BSY  = 10000000b
 
+BLK_ATA_CTL_CMD_READ_PIO               = 0x20
 BLK_ATA_CTL_CMD_DEVICE_RESET           = 0x08
 BLK_ATA_CTL_CMD_PACKET                 = 0xa0
 BLK_ATA_CTL_CMD_IDENTIFY_PACKET_DEVICE = 0xa1
+BLK_ATA_CTL_CMD_READ_DMA               = 0xc8
 BLK_ATA_CTL_CMD_IDENTIFY_DEVICE        = 0xec
 
 struct blk.ata.ctl.device_t
@@ -195,6 +197,95 @@ kproc blk.ata.ctl.select_drive ;////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
+kproc blk.ata.ctl.read_pio ;////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= blk.ata.ctl.device_t
+;> eax #= offset (in blocks)
+;> ecx #= size (in blocks)
+;> edi ^= buffer
+;-----------------------------------------------------------------------------------------------------------------------
+  .next_sectors_block:
+        push    eax ecx
+
+        cmp     eax, 0x0fffffff
+        ja      .error
+
+        cmp     ecx, 128
+        jbe     @f
+
+        mov     ecx, 128
+
+    @@: mov     dx, [ebx + blk.ata.ctl.device_t.base_reg]
+        add     dx, BLK_ATA_CTL_REG_SECTOR_COUNT
+        xchg    eax, ecx
+        out     dx, al
+        xchg    eax, ecx
+        inc     dx ; BLK_ATA_CTL_REG_LBA_LOW
+        out     dx, al
+        shr     eax, 8
+        inc     dx ; BLK_ATA_CTL_REG_LBA_MID
+        out     dx, al
+        shr     eax, 8
+        inc     dx ; BLK_ATA_CTL_REG_LBA_HIGH
+        out     dx, al
+        shr     eax, 8
+        inc     dx ; BLK_ATA_CTL_REG_DEVICE
+        rol     al, 4
+        or      al, [ebx + blk.ata.ctl.device_t.last_drive_number]
+        rol     al, 4
+        or      al, 11100000b
+        out     dx, al
+        inc     dx ; BLK_ATA_CTL_REG_COMMAND
+        mov     al, BLK_ATA_CTL_CMD_READ_PIO
+        out     dx, al
+
+        mov     dx, [ebx + blk.ata.ctl.device_t.base_reg]
+        sub     [esp], ecx
+
+  .next_sector:
+        call    blk.ata.ctl._.wait_for_drq
+        test    eax, eax
+        jnz     .error
+
+        push    ecx
+        mov     ecx, 512 / 2
+        rep
+        insw
+        pop     ecx
+
+        add     dword[esp + 4], 512
+        loop    .next_sector
+
+        pop     ecx eax
+        test    ecx, ecx
+        jnz     .next_sectors_block
+
+        xor     eax, eax
+        ret
+
+  .error_2:
+        ; TODO: add error code
+        mov_s_  eax, 8
+
+  .error:
+        add     esp, 8
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc blk.ata.ctl.read_dma ;////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= blk.ata.ctl.device_t
+;> eax #= offset (in blocks)
+;> ecx #= size (in blocks)
+;> edi ^= buffer
+;-----------------------------------------------------------------------------------------------------------------------
+        xor     eax, eax
+        inc     eax
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
 kproc blk.ata.ctl._.identify ;//////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> ebx ^= blk.ata.ctl.device_t
@@ -213,9 +304,9 @@ kproc blk.ata.ctl._.identify ;//////////////////////////////////////////////////
         jnz     .exit
 
         mov     dx, [ebx + blk.ata.ctl.device_t.base_reg]
-        mov     ecx, 512 / 4
+        mov     ecx, 512 / 2
         rep
-        insd
+        insw
 
   .exit:
         pop     edx ecx
