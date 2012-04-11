@@ -1,6 +1,7 @@
 ;;======================================================================================================================
 ;;///// ntfs.asm /////////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
 ;;======================================================================================================================
+;; (c) 2012 Ostin project <http://ostin.googlecode.com/>
 ;; (c) 2006-2010 KolibriOS team <http://kolibrios.org/>
 ;;======================================================================================================================
 ;; This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
@@ -59,71 +60,71 @@ kproc ntfs_test_bootsec ;///////////////////////////////////////////////////////
         jnz     .no
         ; 2. Number of bytes per sector is the same as for physical device
         ; (that is, 0x200 for hard disk)
-        cmp     word[ebx + 11], 0x200
+        cmp     [ebx + bpb_v8_0_t.sector_size], 0x200
         jnz     .no
         ; 3. Number of sectors per cluster must be power of 2
-        movzx   eax, byte[ebx + 13]
+        movzx   eax, [ebx + bpb_v8_0_t.cluster_size]
         dec     eax
         js      .no
-        test    al, [ebx + 13]
+        test    al, [ebx + bpb_v8_0_t.cluster_size]
         jnz     .no
         ; 4. FAT parameters must be zero
-        cmp     word[ebx + 14], 0
+        cmp     [ebx + bpb_v8_0_t.resvd_sector_count], 0
         jnz     .no
-        cmp     dword[ebx + 16], 0
+        cmp     dword[ebx + bpb_v8_0_t.fat_count], 0
         jnz     .no
-        cmp     byte[ebx + 20], 0
+        cmp     byte[ebx + bpb_v8_0_t.volume_size_16 + 1], 0
         jnz     .no
-        cmp     word[ebx + 22], 0
+        cmp     [ebx + bpb_v8_0_t.fat_size_16], 0
         jnz     .no
-        cmp     dword[ebx + 32], 0
+        cmp     [ebx + bpb_v8_0_t.volume_size_32], 0
         jnz     .no
         ; 5. Number of sectors <= partition size
-        cmp     dword[ebx + 0x2c], 0
+        cmp     dword[ebx + bpb_v8_0_t.volume_size_64 + 4], 0
         ja      .no
-        cmp     [ebx + 0x28], edx
+        cmp     dword[ebx + bpb_v8_0_t.volume_size_64], edx
         ja      .no
         ; 6. $MFT and $MFTMirr clusters must be within partition
-        cmp     dword[ebx + 0x34], 0
+        cmp     dword[ebx + bpb_v8_0_t.mft_first_cluster + 4], 0
         ja      .no
         push    edx
-        movzx   eax, byte[ebx + 13]
-        mul     dword[ebx + 0x30]
+        movzx   eax, [ebx + bpb_v8_0_t.cluster_size]
+        mul     dword[ebx + bpb_v8_0_t.mft_first_cluster]
         test    edx, edx
         pop     edx
         jnz     .no
         cmp     eax, edx
         ja      .no
-        cmp     dword[ebx + 0x3c], 0
+        cmp     dword[ebx + bpb_v8_0_t.mft_mirror_first_cluster + 4], 0
         ja      .no
         push    edx
-        movzx   eax, byte[ebx + 13]
-        mul     dword[ebx + 0x38]
+        movzx   eax, byte[ebx + bpb_v8_0_t.cluster_size]
+        mul     dword[ebx + bpb_v8_0_t.mft_mirror_first_cluster]
         test    edx, edx
         pop     edx
         jnz     .no
         cmp     eax, edx
         ja      .no
         ; 7. Clusters per FRS must be either negative and in [-31,-9] or positive and power of 2
-        movsx   eax, byte[ebx + 0x40]
+        movsx   eax, byte[ebx + bpb_v8_0_t.mft_record_size]
         cmp     al, -31
         jl      .no
         cmp     al, -9
         jle     @f
         dec     eax
         js      .no
-        test    [ebx + 0x40], al
+        test    byte[ebx + bpb_v8_0_t.mft_record_size], al
         jnz     .no
 
     @@: ; 8. Same for clusters per IndexAllocationBuffer
-        movsx   eax, byte[ebx + 0x44]
+        movsx   eax, byte[ebx + bpb_v8_0_t.index_block_size]
         cmp     al, -31
         jl      .no
         cmp     al, -9
         jle     @f
         dec     eax
         js      .no
-        test    [ebx + 0x44], al
+        test    byte[ebx + bpb_v8_0_t.index_block_size], al
         jnz     .no
 
     @@: ; OK, this is correct NTFS bootsector
@@ -145,16 +146,16 @@ kproc ntfs_setup ;//////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;       call    ntfs_test_bootsec ; checking boot sector was already
 ;       jc      problem_fat_dec_count
-        movzx   eax, byte[ebx + 13]
+        movzx   eax, [ebx + bpb_v8_0_t.cluster_size]
         mov     [ntfs_data.sectors_per_cluster], eax
-        mov     eax, [ebx + 0x28]
+        mov     eax, dword[ebx + bpb_v8_0_t.volume_size_64]
         mov     dword[current_partition._.range.length], eax
         mov     [current_partition._.type], FS_PARTITION_TYPE_NTFS
-        mov     eax, [ebx + 0x30]
+        mov     eax, dword[ebx + bpb_v8_0_t.mft_first_cluster]
         mov     [ntfs_data.mft_cluster], eax
-        mov     eax, [ebx + 0x38]
+        mov     eax, dword[ebx + bpb_v8_0_t.mft_mirror_first_cluster]
         mov     [ntfs_data.mftmirr_cluster], eax
-        movsx   eax, byte[ebx + 0x40]
+        movsx   eax, byte[ebx + bpb_v8_0_t.mft_record_size]
         test    eax, eax
         js      .1
         mul     [ntfs_data.sectors_per_cluster]
@@ -169,7 +170,7 @@ kproc ntfs_setup ;//////////////////////////////////////////////////////////////
 
   .2:
         mov     [ntfs_data.frs_size], eax
-        movsx   eax, byte[ebx + 0x44]
+        movsx   eax, byte[ebx + bpb_v8_0_t.index_block_size]
         test    eax, eax
         js      .3
         mul     [ntfs_data.sectors_per_cluster]

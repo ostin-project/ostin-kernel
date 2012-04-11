@@ -1,6 +1,7 @@
 ;;======================================================================================================================
 ;;///// ext2.asm /////////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
 ;;======================================================================================================================
+;; (c) 2012 Ostin project <http://ostin.googlecode.com/>
 ;; (c) 2010 KolibriOS team <http://kolibrios.org/>
 ;;======================================================================================================================
 ;; This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
@@ -158,14 +159,14 @@ struct ext2_sb_t
   feature_compat        dd ? ; +92
   feature_incompat      dd ? ; +96
   feature_ro_compat     dd ? ; +100
-  uuid                  db 16 dup(?) ; +104
+  uuid                  uuid_t ; +104
   volume_name           db 16 dup(?) ; +120
   last_mounted          db 64 dup(?) ; +136
   algo_bitmap           dd ? ; +200
   prealloc_blocks       db ? ; +204
   preallock_dir_blocks  db ? ; +205
                         dw ? ; +206 alignment
-  journal_uuid          db 16 dup ? ; +208
+  journal_uuid          uuid_t ; +208
   journal_inum          dd ? ; +224
   journal_dev           dd ? ; +228
   last_orphan           dd ? ; +232
@@ -179,20 +180,20 @@ ends
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc ext2_test_superblock ;////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     [current_partition._.type], 0x83
+        cmp     [current_partition._.type], MBR_PART_TYPE_LINUX_NATIVE
         jne     .no
 
         mov     eax, dword[current_partition._.range.offset]
         add     eax, 2 ; superblock start at 1024b
         call    hd_read
 
-        cmp     dword[ebx + 24], 3 ; s_block_size 0,1,2,3
+        cmp     [ebx + ext2_sb_t.log_block_size], 3 ; s_block_size 0,1,2,3
         ja      .no
-        cmp     word[ebx + 56], 0xef53 ; s_magic
+        cmp     [ebx + ext2_sb_t.magic], 0xef53 ; s_magic
         jne     .no
-        cmp     word[ebx + 58], 1 ; s_state (EXT_VALID_FS=1)
+        cmp     [ebx + ext2_sb_t.state], 1 ; s_state (EXT_VALID_FS=1)
         jne     .no
-        mov     eax, [ebx + 96]
+        mov     eax, [ebx + ext2_sb_t.feature_incompat]
         test    eax, EXT2_FEATURE_INCOMPAT_FILETYPE
         jz      .no
         test    eax, not EXT2_FEATURE_INCOMPAT_FILETYPE
@@ -231,7 +232,7 @@ kproc ext2_setup ;//////////////////////////////////////////////////////////////
         inc     eax
         mov     [ext2_data.groups_count], eax
 
-        mov     ecx, [ebx + 24]
+        mov     ecx, [ebx + ext2_sb_t.log_block_size]
         inc     ecx
         mov     [ext2_data.log_block_size], ecx ; 1, 2, 3, 4   equ 1kb, 2kb, 4kb, 8kb
 
@@ -257,9 +258,9 @@ kproc ext2_setup ;//////////////////////////////////////////////////////////////
         call    kernel_alloc
         mov     [ext2_data.ext2_temp_block], eax ; and for get_inode proc
 
-        movzx   ebp, word[ebx + 88]
-        mov     ecx, [ebx + 32]
-        mov     edx, [ebx + 40]
+        movzx   ebp, word[ebx + ext2_sb_t.inode_size]
+        mov     ecx, [ebx + ext2_sb_t.blocks_per_group]
+        mov     edx, [ebx + ext2_sb_t.inodes_per_group]
 
         mov     [ext2_data.inode_size], ebp
         mov     [ext2_data.blocks_per_group], ecx

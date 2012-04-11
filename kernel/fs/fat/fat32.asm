@@ -72,6 +72,113 @@ uglobal
 endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
+kproc fat16x_setup ;////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        mov     eax, dword[current_partition._.range.offset] ; ext2 test changes [buffer]
+        call    hd_read
+        cmp     [hd_error], 0
+        jnz     problem_fat_dec_count
+
+        cmp     [ebx + mbr_t.mbr_signature], MBR_SIGNATURE ; is it valid boot sector?
+        jnz     problem_fat_dec_count
+
+        movzx   eax, [ebx + bpb_v7_0_t.resvd_sector_count] ; sectors reserved
+        add     eax, dword[current_partition._.range.offset]
+        mov     [fat16x_data.fat_start], eax ; fat_start = partition_start + reserved
+
+        movzx   eax, [ebx + bpb_v7_0_t.cluster_size] ; sectors per cluster
+        test    eax, eax
+        jz      problem_fat_dec_count
+        mov     [fat16x_data.sectors_per_cluster], eax
+
+        movzx   ecx, [ebx + bpb_v7_0_t.sector_size] ; bytes per sector
+        cmp     ecx, 0x200
+        jnz     problem_fat_dec_count
+        mov     [fat16x_data.bytes_per_sector], ecx
+
+        movzx   eax, [ebx + bpb_v7_0_t.fat_root_dir_entry_count] ; count of rootdir entries (=0 fat32)
+        mov     edx, sizeof.fs.fat.dir_entry_t
+        mul     edx
+        dec     ecx
+        add     eax, ecx ; round up if not equal count
+        inc     ecx ; bytes per sector
+        div     ecx
+        mov     [fat16x_data.root_sectors], eax ; count of rootdir sectors
+
+        movzx   eax, [ebx + bpb_v7_0_t.fat_size_16] ; sectors per fat <65536
+        test    eax, eax
+        jnz     .fat16_fatsize
+        mov     eax, [ebx + bpb_v7_0_t.fat_size_32] ; sectors per fat
+
+  .fat16_fatsize:
+        mov     [fat16x_data.sectors_per_fat], eax
+
+        movzx   eax, [ebx + bpb_v7_0_t.fat_count] ; number of fats
+        test    eax, eax ; if 0 it's not fat partition
+        jz      problem_fat_dec_count
+        mov     [fat16x_data.number_of_fats], eax
+        imul    eax, [fat16x_data.sectors_per_fat]
+        add     eax, [fat16x_data.fat_start]
+        mov     [fat16x_data.root_start], eax ; rootdir = fat_start + fat_size * fat_count
+        add     eax, [fat16x_data.root_sectors] ; rootdir sectors should be 0 on fat32
+        mov     [fat16x_data.data_start], eax ; data area = rootdir + rootdir_size
+
+        movzx   eax, [ebx + bpb_v7_0_t.volume_size_16] ; total sector count <65536
+        test    eax, eax
+        jnz     .fat16_total
+        mov     eax, [ebx + bpb_v7_0_t.volume_size_32] ; total sector count
+
+  .fat16_total:
+        mov     dword[current_partition._.range.length], eax
+        add     eax, dword[current_partition._.range.offset]
+        sub     eax, [fat16x_data.data_start] ; eax = count of data sectors
+        xor     edx, edx
+        div     dword[fat16x_data.sectors_per_cluster]
+        inc     eax
+        mov     [fat16x_data.last_cluster], eax
+        dec     eax ; cluster count
+        mov     [fat16x_data.fatStartScan], 2
+
+        ; limits by Microsoft Hardware White Paper v1.03
+        cmp     eax, 0x0ff5 ; 4085
+        jb      problem_fat_dec_count ; fat12 not supported
+        cmp     eax, 0xfff5 ; 65525
+        jb      .fat16_partition
+
+  .fat32_partition:
+        mov     eax, [ebx + bpb_v7_0_t.root_dir_cluster] ; rootdir cluster
+        mov     [fat16x_data.root_cluster], eax
+        movzx   eax, [ebx + bpb_v7_0_t.superblock_sector] ; fs info sector
+        add     eax, dword[current_partition._.range.offset]
+        mov     [fat16x_data.adr_fsinfo], eax
+        call    hd_read
+        mov     eax, [ebx + 0x1ec]
+        cmp     eax, -1
+        jz      @f
+        mov     [fat16x_data.fatStartScan], eax
+
+    @@: mov     [fat16x_data.fatRESERVED], 0x0ffffff6
+        mov     [fat16x_data.fatBAD], 0x0ffffff7
+        mov     [fat16x_data.fatEND], 0x0ffffff8
+        mov     [fat16x_data.fatMASK], 0x0fffffff
+        mov     [current_partition._.type], FS_PARTITION_TYPE_FAT32 ; Fat32
+
+        jmp     return_from_part_set
+
+  .fat16_partition:
+        xor     eax, eax
+        mov     [fat16x_data.root_cluster], eax
+
+        mov     [fat16x_data.fatRESERVED], 0x0000fff6
+        mov     [fat16x_data.fatBAD], 0x0000fff7
+        mov     [fat16x_data.fatEND], 0x0000fff8
+        mov     [fat16x_data.fatMASK], 0x0000ffff
+        mov     [current_partition._.type], FS_PARTITION_TYPE_FAT16 ; Fat16
+
+        jmp     return_from_part_set
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
 kproc set_FAT ;/////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax = cluster

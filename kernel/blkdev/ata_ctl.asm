@@ -1,7 +1,7 @@
 ;;======================================================================================================================
 ;;///// ata_ctl.asm //////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
 ;;======================================================================================================================
-;; (c) 2011 Ostin project <http://ostin.googlecode.com/>
+;; (c) 2011-2012 Ostin project <http://ostin.googlecode.com/>
 ;;======================================================================================================================
 ;; This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
 ;; License as published by the Free Software Foundation, either version 2 of the License, or (at your option) any later
@@ -32,7 +32,7 @@ BLK_ATA_CTL_STATUS_DMRD = BLK_ATA_CTL_STATUS_DF
 BLK_ATA_CTL_STATUS_DRDY = 01000000b
 BLK_ATA_CTL_STATUS_BSY  = 10000000b
 
-BLK_ATA_CTL_CMD_READ_PIO               = 0x20
+BLK_ATA_CTL_CMD_READ_SECTORS           = 0x20
 BLK_ATA_CTL_CMD_DEVICE_RESET           = 0x08
 BLK_ATA_CTL_CMD_PACKET                 = 0xa0
 BLK_ATA_CTL_CMD_IDENTIFY_PACKET_DEVICE = 0xa1
@@ -236,7 +236,7 @@ kproc blk.ata.ctl.read_pio ;////////////////////////////////////////////////////
         or      al, 11100000b
         out     dx, al
         inc     dx ; BLK_ATA_CTL_REG_COMMAND
-        mov     al, BLK_ATA_CTL_CMD_READ_PIO
+        mov     al, BLK_ATA_CTL_CMD_READ_SECTORS
         out     dx, al
 
         mov     dx, [ebx + blk.ata.ctl.device_t.base_reg]
