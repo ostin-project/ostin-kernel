@@ -1,6 +1,7 @@
 ;;======================================================================================================================
 ;;///// fat32.asm ////////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
 ;;======================================================================================================================
+;; (c) 2012 Ostin project <http://ostin.googlecode.com/>
 ;; (c) 2004-2010 KolibriOS team <http://kolibrios.org/>
 ;; (c) 2002-2004 MenuetOS <http://menuetos.net/>
 ;;======================================================================================================================
@@ -34,18 +35,41 @@ struct fs.fat16x.partition_data_t
   fatStartScan        dd ?
 ends
 
+fs.fat32.create_directory = fs.fat32.create_file
+
+fs.fat16.read_file        = fs.fat32.read_file
+fs.fat16.read_directory   = fs.fat32.read_directory
+fs.fat16.create_file      = fs.fat32.create_file
+fs.fat16.write_file       = fs.fat32.write_file
+fs.fat16.truncate_file    = fs.fat32.truncate_file
+fs.fat16.get_file_info    = fs.fat32.get_file_info
+fs.fat16.set_file_info    = fs.fat32.set_file_info
+fs.fat16.delete_file      = fs.fat32.delete_file
+fs.fat16.create_directory = fs.fat32.create_directory
+
 iglobal
-  fs.fat16x.vftbl dd \
-    fat32_HdRead, \
-    fat32_HdReadFolder, \
-    fat32_HdRewrite, \
-    fat32_HdWrite, \
-    fat32_HdSetFileEnd, \
-    fat32_HdGetFileInfo, \
-    fat32_HdSetFileInfo, \
-    fs.error.not_implemented, \
-    fat32_HdDelete, \
-    fat32_HdRewrite
+  jump_table fs.fat16, vftbl, 0, \
+    read_file, \
+    read_directory, \
+    create_file, \
+    write_file, \
+    truncate_file, \
+    get_file_info, \
+    set_file_info, \
+    -, \
+    delete_file, \
+    create_directory
+  jump_table fs.fat32, vftbl, 0, \
+    read_file, \
+    read_directory, \
+    create_file, \
+    write_file, \
+    truncate_file, \
+    get_file_info, \
+    set_file_info, \
+    -, \
+    delete_file, \
+    create_directory
 endg
 
 uglobal
@@ -61,7 +85,6 @@ endg
 uglobal
   align 4
   fat_cache:           rb 512
-  Sector512:                  ; label for dev_hdcd.inc
   buffer:              rb 512
   fsinfo_buffer:       rb 512
 endg
@@ -70,6 +93,19 @@ uglobal
   fat16_root           db 0   ; flag for fat16 rootdir
   fat_change           db 0   ; 1=fat has changed
 endg
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc fs.fat.fat32.create_from_base ;///////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= fs.partition_t (base)
+;> ecx @= BPB version, pack[16(0), 8(major), 8(minor)]
+;> edi ^= BPB
+;-----------------------------------------------------------------------------------------------------------------------
+        klog_   LOG_DEBUG, "fs.fat.fat32.create_from_base\n"
+
+        xor     eax, eax
+        ret
+kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fat16x_setup ;////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -161,7 +197,7 @@ kproc fat16x_setup ;////////////////////////////////////////////////////////////
         mov     [fat16x_data.fatBAD], 0x0ffffff7
         mov     [fat16x_data.fatEND], 0x0ffffff8
         mov     [fat16x_data.fatMASK], 0x0fffffff
-        mov     [current_partition._.type], FS_PARTITION_TYPE_FAT32 ; Fat32
+        mov     [current_partition._.vftbl], fs.fat32.vftbl
 
         jmp     return_from_part_set
 
@@ -173,7 +209,7 @@ kproc fat16x_setup ;////////////////////////////////////////////////////////////
         mov     [fat16x_data.fatBAD], 0x0000fff7
         mov     [fat16x_data.fatEND], 0x0000fff8
         mov     [fat16x_data.fatMASK], 0x0000ffff
-        mov     [current_partition._.type], FS_PARTITION_TYPE_FAT16 ; Fat16
+        mov     [current_partition._.vftbl], fs.fat16.vftbl
 
         jmp     return_from_part_set
 kendp
@@ -192,7 +228,7 @@ kproc set_FAT ;/////////////////////////////////////////////////////////////////
         jb      .sfc_error
         cmp     eax, [fat16x_data.last_cluster]
         ja      .sfc_error
-        cmp     [current_partition._.type], FS_PARTITION_TYPE_FAT16
+        cmp     [current_partition._.vftbl], fs.fat16.vftbl
         je      .sfc_1
         add     eax, eax
 
@@ -220,7 +256,7 @@ kproc set_FAT ;/////////////////////////////////////////////////////////////////
         jne     .sfc_error
 
   .sfc_in_cache:
-        cmp     [current_partition._.type], FS_PARTITION_TYPE_FAT16
+        cmp     [current_partition._.vftbl], fs.fat16.vftbl
         jne     .sfc_test32
 
   .sfc_set16:
@@ -258,7 +294,7 @@ kproc get_FAT ;/////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    ebx esi
 
-        cmp     [current_partition._.type], FS_PARTITION_TYPE_FAT16
+        cmp     [current_partition._.vftbl], fs.fat16.vftbl
         je      .gfc_1
         add     eax, eax
 
@@ -400,7 +436,7 @@ kproc analyze_directory ;///////////////////////////////////////////////////////
         jnb     .adr_data_cluster
 
         mov     eax, [fat16x_data.root_cluster] ; if cluster < 2 then read rootdir
-        cmp     [current_partition._.type], FS_PARTITION_TYPE_FAT16
+        cmp     [current_partition._.vftbl], fs.fat16.vftbl
         jne     .adr_data_cluster
         mov     eax, [fat16x_data.root_start]
         mov     edx, [fat16x_data.root_sectors]
@@ -496,7 +532,7 @@ kproc get_data_cluster ;////////////////////////////////////////////////////////
         jnb     .gdc_cluster
 
         mov     eax, [fat16x_data.root_cluster] ; if cluster < 2 then read rootdir
-        cmp     [current_partition._.type], FS_PARTITION_TYPE_FAT16
+        cmp     [current_partition._.vftbl], fs.fat16.vftbl
         jne     .gdc_cluster
         mov     eax, [fat16x_data.root_start]
         mov     ecx, [fat16x_data.root_sectors] ; Note: not cluster size
@@ -598,7 +634,7 @@ kproc add_disk_free_space ;/////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         test    ecx, ecx ; no change
         je      .add_dfs_no
-        cmp     [current_partition._.type], FS_PARTITION_TYPE_FAT32 ; free disk space only used by fat32
+        cmp     [current_partition._.vftbl], fs.fat32.vftbl ; free disk space only used by fat32
         jne     .add_dfs_no
 
         push    eax ebx
@@ -645,9 +681,9 @@ kproc file_read ;///////////////////////////////////////////////////////////////
 ;#  9 - fat table corrupted
 ;#  10 - access denied
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     [current_partition._.type], FS_PARTITION_TYPE_FAT16
+        cmp     [current_partition._.vftbl], fs.fat16.vftbl
         jz      .fat_ok_for_reading
-        cmp     [current_partition._.type], FS_PARTITION_TYPE_FAT32
+        cmp     [current_partition._.vftbl], fs.fat32.vftbl
         jz      .fat_ok_for_reading
         xor     ebx, ebx
         mov     eax, ERROR_UNKNOWN_FS
@@ -772,7 +808,7 @@ kproc get_dir_size ;////////////////////////////////////////////////////////////
 
         mov     eax, [fat16x_data.root_sectors]
         shl     eax, 9 ; fat16 rootdir size in bytes
-        cmp     [current_partition._.type], FS_PARTITION_TYPE_FAT16
+        cmp     [current_partition._.vftbl], fs.fat16.vftbl
         je      .dir_size_ret
         mov     eax, [fat16x_data.root_cluster]
 
@@ -867,7 +903,7 @@ kproc hd_find_lfn ;/////////////////////////////////////////////////////////////
         push    fat16_root_first
         push    fat16_root_next
         mov     eax, [fat16x_data.root_cluster]
-        cmp     [current_partition._.type], FS_PARTITION_TYPE_FAT32
+        cmp     [current_partition._.vftbl], fs.fat32.vftbl
         jz      .fat32
 
   .loop:
@@ -919,7 +955,7 @@ kproc hd_find_lfn ;/////////////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc fat32_HdRead ;////////////////////////////////////////////////////////////////////////////////////////////////////
+kproc fs.fat32.read_file ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? LFN variant for reading hard disk
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -1068,7 +1104,7 @@ kproc fat32_HdRead ;////////////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc fat32_HdReadFolder ;//////////////////////////////////////////////////////////////////////////////////////////////
+kproc fs.fat32.read_directory ;/////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? LFN variant for reading hard disk folder
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -1127,7 +1163,7 @@ kproc fat32_HdReadFolder ;//////////////////////////////////////////////////////
         mov     [cluster_tmp], eax
         test    eax, eax
         jnz     @f
-        cmp     [current_partition._.type], FS_PARTITION_TYPE_FAT32
+        cmp     [current_partition._.vftbl], fs.fat32.vftbl
         jz      .notfound
         mov     eax, [fat16x_data.root_start]
         push    [fat16x_data.root_sectors]
@@ -1507,7 +1543,7 @@ kproc fat_get_sector ;//////////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////////////////////////////////////////////
+kproc fs.fat32.create_file ;////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? LFN variant for writing hard disk
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -1539,7 +1575,7 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         test    ebp, ebp
         jnz     .hasebp
         mov     ebp, [fat16x_data.root_cluster]
-        cmp     [current_partition._.type], FS_PARTITION_TYPE_FAT32
+        cmp     [current_partition._.vftbl], fs.fat32.vftbl
         jz      .pushnotroot
         push    fat16_root_extend_dir
         push    fat16_root_end_write
@@ -2043,16 +2079,16 @@ kproc fat32_HdRewrite ;/////////////////////////////////////////////////////////
         jmp     .writedircont
 kendp
 
-fat32_HdWrite.ret11:
+fs.fat32.write_file.ret11:
         push    ERROR_DEVICE_FAIL
 
-fat32_HdWrite.ret0:
+fs.fat32.write_file.ret0:
         pop     eax
         xor     ebx, ebx
         ret
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc fat32_HdWrite ;///////////////////////////////////////////////////////////////////////////////////////////////////
+kproc fs.fat32.write_file ;/////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? LFN variant for writing to hard disk
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -2421,7 +2457,7 @@ kproc hd_extend_file ;//////////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc fat32_HdSetFileEnd ;//////////////////////////////////////////////////////////////////////////////////////////////
+kproc fs.fat32.truncate_file ;//////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? set end of file on hard disk
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -2662,7 +2698,7 @@ kproc fat32_HdSetFileEnd ;//////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc fat32_HdGetFileInfo ;/////////////////////////////////////////////////////////////////////////////////////////////
+kproc fs.fat32.get_file_info ;//////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     byte[esi], 0
         jnz     @f
@@ -2697,7 +2733,7 @@ kproc fat32_HdGetFileInfo ;/////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc fat32_HdSetFileInfo ;/////////////////////////////////////////////////////////////////////////////////////////////
+kproc fs.fat32.set_file_info ;//////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     byte[esi], 0
         jnz     @f
@@ -2731,7 +2767,7 @@ kproc fat32_HdSetFileInfo ;/////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc fat32_HdDelete ;//////////////////////////////////////////////////////////////////////////////////////////////////
+kproc fs.fat32.delete_file ;////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? delete file or empty folder from hard disk
 ;-----------------------------------------------------------------------------------------------------------------------

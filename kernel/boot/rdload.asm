@@ -103,12 +103,15 @@ search_and_read_image:
         ret
 
 read_image:
-        mov     eax, hdsysimage + OS_BASE + 0x10000
-        mov     ebx, 1440 * 1024 / 512
-        mov     ecx, RAMDISK
-        mov     esi, 0
-        mov     edi, 12
-        call    file_read
+        ; FIXME: uses `file_read` defined in fat32.asm
+;       mov     eax, hdsysimage + OS_BASE + 0x10000
+;       mov     ebx, 1440 * 1024 / 512
+;       mov     ecx, RAMDISK
+;       mov     esi, 0
+;       mov     edi, 12
+;       call    file_read
+        xor     eax, eax
+        inc     eax
         ret
 
 image_retrieved       db 0

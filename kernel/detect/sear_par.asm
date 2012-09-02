@@ -16,10 +16,15 @@
 ;? Find and save partitions on detected HDD in table
 ;;======================================================================================================================
 
+include "detect/gpt.inc"
+include "detect/mbr.inc"
+
 uglobal
   align 4
   known_part dd ? ; for boot 0x1
 endg
+
+        call    scan_for_blkdev_partitions
 
         mov     [transfer_address], DRIVE_DATA + 0x0a
 
@@ -144,6 +149,192 @@ include  "fs/part_set.asm"
 uglobal
   transfer_address dd ?
 endg
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc scan_for_blkdev_partitions ;//////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        mov     ebx, blkdev_list
+
+  .next_device:
+        mov     ebx, [ebx + blk.device_t.next_ptr]
+        cmp     ebx, blkdev_list
+        je      .done
+
+        call    detect_device_partitions
+        jmp     .next_device
+
+  .done:
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc detect_device_partitions ;////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= blk.device_t
+;-----------------------------------------------------------------------------------------------------------------------
+        lea     eax, [ebx + blk.device_t._.name]
+        klog_   LOG_DEBUG, "detect_device_partitions: %s\n", eax
+
+        mov     eax, 512
+        call    malloc
+        test    eax, eax
+        jz      .exit
+
+        push    eax
+
+        mov     edi, eax
+        xor     eax, eax
+        cdq
+        mov_s_  ecx, 1
+        call    blk.read
+        test    eax, eax
+        jnz     .done
+
+        mov     esi, [esp]
+        cmp     [esi + mbr_t.mbr_signature], MBR_SIGNATURE
+        jne     .done
+
+        cmp     [esi + mbr_t.partitions.0.type], 0xee
+        je      .gpt_scheme
+
+        call    detect_device_partitions_mbr
+        jmp     .done
+
+  .gpt_scheme:
+        call    detect_device_partitions_gpt
+
+  .done:
+        pop     eax
+        call    free
+
+  .exit:
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc detect_device_partitions_mbr ;////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= blk.device_t
+;> esi ^= mbr_t
+;-----------------------------------------------------------------------------------------------------------------------
+        xor     eax, eax
+        cdq
+
+  .next_mbr:
+        push    edx eax ; current MBR offset
+        push    0 0 ; next (extended) MBR offset
+        push    esi
+
+        cmp     [esi + mbr_t.mbr_signature], MBR_SIGNATURE
+        jne     .done
+
+        add     esi, mbr_t.partitions
+        mov_s_  ecx, 4
+
+  .next_partition:
+        push    ebx ecx esi
+
+        add     esp, -sizeof.fs.partition_t
+        mov     edi, esp
+        call    .init_partition
+        mov     ebx, esp
+
+        mov     al, [esi + mbr_part_entry_t.type]
+        cmp     al, 0
+        je      .skip_partition
+
+        mov     edi, extended_types
+        mov_s_  ecx, extended_types_end - extended_types
+        repne
+        scasb
+        je      .skip_extended_partition
+
+        mov     ecx, esi
+        call    fs.detect_by_mbr_part_entry
+        test    eax, eax
+        jz      .skip_partition
+
+        klog_   LOG_DEBUG, "  detected\n"
+
+        ; TODO: add partition to global list instead
+;       xchg    eax, ebx
+;       mov     eax, [ebx + fs.partition_t._.vftbl]
+;       call    [eax + fs.vftbl_t.destroy] ; FIXME: there's no `destroy` ATM
+        call    free
+
+        jmp     .skip_partition
+
+  .skip_extended_partition:
+        mov     eax, dword[ebx + fs.partition_t._.range.offset]
+        mov     [esp + sizeof.fs.partition_t + 4 * 3 + 4], eax
+        mov     eax, dword[ebx + fs.partition_t._.range.offset + 4]
+        mov     [esp + sizeof.fs.partition_t + 4 * 3 + 4 + 4], eax
+
+  .skip_partition:
+        add     esp, sizeof.fs.partition_t
+
+        pop     esi ecx ebx
+        add     esi, sizeof.mbr_part_entry_t
+        dec     ecx
+        jnz     .next_partition
+
+  .done:
+        pop     edi ; ^= mbr_t
+        pop     eax edx ; next (extended) MBR offset
+        add     esp, 8 ; values are still there (!)
+
+        test    eax, eax
+        jnz     .extended_mbr
+        test    edx, edx
+        jz      .exit
+
+  .extended_mbr:
+        add     eax, [esp - 8] ; + current MBR offset (low)
+        adc     edx, [esp - 4] ; + current MBR offset (high)
+        mov_s_  ecx, 1
+        push    eax edx
+        call    blk.read
+        test    eax, eax
+        pop     edx eax
+        jz      .next_mbr
+
+  .exit:
+        ret
+
+;-----------------------------------------------------------------------------------------------------------------------
+  .init_partition: ;::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= blk.device_t
+;> esi ^= mbr_part_entry_t
+;> edi ^= fs.partition_t (base)
+;-----------------------------------------------------------------------------------------------------------------------
+        lea     ecx, [edi + fs.partition_t._.mutex]
+        call    mutex_init
+
+        mov     [edi + fs.partition_t._.device], ebx
+
+        push    0 [esi + mbr_part_entry_t.start_lba]
+        pop     dword[edi + fs.partition_t._.range.offset] dword[edi + fs.partition_t._.range.offset + 4]
+        push    0 [esi + mbr_part_entry_t.size_lba]
+        pop     dword[edi + fs.partition_t._.range.length] dword[edi + fs.partition_t._.range.length + 4]
+
+        ; TODO: get range from CHS values if LBA ones are zero
+
+        xor     eax, eax
+        mov     [edi + fs.partition_t._.vftbl], eax
+        mov     [edi + fs.partition_t._.number], al
+
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc detect_device_partitions_gpt ;////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ebx ^= blk.device_t
+;> esi ^= mbr_t (protective)
+;-----------------------------------------------------------------------------------------------------------------------
+        ret
+kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc partition_data_transfer ;/////////////////////////////////////////////////////////////////////////////////////////

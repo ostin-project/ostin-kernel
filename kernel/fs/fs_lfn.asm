@@ -585,8 +585,6 @@ iglobal
     ; _.range
     dq 0 ; offset
     dq 2 * 80 * 18 ; length
-    ; _.type
-    db FS_PARTITION_TYPE_FAT12
     ; _.number
     db 1
     ; partition-specific data
@@ -657,8 +655,6 @@ iglobal
     ; _.range
     dq 0 ; offset
     dq 2 * 80 * 18 ; length
-    ; _.type
-    db FS_PARTITION_TYPE_FAT12
     ; _.number
     db 1
     ; partition-specific data
@@ -727,8 +723,6 @@ iglobal
     ; _.range
     dq 0 ; offset
     dq 360000 * 4 ; length
-    ; _.type
-    db FS_PARTITION_TYPE_CDFS
     ; _.number
     db 1
     ; partition-specific data
@@ -869,23 +863,15 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs_OnGenericQuery3 ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        add     edi, fs.ntfs.vftbl
-        cmp     [current_partition._.type], FS_PARTITION_TYPE_NTFS
-        je      .known_fs
+        push    edi
+        add     esp, 4
+        add     edi, [current_partition._.vftbl]
+        cmp     edi, [esp - 4]
+        je      fs.error.unknown_filesystem
 
-        add     edi, fs.ext2.vftbl - fs.ntfs.vftbl
-        cmp     [current_partition._.type], FS_PARTITION_TYPE_EXT2
-        je      .known_fs
+        cmp     dword[edi], 0
+        je      fs.error.not_implemented
 
-        add     edi, fs.fat16x.vftbl - fs.ext2.vftbl
-        cmp     [current_partition._.type], FS_PARTITION_TYPE_FAT16
-        je      .known_fs
-        cmp     [current_partition._.type], FS_PARTITION_TYPE_FAT32
-        je      .known_fs
-
-        jmp     fs.error.unknown_filesystem
-
-  .known_fs:
         jmp     dword[edi]
 kendp
 
@@ -1276,9 +1262,9 @@ kproc blkdev_handler ;//////////////////////////////////////////////////////////
         mov     ecx, blkdev_list
 
   .next_device:
-        mov     ecx, [ecx + linked_list_t.next_ptr]
-        test    ecx, ecx
-        jz      .not_found
+        mov     ecx, [ecx + blk.device_t.next_ptr]
+        cmp     ecx, blkdev_list
+        je      .not_found
 
         lea     edi, [ecx + blk.device_t._.name]
         push    esi
@@ -1392,7 +1378,7 @@ kproc blkdev_enum_root ;////////////////////////////////////////////////////////
 
         mov     eax, blkdev_list
 
-    @@: mov     eax, [eax + linked_list_t.next_ptr]
+    @@: mov     eax, [eax + blk.device_t.next_ptr]
         cmp     eax, blkdev_list
         je      .end
 

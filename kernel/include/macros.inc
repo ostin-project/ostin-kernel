@@ -152,8 +152,10 @@ common
   local max
   max = -0x8000000000000000
 forward
-  if value > max
-    max = value
+  if defined value
+    if value > max
+      max = value
+    end if
   end if
 common
   . = max

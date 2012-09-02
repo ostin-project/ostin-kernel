@@ -206,7 +206,7 @@ kproc free ;////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax = mem
 ;-----------------------------------------------------------------------------------------------------------------------
-        push    edi
+        push    ebx edi
         mov     edi, eax
         add     edi, -8
 
@@ -259,7 +259,6 @@ kproc free ;////////////////////////////////////////////////////////////////////
         mov     edx, edi
         call    unlink_large_chunk
 
-
   .next:
         ; if(next->head & PINUSE_BIT)
         mov     eax, [ebx + 4]
@@ -290,7 +289,7 @@ kproc free ;////////////////////////////////////////////////////////////////////
         pop     esi
 
   .fail:
-        pop     edi
+        pop     edi ebx
         ret
 
         ; nsize = next->head & ~INUSE_BITS;
@@ -326,7 +325,7 @@ kproc free ;////////////////////////////////////////////////////////////////////
         mov     eax, esi
         pop     esi
         mov     ecx, edi
-        pop     edi
+        pop     edi ebx
         jmp     insert_chunk
 
   .unl_large:
@@ -346,7 +345,7 @@ kproc free ;////////////////////////////////////////////////////////////////////
         mov     eax, esi
         pop     esi
         mov     ecx, edi
-        pop     edi
+        pop     edi ebx
         jmp     insert_chunk
 
   .fix_next:
@@ -366,7 +365,7 @@ kproc free ;////////////////////////////////////////////////////////////////////
         mov     eax, esi
         pop     esi
         mov     ecx, edi
-        pop     edi
+        pop     edi ebx
         jmp     insert_chunk
 kendp
 
@@ -377,7 +376,7 @@ kproc insert_chunk ;////////////////////////////////////////////////////////////
 ;> eax = size
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     eax, 256
-        push    esi
+        push    ebx esi
         mov     esi, ecx
         jae     .large
 
@@ -394,14 +393,14 @@ kproc insert_chunk ;////////////////////////////////////////////////////////////
         mov     [edx + 12], esi ; F->bk = P
         mov     [esi + 8], edx ; P->fd = F
         mov     [esi + 12], eax ; P->bk = B
-        pop     esi
+        pop     esi ebx
         and     [mst.mutex], 0
         ret
 
   .large:
         mov     ebx, eax
         call    insert_large_chunk
-        pop     esi
+        pop     esi ebx
         and     [mst.mutex], 0
         ret
 kendp

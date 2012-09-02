@@ -14,14 +14,6 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-FS_PARTITION_TYPE_UNKNOWN = 0
-FS_PARTITION_TYPE_FAT12   = 1
-FS_PARTITION_TYPE_FAT16   = 2
-FS_PARTITION_TYPE_FAT32   = 3
-FS_PARTITION_TYPE_NTFS    = 4
-FS_PARTITION_TYPE_EXT2    = 5
-FS_PARTITION_TYPE_CDFS    = 6
-
 struct fs.vftbl_t
   read_file        dd ?
   read_directory   dd ?
@@ -40,7 +32,6 @@ struct fs.partition_t
   _.mutex     mutex_t
   _.device    dd ? ; ^= blk.device_t
   _.range     range64_t
-  _.type      db ? ; #= one of FS_PARTITION_TYPE_*
   _.number    db ?
 ends
 
