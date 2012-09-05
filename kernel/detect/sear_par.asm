@@ -234,6 +234,8 @@ kproc detect_device_partitions_mbr ;////////////////////////////////////////////
   .next_partition:
         push    ebx ecx esi
 
+        mov     eax, [esp + 4 * 3 + 4 + 4 * 2]
+        mov     edx, [esp + 4 * 3 + 4 + 4 * 2 + 4]
         add     esp, -sizeof.fs.partition_t
         mov     edi, esp
         call    .init_partition
@@ -281,7 +283,7 @@ kproc detect_device_partitions_mbr ;////////////////////////////////////////////
   .done:
         pop     edi ; ^= mbr_t
         pop     eax edx ; next (extended) MBR offset
-        add     esp, 8 ; values are still there (!)
+        add     esp, 8
 
         test    eax, eax
         jnz     .extended_mbr
@@ -289,13 +291,11 @@ kproc detect_device_partitions_mbr ;////////////////////////////////////////////
         jz      .exit
 
   .extended_mbr:
-        add     eax, [esp - 8] ; + current MBR offset (low)
-        adc     edx, [esp - 4] ; + current MBR offset (high)
         mov_s_  ecx, 1
-        push    eax edx
+        push    eax edx edi
         call    blk.read
         test    eax, eax
-        pop     edx eax
+        pop     esi edx eax
         jz      .next_mbr
 
   .exit:
@@ -304,6 +304,7 @@ kproc detect_device_partitions_mbr ;////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
   .init_partition: ;::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ;-----------------------------------------------------------------------------------------------------------------------
+;> edx:eax #= current MBR offset
 ;> ebx ^= blk.device_t
 ;> esi ^= mbr_part_entry_t
 ;> edi ^= fs.partition_t (base)
@@ -315,6 +316,9 @@ kproc detect_device_partitions_mbr ;////////////////////////////////////////////
 
         push    0 [esi + mbr_part_entry_t.start_lba]
         pop     dword[edi + fs.partition_t._.range.offset] dword[edi + fs.partition_t._.range.offset + 4]
+        add     dword[edi + fs.partition_t._.range.offset], eax
+        adc     dword[edi + fs.partition_t._.range.offset + 4], edx
+
         push    0 [esi + mbr_part_entry_t.size_lba]
         pop     dword[edi + fs.partition_t._.range.length] dword[edi + fs.partition_t._.range.length + 4]
 

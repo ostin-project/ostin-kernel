@@ -136,7 +136,7 @@ FindHDD: ;//////////////////////////////////////////////////////////////////////
   .exit:
         mov     edx, eax
         mov     ecx, blkdev_list
-        list_add edx, ecx
+        list_add_tail edx, ecx
 
   .error:
         ret
