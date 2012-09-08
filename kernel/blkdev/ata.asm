@@ -58,7 +58,7 @@ kproc blk.ata.create ;//////////////////////////////////////////////////////////
         mov     eax, [esp + 8]
         mov     [ebx + blk.ata.device_t.ctl], eax
         mov     al, [esp + 4]
-        mov     [eax + blk.ata.device_t.drive_number], al
+        mov     [ebx + blk.ata.device_t.drive_number], al
 
         mov     esi, [esp]
         lea     edi, [ebx + blk.ata.device_t.ident]
@@ -125,7 +125,12 @@ kproc blk.ata.read ;////////////////////////////////////////////////////////////
 
         push    ebx
 
+        push    eax
+        mov     al, [ebx + blk.ata.device_t.drive_number]
         mov     ebx, [ebx + blk.ata.device_t.ctl]
+        call    blk.ata.ctl.select_drive
+        pop     eax
+
         call    blk.ata.ctl.read_pio
 
         pop     ebx
