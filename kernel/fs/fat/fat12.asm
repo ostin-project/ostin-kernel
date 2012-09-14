@@ -42,6 +42,12 @@ kproc fs.fat.fat12.create_from_base ;///////////////////////////////////////////
 
         mov     eax, sizeof.fs.fat.fat12.partition_t
         call    fs.create_from_base
+        test    eax, eax
+        jz      .error
+
+        mov     [eax + fs.fat.fat12.partition_t.vftbl], fs.fat.fat12.vftbl
+
+  .error:
         ret
 kendp
 

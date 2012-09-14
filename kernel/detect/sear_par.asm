@@ -220,6 +220,8 @@ kproc detect_device_partitions_mbr ;////////////////////////////////////////////
         xor     eax, eax
         cdq
 
+        push    0 ; current partition number
+
   .next_mbr:
         push    edx eax ; current MBR offset
         push    0 0 ; next (extended) MBR offset
@@ -233,6 +235,11 @@ kproc detect_device_partitions_mbr ;////////////////////////////////////////////
 
   .next_partition:
         push    ebx ecx esi
+
+        ; increase current partition number
+        lea     ecx, [esp + 4 * 3 + 4 + 4 * 2 + 4 * 2]
+        inc     dword[ecx]
+        mov     ecx, [ecx]
 
         mov     eax, [esp + 4 * 3 + 4 + 4 * 2]
         mov     edx, [esp + 4 * 3 + 4 + 4 * 2 + 4]
@@ -258,11 +265,10 @@ kproc detect_device_partitions_mbr ;////////////////////////////////////////////
 
         klog_   LOG_DEBUG, "  detected\n"
 
-        ; TODO: add partition to global list instead
-;       xchg    eax, ebx
-;       mov     eax, [ebx + fs.partition_t._.vftbl]
-;       call    [eax + fs.vftbl_t.destroy] ; FIXME: there's no `destroy` ATM
-        call    free
+        mov     edx, eax
+        mov     ecx, [ebx + fs.partition_t._.device]
+        add     ecx, blk.device_t._.partitions
+        list_add_tail edx, ecx
 
         jmp     .skip_partition
 
@@ -299,6 +305,7 @@ kproc detect_device_partitions_mbr ;////////////////////////////////////////////
         jz      .next_mbr
 
   .exit:
+        add     esp, 4
         ret
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -306,9 +313,12 @@ kproc detect_device_partitions_mbr ;////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> edx:eax #= current MBR offset
 ;> ebx ^= blk.device_t
+;> ecx #= current partition number
 ;> esi ^= mbr_part_entry_t
 ;> edi ^= fs.partition_t (base)
 ;-----------------------------------------------------------------------------------------------------------------------
+        mov     [edi + fs.partition_t._.number], cl
+
         lea     ecx, [edi + fs.partition_t._.mutex]
         call    mutex_init
 
@@ -324,9 +334,7 @@ kproc detect_device_partitions_mbr ;////////////////////////////////////////////
 
         ; TODO: get range from CHS values if LBA ones are zero
 
-        xor     eax, eax
-        mov     [edi + fs.partition_t._.vftbl], eax
-        mov     [edi + fs.partition_t._.number], al
+        and     [edi + fs.partition_t._.vftbl], 0
 
         ret
 kendp

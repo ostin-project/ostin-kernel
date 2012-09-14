@@ -27,7 +27,7 @@ struct fs.vftbl_t
   create_directory dd ?
 ends
 
-struct fs.partition_t
+struct fs.partition_t linked_list_t
   _.vftbl     dd ? ; ^= fs.vftbl_t
   _.mutex     mutex_t
   _.device    dd ? ; ^= blk.device_t
@@ -36,17 +36,21 @@ struct fs.partition_t
 ends
 
 include "fs.asm"
+include "fs_lfn.asm"
 
 match =1, KCONFIG_FS_FAT
 {
 include "fat/fat.inc"
 }
-
 match =1, KCONFIG_FS_CDFS
 {
 include "cdfs/cdfs.inc"
 }
-
+match =1, KCONFIG_FS_EXT2
+{
 include "ext2.asm"
-include "fs_lfn.asm"
+}
+match =1, KCONFIG_FS_NTFS
+{
 include "ntfs.asm"
+}

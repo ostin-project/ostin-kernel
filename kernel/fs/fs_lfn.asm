@@ -564,7 +564,9 @@ iglobal
     ; _.vftbl
     dd blk.memory.vftbl
     ; _.name
-    db 'rd', 30 dup(0)
+    db 'rd', BLK_MAX_DEVICE_NAME_LEN - 2 dup(0)
+    ; _.partitions
+    dd $, $ - 4
     ; data
     dd RAMDISK ; address
     dd 2 * 80 * 18 ; size
@@ -576,6 +578,8 @@ iglobal
   align 4
   ; fs.fat.fat12.partition_t
   static_test_ram_partition:
+    ; linked_list_t
+    dd 2 dup(static_test_ram_partition + blk.device_t._.partitions)
     ; _.vftbl
     dd fs.fat.vftbl
     ; _.mutex
@@ -635,7 +639,9 @@ iglobal
     ; _.vftbl
     dd blk.floppy.vftbl
     ; _.name
-    db 'fd', 30 dup(0)
+    db 'fd', BLK_MAX_DEVICE_NAME_LEN - 2 dup(0)
+    ; _.partitions
+    dd $, $ - 4
     ; ctl
     dd static_test_floppy_ctl_device_data
     ; drive_number
@@ -646,6 +652,8 @@ iglobal
   align 4
   ; fs.fat.fat12.partition_t
   static_test_floppy_partition:
+    ; linked_list_t
+    dd 2 dup(static_test_floppy_device + blk.device_t._.partitions)
     ; _.vftbl
     dd fs.fat.vftbl
     ; _.mutex
@@ -682,13 +690,13 @@ iglobal
   if KCONFIG_BLK_ATAPI
 
   align 4
-  ; blk.atapi.device_data_t
+  ; blk.atapi.ctl.device_t
   static_test_atapi_ctl_device_data:
     ; base_reg
     dw 0x01f0
     ; dev_ctl_reg
     dw 0x03f4
-    ; drive_number
+    ; last_drive_number
     db -1
 
   assert $ - static_test_atapi_ctl_device_data = sizeof.blk.atapi.ctl.device_t
@@ -701,7 +709,9 @@ iglobal
     ; _.vftbl
     dd blk.atapi.vftbl
     ; _.name
-    db 'cd', 30 dup(0)
+    db 'cd', BLK_MAX_DEVICE_NAME_LEN - 2 dup(0)
+    ; _.partitions
+    dd $, $ - 4
     ; ctl
     dd static_test_atapi_ctl_device_data
     ; drive_number
@@ -714,6 +724,8 @@ iglobal
   align 4
   ; fs.cdfs.partition_t
   static_test_atapi_partition:
+    ; linked_list_t
+    dd 2 dup(static_test_atapi_device + blk.device_t._.partitions)
     ; _.vftbl
     dd fs.cdfs.vftbl
     ; _.mutex
@@ -1301,9 +1313,34 @@ kproc blkdev_next_partition ;///////////////////////////////////////////////////
 ;> eax #= partition number
 ;> ecx ^= blk.device_t
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     eax, 1 ; 1 dummy partition for now
-        inc     eax
-        cmc
+        push    ecx edx
+        add     ecx, blk.device_t._.partitions
+        mov     edx, ecx
+
+  .next_partition:
+        mov     edx, [edx + fs.partition_t.next_ptr]
+        cmp     edx, ecx
+        je      .error
+
+        test    eax, eax
+        jz      .exit
+
+        cmp     al, [edx + fs.partition_t._.number]
+        jne     .next_partition
+
+        mov     edx, [edx + fs.partition_t.next_ptr]
+        cmp     edx, ecx
+        je      .error
+
+  .exit:
+        movzx   eax, [edx + fs.partition_t._.number]
+        pop     edx ecx
+        clc
+        ret
+
+  .error:
+        pop     edx ecx
+        stc
         ret
 kendp
 

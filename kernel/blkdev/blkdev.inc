@@ -23,8 +23,9 @@ struct blk.device_vftbl_t
 ends
 
 struct blk.device_t linked_list_t
-  _.vftbl     dd ? ; ^= blk.device_vftbl_t
-  _.name      rb BLK_MAX_DEVICE_NAME_LEN
+  _.vftbl      dd ? ; ^= blk.device_vftbl_t
+  _.name       rb BLK_MAX_DEVICE_NAME_LEN
+  _.partitions linked_list_t
 ends
 
 include "blkdev.asm"

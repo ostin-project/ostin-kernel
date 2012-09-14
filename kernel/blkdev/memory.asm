@@ -49,6 +49,11 @@ kproc blk.memory.create ;///////////////////////////////////////////////////////
         xchg    eax, ebx
 
         mov     [ebx + blk.memory.device_t._.vftbl], blk.memory.vftbl
+
+        lea     eax, [ebx + blk.ata.device_t._.partitions]
+        mov     [ebx + blk.ata.device_t._.partitions.next_ptr], eax
+        mov     [ebx + blk.ata.device_t._.partitions.prev_ptr], eax
+
         and     [ebx + blk.memory.device_t.needs_free], 0
 
         pop     eax

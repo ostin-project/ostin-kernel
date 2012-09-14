@@ -55,6 +55,10 @@ kproc blk.ata.create ;//////////////////////////////////////////////////////////
 
         mov     [ebx + blk.ata.device_t._.vftbl], blk.ata.vftbl
 
+        lea     eax, [ebx + blk.ata.device_t._.partitions]
+        mov     [ebx + blk.ata.device_t._.partitions.next_ptr], eax
+        mov     [ebx + blk.ata.device_t._.partitions.prev_ptr], eax
+
         mov     eax, [esp + 8]
         mov     [ebx + blk.ata.device_t.ctl], eax
         mov     al, [esp + 4]

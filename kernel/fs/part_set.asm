@@ -35,10 +35,13 @@ uglobal
   problem_partition db 0 ; used for partitions search
 
   align 4
-  fs_dependent_data_start rb fs_dependent_data_size
+  if fs_dependent_data_size > 0
+    fs_dependent_data_start rb fs_dependent_data_size
+  end if
+
   file_system_data_size = $ - current_partition
 
-  if KCONFIG_FS_FAT16 or KCONFIG_FS_FAT32
+  if KCONFIG_FS_FAT32
     virtual at fs_dependent_data_start
       fat16x_data fs.fat16x.partition_data_t
     end virtual
@@ -388,6 +391,8 @@ kproc fs.detect_by_mbr_part_entry.ext2 ;////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax ^= fs.partition_t (ok; newly allocated) or 0 (error)
 ;-----------------------------------------------------------------------------------------------------------------------
+if KCONFIG_FS_EXT2
+
         mov     al, [ecx + mbr_part_entry_t.type]
 
         cmp     al, 0x83
@@ -425,6 +430,8 @@ kproc fs.detect_by_mbr_part_entry.ext2 ;////////////////////////////////////////
 
   .error_2:
         add   esp, 512
+
+end if
 
   .error:
         xor   eax, eax
