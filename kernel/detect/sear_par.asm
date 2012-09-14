@@ -220,7 +220,7 @@ kproc detect_device_partitions_mbr ;////////////////////////////////////////////
         xor     eax, eax
         cdq
 
-        push    0 ; current partition number
+        push    1 ; current partition number
 
   .next_mbr:
         push    edx eax ; current MBR offset
@@ -236,13 +236,9 @@ kproc detect_device_partitions_mbr ;////////////////////////////////////////////
   .next_partition:
         push    ebx ecx esi
 
-        ; increase current partition number
-        lea     ecx, [esp + 4 * 3 + 4 + 4 * 2 + 4 * 2]
-        inc     dword[ecx]
-        mov     ecx, [ecx]
-
-        mov     eax, [esp + 4 * 3 + 4 + 4 * 2]
-        mov     edx, [esp + 4 * 3 + 4 + 4 * 2 + 4]
+        mov     eax, [esp + (3 + 1 + 2) * 4] ; current MBR offset (low)
+        mov     edx, [esp + (3 + 1 + 2 + 1) * 4] ; current MBR offset (high)
+        mov     ecx, [esp + (3 + 1 + 2 + 2) * 4] ; current partition number
         add     esp, -sizeof.fs.partition_t
         mov     edi, esp
         call    .init_partition
@@ -270,13 +266,15 @@ kproc detect_device_partitions_mbr ;////////////////////////////////////////////
         add     ecx, blk.device_t._.partitions
         list_add_tail edx, ecx
 
+        inc     dword[esp + sizeof.fs.partition_t + (3 + 1 + 2 + 2) * 4] ; current partition number
+
         jmp     .skip_partition
 
   .skip_extended_partition:
         mov     eax, dword[ebx + fs.partition_t._.range.offset]
-        mov     [esp + sizeof.fs.partition_t + 4 * 3 + 4], eax
+        mov     [esp + sizeof.fs.partition_t + (3 + 1) * 4], eax ; next (extended) MBR offset (low)
         mov     eax, dword[ebx + fs.partition_t._.range.offset + 4]
-        mov     [esp + sizeof.fs.partition_t + 4 * 3 + 4 + 4], eax
+        mov     [esp + sizeof.fs.partition_t + (3 + 1 + 1) * 4], eax ; next (extended) MBR offset (high)
 
   .skip_partition:
         add     esp, sizeof.fs.partition_t
