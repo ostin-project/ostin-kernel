@@ -605,7 +605,7 @@ if KCONFIG_BLK_MEMORY
 kproc fs_OnGenericQuery ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     edx, static_test_ram_partition
-        mov     [static_test_ram_partition + fs.fat.fat12.partition_t.vftbl], fs.fat.fat12.vftbl
+        mov     [static_test_ram_partition + fs.fat.fat12.partition_t.fat_vftbl], fs.fat.fat12.vftbl
 
         jmp     fs.generic_query_handler
 kendp
@@ -679,7 +679,7 @@ if KCONFIG_BLK_FLOPPY
 kproc fs_OnGenericQuery2 ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     edx, static_test_floppy_partition
-        mov     [static_test_floppy_partition + fs.fat.fat12.partition_t.vftbl], fs.fat.fat12.vftbl
+        mov     [static_test_floppy_partition + fs.fat.fat12.partition_t.fat_vftbl], fs.fat.fat12.vftbl
 
         jmp     fs.generic_query_handler
 kendp
@@ -1289,6 +1289,9 @@ kproc blkdev_handler ;//////////////////////////////////////////////////////////
         cmp     byte[esi - 1], '/'
         jne     @f
 
+        cmp     byte[esi], 0
+        jne     .handle_partition
+
         inc     esi
 
     @@: cmp     byte[esi - 1], 0
@@ -1302,9 +1305,35 @@ kproc blkdev_handler ;//////////////////////////////////////////////////////////
         mov     esi, blkdev_next_partition
         jmp     sysfn.file_system_lfn.maindir_noesi
 
+  .handle_partition:
+        add     esp, 3 * 4
+        push    ecx
+        push    blkdev_partition_handler
+        mov     edi, esp
+        jmp     sysfn.file_system_lfn.found2
+
   .not_found:
         pop     edi
         ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc blkdev_partition_handler ;////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        pop     edx edx ; edx ^= blk.device_t, ecx #= partition number
+
+        add     edx, blk.device_t._.partitions
+        mov     eax, edx
+
+  .next_partition:
+        mov     edx, [edx + fs.partition_t.next_ptr]
+        cmp     edx, eax
+        je      fs.error.file_not_found
+
+        cmp     [edx + fs.partition_t._.number], cl
+        jne     .next_partition
+
+        jmp     fs.generic_query_handler
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------

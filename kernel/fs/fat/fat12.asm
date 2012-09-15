@@ -45,7 +45,8 @@ kproc fs.fat.fat12.create_from_base ;///////////////////////////////////////////
         test    eax, eax
         jz      .error
 
-        mov     [eax + fs.fat.fat12.partition_t.vftbl], fs.fat.fat12.vftbl
+        mov     [eax + fs.fat.partition_t._.vftbl], fs.fat.vftbl
+        mov     [eax + fs.fat.fat12.partition_t.fat_vftbl], fs.fat.fat12.vftbl
 
   .error:
         ret

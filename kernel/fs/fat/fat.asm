@@ -25,7 +25,7 @@ struct fs.fat.vftbl_t
 ends
 
 struct fs.fat.partition_t fs.partition_t
-  vftbl  dd ? ; ^= fs.fat.vftbl_t
+  fat_vftbl  dd ? ; ^= fs.fat.vftbl_t
   buffer rb 2 * 512
 ends
 
@@ -202,7 +202,7 @@ kproc fs.fat.read_file ;////////////////////////////////////////////////////////
 
         push    ecx
         mov     eax, esi
-        mov     esi, [ebx + fs.fat.partition_t.vftbl]
+        mov     esi, [ebx + fs.fat.partition_t.fat_vftbl]
         call    [esi + fs.fat.vftbl_t.get_next_cluster]
         pop     ecx
         jc      .end_of_file_error_in_loop
@@ -255,7 +255,7 @@ kproc fs.fat.read_directory ;///////////////////////////////////////////////////
 ;< eax #= error code
 ;< ebx #= directory entries read (on success)
 ;-----------------------------------------------------------------------------------------------------------------------
-;       klog_   LOG_DEBUG, "fs.fat.read_directory('%s')\n", esi
+        klog_   LOG_DEBUG, "fs.fat.read_directory('%s')\n", esi
 
         cmp     byte[esi], 0
         je      .root_directory
@@ -334,7 +334,7 @@ kproc fs.fat.read_directory ;///////////////////////////////////////////////////
         ; read next sector from FAT
         push    ecx ebp
         mov     eax, [esp + 12 + 262 * 2 + 8]
-        mov     ebp, [ebx + fs.fat.partition_t.vftbl]
+        mov     ebp, [ebx + fs.fat.partition_t.fat_vftbl]
         call    [ebp + fs.fat.vftbl_t.get_next_cluster]
         pop     ebp ecx
         jnc     @f
@@ -799,7 +799,7 @@ kproc fs.fat._.create_dir_entry ;///////////////////////////////////////////////
         mov     [edi + fs.fat.dir_entry_t.modified_at.date], ax
         mov     [edi + fs.fat.dir_entry_t.accessed_at.date], ax
 
-        mov     eax, [ebx + fs.fat.partition_t.vftbl]
+        mov     eax, [ebx + fs.fat.partition_t.fat_vftbl]
         call    [eax + fs.fat.vftbl_t.allocate_cluster]
         jc      .disk_full_error_3
 
@@ -906,7 +906,7 @@ kproc fs.fat._.write_file ;/////////////////////////////////////////////////////
 
   .skip_cluster:
         mov     eax, ebp
-        mov     edx, [ebx + fs.fat.partition_t.vftbl]
+        mov     edx, [ebx + fs.fat.partition_t.fat_vftbl]
         call    [edx + fs.fat.vftbl_t.get_or_allocate_next_cluster]
         jc      .disk_full_error
 
@@ -937,7 +937,7 @@ kproc fs.fat._.write_file ;/////////////////////////////////////////////////////
     @@: lea     eax, [esp + sizeof.regs_context32_t + 4]
         call    fs.fat._.end_cluster_write
 
-        mov     eax, [ebx + fs.fat.partition_t.vftbl]
+        mov     eax, [ebx + fs.fat.partition_t.fat_vftbl]
         call    [eax + fs.fat.vftbl_t.flush]
 
         popa
@@ -1108,7 +1108,7 @@ kproc fs.fat.create_file ;//////////////////////////////////////////////////////
         add     esp, 4
 
         push    eax ecx
-        mov     eax, [ebx + fs.fat.partition_t.vftbl]
+        mov     eax, [ebx + fs.fat.partition_t.fat_vftbl]
         call    [eax + fs.fat.vftbl_t.flush]
         pop     ecx eax
         jc      .device_error
@@ -1277,7 +1277,7 @@ kproc fs.fat.truncate_file ;////////////////////////////////////////////////////
         mov     eax, [edi + fs.fat.dir_entry_t.size]
         call    fs.fat._.bytes_to_clusters
 
-        mov     ebp, [ebx + fs.fat.partition_t.vftbl]
+        mov     ebp, [ebx + fs.fat.partition_t.fat_vftbl]
 
         test    ecx, ecx
         jl      .truncate
@@ -1539,7 +1539,7 @@ kproc fs.fat.delete_file ;//////////////////////////////////////////////////////
         add     eax, -31 ; FAT12 data area start sector
 
         xor     edx, edx ; mark free
-        mov     ebp, [ebx + fs.fat.partition_t.vftbl]
+        mov     ebp, [ebx + fs.fat.partition_t.fat_vftbl]
         call    [ebp + fs.fat.vftbl_t.delete_chain]
         jc      .device_error
 
@@ -1692,7 +1692,7 @@ kproc fs.fat._.next_dir_entry ;/////////////////////////////////////////////////
 
         mov     edx, eax
         mov     eax, [edx]
-        mov     ecx, [ebx + fs.fat.partition_t.vftbl]
+        mov     ecx, [ebx + fs.fat.partition_t.fat_vftbl]
         call    [ecx + fs.fat.vftbl_t.get_next_cluster]
         jc      .eof
 
