@@ -591,8 +591,22 @@ iglobal
     dq 2 * 80 * 18 ; length
     ; _.number
     db 1
-    ; partition-specific data
-    rb sizeof.fs.fat.fat12.partition_t - sizeof.fs.partition_t
+    ; fat_vftbl
+    dd fs.fat.fat12.vftbl
+    ; fat_sector
+    dd 1
+    ; fat_size
+    dd 9
+    ; root_dir_sector
+    dd 19
+    ; data_area_sector
+    dd 31
+    ; cluster_size
+    dd 1
+    ; buffer
+    rb 2 * 512
+    ; FATx partition-specific data
+    rb sizeof.fs.fat.fat12.partition_t - sizeof.fs.fat.partition_t
 
   assert $ - static_test_ram_partition = sizeof.fs.fat.fat12.partition_t
 
@@ -605,8 +619,6 @@ if KCONFIG_BLK_MEMORY
 kproc fs_OnGenericQuery ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     edx, static_test_ram_partition
-        mov     [static_test_ram_partition + fs.fat.fat12.partition_t.fat_vftbl], fs.fat.fat12.vftbl
-
         jmp     fs.generic_query_handler
 kendp
 
@@ -665,8 +677,22 @@ iglobal
     dq 2 * 80 * 18 ; length
     ; _.number
     db 1
-    ; partition-specific data
-    rb sizeof.fs.fat.fat12.partition_t - sizeof.fs.partition_t
+    ; fat_vftbl
+    dd fs.fat.fat12.vftbl
+    ; fat_sector
+    dd 1
+    ; fat_size
+    dd 9
+    ; root_dir_sector
+    dd 19
+    ; data_area_sector
+    dd 31
+    ; cluster_size
+    dd 1
+    ; buffer
+    rb 2 * 512
+    ; FATx partition-specific data
+    rb sizeof.fs.fat.fat12.partition_t - sizeof.fs.fat.partition_t
 
   assert $ - static_test_floppy_partition = sizeof.fs.fat.fat12.partition_t
 
@@ -679,8 +705,6 @@ if KCONFIG_BLK_FLOPPY
 kproc fs_OnGenericQuery2 ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     edx, static_test_floppy_partition
-        mov     [static_test_floppy_partition + fs.fat.fat12.partition_t.fat_vftbl], fs.fat.fat12.vftbl
-
         jmp     fs.generic_query_handler
 kendp
 

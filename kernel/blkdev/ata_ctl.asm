@@ -204,6 +204,8 @@ kproc blk.ata.ctl.read_pio ;////////////////////////////////////////////////////
 ;> ecx #= size (in blocks)
 ;> edi ^= buffer
 ;-----------------------------------------------------------------------------------------------------------------------
+        push    edi
+
   .next_sectors_block:
         push    eax ecx
 
@@ -260,6 +262,7 @@ kproc blk.ata.ctl.read_pio ;////////////////////////////////////////////////////
         test    ecx, ecx
         jnz     .next_sectors_block
 
+        pop     edi
         xor     eax, eax
         ret
 
@@ -269,6 +272,7 @@ kproc blk.ata.ctl.read_pio ;////////////////////////////////////////////////////
 
   .error:
         add     esp, 8
+        pop     edi
         ret
 kendp
 

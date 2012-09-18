@@ -1,5 +1,5 @@
 ;;======================================================================================================================
-;;///// fat12.asm ////////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
+;;///// fat16.asm ////////////////////////////////////////////////////////////////////////////////////////// GPLv2 /////
 ;;======================================================================================================================
 ;; (c) 2012 Ostin project <http://ostin.googlecode.com/>
 ;;======================================================================================================================
@@ -14,7 +14,8 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-struct fs.fat.fat12.partition_t fs.fat.partition_t
+struct fs.fat.fat16.partition_t fs.fat.partition_t
+  root_dir_size        dd ? ; in sectors
   sectors_cache        rb 3 * 512
   cached_sector_number dd ?
   cached_sectors_count dd ?
@@ -22,7 +23,7 @@ struct fs.fat.fat12.partition_t fs.fat.partition_t
 ends
 
 iglobal
-  jump_table fs.fat.fat12, vftbl, , \
+  jump_table fs.fat.fat16, vftbl, , \
     allocate_cluster, \
     get_next_cluster, \
     get_or_allocate_next_cluster, \
@@ -32,116 +33,135 @@ iglobal
 endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc fs.fat.fat12.create_from_base ;///////////////////////////////////////////////////////////////////////////////////
+kproc fs.fat.fat16.create_from_base ;///////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> ebx ^= fs.partition_t (base)
 ;> ecx @= BPB version, pack[16(0), 8(major), 8(minor)]
 ;> edi ^= BPB
 ;-----------------------------------------------------------------------------------------------------------------------
-        klog_   LOG_DEBUG, "fs.fat.fat12.create_from_base\n"
+        klog_   LOG_DEBUG, "fs.fat.fat16.create_from_base\n"
 
-        mov     eax, sizeof.fs.fat.fat12.partition_t
+        ; support only BPB v4.0
+        cmp     ecx, 0x0400
+        jne     .error
+
+        ; support only 512 bytes per sector, 1 sector per cluster
+        klog_   LOG_DEBUG, "  sector_size = %u\n", [edi + bpb_v4_0_t.sector_size]:2
+        cmp     [edi + bpb_v4_0_t.sector_size], 512
+        jne     .error
+        klog_   LOG_DEBUG, "  cluster_size = %u\n", [edi + bpb_v4_0_t.cluster_size]:1
+        cmp     [edi + bpb_v4_0_t.cluster_size], 1
+        jne     .error
+
+        mov     eax, sizeof.fs.fat.fat16.partition_t
         call    fs.create_from_base
         test    eax, eax
         jz      .error
 
-        mov     [eax + fs.fat.partition_t._.vftbl], fs.fat.vftbl
-        mov     [eax + fs.fat.fat12.partition_t.fat_vftbl], fs.fat.fat12.vftbl
+        mov     [eax + fs.fat.fat16.partition_t._.vftbl], fs.fat.vftbl
+        mov     [eax + fs.fat.fat16.partition_t.fat_vftbl], fs.fat.fat16.vftbl
+
+        movzx   ecx, [edi + bpb_v4_0_t.resvd_sector_count]
+        mov     [eax + fs.fat.fat16.partition_t.fat_sector], ecx
+        klog_   LOG_DEBUG, "  fat_sector = %u\n", ecx
+
+        movzx   edx, [edi + bpb_v4_0_t.fat_size_16]
+        mov     [eax + fs.fat.fat16.partition_t.fat_size], edx
+        klog_   LOG_DEBUG, "  fat_size = %u\n", edx
+
+        lea     ecx, [ecx + edx * 2]
+        mov     [eax + fs.fat.fat16.partition_t.root_dir_sector], ecx
+        klog_   LOG_DEBUG, "  root_dir_sector = %u\n", ecx
+
+        movzx   edx, [edi + bpb_v4_0_t.fat_root_dir_entry_count]
+        shl     edx, 5 ; * sizeof.fs.fat.dir_entry_t
+        add     edx, 512 - 1
+        shr     edx, 9
+        mov     [eax + fs.fat.fat16.partition_t.root_dir_size], edx
+        klog_   LOG_DEBUG, "  root_dir_size = %u\n", edx
+
+        add     ecx, edx
+        mov     [eax + fs.fat.fat16.partition_t.data_area_sector], ecx
+        klog_   LOG_DEBUG, "  data_area_sector = %u\n", ecx
+
+        movzx   ecx, [edi + bpb_v4_0_t.cluster_size]
+        mov     [eax + fs.fat.fat16.partition_t.cluster_size], ecx
+
+        ret
 
   .error:
+        xor     eax, eax
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc fs.fat.fat12.allocate_cluster ;///////////////////////////////////////////////////////////////////////////////////
+kproc fs.fat.fat16.allocate_cluster ;///////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Finds free cluster in FAT and marks it as EOF.
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= fs.fat.fat12.partition_t
+;> ebx ^= fs.fat.fat16.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< cF ~= 0 (ok) or 1 (fail)
 ;< eax #= allocated cluster sector number (ok) or FS error code (fail)
 ;< ecx #= number of sectors per cluster
 ;< edx #= allocated cluster number
 ;-----------------------------------------------------------------------------------------------------------------------
-;       klog_   LOG_DEBUG, "fs.fat.fat12.allocate_cluster()\n"
+;       klog_   LOG_DEBUG, "fs.fat.fat16.allocate_cluster()\n"
 
-        mov     ecx, 9 * 512 * 2 / 3
+        mov     ecx, [ebx + fs.fat.fat16.partition_t.fat_size]
+        shl     ecx, 9 - 1 ; * 512 (sector size) / 2 (FAT entry size) = number of FAT entries
         push    edi
-        push    1
+        push    ecx
+        push    [ebx + fs.fat.fat16.partition_t.fat_sector]
 
   .fetch:
         push    ecx
         mov     ecx, 3
         mov     eax, [esp + 4]
-        call    fs.fat.fat12._.fetch_sectors
+        call    fs.fat.fat16._.fetch_sectors
         pop     ecx
         jc      .device_error
 
-        mov     edx, 512 + 1
+        mov     edx, 256 * 3 / 2 + 1
         add     dword[esp], 3
 
-  .next_triplet:
+  .next_cluster:
         dec     edx
         jz      .fetch
 
-        mov     eax, [edi]
+        cmp     word[edi], 0
+        je      .free
 
-        test    eax, 0x00000fff
-        jz      .low_free
-
+        add     edi, 2
         dec     ecx
         jz      .disk_full_error
+        jmp     .next_cluster
 
-        test    eax, 0x00fff000
-        jz      .high_free
-
-        add     edi, 3
-        dec     ecx
-        jz      .disk_full_error
-        jmp     .next_triplet
-
-  .low_free:
-;       klog_   LOG_DEBUG, "  low free, 0x%x (%u)\n", edx, edx
-;       klog_   LOG_DEBUG, "  dump1 %x %x %x (%x %x) %x %x %x\n", [edi - 3]:2, [edi - 2]:2, [edi - 1]:2, [edi]:2, [edi + 1]:2, [edi + 2]:2, [edi + 3]:2, [edi + 4]:2
-        or      word[edi], 0x0fff
-;       klog_   LOG_DEBUG, "  dump2 %x %x %x (%x %x) %x %x %x\n", [edi - 3]:2, [edi - 2]:2, [edi - 1]:2, [edi]:2, [edi + 1]:2, [edi + 2]:2, [edi + 3]:2, [edi + 4]:2
-        jmp     .mark_modified
-
-  .high_free:
-;       klog_   LOG_DEBUG, "  high free, 0x%x (%u)\n", edx, edx
-        inc     edi
-;       klog_   LOG_DEBUG, "  dump1 %x %x %x (%x %x) %x %x %x\n", [edi - 3]:2, [edi - 2]:2, [edi - 1]:2, [edi]:2, [edi + 1]:2, [edi + 2]:2, [edi + 3]:2, [edi + 4]:2
-        or      word[edi], 0xfff0
-;       klog_   LOG_DEBUG, "  dump2 %x %x %x (%x %x) %x %x %x\n", [edi - 3]:2, [edi - 2]:2, [edi - 1]:2, [edi]:2, [edi + 1]:2, [edi + 2]:2, [edi + 3]:2, [edi + 4]:2
-
-  .mark_modified:
-        call    fs.fat.fat12._.mark_cluster_sectors_dirty
+  .free:
+        or      word[edi], 0x0ffff
+        call    fs.fat.fat16._.mark_cluster_sectors_dirty
 
         add     esp, 4
-        pop     edi
+        pop     edx edi
 
-        neg     ecx
-        lea     edx, [ecx + 9 * 512 * 2 / 3]
+        sub     edx, ecx
+        mov     ecx, [ebx + fs.fat.fat16.partition_t.cluster_size]
         mov     eax, edx
-        add     eax, [ebx + fs.fat.fat12.partition_t.data_area_sector]
-        xor     ecx, ecx
-        inc     ecx
+        add     edx, 2
+        imul    eax, ecx
+        add     eax, [ebx + fs.fat.fat16.partition_t.data_area_sector] ; cF = 0, hopefully
         clc
-;       klog_   LOG_DEBUG, "  allocated, 0x%x : %u : 0x%x\n", eax, ecx, edx
         ret
 
   .disk_full_error:
-;       klog_   LOG_DEBUG, "  disk full\n"
-        add     esp, 4
+        add     esp, 8
         pop     edi
         mov     eax, ERROR_DISK_FULL
         stc
         ret
 
   .device_error:
-;       klog_   LOG_DEBUG, "  device error\n"
-        add     esp, 4
+        add     esp, 8
         pop     edi
         mov     eax, ERROR_DEVICE_FAIL
         stc
@@ -149,157 +169,143 @@ kproc fs.fat.fat12.allocate_cluster ;///////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc fs.fat.fat12.get_next_cluster ;///////////////////////////////////////////////////////////////////////////////////
+kproc fs.fat.fat16.get_next_cluster ;///////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;? Finds next cluster sector in FAT chain. Takes FAT12 root directory special case into account.
+;? Finds next cluster sector in FAT chain. Takes fat16 root directory special case into account.
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax #= current cluster sector number
-;> ebx ^= fs.fat.fat12.partition_t
+;> ebx ^= fs.fat.fat16.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< cF ~= 0 (ok) or 1 (fail)
 ;< eax #= next cluster sector number (ok) or FS error code (fail)
 ;< ecx #= number of sectors per cluster (for sectors in data area) or 1 (for sectors in root directory)
 ;-----------------------------------------------------------------------------------------------------------------------
-;       klog_   LOG_DEBUG, "fs.fat.fat12.get_next_cluster(0x%x)\n", eax
+;       klog_   LOG_DEBUG, "fs.fat.fat16.get_next_cluster(0x%x)\n", eax
 
-        ; TODO: don't use hard-coded values
-        cmp     eax, [ebx + fs.fat.fat12.partition_t.root_dir_sector]
+        mov     ecx, [ebx + fs.fat.fat16.partition_t.root_dir_sector]
+        cmp     eax, ecx
         jb      .access_denied_error
-        cmp     eax, 32
-        ja      .not_root_dir
-        je      .end_of_chain_error
+        sub     eax, ecx
+        cmp     eax, [ebx + fs.fat.fat16.partition_t.root_dir_size]
+        jae     .not_root_dir
 
         ; current sector is within root directory, next sector is right after this one
-        add     eax, 1
+        inc     eax
+        cmp     eax, [ebx + fs.fat.fat16.partition_t.root_dir_size]
+        je      .end_of_chain_error
+
+        add     eax, ecx
         xor     ecx, ecx ; cF = 0
         inc     ecx
-;       klog_   LOG_DEBUG, "  root area, 0x%x : %u\n", eax, ecx
         ret
 
   .not_root_dir:
         push    edi
 
-        ; for now, we assume one cluster = one sector, sector size = 512 bytes
-        sub     eax, [ebx + fs.fat.fat12.partition_t.data_area_sector] ; index in FAT
-        push    eax
-
-        shr     eax, 1 ; * 1.5
-        add     eax, [esp]
+        add     eax, ecx
+        sub     eax, [ebx + fs.fat.fat16.partition_t.data_area_sector] ; index in FAT
+        shl     eax, 1 ; * 2
 
         mov     ecx, eax
         and     ecx, (1 shl 9) - 1 ; % 512, FAT entry offset
         push    ecx
 
         shr     eax, 9 ; / 512, FAT sector
-        add     eax, 1 ; + FAT start sector
+        add     eax, [ebx + fs.fat.fat16.partition_t.fat_sector] ; + FAT start sector
 
-        cmp     ecx, 512 - 1
         mov_s_  ecx, 1
-        jb      @f
-
-        inc     ecx
-
-    @@: call    fs.fat.fat12._.fetch_sectors
+        call    fs.fat.fat16._.fetch_sectors
         jc      .device_error_2
 
-        pop     eax ecx
+        pop     eax
         movzx   eax, word[edi + eax]
-        test    cl, 1
-        jz      .even
-
-        shr     eax, 4
-        jmp     .exit
-
-  .even:
-        and     eax, 0x0fff
 
   .exit:
         pop     edi
 
-        cmp     eax, 0x0ff8
+        cmp     eax, 0x0fff8
         jae     .end_of_chain_error
-        cmp     eax, 0x0ff0
+        cmp     eax, 0x0fff0
         jae     .device_error
         cmp     eax, 2
         jb      .device_error
 
-        add     eax, [ebx + fs.fat.fat12.partition_t.data_area_sector]
-        xor     ecx, ecx ; cF = 0
-        inc     ecx
-;       klog_   LOG_DEBUG, "  data area, 0x%x : %u\n", eax, ecx
+        mov     ecx, [ebx + fs.fat.fat16.partition_t.cluster_size]
+        imul    eax, ecx
+        add     eax, [ebx + fs.fat.fat16.partition_t.data_area_sector] ; cF = 0, hopefully
         ret
 
   .access_denied_error:
-;       klog_   LOG_DEBUG, "  access denied\n"
         mov     eax, ERROR_ACCESS_DENIED
         stc
         ret
 
   .end_of_chain_error:
-;       klog_   LOG_DEBUG, "  end of chain, 0x%x\n", eax
         mov     eax, ERROR_END_OF_FILE
         stc
         ret
 
   .device_error_2:
-        add     esp, 8
+        add     esp, 4
         pop     edi
 
   .device_error:
-;       klog_   LOG_DEBUG, "  device error, 0x%x\n", eax
         mov     eax, ERROR_DEVICE_FAIL
         stc
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc fs.fat.fat12.get_or_allocate_next_cluster ;///////////////////////////////////////////////////////////////////////
+kproc fs.fat.fat16.get_or_allocate_next_cluster ;///////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Finds next cluster sector in FAT chain. If current cluster is EOF, allocates new cluster and adds it to the chain.
-;? Takes FAT12 root directory special case into account.
+;? Takes fat16 root directory special case into account.
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax #= current cluster sector number
-;> ebx ^= fs.fat.fat12.partition_t
+;> ebx ^= fs.fat.fat16.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< cF ~= 0 (ok) or 1 (fail)
 ;< eax #= next (or newly allocated) cluster sector number (ok) or FS error code (fail)
 ;< ecx #= number of sectors per cluster (for sectors in data area) or 1 (for sectors in root directory)
 ;-----------------------------------------------------------------------------------------------------------------------
-;       klog_   LOG_DEBUG, "fs.fat.fat12.get_or_allocate_next_cluster(0x%x)\n", eax
+;       klog_   LOG_DEBUG, "fs.fat.fat16.get_or_allocate_next_cluster(0x%x)\n", eax
 
-        ; TODO: don't use hard-coded values
-        cmp     eax, [ebx + fs.fat.fat12.partition_t.root_dir_sector]
+        mov     ecx, [ebx + fs.fat.fat16.partition_t.root_dir_sector]
+        cmp     eax, ecx
         jb      .access_denied_error
-        cmp     eax, 32
-        ja      .not_root_dir
-        je      .disk_full_error
+        sub     eax, ecx
+        cmp     eax, [ebx + fs.fat.fat16.partition_t.root_dir_size]
+        jae     .not_root_dir
 
         ; current sector is within root directory, next sector is right after this one
-        add     eax, 1
+        inc     eax
+        cmp     eax, [ebx + fs.fat.fat16.partition_t.root_dir_size]
+        je      .disk_full_error
+
+        add     eax, ecx
         xor     ecx, ecx ; cF = 0
         inc     ecx
         ret
 
   .not_root_dir:
+        add     eax, ecx
         push    eax
-        call    fs.fat.fat12.get_next_cluster
+        call    fs.fat.fat16.get_next_cluster
         jnc     .exit
 
         cmp     eax, ERROR_END_OF_FILE
         jne     .other_error
 
-        call    fs.fat.fat12.allocate_cluster
+        call    fs.fat.fat16.allocate_cluster
         jc      .other_error
 
         push    eax
         mov     eax, [esp + 4]
-        sub     eax, [ebx + fs.fat.fat12.partition_t.data_area_sector]
-        call    fs.fat.fat12._.set_cluster
+        call    fs.fat.fat16._.set_cluster
         jc      .other_error_2
 
         pop     eax
-        xor     ecx, ecx
-        inc     ecx
+        mov     ecx, [ebx + fs.fat.fat16.partition_t.cluster_size]
 
   .exit:
         add     esp, 4 ; cF = 0
@@ -325,15 +331,15 @@ kproc fs.fat.fat12.get_or_allocate_next_cluster ;///////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc fs.fat.fat12.check_for_enough_clusters ;//////////////////////////////////////////////////////////////////////////
+kproc fs.fat.fat16.check_for_enough_clusters ;//////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax #= needed free clusters count
-;> ebx ^= fs.fat.fat12.partition_t
+;> ebx ^= fs.fat.fat16.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< cF ~= 0 (ok) or 1 (fail)
 ;< eax #= FS error code (fail)
 ;-----------------------------------------------------------------------------------------------------------------------
-;       klog_   LOG_DEBUG, "fs.fat.fat12.check_for_enough_clusters(%u)\n", eax
+;       klog_   LOG_DEBUG, "fs.fat.fat16.check_for_enough_clusters(%u)\n", eax
 
         ; FIXME: not implemented
 
@@ -342,27 +348,30 @@ kproc fs.fat.fat12.check_for_enough_clusters ;//////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc fs.fat.fat12.delete_chain ;///////////////////////////////////////////////////////////////////////////////////////
+kproc fs.fat.fat16.delete_chain ;///////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax #= start cluster number
 ;> edx ~= 0 (mark first cluster free) or not 0 (mark first cluster EOF)
-;> ebx ^= fs.fat.fat12.partition_t
+;> ebx ^= fs.fat.fat16.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< cF ~= 0 (ok) or 1 (fail)
 ;< eax #= FS error code (fail)
 ;-----------------------------------------------------------------------------------------------------------------------
-;       klog_   LOG_DEBUG, "fs.fat.fat12.delete_chain(0x%x, 0x%x)\n", eax:3, edx:3
+;       klog_   LOG_DEBUG, "fs.fat.fat16.delete_chain(0x%x, 0x%x)\n", eax:3, edx:3
 
         test    edx, edx
-        jz      .next_cluster
+        jz      .cluster_to_sector
 
-        mov     edx, 0x0fff
+        mov     edx, 0x0ffff
+
+  .cluster_to_sector:
+        imul    eax, [ebx + fs.fat.fat16.partition_t.cluster_size]
+        add     eax, [ebx + fs.fat.fat16.partition_t.data_area_sector]
 
   .next_cluster:
         push    eax edx
 
-        add     eax, [ebx + fs.fat.fat12.partition_t.data_area_sector]
-        call    fs.fat.fat12.get_next_cluster
+        call    fs.fat.fat16.get_next_cluster
         jnc     .set_cluster
 
         cmp     eax, ERROR_END_OF_FILE
@@ -373,19 +382,16 @@ kproc fs.fat.fat12.delete_chain ;///////////////////////////////////////////////
         pop     edx
         xchg    eax, [esp]
 
-;       klog_   LOG_DEBUG, "  set(0x%x, 0x%x)\n", eax:3, edx:3
-        call    fs.fat.fat12._.set_cluster
+        call    fs.fat.fat16._.set_cluster
         jc      .error_2
 
         pop     eax
-        sub     eax, [ebx + fs.fat.fat12.partition_t.data_area_sector]
         xor     edx, edx
         jmp     .next_cluster
 
   .set_last_cluster:
         pop     edx eax
-;       klog_   LOG_DEBUG, "  set(0x%x, 0x%x) [last]\n", eax:3, edx:3
-        call    fs.fat.fat12._.set_cluster
+        call    fs.fat.fat16._.set_cluster
         jc      .error
 
         clc
@@ -403,16 +409,16 @@ kproc fs.fat.fat12.delete_chain ;///////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc fs.fat.fat12.flush ;//////////////////////////////////////////////////////////////////////////////////////////////
+kproc fs.fat.fat16.flush ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= fs.fat.fat12.partition_t
+;> ebx ^= fs.fat.fat16.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< cF ~= 0 (ok) or 1 (fail)
 ;< eax #= FS error code (fail)
 ;-----------------------------------------------------------------------------------------------------------------------
-;       klog_   LOG_DEBUG, "fs.fat.fat12.flush()\n"
+;       klog_   LOG_DEBUG, "fs.fat.fat16.flush()\n"
 
-        call    fs.fat.fat12._.flush_dirty_sectors
+        call    fs.fat.fat16._.flush_dirty_sectors
         jc      .device_error
 
         ret
@@ -424,47 +430,46 @@ kproc fs.fat.fat12.flush ;//////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc fs.fat.fat12._.fetch_sectors ;////////////////////////////////////////////////////////////////////////////////////
+kproc fs.fat.fat16._.fetch_sectors ;////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Fetches sector(s) to internal buffer (if not already there). Flushes existing sector(s) if they are modified.
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax #= sector number
-;> ecx #= sectors count (1..2)
-;> ebx ^= fs.fat.fat12.partition_t
+;> ecx #= sectors count (1..3)
+;> ebx ^= fs.fat.fat16.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< cF ~= 0 (ok) or 1 (fail)
 ;< edi ^= buffer
 ;-----------------------------------------------------------------------------------------------------------------------
-;       klog_   LOG_DEBUG, "  fs.fat.fat12._.fetch_sectors(0x%x, %u)\n", eax, ecx
+;       klog_   LOG_DEBUG, "  fs.fat.fat16._.fetch_sectors(0x%x, %u)\n", eax, ecx
 
         mov     edi, ebx
-        cmp     eax, [ebx + fs.fat.fat12.partition_t.cached_sector_number]
+        cmp     eax, [ebx + fs.fat.fat16.partition_t.cached_sector_number]
         jne     .fetch
-        cmp     ecx, [ebx + fs.fat.fat12.partition_t.cached_sectors_count]
+        cmp     ecx, [ebx + fs.fat.fat16.partition_t.cached_sectors_count]
         ja      .fetch
 
         jmp     .exit
 
   .fetch:
-        call    fs.fat.fat12._.flush_dirty_sectors
+        call    fs.fat.fat16._.flush_dirty_sectors
         jc      .error
 
         push    eax ecx edx
         xor     edx, edx
-        add     edi, fs.fat.fat12.partition_t.sectors_cache
-;       klog_   LOG_DEBUG, "    read\n"
+        add     edi, fs.fat.fat16.partition_t.sectors_cache
         call    fs.read
         test    eax, eax
         pop     edx ecx eax
         jnz     .error
 
-        add     edi, -fs.fat.fat12.partition_t.sectors_cache
+        add     edi, -fs.fat.fat16.partition_t.sectors_cache
 
-        mov     [edi + fs.fat.fat12.partition_t.cached_sector_number], eax
-        mov     [edi + fs.fat.fat12.partition_t.cached_sectors_count], ecx
+        mov     [edi + fs.fat.fat16.partition_t.cached_sector_number], eax
+        mov     [edi + fs.fat.fat16.partition_t.cached_sectors_count], ecx
 
   .exit:
-        add     edi, fs.fat.fat12.partition_t.sectors_cache
+        add     edi, fs.fat.fat16.partition_t.sectors_cache
         clc
         ret
 
@@ -474,15 +479,15 @@ kproc fs.fat.fat12._.fetch_sectors ;////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc fs.fat.fat12._.flush_dirty_sectors ;//////////////////////////////////////////////////////////////////////////////
+kproc fs.fat.fat16._.flush_dirty_sectors ;//////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= fs.fat.fat12.partition_t
+;> ebx ^= fs.fat.fat16.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax ecx esi
 
-;       klog_   LOG_DEBUG, "  fs.fat.fat12._.flush_dirty_sectors(0x%x, %u)\n", \
-;               [ebx + fs.fat.fat12.partition_t.cached_sector_number], \
-;               [ebx + fs.fat.fat12.partition_t.cached_sectors_count]
+;       klog_   LOG_DEBUG, "  fs.fat.fat16._.flush_dirty_sectors(0x%x, %u)\n", \
+;               [ebx + fs.fat.fat16.partition_t.cached_sector_number], \
+;               [ebx + fs.fat.fat16.partition_t.cached_sectors_count]
 
         xor     eax, eax
         call    .flush_sector_if_dirty
@@ -502,77 +507,71 @@ kproc fs.fat.fat12._.flush_dirty_sectors ;//////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
   .flush_sector_if_dirty: ;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ;-----------------------------------------------------------------------------------------------------------------------
-        test    [ebx + fs.fat.fat12.partition_t.dirty_sectors + eax], 1
+        test    [ebx + fs.fat.fat16.partition_t.dirty_sectors + eax], 1
         jz      @f
 
         push    eax ecx edx esi
         shl     eax, 9
-        lea     ecx, [ebx + fs.fat.fat12.partition_t.sectors_cache + eax]
+        lea     ecx, [ebx + fs.fat.fat16.partition_t.sectors_cache + eax]
         shr     eax, 9
-        add     eax, [ebx + fs.fat.fat12.partition_t.cached_sector_number]
+        add     eax, [ebx + fs.fat.fat16.partition_t.cached_sector_number]
         xor     edx, edx
         mov     esi, ecx
         mov_s_  ecx, 1
-;       klog_   LOG_DEBUG, "    write %u: 0x%x (%u) : 0x%x\n", [esp + 12], eax, eax, esi
         call    fs.write
         pop     esi edx ecx eax
         jc      @f
 
-        and     [ebx + fs.fat.fat12.partition_t.dirty_sectors + eax], 0 ; cF = 0
-
-;       klog_   LOG_DEBUG, "    ok\n"
+        and     [ebx + fs.fat.fat16.partition_t.dirty_sectors + eax], 0 ; cF = 0
 
     @@: ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc fs.fat.fat12._.mark_cluster_sectors_dirty ;///////////////////////////////////////////////////////////////////////
+kproc fs.fat.fat16._.mark_cluster_sectors_dirty ;///////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? ...
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx ^= fs.fat.fat12.partition_t
+;> ebx ^= fs.fat.fat16.partition_t
 ;> edi ^= cluster inside cached sector
 ;-----------------------------------------------------------------------------------------------------------------------
-;       klog_   LOG_DEBUG, "  fs.fat.fat12._.mark_cluster_sectors_dirty()\n"
-
-        push    eax edi
+        push    edi
         sub     edi, ebx
-        add     edi, -fs.fat.fat12.partition_t.sectors_cache
-;       klog_   LOG_DEBUG, "    offset 0x%x (%u)\n", edi, edi
-        mov     eax, edi
-        shr     eax, 9
-;       klog_   LOG_DEBUG, "    mark %u\n", eax
-        or      [ebx + fs.fat.fat12.partition_t.dirty_sectors + eax], 1
-        cmp     edi, 512 - 1
-        je      @f
-        cmp     edi, 1024 - 2
-        jne     .exit
+        add     edi, -fs.fat.fat16.partition_t.sectors_cache
+        shr     edi, 9
 
-    @@: inc     eax
-;       klog_   LOG_DEBUG, "    mark %u\n", eax
-        or      [ebx + fs.fat.fat12.partition_t.dirty_sectors + eax], 1
+;       klog_   LOG_DEBUG, "  fs.fat.fat16._.mark_cluster_sectors_dirty(0x%x)\n", edi
 
-  .exit:
-        pop     edi eax
+        or      [ebx + fs.fat.fat16.partition_t.dirty_sectors + edi], 1
+        pop     edi
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc fs.fat.fat12._.set_cluster ;//////////////////////////////////////////////////////////////////////////////////////
+kproc fs.fat.fat16._.set_cluster ;//////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> eax #= cluster number
+;> eax #= cluster sector number
 ;> edx #= value
-;> ebx ^= fs.fat.fat12.partition_t
+;> ebx ^= fs.fat.fat16.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< cF ~= 0 (ok) or 1 (fail)
 ;< eax #= FS error code (fail)
 ;-----------------------------------------------------------------------------------------------------------------------
-;       klog_   LOG_DEBUG, "  fs.fat.fat12._.set_cluster(0x%x, 0x%x)\n", eax, edx
+;       klog_   LOG_DEBUG, "  fs.fat.fat16._.set_cluster(0x%x, 0x%x)\n", eax, edx
 
-        ; validate cluster number
-        cmp     eax, 2
+        ; validate cluster sector number
+        sub     eax, [ebx + fs.fat.fat16.partition_t.data_area_sector]
         jb      .access_denied_error
-        cmp     eax, 9 * 512 * 2 / 3
+
+        push    edx
+        xor     edx, edx
+        div     [ebx + fs.fat.fat16.partition_t.cluster_size]
+        pop     edx
+
+        mov     ecx, [ebx + fs.fat.fat16.partition_t.fat_size]
+        shl     ecx, 9 - 1 ; * 512 / 2
+        add     ecx, -2
+        cmp     eax, ecx
         jae     .access_denied_error
 
         ; validate value
@@ -580,11 +579,11 @@ kproc fs.fat.fat12._.set_cluster ;//////////////////////////////////////////////
         jz      @f
         cmp     edx, 2
         jb      .access_denied_error
-        cmp     edx, 9 * 512 * 2 / 3
+        cmp     edx, ecx
         jb      @f
-        cmp     edx, 0x0ff7
+        cmp     edx, 0x0fff7
         jb      .access_denied_error
-        cmp     edx, 0x0fff
+        cmp     edx, 0x0ffff
         ja      .access_denied_error
         cmp     edx, eax
         je      .access_denied_error
@@ -592,54 +591,34 @@ kproc fs.fat.fat12._.set_cluster ;//////////////////////////////////////////////
     @@: push    eax ecx edi
         push    eax
 
-        shr     eax, 1 ; * 1.5
-        add     eax, [esp]
+        shl     eax, 1 ; * 2
 
         mov     ecx, eax
         and     ecx, (1 shl 9) - 1 ; % 512, FAT entry offset
         push    ecx
 
         shr     eax, 9 ; / 512, FAT sector
-        add     eax, [ebx + fs.fat.fat12.partition_t.fat_sector]
+        add     eax, [ebx + fs.fat.fat16.partition_t.fat_sector] ; + FAT start sector
 
-        cmp     ecx, 512 - 1
         mov_s_  ecx, 1
-        jb      @f
-
-        inc     ecx
-
-    @@: call    fs.fat.fat12._.fetch_sectors
+        call    fs.fat.fat16._.fetch_sectors
         jc      .device_error
 
         pop     eax ecx
         add     edi, eax
-        test    cl, 1
-        jz      .even
+        mov     [edi], dx
 
-        shl     edx, 4
-        and     word[edi], not 0xfff0
-        or      [edi], dx
-        jmp     .exit
-
-  .even:
-        and     word[edi], not 0x0fff
-        or      [edi], dx
-
-  .exit:
-        call    fs.fat.fat12._.mark_cluster_sectors_dirty
+        call    fs.fat.fat16._.mark_cluster_sectors_dirty
         pop     edi ecx eax
         clc
-;       klog_   LOG_DEBUG, "    done\n"
         ret
 
   .access_denied_error:
-;       klog_   LOG_DEBUG, "    access denied\n"
         mov     eax, ERROR_ACCESS_DENIED
         stc
         ret
 
   .device_error:
-;       klog_   LOG_DEBUG, "    device error\n"
         pop     edi ecx eax
         mov     eax, ERROR_DEVICE_FAIL
         stc

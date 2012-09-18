@@ -25,8 +25,13 @@ struct fs.fat.vftbl_t
 ends
 
 struct fs.fat.partition_t fs.partition_t
-  fat_vftbl  dd ? ; ^= fs.fat.vftbl_t
-  buffer rb 2 * 512
+  fat_vftbl        dd ? ; ^= fs.fat.vftbl_t
+  fat_sector       dd ?
+  fat_size         dd ? ; in sectors
+  root_dir_sector  dd ?
+  data_area_sector dd ?
+  cluster_size     dd ? ; in sectors
+  buffer           rb 2 * 512
 ends
 
 iglobal
@@ -168,7 +173,7 @@ kproc fs.fat.read_file ;////////////////////////////////////////////////////////
         mov     ecx, eax
 
     @@: movzx   esi, [edi + fs.fat.dir_entry_t.start_cluster.low]
-        add     esi, 31 ; FAT12 data area start sector
+        add     esi, [ebx + fs.fat.partition_t.data_area_sector]
         mov     edx, [edx + fs.read_file_query_params_t.buffer_ptr]
         push    edx
 
@@ -200,13 +205,14 @@ kproc fs.fat.read_file ;////////////////////////////////////////////////////////
   .skip_sector:
         jecxz   .done
 
-        push    ecx
+        push    edx ecx
         mov     eax, esi
         mov     esi, [ebx + fs.fat.partition_t.fat_vftbl]
         call    [esi + fs.fat.vftbl_t.get_next_cluster]
         pop     ecx
         jc      .end_of_file_error_in_loop
 
+        add     esp, 4
         mov     esi, eax
         jmp     .read_next_sector
 
@@ -224,11 +230,14 @@ kproc fs.fat.read_file ;////////////////////////////////////////////////////////
         ret
 
   .end_of_file_error_in_loop:
-        add     esp, 4
+        pop     ebx eax
+        sub     ebx, eax
+        mov     eax, ERROR_END_OF_FILE
+        ret
 
   .end_of_file_error:
         mov     eax, ERROR_END_OF_FILE
-        or      ebx, -1
+        xor     ebx, ebx
         ret
 
   .device_error_in_loop:
@@ -255,7 +264,7 @@ kproc fs.fat.read_directory ;///////////////////////////////////////////////////
 ;< eax #= error code
 ;< ebx #= directory entries read (on success)
 ;-----------------------------------------------------------------------------------------------------------------------
-        klog_   LOG_DEBUG, "fs.fat.read_directory('%s')\n", esi
+;       klog_   LOG_DEBUG, "fs.fat.read_directory('%s')\n", esi
 
         cmp     byte[esi], 0
         je      .root_directory
@@ -268,12 +277,13 @@ kproc fs.fat.read_directory ;///////////////////////////////////////////////////
         jz      .access_denied_error
 
         movzx   eax, [edi + fs.fat.dir_entry_t.start_cluster.low]
-        add     eax, 31 ; FAT12 data area start sector
+        imul    eax, [ebx + fs.fat.partition_t.cluster_size]
+        add     eax, [ebx + fs.fat.partition_t.data_area_sector]
         push    eax
         jmp     .prepare_header
 
   .root_directory:
-        push    19 ; FAT12 root directory start sector
+        push    [ebx + fs.fat.partition_t.root_dir_sector]
 
   .prepare_header:
         xor     eax, eax
@@ -509,7 +519,7 @@ kproc fs.fat._.find_parent_dir ;////////////////////////////////////////////////
         test    edi, edi
         jnz     .not_root
 
-        mov     ebp, 19 ; FAT12 root directory start sector
+        mov     ebp, [ebx + fs.fat.partition_t.root_dir_sector]
 
         jmp     .exit
 
@@ -530,7 +540,7 @@ kproc fs.fat._.find_parent_dir ;////////////////////////////////////////////////
         jz      .access_denied_error
 
         movzx   ebp, [edi + fs.fat.dir_entry_t.start_cluster.low] ; ebp #= cluster
-        add     ebp, 31 ; FAT12 data area start sector
+        add     ebp, [ebx + fs.fat.partition_t.data_area_sector]
 
         inc     esi
 
@@ -862,7 +872,7 @@ kproc fs.fat._.write_file ;/////////////////////////////////////////////////////
         push    eax ecx edi
 
         movzx   ebp, [edi + fs.fat.dir_entry_t.start_cluster.low]
-        add     ebp, 31 ; FAT12 data area start sector
+        add     ebp, [ebx + fs.fat.partition_t.data_area_sector]
 
   .write_loop:
         sub     dword[esp + 8], 512
@@ -1120,7 +1130,7 @@ kproc fs.fat.create_file ;//////////////////////////////////////////////////////
         ret
 
   .free_stack_and_exit:
-        add     esp, 8 + 4
+        add     esp, 4 + 4
         ret
 
   .access_denied_error:
@@ -1294,7 +1304,7 @@ kproc fs.fat.truncate_file ;////////////////////////////////////////////////////
   .expand:
         lea     ecx, [ecx + eax - 1]
         movzx   eax, [edi + fs.fat.dir_entry_t.start_cluster.low]
-        add     eax, 31 ; FAT12 data area start sector
+        add     eax, [ebx + fs.fat.partition_t.data_area_sector]
 
     @@: push    ecx
         call    [ebp + fs.fat.vftbl_t.get_or_allocate_next_cluster]
@@ -1307,7 +1317,7 @@ kproc fs.fat.truncate_file ;////////////////////////////////////////////////////
   .truncate:
         add     ecx, eax
         movzx   eax, [edi + fs.fat.dir_entry_t.start_cluster.low]
-        add     eax, 31 ; FAT12 data area start sector
+        add     eax, [ebx + fs.fat.partition_t.data_area_sector]
 
     @@: push    ecx
         call    [ebp + fs.fat.vftbl_t.get_next_cluster]
@@ -1315,7 +1325,7 @@ kproc fs.fat.truncate_file ;////////////////////////////////////////////////////
         jc      .fat_table_error
         loop    @b
 
-        add     eax, -31 ; FAT12 data area start sector
+        sub     eax, [ebx + fs.fat.partition_t.data_area_sector]
         or      edx, -1 ; mark EOF
         call    [ebp + fs.fat.vftbl_t.delete_chain]
         jc      .device_error_2
@@ -1465,7 +1475,7 @@ kproc fs.fat.delete_file ;//////////////////////////////////////////////////////
 
         ; can delete empty folders only
         movzx   eax, [edi + fs.fat.dir_entry_t.start_cluster.low]
-        add     eax, 31 ; FAT12 data area start sector
+        add     eax, [ebx + fs.fat.partition_t.data_area_sector]
 
         push    edi eax
 
@@ -1502,7 +1512,7 @@ kproc fs.fat.delete_file ;//////////////////////////////////////////////////////
         pop     edi
 
         movzx   eax, [edi + fs.fat.dir_entry_t.start_cluster.low]
-        add     eax, 31 ; FAT12 data area start sector
+        add     eax, [ebx + fs.fat.partition_t.data_area_sector]
         mov     [esp + 4], eax
 
         ; delete folder entry
@@ -1536,7 +1546,7 @@ kproc fs.fat.delete_file ;//////////////////////////////////////////////////////
         add     esp, 4
         pop     eax
 
-        add     eax, -31 ; FAT12 data area start sector
+        sub     eax, [ebx + fs.fat.partition_t.data_area_sector]
 
         xor     edx, edx ; mark free
         mov     ebp, [ebx + fs.fat.partition_t.fat_vftbl]
@@ -1585,7 +1595,7 @@ kproc fs.fat._.find_file_lfn ;//////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    esi edi
 
-        push    19 ; FAT12 root directory start sector
+        push    [ebx + fs.fat.partition_t.root_dir_sector]
 
   .next_level:
         call    fs.fat.util.find_long_name
@@ -1598,7 +1608,7 @@ kproc fs.fat._.find_file_lfn ;//////////////////////////////////////////////////
         jz      .not_found
 
         movzx   eax, [edi + fs.fat.dir_entry_t.start_cluster.low]
-        add     eax, 31 ; FAT12 data area start sector
+        add     eax, [ebx + fs.fat.partition_t.data_area_sector]
         mov     [esp], eax
         jmp     .next_level
 
