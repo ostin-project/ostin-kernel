@@ -143,9 +143,8 @@ kproc sysfn.flush_floppy_cache ;////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 16: save ramdisk to floppy
 ;-----------------------------------------------------------------------------------------------------------------------
-        ; FIXME: not implemented
-        xor     eax, eax
-        inc     eax
+        klog_   LOG_ERROR, "FIXME: not implemented: sysfn.flush_floppy_cache\n"
+        mov     eax, ERROR_NOT_IMPLEMENTED
         ret
 kendp
 

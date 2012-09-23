@@ -16,6 +16,7 @@
 
 struct fs.fat.fat16.partition_t fs.fat.partition_t
   root_dir_size        dd ? ; in sectors
+  max_cluster          dd ?
   sectors_cache        rb 3 * 512
   cached_sector_number dd ?
   cached_sectors_count dd ?
@@ -73,6 +74,11 @@ kproc fs.fat.fat16.create_from_base ;///////////////////////////////////////////
         mov     [eax + fs.fat.fat16.partition_t.root_dir_sector], ecx
         klog_   LOG_DEBUG, "  root_dir_sector = %u\n", ecx
 
+        shl     edx, 9 - 1 ; * 512 / 2
+        add     edx, 2
+        mov     [eax + fs.fat.fat16.partition_t.max_cluster], edx
+        klog_   LOG_DEBUG, "  max_cluster = %u\n", edx
+
         movzx   edx, [edi + bpb_v4_0_t.fat_root_dir_entry_count]
         shl     edx, 5 ; * sizeof.fs.fat.dir_entry_t
         add     edx, 512 - 1
@@ -110,19 +116,20 @@ kproc fs.fat.fat16.allocate_cluster ;///////////////////////////////////////////
 
         mov     ecx, [ebx + fs.fat.fat16.partition_t.fat_size]
         shl     ecx, 9 - 1 ; * 512 (sector size) / 2 (FAT entry size) = number of FAT entries
+
         push    edi
         push    ecx
         push    [ebx + fs.fat.fat16.partition_t.fat_sector]
 
   .fetch:
         push    ecx
-        mov     ecx, 3
+        mov     ecx, 2
         mov     eax, [esp + 4]
         call    fs.fat.fat16._.fetch_sectors
         pop     ecx
         jc      .device_error
 
-        mov     edx, 256 * 3 / 2 + 1
+        mov     edx, 512 / 2 * 2 + 1 ; sector size / FAT entry size * sectors count + 1
         add     dword[esp], 3
 
   .next_cluster:
@@ -145,11 +152,10 @@ kproc fs.fat.fat16.allocate_cluster ;///////////////////////////////////////////
         pop     edx edi
 
         sub     edx, ecx
-        mov     ecx, [ebx + fs.fat.fat16.partition_t.cluster_size]
         mov     eax, edx
-        add     edx, 2
-        imul    eax, ecx
-        add     eax, [ebx + fs.fat.fat16.partition_t.data_area_sector] ; cF = 0, hopefully
+        call    fs.fat.util.cluster_to_sector
+        mov     ecx, [ebx + fs.fat.fat16.partition_t.cluster_size]
+;       klog_   LOG_DEBUG, "FAT16 alloc: %u 0x%x\n", eax, edx
         clc
         ret
 
@@ -180,12 +186,11 @@ kproc fs.fat.fat16.get_next_cluster ;///////////////////////////////////////////
 ;< eax #= next cluster sector number (ok) or FS error code (fail)
 ;< ecx #= number of sectors per cluster (for sectors in data area) or 1 (for sectors in root directory)
 ;-----------------------------------------------------------------------------------------------------------------------
-;       klog_   LOG_DEBUG, "fs.fat.fat16.get_next_cluster(0x%x)\n", eax
+;       klog_   LOG_DEBUG, "fs.fat.fat16.get_next_cluster(%u 0x%x)\n", eax, eax
 
         mov     ecx, [ebx + fs.fat.fat16.partition_t.root_dir_sector]
-        cmp     eax, ecx
-        jb      .access_denied_error
         sub     eax, ecx
+        jb      .access_denied_error
         cmp     eax, [ebx + fs.fat.fat16.partition_t.root_dir_size]
         jae     .not_root_dir
 
@@ -203,7 +208,15 @@ kproc fs.fat.fat16.get_next_cluster ;///////////////////////////////////////////
         push    edi
 
         add     eax, ecx
-        sub     eax, [ebx + fs.fat.fat16.partition_t.data_area_sector] ; index in FAT
+        sub     eax, [ebx + fs.fat.fat16.partition_t.data_area_sector]
+        jb      .access_denied_error
+
+        push    edx
+        xor     edx, edx
+        div     [ebx + fs.fat.fat16.partition_t.cluster_size]
+        pop     edx
+        add     eax, 2
+
         shl     eax, 1 ; * 2
 
         mov     ecx, eax
@@ -230,9 +243,10 @@ kproc fs.fat.fat16.get_next_cluster ;///////////////////////////////////////////
         cmp     eax, 2
         jb      .device_error
 
+        call    fs.fat.util.cluster_to_sector
         mov     ecx, [ebx + fs.fat.fat16.partition_t.cluster_size]
-        imul    eax, ecx
-        add     eax, [ebx + fs.fat.fat16.partition_t.data_area_sector] ; cF = 0, hopefully
+;       klog_   LOG_DEBUG, "FAT16 next: %u\n", eax
+        clc
         ret
 
   .access_denied_error:
@@ -271,24 +285,26 @@ kproc fs.fat.fat16.get_or_allocate_next_cluster ;///////////////////////////////
 ;       klog_   LOG_DEBUG, "fs.fat.fat16.get_or_allocate_next_cluster(0x%x)\n", eax
 
         mov     ecx, [ebx + fs.fat.fat16.partition_t.root_dir_sector]
-        cmp     eax, ecx
-        jb      .access_denied_error
         sub     eax, ecx
+        jb      .access_denied_error
         cmp     eax, [ebx + fs.fat.fat16.partition_t.root_dir_size]
         jae     .not_root_dir
-
+ 
         ; current sector is within root directory, next sector is right after this one
         inc     eax
         cmp     eax, [ebx + fs.fat.fat16.partition_t.root_dir_size]
         je      .disk_full_error
-
+ 
         add     eax, ecx
         xor     ecx, ecx ; cF = 0
         inc     ecx
         ret
-
+ 
   .not_root_dir:
         add     eax, ecx
+        cmp     eax, [ebx + fs.fat.fat16.partition_t.data_area_sector]
+        jb      .access_denied_error
+
         push    eax
         call    fs.fat.fat16.get_next_cluster
         jnc     .exit
@@ -315,7 +331,7 @@ kproc fs.fat.fat16.get_or_allocate_next_cluster ;///////////////////////////////
         mov     eax, ERROR_ACCESS_DENIED
         stc
         ret
-
+ 
   .disk_full_error:
         mov     eax, ERROR_DISK_FULL
         stc
@@ -341,8 +357,8 @@ kproc fs.fat.fat16.check_for_enough_clusters ;//////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;       klog_   LOG_DEBUG, "fs.fat.fat16.check_for_enough_clusters(%u)\n", eax
 
-        ; FIXME: not implemented
-
+        klog_   LOG_ERROR, "FIXME: not implemented: fs.fat.fat16.check_for_enough_clusters\n"
+        mov     eax, ERROR_NOT_IMPLEMENTED
         clc
         ret
 kendp
@@ -350,7 +366,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fs.fat.fat16.delete_chain ;///////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> eax #= start cluster number
+;> eax #= start cluster sector number
 ;> edx ~= 0 (mark first cluster free) or not 0 (mark first cluster EOF)
 ;> ebx ^= fs.fat.fat16.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -359,14 +375,13 @@ kproc fs.fat.fat16.delete_chain ;///////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;       klog_   LOG_DEBUG, "fs.fat.fat16.delete_chain(0x%x, 0x%x)\n", eax:3, edx:3
 
+        cmp     eax, [ebx + fs.fat.fat16.partition_t.data_area_sector]
+        jb      .access_denied_error
+
         test    edx, edx
-        jz      .cluster_to_sector
+        jz      .next_cluster
 
         mov     edx, 0x0ffff
-
-  .cluster_to_sector:
-        imul    eax, [ebx + fs.fat.fat16.partition_t.cluster_size]
-        add     eax, [ebx + fs.fat.fat16.partition_t.data_area_sector]
 
   .next_cluster:
         push    eax edx
@@ -382,6 +397,7 @@ kproc fs.fat.fat16.delete_chain ;///////////////////////////////////////////////
         pop     edx
         xchg    eax, [esp]
 
+;       klog_   LOG_DEBUG, "FAT16 free: %u 0x%x\n", eax, edx
         call    fs.fat.fat16._.set_cluster
         jc      .error_2
 
@@ -391,10 +407,16 @@ kproc fs.fat.fat16.delete_chain ;///////////////////////////////////////////////
 
   .set_last_cluster:
         pop     edx eax
+;       klog_   LOG_DEBUG, "FAT16 free: %u 0x%x (last)\n", eax, edx
         call    fs.fat.fat16._.set_cluster
         jc      .error
 
         clc
+        ret
+
+  .access_denied_error:
+        mov     eax, ERROR_ACCESS_DENIED
+        stc
         ret
 
   .error_3:
@@ -568,19 +590,18 @@ kproc fs.fat.fat16._.set_cluster ;//////////////////////////////////////////////
         div     [ebx + fs.fat.fat16.partition_t.cluster_size]
         pop     edx
 
-        mov     ecx, [ebx + fs.fat.fat16.partition_t.fat_size]
-        shl     ecx, 9 - 1 ; * 512 / 2
-        add     ecx, -2
-        cmp     eax, ecx
-        jae     .access_denied_error
+        cmp     eax, [ebx + fs.fat.fat16.partition_t.max_cluster]
+        ja      .access_denied_error
+
+        add     eax, 2
 
         ; validate value
         test    edx, edx
         jz      @f
         cmp     edx, 2
         jb      .access_denied_error
-        cmp     edx, ecx
-        jb      @f
+        cmp     edx, [ebx + fs.fat.fat16.partition_t.max_cluster]
+        jbe     @f
         cmp     edx, 0x0fff7
         jb      .access_denied_error
         cmp     edx, 0x0ffff

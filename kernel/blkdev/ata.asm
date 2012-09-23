@@ -163,6 +163,45 @@ kproc blk.ata.write ;///////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov_s_  eax, ERROR_NOT_IMPLEMENTED
+        ; limiting offset to 28 bits until 48-bit support is added
+        test    edx, edx
+        jnz     .overflow_error
+        cmp     eax, 0x0fffffff
+        ja      .overflow_error
+
+        push    eax edx
+        add     eax, ecx
+        adc     edx, 0
+        test    edx, edx
+        jnz     .overflow_error_2
+        cmp     eax, 0x0fffffff
+        ja      .overflow_error_2
+        pop     edx eax
+
+        ; TODO: lock controller
+
+        ; TODO: PIO/DMA mode selection
+
+        push    ebx
+
+        push    eax
+        mov     al, [ebx + blk.ata.device_t.drive_number]
+        mov     ebx, [ebx + blk.ata.device_t.ctl]
+        call    blk.ata.ctl.select_drive
+        pop     eax
+
+        call    blk.ata.ctl.write_pio
+
+        pop     ebx
+
+        ; TODO: unlock controller
+
+        ret
+
+  .overflow_error_2:
+        add     esp, 8
+
+  .overflow_error:
+        mov     eax, -123 ; TODO: add error code
         ret
 kendp

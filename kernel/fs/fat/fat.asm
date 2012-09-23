@@ -172,8 +172,12 @@ kproc fs.fat.read_file ;////////////////////////////////////////////////////////
         jbe     @f
         mov     ecx, eax
 
-    @@: movzx   esi, [edi + fs.fat.dir_entry_t.start_cluster.low]
-        add     esi, [ebx + fs.fat.partition_t.data_area_sector]
+    @@: push    eax
+        movzx   eax, [edi + fs.fat.dir_entry_t.start_cluster.low]
+        call    fs.fat.util.cluster_to_sector
+        mov     esi, eax
+        pop     eax
+
         mov     edx, [edx + fs.read_file_query_params_t.buffer_ptr]
         push    edx
 
@@ -277,8 +281,7 @@ kproc fs.fat.read_directory ;///////////////////////////////////////////////////
         jz      .access_denied_error
 
         movzx   eax, [edi + fs.fat.dir_entry_t.start_cluster.low]
-        imul    eax, [ebx + fs.fat.partition_t.cluster_size]
-        add     eax, [ebx + fs.fat.partition_t.data_area_sector]
+        call    fs.fat.util.cluster_to_sector
         push    eax
         jmp     .prepare_header
 
@@ -445,8 +448,8 @@ kproc fs.fat._.extend_dir ;/////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> ebx ^= fs.fat.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
-        ; FIXME: not implemented
-
+        klog_   LOG_ERROR, "FIXME: not implemented: fs.fat._.extend_dir\n"
+        mov     eax, ERROR_NOT_IMPLEMENTED
         stc
         ret
 
@@ -539,8 +542,9 @@ kproc fs.fat._.find_parent_dir ;////////////////////////////////////////////////
         test    [edi + fs.fat.dir_entry_t.attributes], FS_FAT_ATTR_DIRECTORY ; must be directory
         jz      .access_denied_error
 
-        movzx   ebp, [edi + fs.fat.dir_entry_t.start_cluster.low] ; ebp #= cluster
-        add     ebp, [ebx + fs.fat.partition_t.data_area_sector]
+        movzx   eax, [edi + fs.fat.dir_entry_t.start_cluster.low] ; ebp #= cluster
+        call    fs.fat.util.cluster_to_sector
+        mov     ebp, eax
 
         inc     esi
 
@@ -871,8 +875,11 @@ kproc fs.fat._.write_file ;/////////////////////////////////////////////////////
 
         push    eax ecx edi
 
-        movzx   ebp, [edi + fs.fat.dir_entry_t.start_cluster.low]
-        add     ebp, [ebx + fs.fat.partition_t.data_area_sector]
+        push    eax
+        movzx   eax, [edi + fs.fat.dir_entry_t.start_cluster.low]
+        call    fs.fat.util.cluster_to_sector
+        mov     ebp, eax
+        pop     eax
 
   .write_loop:
         sub     dword[esp + 8], 512
@@ -918,7 +925,7 @@ kproc fs.fat._.write_file ;/////////////////////////////////////////////////////
         mov     eax, ebp
         mov     edx, [ebx + fs.fat.partition_t.fat_vftbl]
         call    [edx + fs.fat.vftbl_t.get_or_allocate_next_cluster]
-        jc      .disk_full_error
+        jc      .error
 
         mov     ebp, eax
         jmp     .write_loop
@@ -958,14 +965,11 @@ kproc fs.fat._.write_file ;/////////////////////////////////////////////////////
   .exit:
         ret
 
-  .disk_full_error:
-        add     esp, 12 + sizeof.regs_context32_t
-        mov     eax, ERROR_DISK_FULL
-        ret
-
   .device_error:
-        add     esp, 12 + sizeof.regs_context32_t
         mov     eax, ERROR_DEVICE_FAIL
+
+  .error:
+        add     esp, 12 + sizeof.regs_context32_t
         ret
 kendp
 
@@ -1304,7 +1308,7 @@ kproc fs.fat.truncate_file ;////////////////////////////////////////////////////
   .expand:
         lea     ecx, [ecx + eax - 1]
         movzx   eax, [edi + fs.fat.dir_entry_t.start_cluster.low]
-        add     eax, [ebx + fs.fat.partition_t.data_area_sector]
+        call    fs.fat.util.cluster_to_sector
 
     @@: push    ecx
         call    [ebp + fs.fat.vftbl_t.get_or_allocate_next_cluster]
@@ -1317,7 +1321,7 @@ kproc fs.fat.truncate_file ;////////////////////////////////////////////////////
   .truncate:
         add     ecx, eax
         movzx   eax, [edi + fs.fat.dir_entry_t.start_cluster.low]
-        add     eax, [ebx + fs.fat.partition_t.data_area_sector]
+        call    fs.fat.util.cluster_to_sector
 
     @@: push    ecx
         call    [ebp + fs.fat.vftbl_t.get_next_cluster]
@@ -1325,7 +1329,6 @@ kproc fs.fat.truncate_file ;////////////////////////////////////////////////////
         jc      .fat_table_error
         loop    @b
 
-        sub     eax, [ebx + fs.fat.partition_t.data_area_sector]
         or      edx, -1 ; mark EOF
         call    [ebp + fs.fat.vftbl_t.delete_chain]
         jc      .device_error_2
@@ -1475,7 +1478,7 @@ kproc fs.fat.delete_file ;//////////////////////////////////////////////////////
 
         ; can delete empty folders only
         movzx   eax, [edi + fs.fat.dir_entry_t.start_cluster.low]
-        add     eax, [ebx + fs.fat.partition_t.data_area_sector]
+        call    fs.fat.util.cluster_to_sector
 
         push    edi eax
 
@@ -1512,7 +1515,7 @@ kproc fs.fat.delete_file ;//////////////////////////////////////////////////////
         pop     edi
 
         movzx   eax, [edi + fs.fat.dir_entry_t.start_cluster.low]
-        add     eax, [ebx + fs.fat.partition_t.data_area_sector]
+        call    fs.fat.util.cluster_to_sector
         mov     [esp + 4], eax
 
         ; delete folder entry
@@ -1545,8 +1548,6 @@ kproc fs.fat.delete_file ;//////////////////////////////////////////////////////
   .delete_complete_eof:
         add     esp, 4
         pop     eax
-
-        sub     eax, [ebx + fs.fat.partition_t.data_area_sector]
 
         xor     edx, edx ; mark free
         mov     ebp, [ebx + fs.fat.partition_t.fat_vftbl]
@@ -1608,7 +1609,7 @@ kproc fs.fat._.find_file_lfn ;//////////////////////////////////////////////////
         jz      .not_found
 
         movzx   eax, [edi + fs.fat.dir_entry_t.start_cluster.low]
-        add     eax, [ebx + fs.fat.partition_t.data_area_sector]
+        call    fs.fat.util.cluster_to_sector
         mov     [esp], eax
         jmp     .next_level
 
@@ -1636,7 +1637,8 @@ kproc fs.fat._.prev_dir_entry ;/////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> ebx ^= fs.fat.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
-        ; FIXME: not implemented
+        klog_   LOG_ERROR, "FIXME: not implemented: fs.fat._.prev_dir_entry\n"
+        mov     eax, ERROR_NOT_IMPLEMENTED
         stc
         ret
 

@@ -600,7 +600,7 @@ iglobal
     ; root_dir_sector
     dd 19
     ; data_area_sector
-    dd 31
+    dd 33
     ; cluster_size
     dd 1
     ; buffer
@@ -619,6 +619,8 @@ if KCONFIG_BLK_MEMORY
 kproc fs_OnGenericQuery ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     edx, static_test_ram_partition
+        mov     [edx + fs.fat.fat12.partition_t.root_dir_size], 14
+        mov     [edx + fs.fat.fat12.partition_t.max_cluster], 9 * 512 * 2 / 3
         jmp     fs.generic_query_handler
 kendp
 
@@ -686,7 +688,7 @@ iglobal
     ; root_dir_sector
     dd 19
     ; data_area_sector
-    dd 31
+    dd 33
     ; cluster_size
     dd 1
     ; buffer
@@ -705,6 +707,8 @@ if KCONFIG_BLK_FLOPPY
 kproc fs_OnGenericQuery2 ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     edx, static_test_floppy_partition
+        mov     [edx + fs.fat.fat12.partition_t.root_dir_size], 14
+        mov     [edx + fs.fat.fat12.partition_t.max_cluster], 9 * 512 * 2 / 3
         jmp     fs.generic_query_handler
 kendp
 
