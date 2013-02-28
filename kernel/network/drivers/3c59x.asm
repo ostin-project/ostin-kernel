@@ -233,7 +233,6 @@ iglobal
     e3c59x_transmit, \
     0
 
-  align 4
   e3c59x_hw_versions:
     dw 0x5900, IS_VORTEX ; 3c590 Vortex 10Mbps
     dw 0x5920, IS_VORTEX ; 3c592 EISA 10Mbps Demon/Vortex

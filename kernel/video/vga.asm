@@ -130,7 +130,6 @@ kproc palette320x200 ;//////////////////////////////////////////////////////////
 kendp
 
 uglobal
-  align 4
   novesachecksum     dd 0x0
   EGA_counter        db 0
   VGA_drawing_screen db 0

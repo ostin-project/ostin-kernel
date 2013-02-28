@@ -39,7 +39,6 @@ struct skin_button_t box32_t
 ends
 
 uglobal
-  align 4
   skin_udata:
     _skinh          dd ?
     _skinmargins    skin_margins_t

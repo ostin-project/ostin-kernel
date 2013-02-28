@@ -73,7 +73,6 @@ iglobal
 endg
 
 uglobal
-  align 4
   longname_sec1        dd 0   ; used by analyze_directory to save 2 previous
   longname_sec2        dd 0   ; directory sectors for delete long filename
 
@@ -83,7 +82,6 @@ uglobal
 endg
 
 uglobal
-  align 4
   fat_cache:           rb 512
   buffer:              rb 512
   fsinfo_buffer:       rb 512

@@ -43,6 +43,7 @@ macro IncludeIGlobals
 {
   macro IGlobals dummy, [n]
   \{
+    align 4
     __IGlobalBlock
     purge __IGlobalBlock
   \}
@@ -61,6 +62,7 @@ macro IncludeUGlobals
       begin = $
       virtual at $
     \forward
+      align 4
       __UGlobalBlock
       purge __UGlobalBlock
     \common

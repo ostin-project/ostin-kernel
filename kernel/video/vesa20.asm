@@ -1060,7 +1060,6 @@ kproc vesa20_drawbackground_stretch ;///////////////////////////////////////////
 kendp
 
 uglobal
-  align 4
   bgr_cur_line  rd 1920 ; maximum width of screen
   bgr_next_line rd 1920
 endg
@@ -1169,7 +1168,6 @@ end if
 kendp
 
 iglobal
-  align 4
   overlapping_of_points_ptr dd overlapping_of_points
 endg
 

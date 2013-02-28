@@ -136,7 +136,6 @@ end if ; KCONFIG_BLK_ATAPI
 endg
 
 uglobal
-  align 4
   NumBiosDisks       rd 1
   BiosDiskPartitions rd 0x80
 endg

@@ -41,7 +41,6 @@ kproc sysfn.sound_ctl ;/////////////////////////////////////////////////////////
 kendp
 
 iglobal
-  align 4
   kontrOctave      dw 0x4742, 0x4342, 0x3f7c, 0x3bec, 0x388f, 0x3562
                    dw 0x3264, 0x2f8f, 0x2ce4, 0x2a5f, 0x2802, 0x25bf
   memAdrNote       dd 0

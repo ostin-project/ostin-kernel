@@ -16,7 +16,6 @@
 ;;======================================================================================================================
 
 uglobal
-  align 4
   hd_entries       rd 1 ; unused? 1 write, 0 reads
   lba_read_enabled rd 1 ; 0 = disabled , 1 = enabled
 endg

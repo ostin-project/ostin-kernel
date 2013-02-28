@@ -562,7 +562,6 @@ end if
 kendp
 
 uglobal
-  align 4
 ; unpack.p            rd unpack.LZMA_BASE_SIZE + (unpack.LZMA_LIT_SIZE shl (unpack.lc + unpack.lp))
   unpack.p            dd ?
   unpack.code_        dd ?

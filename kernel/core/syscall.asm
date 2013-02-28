@@ -107,7 +107,6 @@ kproc sysfn.not_implemented_cross_order ;///////////////////////////////////////
 kendp
 
 iglobal
-  align 4
   sysfn._.serve_table label dword
     dd sysfn.draw_window ; 0
     dd sysfn.set_pixel ; 1
@@ -196,7 +195,6 @@ end if ; KCONFIG_BLK_FLOPPY
     times 255 - ($ - sysfn._.serve_table) / 4 dd sysfn.not_implemented
     dd sysfn.exit_process ; -1 (255)
 
-  align 4
   sysfn._.cross_order_serve_table label dword
     dd sysfn.socket ; 53
     dd 0

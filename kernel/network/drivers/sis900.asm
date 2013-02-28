@@ -35,7 +35,6 @@ RX_BUFF_SZ             = 1520            ; Buffer size for each Rx buffer
 TX_BUFF_SZ             = 1516            ; Buffer size for each Tx buffer
 
 uglobal
-  align 4
   txd rd 3 * NUM_TX_DESC
   rxd rd 3 * NUM_RX_DESC
 endg

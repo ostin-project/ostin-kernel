@@ -17,7 +17,6 @@
 ;;======================================================================================================================
 
 uglobal
-  align 4
   hd_error        dd 0 ; set by wait_for_sector_buffer
   hd_wait_timeout dd 0
   hd1_status      rd 1 ; 0 - free : other - pid
@@ -592,7 +591,6 @@ kproc wait_for_sector_dma_ide1 ;////////////////////////////////////////////////
 kendp
 
 iglobal
-  align 4
   ; note that IDE descriptor table must be 4-byte aligned and do not cross 4K boundary
   IDE_descriptor_table:
     dd IDE_DMA - OS_BASE

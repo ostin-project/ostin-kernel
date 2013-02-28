@@ -78,7 +78,6 @@ macro remove_from_used op
 }
 
 uglobal
-  align 4
   mem_block_map    rb 512
   mem_block_list   rd 64
   large_block_list rd 31

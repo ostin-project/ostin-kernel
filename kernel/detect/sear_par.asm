@@ -20,99 +20,13 @@ include "detect/gpt.inc"
 include "detect/mbr.inc"
 
 uglobal
-  align 4
-  known_part dd ? ; for boot 0x1
+  known_part       dd ? ; for boot 0x1
+  transfer_address dd ?
 endg
 
         call    scan_for_blkdev_partitions
 
         mov     [transfer_address], DRIVE_DATA + 0x0a
-
-search_partitions_ide0:
-        test    byte[DRIVE_DATA + 1], 0x40
-        jz      search_partitions_ide1
-        mov     [hdbase], 0x1f0
-        mov     [hdid], 0
-        mov     [hdpos], 1
-        mov     [known_part], 1
-
-search_partitions_ide0_1:
-        call    set_partition_variables
-        test    [problem_partition], 2
-        jnz     search_partitions_ide1 ; not found part
-        test    [problem_partition], 1
-        jnz     @f ; not found known_part
-        inc     byte[DRIVE_DATA + 2]
-        call    partition_data_transfer
-        add     [transfer_address], 100
-
-    @@: inc     [known_part]
-        jmp     search_partitions_ide0_1
-
-search_partitions_ide1:
-        test    byte[DRIVE_DATA + 1], 0x10
-        jz      search_partitions_ide2
-        mov     [hdbase], 0x1f0
-        mov     [hdid], 0x10
-        mov     [hdpos], 2
-        mov     [known_part], 1
-
-search_partitions_ide1_1:
-        call    set_partition_variables
-        test    [problem_partition], 2
-        jnz     search_partitions_ide2
-        test    [problem_partition], 1
-        jnz     @f
-        inc     byte[DRIVE_DATA + 3]
-        call    partition_data_transfer
-        add     [transfer_address], 100
-
-    @@: inc     [known_part]
-        jmp     search_partitions_ide1_1
-
-search_partitions_ide2:
-        test    byte[DRIVE_DATA + 1], 0x4
-        jz      search_partitions_ide3
-        mov     [hdbase], 0x170
-        mov     [hdid], 0
-        mov     [hdpos], 3
-        mov     [known_part], 1
-
-search_partitions_ide2_1:
-        call    set_partition_variables
-        test    [problem_partition], 2
-        jnz     search_partitions_ide3
-        test    [problem_partition], 1
-        jnz     @f
-        inc     byte[DRIVE_DATA + 4]
-        call    partition_data_transfer
-        add     [transfer_address], 100
-
-    @@: inc     [known_part]
-        jmp     search_partitions_ide2_1
-
-search_partitions_ide3:
-        test    byte[DRIVE_DATA + 1], 0x1
-        jz      end_search_partitions_ide
-        mov     [hdbase], 0x170
-        mov     [hdid], 0x10
-        mov     [hdpos], 4
-        mov     [known_part], 1
-
-search_partitions_ide3_1:
-        call    set_partition_variables
-        test    [problem_partition], 2
-        jnz     end_search_partitions_ide
-        test    [problem_partition], 1
-        jnz     @f
-        inc     byte[DRIVE_DATA + 5]
-        call    partition_data_transfer
-        add     [transfer_address], 100
-
-    @@: inc     [known_part]
-        jmp     search_partitions_ide3_1
-
-end_search_partitions_ide:
         mov     [hdpos], 0x80
         mov     ecx, [NumBiosDisks]
         test    ecx, ecx
@@ -142,13 +56,10 @@ end_search_partitions_bd:
         pop     ecx
         inc     [hdpos]
         loop    start_search_partitions_bd
+
         jmp     end_search_partitions
 
 include  "fs/part_set.asm"
-
-uglobal
-  transfer_address dd ?
-endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc scan_for_blkdev_partitions ;//////////////////////////////////////////////////////////////////////////////////////

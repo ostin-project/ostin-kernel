@@ -31,7 +31,6 @@ VKEY_CONTROL  = 0000000000001100b
 VKEY_ALT      = 0000000000110000b
 
 uglobal
-  align 4
   kb_state         dd 0
   ext_code         db 0
 

@@ -18,7 +18,6 @@
 include "mutex.asm"
 
 uglobal
-  align 4
   current_slot rd 1
   DONT_SWITCH  db ?
 endg
@@ -102,7 +101,6 @@ end if
 kendp
 
 uglobal
-align 4
 ; far_jump:
 ;   .offs dd ?
 ;   .sel  dw ?

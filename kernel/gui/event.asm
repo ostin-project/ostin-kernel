@@ -23,7 +23,6 @@ WINDOW_MOVE_AND_RESIZE_FLAGS = \
   mouse.WINDOW_MOVE_FLAG
 
 uglobal
-  align 4
   event_start dd ?
   event_end   dd ?
   event_uid   dd 0

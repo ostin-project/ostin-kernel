@@ -52,12 +52,10 @@ SOCK_DGRAM  = 2
 
 ; pointer to bitmap of free ports (1=free, 0=used)
 uglobal
-  align 4
   network_free_ports dd ?
 endg
 
 iglobal
-  align 4
   network_free_hint dd 1024 / 8
 endg
 

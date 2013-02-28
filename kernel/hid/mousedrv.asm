@@ -28,7 +28,6 @@
 ;   FCFF              com1/ps2 buffer count starting from FC00
 
 uglobal
-  align 4
   current_cursor   rd 1
   hw_cursor        rd 1
   mouse_active     rd 1

@@ -318,7 +318,6 @@ kproc checksum ;////////////////////////////////////////////////////////////////
 kendp
 
 iglobal
-  align 4
   f52call:
     dd app_stack_handler.00
     dd app_stack_handler.01
@@ -517,7 +516,6 @@ kproc ash_eth_enable ;//////////////////////////////////////////////////////////
 kendp
 
 iglobal
-  align 4
   f53call:
     dd socket_open           ; 00
     dd socket_close          ; 01

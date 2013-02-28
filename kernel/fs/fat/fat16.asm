@@ -47,10 +47,10 @@ kproc fs.fat.fat16.create_from_base ;///////////////////////////////////////////
         jne     .error
 
         ; support only 512 bytes per sector, 1 sector per cluster
-        klog_   LOG_DEBUG, "  sector_size = %u\n", [edi + bpb_v4_0_t.sector_size]:2
+;       klog_   LOG_DEBUG, "  sector_size = %u\n", [edi + bpb_v4_0_t.sector_size]:2
         cmp     [edi + bpb_v4_0_t.sector_size], 512
         jne     .error
-        klog_   LOG_DEBUG, "  cluster_size = %u\n", [edi + bpb_v4_0_t.cluster_size]:1
+;       klog_   LOG_DEBUG, "  cluster_size = %u\n", [edi + bpb_v4_0_t.cluster_size]:1
         cmp     [edi + bpb_v4_0_t.cluster_size], 1
         jne     .error
 
@@ -64,31 +64,31 @@ kproc fs.fat.fat16.create_from_base ;///////////////////////////////////////////
 
         movzx   ecx, [edi + bpb_v4_0_t.resvd_sector_count]
         mov     [eax + fs.fat.fat16.partition_t.fat_sector], ecx
-        klog_   LOG_DEBUG, "  fat_sector = %u\n", ecx
+;       klog_   LOG_DEBUG, "  fat_sector = %u\n", ecx
 
         movzx   edx, [edi + bpb_v4_0_t.fat_size_16]
         mov     [eax + fs.fat.fat16.partition_t.fat_size], edx
-        klog_   LOG_DEBUG, "  fat_size = %u\n", edx
+;       klog_   LOG_DEBUG, "  fat_size = %u\n", edx
 
         lea     ecx, [ecx + edx * 2]
         mov     [eax + fs.fat.fat16.partition_t.root_dir_sector], ecx
-        klog_   LOG_DEBUG, "  root_dir_sector = %u\n", ecx
+;       klog_   LOG_DEBUG, "  root_dir_sector = %u\n", ecx
 
         shl     edx, 9 - 1 ; * 512 / 2
         add     edx, 2
         mov     [eax + fs.fat.fat16.partition_t.max_cluster], edx
-        klog_   LOG_DEBUG, "  max_cluster = %u\n", edx
+;       klog_   LOG_DEBUG, "  max_cluster = %u\n", edx
 
         movzx   edx, [edi + bpb_v4_0_t.fat_root_dir_entry_count]
         shl     edx, 5 ; * sizeof.fs.fat.dir_entry_t
         add     edx, 512 - 1
         shr     edx, 9
         mov     [eax + fs.fat.fat16.partition_t.root_dir_size], edx
-        klog_   LOG_DEBUG, "  root_dir_size = %u\n", edx
+;       klog_   LOG_DEBUG, "  root_dir_size = %u\n", edx
 
         add     ecx, edx
         mov     [eax + fs.fat.fat16.partition_t.data_area_sector], ecx
-        klog_   LOG_DEBUG, "  data_area_sector = %u\n", ecx
+;       klog_   LOG_DEBUG, "  data_area_sector = %u\n", ecx
 
         movzx   ecx, [edi + bpb_v4_0_t.cluster_size]
         mov     [eax + fs.fat.fat16.partition_t.cluster_size], ecx

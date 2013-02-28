@@ -30,8 +30,6 @@ rxfd_packet      = eth_data_start + 16
 uglobal
   eeprom_data:       times 16 dd 0
 
-  align 4
-
   lstats:
   tx_good_frames:    dd 0
   tx_coll16_errs:    dd 0
@@ -51,7 +49,6 @@ uglobal
   rx_runt_errs:      dd 0
   done_marker:       dd 0
 
-  align 4
   confcmd:
   confcmd_status:    dw 0
   confcmd_command:   dw 0
@@ -73,7 +70,6 @@ iglobal
 endg
 
 uglobal
-  align 4
   txfd:
   txfd_status:       dw 0
   txfd_command:      dw 0

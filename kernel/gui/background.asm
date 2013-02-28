@@ -16,7 +16,6 @@
 ;;======================================================================================================================
 
 uglobal
-  align 4
   img_background         rd 1
   mem_BACKGROUND         rd 1
   static_background_data rd 1

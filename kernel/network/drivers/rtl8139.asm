@@ -172,7 +172,6 @@ rtl8139_rx_buff        = eth_data_start
 rtl8139_tx_buff        = rtl8139_rx_buff + RTL8139_RX_BUFFER_SIZE + MAX_ETH_FRAME_SIZE
 
 uglobal
-  align 4
   rtl8139_rx_buff_offset: dd 0
   curr_tx_desc            dd 0
 endg

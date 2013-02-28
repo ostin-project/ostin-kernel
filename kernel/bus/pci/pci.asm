@@ -61,7 +61,6 @@ PCI_ROM_ADDRESS                = 0x30 ; 32 bits
 ;mmio_pci_addr = 0x400 ; set actual PCI address here to activate user-MMIO
 
 uglobal
-  align 4
   pci_access_enabled rd 1 ; 0 = disabled , 1 = enabled
   pci_bios_entry     dd 0
                      dw pci_code_sel
@@ -643,7 +642,6 @@ end if
 ;-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 uglobal
-  align 4
   ; VendID (2), DevID (2), Revision = 0 (1), Class Code (3), FNum (1), Bus (1)
   pci_emu_dat: times 30 * 10 db 0
 endg

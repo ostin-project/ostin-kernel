@@ -16,7 +16,6 @@
 ;;======================================================================================================================
 
 uglobal
-  align 4
   application_table_status rd 1 ; 0 - free : other - pid
   idts                     rb 0x41 * (2 + 4 + 2)
 endg
@@ -40,7 +39,6 @@ kproc build_interrupt_table ;///////////////////////////////////////////////////
 kendp
 
 iglobal
-  align 4
   sys_int:
     ; exception handlers addresses (for interrupt gate construction)
     dd e0, e1, e2, e3, e4, e5, e6, except_7 ; SEE: core/fpu.inc

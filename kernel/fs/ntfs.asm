@@ -368,7 +368,6 @@ kproc ntfs_read_frs_sector ;////////////////////////////////////////////////////
 kendp
 
 uglobal
-  align 4
   ntfs_cur_attr         dd ?
   ntfs_cur_iRecord      dd ?
   ntfs_cur_offs         dd ? ; in sectors

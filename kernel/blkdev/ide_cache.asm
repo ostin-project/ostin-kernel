@@ -33,7 +33,6 @@
 cache_max = 1919 ; max. is 1919*512+0x610000=0x6ffe00
 
 uglobal
-  align 4
   cache_search_start dd 0 ; used by find_empty_slot
   ide_drives_cache:
     .0 drive_cache_t
@@ -47,7 +46,6 @@ uglobal
 endg
 
 iglobal
-  align 4
   fat_in_cache       dd -1
 endg
 

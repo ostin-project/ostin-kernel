@@ -62,7 +62,6 @@ struct coff_sym_t
 ends
 
 uglobal
-  align 4
   srv          linked_list_t
   dll_list     linked_list_t
   dll_cur_addr dd MIN_DEFAULT_DLL_ADDR
