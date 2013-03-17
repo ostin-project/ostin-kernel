@@ -30,6 +30,29 @@ VKEY_SHIFT    = 0000000000000011b
 VKEY_CONTROL  = 0000000000001100b
 VKEY_ALT      = 0000000000110000b
 
+HOTKEY_MAX_COUNT   = 256
+HOTKEY_BUFFER_SIZE = 120
+
+struct hotkey_t
+  next_ptr dd ?
+  mod_keys dd ?
+  pslot    dd ?
+  prev_ptr dd ?
+ends
+
+assert sizeof.hotkey_t = 16
+assert hotkey_t.next_ptr = 0
+
+struct queued_hotkey_t
+  pslot    dd ?
+  mod_keys dw ?
+  scancode db ?
+           db ?
+ends
+
+assert sizeof.queued_hotkey_t = 8
+assert queued_hotkey_t.mod_keys = 4
+
 uglobal
   kb_state         dd 0
   ext_code         db 0
@@ -44,8 +67,8 @@ uglobal
 
   align 4
   hotkey_scancodes rd 256     ; we have 256 scancodes
-  hotkey_list      rd 256 * 4 ; max 256 defined hotkeys
-  hotkey_buffer    rd 120 * 2 ; buffer for 120 hotkeys
+  hotkey_list:     rb HOTKEY_MAX_COUNT * sizeof.hotkey_t ; max HOTKEY_MAX_COUNT defined hotkeys
+  hotkey_buffer:   rb HOTKEY_BUFFER_SIZE * sizeof.queued_hotkey_t ; buffer for HOTKEY_BUFFER_SIZE hotkeys
 endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -119,22 +142,22 @@ kproc sysfn.keyboard_ctl.register_hotkey ;//////////////////////////////////////
     @@: cmp     dword[eax + 8], 0
         jz      .found_free
         add     eax, 16
-        cmp     eax, hotkey_list + 16 * 256
+        cmp     eax, hotkey_list + HOTKEY_MAX_COUNT * sizeof.hotkey_t
         jb      @b
         mov     [esp + 4 + regs_context32_t.eax], 1
         ret
 
   .found_free:
-        mov     [eax + 8], edi
-        mov     [eax + 4], edx
+        mov     [eax + hotkey_t.pslot], edi
+        mov     [eax + hotkey_t.mod_keys], edx
         movzx   ecx, cl
         lea     ecx, [hotkey_scancodes + ecx * 4]
         mov     edx, [ecx]
-        mov     [eax], edx
+        mov     [eax + hotkey_t.next_ptr], edx
         mov     [ecx], eax
-        mov     [eax + 12], ecx
+        mov     [eax + hotkey_t.prev_ptr], ecx
         jecxz   @f
-        mov     [edx + 12], eax
+        mov     [edx + hotkey_t.prev_ptr], eax
 
     @@: and     [esp + 4 + regs_context32_t.eax], 0
         ret
@@ -152,13 +175,13 @@ kproc sysfn.keyboard_ctl.unregister_hotkey ;////////////////////////////////////
   .scan:
         test    eax, eax
         jz      .notfound
-        cmp     [eax + 8], edi
+        cmp     [eax + hotkey_t.pslot], edi
         jnz     .next
-        cmp     [eax + 4], edx
+        cmp     [eax + hotkey_t.mod_keys], edx
         jz      .found
 
   .next:
-        mov     eax, [eax]
+        mov     eax, [eax + hotkey_t.next_ptr]
         jmp     .scan
 
   .notfound:
@@ -166,19 +189,22 @@ kproc sysfn.keyboard_ctl.unregister_hotkey ;////////////////////////////////////
         ret
 
   .found:
-        mov     ecx, [eax]
+        mov     ecx, [eax + hotkey_t.next_ptr]
         jecxz   @f
-        mov     edx, [eax + 12]
-        mov     [ecx + 12], edx
 
-    @@: mov     ecx, [eax + 12]
-        mov     edx, [eax]
-        mov     [ecx], edx
+        mov     edx, [eax + hotkey_t.prev_ptr]
+        mov     [ecx + hotkey_t.prev_ptr], edx
+
+    @@: mov     ecx, [eax + hotkey_t.prev_ptr]
+        mov     edx, [eax + hotkey_t.next_ptr]
+        mov     [ecx + hotkey_t.next_ptr], edx
+
         xor     edx, edx
-        mov     [eax + 4], edx
-        mov     [eax + 8], edx
-        mov     [eax + 12], edx
-        mov     [eax], edx
+        mov     [eax + hotkey_t.mod_keys], edx
+        mov     [eax + hotkey_t.pslot], edx
+        mov     [eax + hotkey_t.prev_ptr], edx
+        mov     [eax + hotkey_t.next_ptr], edx
+
         mov     [esp + 4 + regs_context32_t.eax], edx
         ret
 kendp
@@ -217,20 +243,20 @@ kproc sysfn.get_key ;///////////////////////////////////////////////////////////
         ; test hotkeys buffer
         mov     ecx, hotkey_buffer
 
-    @@: cmp     [ecx], ebx
+    @@: cmp     [ecx + queued_hotkey_t.pslot], ebx
         jz      .found
-        add     ecx, 8
-        cmp     ecx, hotkey_buffer + 120 * 8
+        add     ecx, sizeof.queued_hotkey_t
+        cmp     ecx, hotkey_buffer + HOTKEY_BUFFER_SIZE * sizeof.queued_hotkey_t
         jb      @b
         ret
 
   .found:
-        mov     ax, [ecx + 6]
+        mov     ax, [ecx + queued_hotkey_t.mod_keys]
         shl     eax, 16
-        mov     ah, [ecx + 4]
+        mov     ah, [ecx + queued_hotkey_t.scancode]
         mov     al, 2
-        and     dword[ecx + 4], 0
-        and     dword[ecx], 0
+        and     dword[ecx + queued_hotkey_t.mod_keys], 0
+        and     [ecx + queued_hotkey_t.pslot], 0
         jmp     .ret_eax
 kendp
 
@@ -487,28 +513,29 @@ kproc send_scancode ;///////////////////////////////////////////////////////////
         jmp     .hotkey_loop
 
   .hotkey_found:
-        mov     eax, [eax + 8]
+        mov     eax, [eax + hotkey_t.pslot]
         ; put key in buffer for process in slot eax
         mov     edi, hotkey_buffer
 
-    @@: cmp     dword[edi], 0
+    @@: cmp     [edi + queued_hotkey_t.pslot], 0
         jz      .found_free
-        add     edi, 8
-        cmp     edi, hotkey_buffer + 120 * 8
+        add     edi, sizeof.queued_hotkey_t
+        cmp     edi, hotkey_buffer + HOTKEY_BUFFER_SIZE * sizeof.queued_hotkey_t
         jb      @b
+
         ; no free space - replace first entry
         mov     edi, hotkey_buffer
 
   .found_free:
-        mov     [edi], eax
-        movzx   eax, ch
+        mov     [edi + queued_hotkey_t.pslot], eax
+        mov     al, ch
         cmp     bh, 1
         jnz     @f
         xor     eax, eax
 
-    @@: mov     [edi + 4], ax
+    @@: mov     [edi + queued_hotkey_t.scancode], al
         mov     eax, [kb_state]
-        mov     [edi + 6], ax
+        mov     [edi + queued_hotkey_t.mod_keys], ax
         jmp     .exit.irq1
 
   .nohotkey:

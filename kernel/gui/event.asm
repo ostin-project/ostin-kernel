@@ -657,10 +657,10 @@ kproc get_event_for_app ;///////////////////////////////////////////////////////
 
     @@: mov     edx, hotkey_buffer
 
-    @@: cmp     [edx], bh ; bh - slot for testing
+    @@: cmp     byte[edx + queued_hotkey_t.pslot], bh ; bh - slot for testing
         je      .result
-        add     edx, 8
-        cmp     edx, hotkey_buffer + 120 * 8
+        add     edx, sizeof.queued_hotkey_t
+        cmp     edx, hotkey_buffer + HOTKEY_BUFFER_SIZE * sizeof.queued_hotkey_t
         jb      @b
         jmp     .loop
 kendp

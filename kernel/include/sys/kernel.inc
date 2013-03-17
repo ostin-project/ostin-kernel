@@ -147,12 +147,19 @@ ends
 
 assert sizeof.app_data_t = 256
 
+struct app_io_ports_header_t
+  count      dd ?
+             rd 3
+ends
+
 struct app_io_ports_range_t
   pid        dd ?
   start_port dd ?
   end_port   dd ?
              rd 1
 ends
+
+assert sizeof.app_io_ports_header_t = sizeof.app_io_ports_range_t
 
 struct gdt_entry_t
   limit_low    dw ?

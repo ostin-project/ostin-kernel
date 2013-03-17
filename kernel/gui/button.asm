@@ -36,6 +36,13 @@ ends
 
 assert sizeof.sys_button_t = 16
 
+struct sys_buttons_header_t
+  count dd ?
+        rd 3
+ends
+
+assert sizeof.sys_buttons_header_t = sizeof.sys_button_t
+
 uglobal
   BTN_ADDR dd ?
 endg
@@ -66,7 +73,7 @@ kproc sysfn.define_button ;/////////////////////////////////////////////////////
 
         ; do we have free button slots available?
         mov     edi, [BTN_ADDR]
-        mov     eax, [edi]
+        mov     eax, [edi + sys_buttons_header_t.count]
         cmp     eax, GUI_BUTTON_MAX_COUNT
         jge     .exit
 
@@ -90,12 +97,12 @@ kproc sysfn.define_button ;/////////////////////////////////////////////////////
         ; basic checks passed, define the button
         push    ebx ecx edx
         inc     eax
-        mov     [edi], ax
-        shl     eax, 4
+        mov     [edi + sys_buttons_header_t.count], eax
+        shl     eax, 4 ; *= sizeof.sys_button_t
         add     edi, eax
         ; NOTE: this code doesn't rely on sys_button_t struct, please revise it if you change something
         mov     eax, [CURRENT_TASK]
-        stosd
+        stosd   ; sys_button_t.pslot
         mov     eax, edx
         stosd   ; button id number and flags
         mov     eax, ecx
@@ -221,7 +228,7 @@ kproc sysfn.define_button ;/////////////////////////////////////////////////////
 sysfn.define_button.remove_button:
         and     edx, GUI_BUTTON_ID_MASK
         mov     edi, [BTN_ADDR]
-        mov     ebx, [edi]
+        mov     ebx, [edi + sys_buttons_header_t.count]
         inc     ebx
         imul    esi, ebx, sizeof.sys_button_t
         add     esi, edi
@@ -252,7 +259,7 @@ sysfn.define_button.remove_button:
         mov     ebx, esi
         lea     eax, [esi + sizeof.sys_button_t]
         call    memmove
-        dec     dword[edi]
+        dec     [edi + sys_buttons_header_t.count]
         add     ecx, -sizeof.sys_button_t
         pop     ebx
         jmp     .next_button
@@ -269,7 +276,7 @@ kproc sysfn.get_clicked_button_id ;/////////////////////////////////////////////
         mov     ebx, [CURRENT_TASK] ; TOP OF WINDOW STACK
         mov     [esp + 4 + regs_context32_t.eax], 1
         movzx   ecx, [WIN_STACK + ebx * 2]
-        mov     edx, [TASK_COUNT] ; less than 256 processes
+        mov     edx, [TASK_COUNT] ; less than MAX_TASK_COUNT processes
         cmp     ecx, edx
         jne     .exit
         movzx   eax, [BTN_COUNT]
@@ -369,7 +376,7 @@ kproc button._.find_button ;////////////////////////////////////////////////////
         and     eax, GUI_BUTTON_ID_MASK
 
         mov     edi, [BTN_ADDR]
-        mov     ecx, [edi]
+        mov     ecx, [edi + sys_buttons_header_t.count]
         imul    esi, ecx, sizeof.sys_button_t
         add     esi, edi
         inc     ecx

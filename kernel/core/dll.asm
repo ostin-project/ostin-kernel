@@ -426,8 +426,8 @@ proc srv_handler stdcall, ioctl:dword ;/////////////////////////////////////////
   .fail:
         xor     eax, eax
         not     eax
-        mov     [esi + ioctl_t.output], eax
-        mov     [esi + ioctl_t.out_size], 4
+        mov     [esi + ioctl_t.output.address], eax
+        mov     [esi + ioctl_t.output.size], 4
         ret
 
   .err:

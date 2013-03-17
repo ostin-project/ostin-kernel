@@ -85,9 +85,9 @@ kproc sysfn.set_draw_state.begin_drawing ;//////////////////////////////////////
 
   .sys_newba2:
         mov     edi, [BTN_ADDR]
-        cmp     dword[edi], 0 ; empty button list?
+        cmp     [edi + sys_buttons_header_t.count], 0 ; empty button list?
         je      .exit
-        movzx   ebx, word[edi]
+        mov     ebx, [edi + sys_buttons_header_t.count]
         inc     ebx
         mov     eax, edi
 
@@ -95,18 +95,18 @@ kproc sysfn.set_draw_state.begin_drawing ;//////////////////////////////////////
         dec     ebx
         jz      .exit
 
-        add     eax, 0x10
-        cmp     cx, [eax]
+        add     eax, sizeof.sys_button_t
+        cmp     ecx, [eax + sys_button_t.pslot]
         jnz     .sys_newba
 
         push    eax ebx ecx
         mov     ecx, ebx
         inc     ecx
-        shl     ecx, 4
+        shl     ecx, 4 ; *= sizeof.sys_button_t
         mov     ebx, eax
-        add     eax, 0x10
+        add     eax, sizeof.sys_button_t
         call    memmove
-        dec     dword[edi]
+        dec     [edi + sys_buttons_header_t.count]
         pop     ecx ebx eax
 
         jmp     .sys_newba2

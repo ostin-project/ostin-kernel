@@ -376,13 +376,13 @@ kproc drawwindow_IV ;///////////////////////////////////////////////////////////
 
         ;* close button
         mov     edi, [BTN_ADDR]
-        movzx   eax, word[edi]
+        mov     eax, [edi + sys_buttons_header_t.count]
         cmp     eax, GUI_BUTTON_MAX_COUNT
         jge     .no_skin_add_button
         inc     eax
-        mov     [edi], ax
+        mov     [edi + sys_buttons_header_t.count], eax
 
-        shl     eax, 4
+        shl     eax, 4 ; *= sizeof.sys_button_t
         add     eax, edi
 
         mov     ebx, [CURRENT_TASK]
@@ -411,13 +411,13 @@ kproc drawwindow_IV ;///////////////////////////////////////////////////////////
 
         ;* minimize button
         mov     edi, [BTN_ADDR]
-        movzx   eax, word[edi]
+        mov     eax, [edi + sys_buttons_header_t.count]
         cmp     eax, GUI_BUTTON_MAX_COUNT
         jge     .no_skin_add_button
         inc     eax
-        mov     [edi], ax
+        mov     [edi + sys_buttons_header_t.count], eax
 
-        shl     eax, 4
+        shl     eax, 4 ; *= sizeof.sys_button_t
         add     eax, edi
 
         mov     ebx, [CURRENT_TASK]

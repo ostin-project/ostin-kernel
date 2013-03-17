@@ -429,10 +429,10 @@ high_code:
         lidt    [idtreg]
 
         call    init_kernel_heap
-        stdcall kernel_alloc, RING0_STACK_SIZE + 512
+        stdcall kernel_alloc, sizeof.ring0_stack_data_t + 512
         mov     [os_stack_seg], eax
 
-        lea     esp, [eax + RING0_STACK_SIZE]
+        lea     esp, [eax + sizeof.ring0_stack_data_t]
 
         mov     [tss.ss0], os_stack
         mov     [tss.esp0], esp
@@ -1114,6 +1114,7 @@ kendp
 kproc reserve_irqs_ports ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax
+
         xor     eax, eax
         inc     eax
         mov     byte[irq_owner + 4 * 0], al ; timer
@@ -1122,27 +1123,31 @@ kproc reserve_irqs_ports ;//////////////////////////////////////////////////////
         mov     byte[irq_owner + 4 * 13], al ; math co-pros
         mov     byte[irq_owner + 4 * 14], al ; ide I
         mov     byte[irq_owner + 4 * 15], al ; ide II
-        pop     eax
 
         ; RESERVE PORTS
-        mov_s_  dword[RESERVED_PORTS], 4
+        mov_s_  [RESERVED_PORTS.count], 4
 
-        mov_s_  [RESERVED_PORTS + 16 + app_io_ports_range_t.pid], 1
-        and     [RESERVED_PORTS + 16 + app_io_ports_range_t.start_port], 0
-        mov_s_  [RESERVED_PORTS + 16 + app_io_ports_range_t.end_port], 0x2d
+        mov     eax, RESERVED_PORTS + sizeof.app_io_ports_header_t
+        mov_s_  [eax + app_io_ports_range_t.pid], 1
+        and     [eax + app_io_ports_range_t.start_port], 0
+        mov_s_  [eax + app_io_ports_range_t.end_port], 0x2d
 
-        mov_s_  [RESERVED_PORTS + 32 + app_io_ports_range_t.pid], 1
-        mov_s_  [RESERVED_PORTS + 32 + app_io_ports_range_t.start_port], 0x30
-        mov_s_  [RESERVED_PORTS + 32 + app_io_ports_range_t.end_port], 0x4d
+        add     eax, sizeof.app_io_ports_range_t
+        mov_s_  [eax + app_io_ports_range_t.pid], 1
+        mov_s_  [eax + app_io_ports_range_t.start_port], 0x30
+        mov_s_  [eax + app_io_ports_range_t.end_port], 0x4d
 
-        mov_s_  [RESERVED_PORTS + 48 + app_io_ports_range_t.pid], 1
-        mov_s_  [RESERVED_PORTS + 48 + app_io_ports_range_t.start_port], 0x50
-        mov_s_  [RESERVED_PORTS + 48 + app_io_ports_range_t.end_port], 0xdf
+        add     eax, sizeof.app_io_ports_range_t
+        mov_s_  [eax + app_io_ports_range_t.pid], 1
+        mov_s_  [eax + app_io_ports_range_t.start_port], 0x50
+        mov_s_  [eax + app_io_ports_range_t.end_port], 0xdf
 
-        mov_s_  [RESERVED_PORTS + 64 + app_io_ports_range_t.pid], 1
-        mov_s_  [RESERVED_PORTS + 64 + app_io_ports_range_t.start_port], 0xe5
-        mov_s_  [RESERVED_PORTS + 64 + app_io_ports_range_t.end_port], 0xff
+        add     eax, sizeof.app_io_ports_range_t
+        mov_s_  [eax + app_io_ports_range_t.pid], 1
+        mov_s_  [eax + app_io_ports_range_t.start_port], 0xe5
+        mov_s_  [eax + app_io_ports_range_t.end_port], 0xff
 
+        pop     eax
         ret
 kendp
 
@@ -1206,7 +1211,7 @@ kproc sysfn.write_to_port ;/////////////////////////////////////////////////////
         mov     edi, ecx ; separate flag for read / write
         and     ecx, 65535
 
-        mov     eax, [RESERVED_PORTS]
+        mov     eax, [RESERVED_PORTS.count]
         test    eax, eax
         jnz     .sopl8
         inc     eax
@@ -2950,7 +2955,7 @@ kproc r_f_port_area ;///////////////////////////////////////////////////////////
         ja      .rpal1
         cmp     edx, 65536
         jae     .rpal1
-        mov     eax, [RESERVED_PORTS]
+        mov     eax, [RESERVED_PORTS.count]
         test    eax, eax ; no reserved areas ?
         je      .rpal2
         cmp     eax, 255 ; max reserved
@@ -3004,9 +3009,9 @@ kproc r_f_port_area ;///////////////////////////////////////////////////////////
         popad ; end enable io map
         sti
 
-        mov     eax, [RESERVED_PORTS]
+        mov     eax, [RESERVED_PORTS.count]
         add     eax, 1
-        mov     [RESERVED_PORTS], eax
+        mov     [RESERVED_PORTS.count], eax
         shl     eax, 4
         add     eax, RESERVED_PORTS
         mov     ebx, [TASK_BASE]
@@ -3020,7 +3025,7 @@ kproc r_f_port_area ;///////////////////////////////////////////////////////////
 
   .free_port_area:
 ;       pushad
-        mov     eax, [RESERVED_PORTS] ; no reserved areas?
+        mov     eax, [RESERVED_PORTS.count] ; no reserved areas?
         test    eax, eax
         jz      .frpal2
         mov     ebx, [TASK_BASE]
@@ -3056,7 +3061,7 @@ kproc r_f_port_area ;///////////////////////////////////////////////////////////
         add     esi, 16
         movsb
 
-        dec     dword[RESERVED_PORTS]
+        dec     [RESERVED_PORTS.count]
 ;       popad
 
         ; disable port access at port IO map

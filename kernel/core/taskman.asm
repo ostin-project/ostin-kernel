@@ -366,8 +366,8 @@ proc get_new_process_place ;////////////////////////////////////////////////////
         mov     ebx, eax
         sub     eax, TASK_DATA - sizeof.task_data_t
         shr     eax, 5 ; calculate slot index
-        cmp     eax, 256
-        jge     .failed ; it should be <256
+        cmp     eax, MAX_TASK_COUNT
+        jge     .failed
         mov     [ebx + task_data_t.state], THREAD_STATE_FREE ; set process state to 9 (for slot after hight boundary)
         ret
 
@@ -1080,10 +1080,10 @@ locals
   pl0_stack dd ?
 endl
 ;-----------------------------------------------------------------------------------------------------------------------
-        stdcall kernel_alloc, RING0_STACK_SIZE + 512
+        stdcall kernel_alloc, sizeof.ring0_stack_data_t + 512
         mov     [pl0_stack], eax
 
-        lea     edi, [eax + RING0_STACK_SIZE]
+        lea     edi, [eax + sizeof.ring0_stack_data_t]
 
         mov     eax, [slot]
         mov     ebx, eax
@@ -1122,7 +1122,7 @@ endl
         mov     [SLOT_BASE + ebx + app_data_t.cursor], ecx
         mov     eax, [pl0_stack]
         mov     [SLOT_BASE + ebx + app_data_t.pl0_stack], eax
-        add     eax, RING0_STACK_SIZE
+        add     eax, sizeof.ring0_stack_data_t
         mov     [SLOT_BASE + ebx + app_data_t.saved_esp0], eax
 
         push    ebx
@@ -1204,29 +1204,29 @@ endl
 
         mov     ebx, [pl0_stack]
         mov     esi, [params]
-        lea     ecx, [ebx + REG_EIP]
+        lea     ecx, [ebx + ring0_stack_data_t.iret_eip]
         xor     eax, eax
 
-        mov     [ebx + REG_RET], edx
-        mov     [ebx + REG_EDI], eax
-        mov     [ebx + REG_ESI], eax
-        mov     [ebx + REG_EBP], eax
-        mov     [ebx + REG_ESP], ecx ; ebx + REG_EIP
-        mov     [ebx + REG_EBX], eax
-        mov     [ebx + REG_EDX], eax
-        mov     [ebx + REG_ECX], eax
-        mov     [ebx + REG_EAX], eax
+        mov     [ebx + ring0_stack_data_t.irq0_ret_addr], edx
+        mov     [ebx + ring0_stack_data_t.regs.edi], eax
+        mov     [ebx + ring0_stack_data_t.regs.esi], eax
+        mov     [ebx + ring0_stack_data_t.regs.ebp], eax
+        mov     [ebx + ring0_stack_data_t.regs.esp], ecx ; ebx + ring0_stack_data_t.iret_eip
+        mov     [ebx + ring0_stack_data_t.regs.ebx], eax
+        mov     [ebx + ring0_stack_data_t.regs.edx], eax
+        mov     [ebx + ring0_stack_data_t.regs.ecx], eax
+        mov     [ebx + ring0_stack_data_t.regs.eax], eax
 
         mov     eax, [esi + 0x08] ; app_eip
-        mov     [ebx + REG_EIP], eax ; app_entry
-        mov     dword[ebx + REG_CS], app_code
-        mov     dword[ebx + REG_EFLAGS], EFL_IOPL1 + EFL_IF
+        mov     [ebx + ring0_stack_data_t.iret_eip], eax ; app_entry
+        mov     [ebx + ring0_stack_data_t.iret_cs], app_code
+        mov     [ebx + ring0_stack_data_t.iret_eflags], EFL_IOPL1 + EFL_IF
 
         mov     eax, [esi + 0x0c] ; app_esp
-        mov     [ebx + REG_APP_ESP], eax ; app_stack
-        mov     dword[ebx + REG_SS], app_data
+        mov     [ebx + ring0_stack_data_t.app_esp], eax ; app_stack
+        mov     [ebx + ring0_stack_data_t.app_ss], app_data
 
-        lea     ecx, [ebx + REG_RET]
+        lea     ecx, [ebx + ring0_stack_data_t.irq0_ret_addr]
         mov     ebx, [slot]
         shl     ebx, 5
         mov     [SLOT_BASE + ebx * 8 + app_data_t.saved_esp], ecx

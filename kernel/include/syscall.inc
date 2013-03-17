@@ -58,3 +58,16 @@ struct system_colors_t
   work_text        dd ?
   work_graph       dd ?
 ends
+
+struct debug.context_t
+  eip    dd ?
+  eflags dd ?
+  eax    dd ?
+  ecx    dd ?
+  edx    dd ?
+  ebx    dd ?
+  esp    dd ?
+  ebp    dd ?
+  esi    dd ?
+  edi    dd ?
+ends

@@ -203,7 +203,7 @@ kproc sysfn.debug_ctl.get_context ;/////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;# destroys eax, ecx, edx, esi, edi
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     edx, 0x28
+        cmp     edx, sizeof.debug.context_t
         jnz     .ret
 ;       push    ecx
 ;       mov     ecx, esi
@@ -215,35 +215,35 @@ kproc sysfn.debug_ctl.get_context ;/////////////////////////////////////////////
         jc      .ret
         mov     edi, esi
         mov     eax, [SLOT_BASE + eax * 8 + app_data_t.pl0_stack]
-        lea     esi, [eax + RING0_STACK_SIZE]
+        lea     esi, [eax + sizeof.ring0_stack_data_t]
 
   .ring0:
         ; note that following code assumes that all interrupt/exception handlers
         ; saves ring-3 context by pushad in this order
         ; top of ring0 stack: ring3 stack ptr (ss+esp), iret data (cs+eip+eflags), pushad
-        sub     esi, 8 + 12 + 0x20
+        sub     esi, 8 + 12 + sizeof.regs_context32_t
         lodsd   ; edi
-        mov     [edi + 0x24], eax
+        mov     [edi + debug.context_t.edi], eax
         lodsd   ; esi
-        mov     [edi + 0x20], eax
+        mov     [edi + debug.context_t.esi], eax
         lodsd   ; ebp
-        mov     [edi + 0x1c], eax
+        mov     [edi + debug.context_t.ebp], eax
         lodsd   ; esp
         lodsd   ; ebx
-        mov     [edi + 0x14], eax
+        mov     [edi + debug.context_t.ebx], eax
         lodsd   ; edx
-        mov     [edi + 0x10], eax
+        mov     [edi + debug.context_t.edx], eax
         lodsd   ; ecx
-        mov     [edi + 0x0c], eax
+        mov     [edi + debug.context_t.ecx], eax
         lodsd   ; eax
-        mov     [edi + 8], eax
+        mov     [edi + debug.context_t.eax], eax
         lodsd   ; eip
-        mov     [edi], eax
+        mov     [edi + debug.context_t.eip], eax
         lodsd   ; cs
         lodsd   ; eflags
-        mov     [edi + 4], eax
+        mov     [edi + debug.context_t.eflags], eax
         lodsd   ; esp
-        mov     [edi + 0x18], eax
+        mov     [edi + debug.context_t.esp], eax
 
   .ret:
         sti
@@ -261,7 +261,7 @@ kproc sysfn.debug_ctl.set_context ;/////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;# destroys eax, ecx, edx, esi, edi
 ;-----------------------------------------------------------------------------------------------------------------------
-        cmp     edx, 0x28
+        cmp     edx, sizeof.debug.context_t
         jnz     .ret
 ;       push    ebx
 ;       mov     ebx, edx
@@ -273,31 +273,31 @@ kproc sysfn.debug_ctl.set_context ;/////////////////////////////////////////////
         jc      .stiret
 ;       mov     esi, edx
         mov     eax, [SLOT_BASE + eax * 8 + app_data_t.pl0_stack]
-        lea     edi, [eax + RING0_STACK_SIZE]
+        lea     edi, [eax + sizeof.ring0_stack_data_t]
 
   .ring0:
-        sub     edi, 8 + 12 + 0x20
-        mov     eax, [esi + 0x24] ; edi
+        sub     edi, 8 + 12 + sizeof.regs_context32_t
+        mov     eax, [esi + debug.context_t.edi]
         stosd
-        mov     eax, [esi + 0x20] ; esi
+        mov     eax, [esi + debug.context_t.esi]
         stosd
-        mov     eax, [esi + 0x1c] ; ebp
-        stosd
-        scasd
-        mov     eax, [esi + 0x14] ; ebx
-        stosd
-        mov     eax, [esi + 0x10] ; edx
-        stosd
-        mov     eax, [esi + 0x0c] ; ecx
-        stosd
-        mov     eax, [esi + 8] ; eax
-        stosd
-        mov     eax, [esi] ; eip
+        mov     eax, [esi + debug.context_t.ebp]
         stosd
         scasd
-        mov     eax, [esi + 4] ; eflags
+        mov     eax, [esi + debug.context_t.ebx]
         stosd
-        mov     eax, [esi + 0x18] ; esp
+        mov     eax, [esi + debug.context_t.edx]
+        stosd
+        mov     eax, [esi + debug.context_t.ecx]
+        stosd
+        mov     eax, [esi + debug.context_t.eax]
+        stosd
+        mov     eax, [esi + debug.context_t.eip]
+        stosd
+        scasd
+        mov     eax, [esi + debug.context_t.eflags]
+        stosd
+        mov     eax, [esi + debug.context_t.esp]
         stosd
 
   .stiret:

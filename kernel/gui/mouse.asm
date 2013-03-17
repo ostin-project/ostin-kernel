@@ -564,7 +564,7 @@ kproc mouse._.find_sys_button_under_cursor ;////////////////////////////////////
 
         ; check if any process button contains cursor
         mov     eax, [BTN_ADDR]
-        mov     ecx, [eax]
+        mov     ecx, [eax + sys_buttons_header_t.count]
         imul    esi, ecx, sizeof.sys_button_t
         add     esi, eax
         inc     ecx

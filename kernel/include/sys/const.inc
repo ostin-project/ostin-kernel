@@ -225,11 +225,13 @@ ends
 
 OS_BASE = 0x80000000
 
+MAX_TASK_COUNT = 256
+
 virtual at OS_BASE
                         rb 0x1000
-  window_data:          rb 256 * sizeof.window_data_t
+  window_data:          rb MAX_TASK_COUNT * sizeof.window_data_t
                         rb OS_BASE + 0x00003000 - $
-  TASK_DATA:            rb 256 * sizeof.task_data_t
+  TASK_DATA:            rb MAX_TASK_COUNT * sizeof.task_data_t
                         rb OS_BASE + 0x00007000 - $
   CDDataBuf:            rb 0x1000
 
@@ -248,7 +250,7 @@ end if ; KCONFIG_BLK_FLOPPY
   sys_pgdir             rd 0x400
   DRIVE_DATA            rb 0x10000
                         rb OS_BASE + 0x00080000 - $
-  SLOT_BASE:            rb 256 * sizeof.app_data_t
+  SLOT_BASE:            rb MAX_TASK_COUNT * sizeof.app_data_t
                         rb OS_BASE + 0x000a0000 - $
   VGABasePtr:           rb 0x10000
                         rb OS_BASE + 0x000b0000 - $
@@ -260,9 +262,10 @@ end if ; KCONFIG_BLK_FLOPPY
                         rb OS_BASE + 0x00298000 - $
   BgrAuxTable           rb 32 * 1024
                         rb OS_BASE + 0x002c0000 - $
-  BUTTON_INFO:          rb 0x10 + GUI_BUTTON_MAX_COUNT * sizeof.sys_button_t
+  BUTTON_INFO:          rb sizeof.sys_buttons_header_t + GUI_BUTTON_MAX_COUNT * sizeof.sys_button_t
                         rb OS_BASE + 0x002d0000 - $
-  RESERVED_PORTS:       rb 0x10 + 256 * sizeof.app_io_ports_range_t
+  RESERVED_PORTS        app_io_ports_header_t
+                        rb 256 * sizeof.app_io_ports_range_t
                         rb OS_BASE + 0x002e0000 - $
   IRQ_SAVE:             rb 16 * 4096
                         rb OS_BASE + 0x002f0000 - $
@@ -276,7 +279,7 @@ end if ; KCONFIG_BLK_FLOPPY
   resendQ:              rb 32 * 1024
   VMODE_BASE:           rb 32 * 1024
   skin_data:            rb 32 * 1024
-  draw_data:            rb 256 * sizeof.draw_data_t
+  draw_data:            rb MAX_TASK_COUNT * sizeof.draw_data_t
                         rb OS_BASE + 0x00340000 - $
   boot_data_area:
                         rb BOOT_VAR_LOW_BASE
@@ -320,22 +323,18 @@ new_app_base        = 0
 
 twdw                = (TASK_DATA - sizeof.task_data_t) - window_data
 
-RING0_STACK_SIZE    = 0x2000 - 512 ; 512 bytes for FPU context
+struct ring0_stack_data_t
+  rb 0x2000 - 512 - 56
+  irq0_ret_addr dd ?
+  regs          regs_context32_t
+  iret_eip      dd ?
+  iret_cs       dd ?
+  iret_eflags   dd ?
+  app_esp       dd ?
+  app_ss        dd ?
+ends
 
-REG_SS              = RING0_STACK_SIZE - 4
-REG_APP_ESP         = RING0_STACK_SIZE - 8
-REG_EFLAGS          = RING0_STACK_SIZE - 12
-REG_CS              = RING0_STACK_SIZE - 16
-REG_EIP             = RING0_STACK_SIZE - 20
-REG_EAX             = RING0_STACK_SIZE - 24
-REG_ECX             = RING0_STACK_SIZE - 28
-REG_EDX             = RING0_STACK_SIZE - 32
-REG_EBX             = RING0_STACK_SIZE - 36
-REG_ESP             = RING0_STACK_SIZE - 40 ; RING0_STACK_SIZE - 20
-REG_EBP             = RING0_STACK_SIZE - 44
-REG_ESI             = RING0_STACK_SIZE - 48
-REG_EDI             = RING0_STACK_SIZE - 52
-REG_RET             = RING0_STACK_SIZE - 56 ; irq0.return
+assert sizeof.ring0_stack_data_t = 0x2000 - 512 ; 512 bytes for FPU context
 
 PG_UNMAP            = 0x000
 PG_MAP              = 0x001
@@ -502,12 +501,10 @@ DRV_ENTRY = 1
 DRV_EXIT  = -1
 
 struct ioctl_t
-  handle   dd ?
-  io_code  dd ?
-  input    dd ?
-  inp_size dd ?
-  output   dd ?
-  out_size dd ?
+  handle  dd ?
+  io_code dd ?
+  input   memory_range32_t
+  output  memory_range32_t
 ends
 
 struct drive_cache_info_t

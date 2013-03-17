@@ -333,7 +333,7 @@ kproc dtext ;///////////////////////////////////////////////////////////////////
         test    ecx, 0x40000000
         jz      .pixloop1cont
         push    ecx
-        mov     ecx, [esp + 4 + 0x20 + 0x20]
+        mov     ecx, [esp + 4 + sizeof.regs_context32_t * 2]
         call    [putpixel]
         pop     ecx
 
@@ -371,7 +371,7 @@ kproc dtext ;///////////////////////////////////////////////////////////////////
         test    ecx, 0x40000000
         jz      .pixloop2cont
         push    ecx
-        mov     ecx, [esp + 12 + 0x20 + 0x20]
+        mov     ecx, [esp + 12 + sizeof.regs_context32_t * 2]
         call    [putpixel]
         pop     ecx
 

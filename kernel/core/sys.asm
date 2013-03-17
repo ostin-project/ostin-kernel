@@ -459,7 +459,7 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         mov     eax, [.slot]
         shl     eax, 8
         mov     esi, [SLOT_BASE + eax + app_data_t.pl0_stack]
-        add     esi, RING0_STACK_SIZE
+        add     esi, sizeof.ring0_stack_data_t
         cmp     [SLOT_BASE + eax + app_data_t.saved_esp0], esi
         jz      .nov86
         ; ...it has page directory for V86 mode
@@ -517,38 +517,39 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         mov     eax, hotkey_list
 
   .loop:
-        cmp     [eax + 8], esi
+        cmp     [eax + hotkey_t.pslot], esi
         jnz     .cont
-        mov     ecx, [eax]
+        mov     ecx, [eax + hotkey_t.next_ptr]
         jecxz   @f
-        push    dword[eax + 12]
-        pop     dword[ecx + 12]
+        push    [eax + hotkey_t.prev_ptr]
+        pop     [ecx + hotkey_t.prev_ptr]
 
-    @@: mov     ecx, [eax + 12]
-        push    dword[eax]
-        pop     dword[ecx]
+    @@: mov     ecx, [eax + hotkey_t.prev_ptr]
+        push    [eax + hotkey_t.next_ptr]
+        pop     [ecx + hotkey_t.next_ptr]
         xor     ecx, ecx
-        mov     [eax], ecx
-        mov     [eax + 4], ecx
-        mov     [eax + 8], ecx
-        mov     [eax + 12], ecx
+        mov     [eax + hotkey_t.next_ptr], ecx
+        mov     [eax + hotkey_t.mod_keys], ecx
+        mov     [eax + hotkey_t.pslot], ecx
+        mov     [eax + hotkey_t.prev_ptr], ecx
 
   .cont:
-        add     eax, 16
-        cmp     eax, hotkey_list + 256 * 16
+        add     eax, sizeof.hotkey_t
+        cmp     eax, hotkey_list + HOTKEY_MAX_COUNT * sizeof.hotkey_t
         jb      .loop
+
         ; remove hotkeys in buffer
         mov     eax, hotkey_buffer
 
   .loop2:
-        cmp     [eax], esi
+        cmp     [eax + queued_hotkey_t.pslot], esi
         jnz     .cont2
-        and     dword[eax + 4], 0
-        and     dword[eax], 0
+        and     dword[eax + queued_hotkey_t.mod_keys], 0
+        and     [eax + queued_hotkey_t.pslot], 0
 
   .cont2:
-        add     eax, 8
-        cmp     eax, hotkey_buffer + 120 * 8
+        add     eax, sizeof.queued_hotkey_t
+        cmp     eax, hotkey_buffer + HOTKEY_BUFFER_SIZE * sizeof.queued_hotkey_t
         jb      .loop2
 
         mov     ecx, esi ; remove buttons
@@ -556,23 +557,23 @@ kproc terminate ;///////////////////////////////////////////////////////////////
   .bnewba2:
         mov     edi, [BTN_ADDR]
         mov     eax, edi
-        movzx   ebx, word[edi]
-        inc     bx
+        mov     ebx, [edi + sys_buttons_header_t.count]
+        inc     ebx
 
   .bnewba:
-        dec     bx
+        dec     ebx
         jz      .bnmba
-        add     eax, 0x10
-        cmp     cx, [eax]
+        add     eax, sizeof.sys_button_t
+        cmp     ecx, [eax + sys_button_t.pslot]
         jnz     .bnewba
         pusha
         mov     ecx, ebx
         inc     ecx
-        shl     ecx, 4
+        shl     ecx, 4 ; *= sizeof.sys_button_t
         mov     ebx, eax
-        add     eax, 0x10
+        add     eax, sizeof.sys_button_t
         call    memmove
-        dec     dword[edi]
+        dec     [edi + sys_buttons_header_t.count]
         popa
         jmp     .bnewba2
 
@@ -729,7 +730,7 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         mov     edx, [TASK_DATA + edx - sizeof.task_data_t + task_data_t.pid]
 
   .rmpr0:
-        mov     esi, [RESERVED_PORTS]
+        mov     esi, [RESERVED_PORTS.count]
 
         test    esi, esi
         jz      .rmpr9
@@ -757,7 +758,7 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         rep
         movsb
 
-        dec     dword[RESERVED_PORTS]
+        dec     [RESERVED_PORTS.count]
 
         jmp     .rmpr0
 
