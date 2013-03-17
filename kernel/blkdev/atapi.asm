@@ -67,6 +67,11 @@ kproc blk.atapi.create ;////////////////////////////////////////////////////////
         rep
         movsd
 
+        ; TODO: check supported command packet set
+;       mov     edx, [esp]
+;       movzx   edx, byte[edx + 0 + 1]
+;       and     edx, 0x1f
+
         mov     eax, blk.atapi.name_prefix
         mov     ecx, [blk.atapi.last_index]
         call    blk.set_device_name

@@ -491,7 +491,7 @@ kproc blk.ata.ctl._.check_for_drq ;/////////////////////////////////////////////
         test    al, al
         jz      .error
         test    al, BLK_ATA_CTL_STATUS_ERR
-        jnz     .error
+        jnz     .device_error
         test    al, BLK_ATA_CTL_STATUS_DF
         jnz     .error
         test    al, ah
@@ -503,6 +503,10 @@ kproc blk.ata.ctl._.check_for_drq ;/////////////////////////////////////////////
   .error:
         xor     eax, eax
         inc     eax
+        ret
+
+  .device_error:
+        mov_s_  eax, 6
         ret
 kendp
 
