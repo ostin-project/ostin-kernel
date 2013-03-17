@@ -139,9 +139,9 @@ kproc sysfn.keyboard_ctl.register_hotkey ;//////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, hotkey_list
 
-    @@: cmp     dword[eax + 8], 0
+    @@: cmp     [eax + hotkey_t.pslot], 0
         jz      .found_free
-        add     eax, 16
+        add     eax, sizeof.hotkey_t
         cmp     eax, hotkey_list + HOTKEY_MAX_COUNT * sizeof.hotkey_t
         jb      @b
         mov     [esp + 4 + regs_context32_t.eax], 1
@@ -156,7 +156,10 @@ kproc sysfn.keyboard_ctl.register_hotkey ;//////////////////////////////////////
         mov     [eax + hotkey_t.next_ptr], edx
         mov     [ecx], eax
         mov     [eax + hotkey_t.prev_ptr], ecx
-        jecxz   @f
+
+        test    edx, edx
+        jz      @f
+
         mov     [edx + hotkey_t.prev_ptr], eax
 
     @@: and     [esp + 4 + regs_context32_t.eax], 0
