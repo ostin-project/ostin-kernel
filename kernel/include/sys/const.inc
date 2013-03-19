@@ -226,6 +226,7 @@ ends
 OS_BASE = 0x80000000
 
 MAX_TASK_COUNT = 256
+RESERVED_PORTS_MAX_COUNT = 255
 
 virtual at OS_BASE
                         rb 0x1000
@@ -265,7 +266,7 @@ end if ; KCONFIG_BLK_FLOPPY
   BUTTON_INFO:          rb sizeof.sys_buttons_header_t + GUI_BUTTON_MAX_COUNT * sizeof.sys_button_t
                         rb OS_BASE + 0x002d0000 - $
   RESERVED_PORTS        app_io_ports_header_t
-                        rb 256 * sizeof.app_io_ports_range_t
+                        rb RESERVED_PORTS_MAX_COUNT * sizeof.app_io_ports_range_t
                         rb OS_BASE + 0x002e0000 - $
   IRQ_SAVE:             rb 16 * 4096
                         rb OS_BASE + 0x002f0000 - $

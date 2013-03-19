@@ -543,8 +543,8 @@ kproc mouse._.activate_sys_window_under_cursor ;////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         ; activate and redraw window under cursor (if necessary)
         call    mouse._.find_sys_window_under_cursor
-        movzx   esi, [WIN_STACK + esi * 2]
-        lea     esi, [WIN_POS + esi * 2]
+        movzx   esi, [pslot_to_wnd_pos + esi * 2]
+        lea     esi, [wnd_pos_to_pslot + esi * 2]
         jmp     waredraw
 kendp
 

@@ -510,8 +510,8 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         fnclex
         frstor  [eax]
 
-    @@: mov     [KEY_COUNT], 0 ; empty keyboard buffer
-        mov     [BTN_COUNT], 0 ; empty button buffer
+    @@: mov     [key_buffer.count], 0 ; empty keyboard buffer
+        mov     [button_buffer.count], 0 ; empty button buffer
 
         ; remove defined hotkeys
         mov     eax, hotkey_list
@@ -658,7 +658,7 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         stosd
 
         ; activate window
-        movzx   eax, [WIN_STACK + esi * 2]
+        movzx   eax, [pslot_to_wnd_pos + esi * 2]
         cmp     eax, [TASK_COUNT]
         jne     .dont_activate
         pushad
@@ -667,7 +667,7 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         dec     eax
         cmp     eax, 1
         jbe     .nothing_to_activate
-        lea     esi, [WIN_POS + eax * 2]
+        lea     esi, [wnd_pos_to_pslot + eax * 2]
         movzx   edi, word[esi] ; edi = process
         shl     edi, 5
         cmp     [TASK_DATA + edi - sizeof.task_data_t + task_data_t.state], THREAD_STATE_FREE ; skip dead slots

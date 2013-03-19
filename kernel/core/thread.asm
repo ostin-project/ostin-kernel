@@ -74,33 +74,6 @@ ends
 assert sizeof.core.thread_t mod 4 = 0
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc core.thread.lock_tree ;///////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        ; FIXME: could lead to recursion in `find_next_task`, hot fix until scheduling is refactored
-;       push    eax ecx edx
-;       mov     ecx, core.thread._.tree_mutex
-;       call    mutex_lock
-;       pop     edx ecx eax
-        pushfd
-        pop     dword[core.thread._.tree_mutex]
-        cli
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc core.thread.unlock_tree ;/////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        ; FIXME: could lead to recursion in `find_next_task`, hot fix until scheduling is refactored
-;       push    eax ecx edx
-;       mov     ecx, core.thread._.tree_mutex
-;       call    mutex_unlock
-;       pop     edx ecx eax
-        push    dword[core.thread._.tree_mutex]
-        popfd
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
 kproc core.thread.alloc ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax ^= parent core.process_t
@@ -124,7 +97,7 @@ kproc core.thread.alloc ;///////////////////////////////////////////////////////
         rep
         stosd
 
-        call    core.thread.lock_tree
+        call    core.thread._.lock_tree
 
         mov     eax, [esp]
         call    core.thread._.initialize
@@ -134,7 +107,7 @@ kproc core.thread.alloc ;///////////////////////////////////////////////////////
         add     ecx, core.process_t.threads
         call    core.thread._.add_to_siblings_list
 
-        call    core.thread.unlock_tree
+        call    core.thread._.unlock_tree
 
         pop     eax
 
@@ -154,7 +127,7 @@ kproc core.thread.free ;////////////////////////////////////////////////////////
 
         klog_   LOG_DEBUG, "thread #%u freed\n", [eax + core.thread_t.id]
 
-        call    core.thread.lock_tree
+        call    core.thread._.lock_tree
 
         call    core.thread._.remove_from_siblings_list
 
@@ -166,7 +139,7 @@ kproc core.thread.free ;////////////////////////////////////////////////////////
         mov     eax, [esp]
         call    free
 
-        call    core.thread.unlock_tree
+        call    core.thread._.unlock_tree
 
         pop     eax
         ret
@@ -181,7 +154,7 @@ kproc core.thread.find_by_id ;//////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    ebx ecx edx eax
 
-        call    core.thread.lock_tree
+        call    core.thread._.lock_tree
 
         mov     eax, [esp]
         mov     ebx, [core.thread._.tree_root]
@@ -189,7 +162,7 @@ kproc core.thread.find_by_id ;//////////////////////////////////////////////////
         call    util.b_tree.find
         xchg    eax, [esp]
 
-        call    core.thread.unlock_tree
+        call    core.thread._.unlock_tree
 
         pop     eax edx ecx ebx
         ret
@@ -211,14 +184,14 @@ kproc core.thread.enumerate ;///////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    ecx
 
-        call    core.thread.lock_tree
+        call    core.thread._.lock_tree
 
         pop     edx
         mov     ebx, [core.thread._.tree_root]
         mov     ecx, .check_valid_and_call_back
         call    util.b_tree.enumerate
 
-        call    core.thread.unlock_tree
+        call    core.thread._.unlock_tree
 
         ret
 
@@ -306,6 +279,33 @@ uglobal
   core.thread._.tree_mutex mutex_t
   core.thread._.last_id    dd ?
 endg
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc core.thread._.lock_tree ;/////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        ; FIXME: could lead to recursion in `find_next_task`, hot fix until scheduling is refactored
+;       push    eax ecx edx
+;       mov     ecx, core.thread._.tree_mutex
+;       call    mutex_lock
+;       pop     edx ecx eax
+        pushfd
+        pop     dword[core.thread._.tree_mutex]
+        cli
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc core.thread._.unlock_tree ;///////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        ; FIXME: could lead to recursion in `find_next_task`, hot fix until scheduling is refactored
+;       push    eax ecx edx
+;       mov     ecx, core.thread._.tree_mutex
+;       call    mutex_unlock
+;       pop     edx ecx eax
+        push    dword[core.thread._.tree_mutex]
+        popfd
+        ret
+kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc core.thread._.initialize ;////////////////////////////////////////////////////////////////////////////////////////

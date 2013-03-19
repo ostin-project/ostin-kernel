@@ -36,8 +36,7 @@ uglobal
   MOUSE_PICTURE    dd ?
   MOUSE_VISIBLE    dd ?
   MOUSE_CURSOR_POS point32_t
-  MOUSE_SCROLL_H   dw ?
-  MOUSE_SCROLL_V   dw ?
+  MOUSE_SCROLL_OFS point16_t
   MOUSE_COLOR_MEM  dd ?
   COLOR_TEMP       dd ?
   MOUSE_CURSOR_UNDER_POS point32_t
@@ -124,15 +123,15 @@ kproc sysfn.mouse_ctl.get_scroll_info ;/////////////////////////////////////////
 ;? System function 37.7: get mouse wheel changes from last query
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     edi, [TASK_COUNT]
-        movzx   edi, [WIN_POS + edi * 2]
+        movzx   edi, [wnd_pos_to_pslot + edi * 2]
         cmp     edi, [CURRENT_TASK]
         jne     @f
-        mov     ax, [MOUSE_SCROLL_H]
+        mov     ax, [MOUSE_SCROLL_OFS.x]
         shl     eax, 16
-        mov     ax, [MOUSE_SCROLL_V]
+        mov     ax, [MOUSE_SCROLL_OFS.y]
         mov     [esp + 4 + regs_context32_t.eax], eax
-        and     [MOUSE_SCROLL_H], 0
-        and     [MOUSE_SCROLL_V], 0
+        and     [MOUSE_SCROLL_OFS.x], 0
+        and     [MOUSE_SCROLL_OFS.y], 0
         ret
 
     @@: and     [esp + 4 + regs_context32_t.eax], 0
@@ -591,10 +590,10 @@ proc set_mouse_data stdcall, BtnState:dword, XMoving:dword, YMoving:dword, VScro
         mov     [MOUSE_CURSOR_POS.y], eax ; [YCoordinate]
 
         mov     eax, [VScroll]
-        add     [MOUSE_SCROLL_V], ax
+        add     [MOUSE_SCROLL_OFS.y], ax
 
         mov     eax, [HScroll]
-        add     [MOUSE_SCROLL_H], ax
+        add     [MOUSE_SCROLL_OFS.x], ax
 
         mov     [mouse_active], 1
         mov     eax, dword[timer_ticks]

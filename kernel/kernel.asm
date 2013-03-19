@@ -34,8 +34,6 @@ include "include/globals.inc"
 include "include/fs.inc"
 include "include/syscall.inc"
 
-max_processes   = 255
-
 os_stack        = offsetof.gdts.os_data ; GDTs
 os_code         = offsetof.gdts.os_code
 graph_data      = offsetof.gdts.graph_data + 3
@@ -1190,8 +1188,8 @@ kproc set_variables ;///////////////////////////////////////////////////////////
         mov     [BTN_ADDR], BUTTON_INFO ; address of button list
 
 ;       mov     [MOUSE_BUFF_COUNT], al ; mouse buffer
-        mov     [KEY_COUNT], al ; keyboard buffer
-        mov     [BTN_COUNT], al ; button buffer
+        mov     [key_buffer.count], al ; keyboard buffer
+        mov     [button_buffer.count], al ; button buffer
 
         mov     [DONT_SWITCH], al ; change task if possible
         pop     eax
@@ -1857,15 +1855,15 @@ kproc sysfn.system_ctl.activate_window ;////////////////////////////////////////
 
         mov     [window_minimize], 2 ; restore window if minimized
 
-        movzx   esi, [WIN_STACK + ecx * 2]
+        movzx   esi, [pslot_to_wnd_pos + ecx * 2]
         cmp     esi, [TASK_COUNT]
         je      .nowindowactivate ; already active
 
         mov     edi, ecx
         shl     edi, 5
         add     edi, window_data
-        movzx   esi, [WIN_STACK + ecx * 2]
-        lea     esi, [WIN_POS + esi * 2]
+        movzx   esi, [pslot_to_wnd_pos + ecx * 2]
+        lea     esi, [wnd_pos_to_pslot + esi * 2]
         call    waredraw
 
   .nowindowactivate:
@@ -1901,7 +1899,7 @@ kproc sysfn.system_ctl.get_active_window_slot ;/////////////////////////////////
 ;? System function 18.7: get process slot number of active window
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, [TASK_COUNT]
-        movzx   eax, [WIN_POS + eax * 2]
+        movzx   eax, [wnd_pos_to_pslot + eax * 2]
         mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
@@ -2152,9 +2150,9 @@ kproc sysfn.system_ctl.alien_window_ctl ;///////////////////////////////////////
 
     @@: or      eax, eax ; eax - number of slot
         jz      .error
-        cmp     eax, 255 ; varify maximal slot number
-        ja      .error
-        movzx   eax, [WIN_STACK + eax * 2]
+        cmp     eax, MAX_TASK_COUNT ; varify maximal slot number
+        jae     .error
+        movzx   eax, [pslot_to_wnd_pos + eax * 2]
         shr     ecx, 1
         jc      .restore
 
@@ -2211,15 +2209,15 @@ kproc sysfn.get_process_info ;//////////////////////////////////////////////////
         mov     ecx, [CURRENT_TASK]
 
   .no_who_am_i:
-        cmp     ecx, max_processes
-        ja      .nofillbuf
+        cmp     ecx, MAX_TASK_COUNT
+        jae     .nofillbuf
 
         ; +4: word: position of the window of thread in the window stack
-        mov     ax, [WIN_STACK + ecx * 2]
+        mov     ax, [pslot_to_wnd_pos + ecx * 2]
         mov     [ebx + process_info_t.window_stack_position], ax
         ; +6: word: number of the thread slot, which window has in the window stack
         ;           position ecx (has no relation to the specific thread)
-        mov     ax, [WIN_POS + ecx * 2]
+        mov     ax, [wnd_pos_to_pslot + ecx * 2]
         mov     [ebx + process_info_t.window_stack_value], ax
 
         shl     ecx, 5
@@ -2958,7 +2956,7 @@ kproc r_f_port_area ;///////////////////////////////////////////////////////////
         mov     eax, [RESERVED_PORTS.count]
         test    eax, eax ; no reserved areas ?
         je      .rpal2
-        cmp     eax, 255 ; max reserved
+        cmp     eax, RESERVED_PORTS_MAX_COUNT ; max reserved
         jae     .rpal1
 
   .rpal3:

@@ -22,10 +22,35 @@ WINDOW_MOVE_AND_RESIZE_FLAGS = \
   mouse.WINDOW_RESIZE_E_FLAG + \
   mouse.WINDOW_MOVE_FLAG
 
+BUTTON_BUFFER_SIZE = 1
+KEY_BUFFER_SIZE    = 120
+HOTKEY_BUFFER_SIZE = 120
+
+struct queued_hotkey_t
+  pslot    dd ?
+  mod_keys dw ?
+  scancode db ?
+           db ?
+ends
+
+assert sizeof.queued_hotkey_t = 8
+assert queued_hotkey_t.mod_keys = 4
+
 uglobal
   event_start dd ?
   event_end   dd ?
   event_uid   dd 0
+
+  align 4
+  button_buffer rd BUTTON_BUFFER_SIZE
+  button_buffer.count db ?
+
+  align 4
+  key_buffer.count db ?
+  key_buffer rb KEY_BUFFER_SIZE
+
+  align 4
+  hotkey_buffer: rb HOTKEY_BUFFER_SIZE * sizeof.queued_hotkey_t
 endg
 
 EV_SPACE   = 512
@@ -489,19 +514,19 @@ kproc sysfn.send_window_message ;///////////////////////////////////////////////
         jnz     .retf
 
   .sendbtn:
-        cmp     [BTN_COUNT], 1
+        cmp     [button_buffer.count], BUTTON_BUFFER_SIZE
         jae     .result ; overflow
-        inc     [BTN_COUNT]
+        inc     [button_buffer.count]
         shl     edx, 8
-        mov     [BTN_BUFF], edx
+        mov     [button_buffer], edx
         jmp     .result
 
   .sendkey:
-        movzx   eax, [KEY_COUNT]
-        cmp     al, 120
+        movzx   eax, [key_buffer.count]
+        cmp     al, KEY_BUFFER_SIZE
         jae     .result ; overflow
-        inc     [KEY_COUNT]
-        mov     [KEY_BUFF + eax], dl
+        inc     [key_buffer.count]
+        mov     [key_buffer + eax], dl
 
   .result:
         setae   [esp + 4 + regs_context32_t.al] ; initially, al==72
@@ -631,28 +656,28 @@ kproc get_event_for_app ;///////////////////////////////////////////////////////
 
   .BtKy:
         movzx   edx, bh
-        movzx   edx, [WIN_STACK + edx * 2]
+        movzx   edx, [pslot_to_wnd_pos + edx * 2]
         je      .Keys ; eax=1, retval Keys=2
 
   .Buttons:
         ; eax=2, retval Buttons=3
-        cmp     [BTN_COUNT], 0
+        cmp     [button_buffer.count], 0
         je      .loop ; empty ???
         cmp     edx, [TASK_COUNT]
         jne     .loop ; not Top ???
-        mov     edx, [BTN_BUFF]
+        mov     edx, [button_buffer]
         shr     edx, 8
         cmp     edx, 0xffff ; -ID for Minimize-Button of Form
         jne     .result
         mov     [window_minimize], 1
-        dec     [BTN_COUNT]
+        dec     [button_buffer.count]
         jmp     .loop
 
   .Keys:
         ; eax==1
         cmp     edx, [TASK_COUNT]
         jne     @f ; not Top ???
-        cmp     [KEY_COUNT], al ; al==1
+        cmp     [key_buffer.count], al ; al==1
         jae     .result ; not empty ???
 
     @@: mov     edx, hotkey_buffer

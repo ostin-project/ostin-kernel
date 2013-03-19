@@ -31,7 +31,6 @@ VKEY_CONTROL  = 0000000000001100b
 VKEY_ALT      = 0000000000110000b
 
 HOTKEY_MAX_COUNT   = 256
-HOTKEY_BUFFER_SIZE = 120
 
 struct hotkey_t
   next_ptr dd ?
@@ -42,16 +41,6 @@ ends
 
 assert sizeof.hotkey_t = 16
 assert hotkey_t.next_ptr = 0
-
-struct queued_hotkey_t
-  pslot    dd ?
-  mod_keys dw ?
-  scancode db ?
-           db ?
-ends
-
-assert sizeof.queued_hotkey_t = 8
-assert queued_hotkey_t.mod_keys = 4
 
 uglobal
   kb_state         dd 0
@@ -68,7 +57,6 @@ uglobal
   align 4
   hotkey_scancodes rd 256     ; we have 256 scancodes
   hotkey_list:     rb HOTKEY_MAX_COUNT * sizeof.hotkey_t ; max HOTKEY_MAX_COUNT defined hotkeys
-  hotkey_buffer:   rb HOTKEY_BUFFER_SIZE * sizeof.queued_hotkey_t ; buffer for HOTKEY_BUFFER_SIZE hotkeys
 endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -220,21 +208,21 @@ kproc sysfn.get_key ;///////////////////////////////////////////////////////////
         mov     [esp + 4 + regs_context32_t.eax], 1
         ; test main buffer
         mov     ebx, [CURRENT_TASK] ; TOP OF WINDOW STACK
-        movzx   ecx, [WIN_STACK + ebx * 2]
+        movzx   ecx, [pslot_to_wnd_pos + ebx * 2]
         mov     edx, [TASK_COUNT]
         cmp     ecx, edx
         jne     .finish
-        cmp     [KEY_COUNT], 0
+        cmp     [key_buffer.count], 0
         je      .finish
-        movzx   eax, [KEY_BUFF]
+        movzx   eax, [key_buffer]
         shl     eax, 8
         push    eax
-        dec     [KEY_COUNT]
-        and     [KEY_COUNT], 127
-        movzx   ecx, [KEY_COUNT]
+        dec     [key_buffer.count]
+        and     [key_buffer.count], 127
+        movzx   ecx, [key_buffer.count]
         add     ecx, 2
-        mov     eax, KEY_BUFF + 1
-        mov     ebx, KEY_BUFF
+        mov     eax, key_buffer + 1
+        mov     ebx, key_buffer
         call    memmove
         pop     eax
 
@@ -326,7 +314,7 @@ kendp
 kproc set_keyboard_data ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, [TASK_COUNT] ; top window process
-        movzx   eax, [WIN_POS + eax * 2]
+        movzx   eax, [wnd_pos_to_pslot + eax * 2]
         shl     eax, 8
         mov     al, [SLOT_BASE + eax + app_data_t.keyboard_mode]
         mov     [keyboard_mode], al
@@ -351,7 +339,7 @@ kendp
 kproc irq1 ;////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     eax, [TASK_COUNT] ; top window process
-        movzx   eax, [WIN_POS + eax * 2]
+        movzx   eax, [wnd_pos_to_pslot + eax * 2]
         shl     eax, 8
         mov     al, [SLOT_BASE + eax + app_data_t.keyboard_mode]
         mov     [keyboard_mode], al
@@ -576,12 +564,12 @@ kproc send_scancode ;///////////////////////////////////////////////////////////
         mov     bl, ch
 
   .dowrite:
-        movzx   eax, [KEY_COUNT]
-        cmp     al, 120
+        movzx   eax, [key_buffer.count]
+        cmp     al, KEY_BUFFER_SIZE
         jae     .exit.irq1
         inc     eax
-        mov     [KEY_COUNT], al
-        mov     [KEY_BUFF + eax - 1], bl
+        mov     [key_buffer.count], al
+        mov     [key_buffer + eax - 1], bl
 
   .exit.irq1:
         mov     [check_idle_semaphore], 5

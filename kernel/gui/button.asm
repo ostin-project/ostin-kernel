@@ -275,16 +275,16 @@ kproc sysfn.get_clicked_button_id ;/////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     ebx, [CURRENT_TASK] ; TOP OF WINDOW STACK
         mov     [esp + 4 + regs_context32_t.eax], 1
-        movzx   ecx, [WIN_STACK + ebx * 2]
+        movzx   ecx, [pslot_to_wnd_pos + ebx * 2]
         mov     edx, [TASK_COUNT] ; less than MAX_TASK_COUNT processes
         cmp     ecx, edx
         jne     .exit
-        movzx   eax, [BTN_COUNT]
+        movzx   eax, [button_buffer.count]
         test    eax, eax
         jz      .exit
-        mov     eax, [BTN_BUFF]
+        mov     eax, [button_buffer]
         and     al, 0xfe ; delete left button bit
-        mov     [BTN_COUNT], 0
+        dec     [button_buffer.count]
         mov     [esp + 4 + regs_context32_t.eax], eax
 
   .exit:
@@ -344,13 +344,16 @@ kproc sys_button_perform_handler ;//////////////////////////////////////////////
         mov     al, cl
 
         ; FIXME: the rest of code assumes there could be at most 1 button in the buffer...
-;       movzx   ebx, [BTN_COUNT]
-;       mov     [BTN_BUFF + ebx * 4], eax
+;       movzx   ebx, [button_buffer.count]
+;       mov     [button_buffer + ebx * 4], eax
 ;       inc     bl
-;       mov     [BTN_COUNT], bl
+;       mov     [button_buffer.count], bl
+
+assert BUTTON_BUFFER_SIZE = 1
+
         ; FIXME: ... so we simplify it for now
-        mov     [BTN_BUFF], eax
-        mov     [BTN_COUNT], 1
+        mov     [button_buffer], eax
+        mov     [button_buffer.count], 1
 
         ret
 kendp

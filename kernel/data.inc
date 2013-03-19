@@ -196,14 +196,8 @@ CURRENT_PROCESS   dd ?
 TASK_COUNT        dd ?
 TASK_BASE         dd ?
 
-WIN_STACK         rw 512
-WIN_POS           rw 512
-
-KEY_COUNT         db ?
-KEY_BUFF          rb 255
-BTN_COUNT         db ?
-                  rb 3
-BTN_BUFF          dd ?
+pslot_to_wnd_pos  rw MAX_TASK_COUNT ; formely WIN_STACK
+wnd_pos_to_pslot  rw MAX_TASK_COUNT ; formely WIN_POS
 
 CPU_FREQ          dd ?
 

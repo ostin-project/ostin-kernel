@@ -174,7 +174,7 @@ kproc sysfn.draw_window ;///////////////////////////////////////////////////////
 
     @@: ; type IV & V - skinned window (resizable & not)
         mov     eax, [TASK_COUNT]
-        movzx   eax, [WIN_POS + eax * 2]
+        movzx   eax, [wnd_pos_to_pslot + eax * 2]
         cmp     eax, [CURRENT_TASK]
         setz    al
         movzx   eax, al
@@ -566,15 +566,15 @@ kproc set_window_defaults ;/////////////////////////////////////////////////////
         mov     byte[window_data + sizeof.window_data_t + window_data_t.cl_titlebar + 3], 1 ; desktop is not movable
         push    eax ecx
         xor     eax, eax
-        mov     ecx, WIN_STACK
+        mov     ecx, pslot_to_wnd_pos
 
     @@: inc     eax
         add     ecx, 2
         ; process no
         mov     [ecx], ax
         ; positions in stack
-        mov     [ecx + WIN_POS - WIN_STACK], ax
-        cmp     ecx, WIN_POS - 2
+        mov     [ecx + wnd_pos_to_pslot - pslot_to_wnd_pos], ax
+        cmp     ecx, wnd_pos_to_pslot - 2
         jne     @b
         pop     ecx eax
         ret
@@ -607,7 +607,7 @@ kproc calculatescreen ;/////////////////////////////////////////////////////////
         push    edx ecx ebx eax
 
   .next_window:
-        movzx   edi, [WIN_POS + esi * 2]
+        movzx   edi, [wnd_pos_to_pslot + esi * 2]
         shl     edi, 5
 
         cmp     [TASK_DATA + edi - sizeof.task_data_t + task_data_t.state], THREAD_STATE_FREE
@@ -649,7 +649,7 @@ kproc calculatescreen ;/////////////////////////////////////////////////////////
         mov     edx, [esp + rect32_t.bottom]
 
     @@: push    esi
-        movzx   esi, [WIN_POS + esi * 2]
+        movzx   esi, [wnd_pos_to_pslot + esi * 2]
         call    window._.set_screen
         pop     esi
 
@@ -1040,7 +1040,7 @@ kproc waredraw ;////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    -1
         mov     eax, [TASK_COUNT]
-        lea     eax, [WIN_POS + eax * 2]
+        lea     eax, [wnd_pos_to_pslot + eax * 2]
         cmp     eax, esi
         pop     eax
         je      .exit
@@ -1058,7 +1058,7 @@ kproc waredraw ;////////////////////////////////////////////////////////////////
 
         pushad
         mov     edi, [TASK_COUNT]
-        movzx   esi, [WIN_POS + edi * 2]
+        movzx   esi, [wnd_pos_to_pslot + edi * 2]
         shl     esi, 5
         add     esi, window_data
 
@@ -1071,7 +1071,7 @@ kproc waredraw ;////////////////////////////////////////////////////////////////
         add     edx, ebx
 
         mov     edi, [TASK_COUNT]
-        movzx   esi, [WIN_POS + edi * 2]
+        movzx   esi, [wnd_pos_to_pslot + edi * 2]
         call    window._.set_screen
         popad
 
@@ -1106,7 +1106,7 @@ kproc minimize_window ;/////////////////////////////////////////////////////////
         cli
 
         ; is it already minimized?
-        movzx   edi, [WIN_POS + eax * 2]
+        movzx   edi, [wnd_pos_to_pslot + eax * 2]
         shl     edi, 5
         add     edi, window_data
         test    [edi + window_data_t.fl_wstate], WINDOW_STATE_MINIMIZED
@@ -1151,7 +1151,7 @@ kproc restore_minimized_window ;////////////////////////////////////////////////
         cli
 
         ; is it already restored?
-        movzx   esi, [WIN_POS + eax * 2]
+        movzx   esi, [wnd_pos_to_pslot + eax * 2]
         mov     edi, esi
         shl     edi, 5
         add     edi, window_data
@@ -1677,8 +1677,8 @@ kproc window._.sys_set_window ;/////////////////////////////////////////////////
         pop     edi ecx
 
         mov     esi, [CURRENT_TASK]
-        movzx   esi, [WIN_STACK + esi * 2]
-        lea     esi, [WIN_POS + esi * 2]
+        movzx   esi, [pslot_to_wnd_pos + esi * 2]
+        lea     esi, [wnd_pos_to_pslot + esi * 2]
         call    waredraw
 
         mov     eax, [edi + window_data_t.box.left]
@@ -1689,8 +1689,8 @@ kproc window._.sys_set_window ;/////////////////////////////////////////////////
         add     edx, ebx
         call    calculatescreen
 
-        mov     [KEY_COUNT], 0 ; empty keyboard buffer
-        mov     [BTN_COUNT], 0 ; empty button buffer
+        mov     [key_buffer.count], 0 ; empty keyboard buffer
+        mov     [button_buffer.count], 0 ; empty button buffer
 
   .set_client_box:
         ; update window client box coordinates
@@ -2000,13 +2000,13 @@ kproc window._.window_activate ;////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Activate window
 ;-----------------------------------------------------------------------------------------------------------------------
-;> esi = pointer to WIN_POS+ window data
+;> esi = pointer to wnd_pos_to_pslot+ window data
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax ebx
 
         ; if type of current active window is 3 or 4, it must be redrawn
         mov     ebx, [TASK_COUNT]
-        movzx   ebx, [WIN_POS + ebx * 2]
+        movzx   ebx, [wnd_pos_to_pslot + ebx * 2]
         shl     ebx, 5
         add     eax, window_data
         mov     al, [window_data + ebx + window_data_t.fl_wstyle]
@@ -2023,7 +2023,7 @@ kproc window._.window_activate ;////////////////////////////////////////////////
         ; ax <- process no
         movzx   ebx, word[esi]
         ; ax <- position in window stack
-        movzx   ebx, [WIN_STACK + ebx * 2]
+        movzx   ebx, [pslot_to_wnd_pos + ebx * 2]
 
         ; drop others
         xor     eax, eax
@@ -2032,9 +2032,9 @@ kproc window._.window_activate ;////////////////////////////////////////////////
         cmp     eax, [TASK_COUNT]
         jae     .move_self_up
         inc     eax
-        cmp     [WIN_STACK + eax * 2], bx
+        cmp     [pslot_to_wnd_pos + eax * 2], bx
         jbe     .next_stack_window
-        dec     [WIN_STACK + eax * 2]
+        dec     [pslot_to_wnd_pos + eax * 2]
         jmp     .next_stack_window
 
   .move_self_up:
@@ -2042,7 +2042,7 @@ kproc window._.window_activate ;////////////////////////////////////////////////
         ; number of processes
         mov     eax, [TASK_COUNT]
         ; this is the last (and the upper)
-        mov     [WIN_STACK + ebx * 2], ax
+        mov     [pslot_to_wnd_pos + ebx * 2], ax
 
         ; update on screen - window stack
         xor     eax, eax
@@ -2051,15 +2051,15 @@ kproc window._.window_activate ;////////////////////////////////////////////////
         cmp     eax, [TASK_COUNT]
         jae     .reset_vars
         inc     eax
-        movzx   ebx, [WIN_STACK + eax * 2]
-        mov     [WIN_POS + ebx * 2], ax
+        movzx   ebx, [pslot_to_wnd_pos + eax * 2]
+        mov     [wnd_pos_to_pslot + ebx * 2], ax
         jmp     .next_window_pos
 
   .reset_vars:
-        mov     [KEY_COUNT], 0
-        mov     [BTN_COUNT], 0
-        mov     [MOUSE_SCROLL_H], 0
-        mov     [MOUSE_SCROLL_V], 0
+        mov     [key_buffer.count], 0
+        mov     [button_buffer.count], 0
+        mov     [MOUSE_SCROLL_OFS.x], 0
+        mov     [MOUSE_SCROLL_OFS.y], 0
 
         pop     ebx eax
         ret
@@ -2085,14 +2085,14 @@ kproc window._.check_window_draw ;//////////////////////////////////////////////
         sub     eax, window_data
         shr     eax, 5
 
-        movzx   eax, [WIN_STACK + eax * 2] ; get value of the curr process
-        lea     esi, [WIN_POS + eax * 2] ; get address of this process at 0xC400
+        movzx   eax, [pslot_to_wnd_pos + eax * 2] ; get value of the curr process
+        lea     esi, [wnd_pos_to_pslot + eax * 2] ; get address of this process at 0xC400
 
   .next_window:
         add     esi, 2
 
         mov     eax, [TASK_COUNT]
-        lea     eax, [WIN_POS + eax * 2] ; number of the upper window
+        lea     eax, [wnd_pos_to_pslot + eax * 2] ; number of the upper window
 
         cmp     esi, eax
         ja      .exit.no_redraw
@@ -2147,7 +2147,7 @@ kproc window._.draw_window_caption ;////////////////////////////////////////////
 
         xor     eax, eax
         mov     edx, [TASK_COUNT]
-        movzx   edx, [WIN_POS + edx * 2]
+        movzx   edx, [wnd_pos_to_pslot + edx * 2]
         cmp     edx, [CURRENT_TASK]
         jne     @f
         inc     eax
