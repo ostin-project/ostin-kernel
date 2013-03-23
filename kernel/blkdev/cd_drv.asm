@@ -66,9 +66,9 @@ kproc reserve_cd ;//////////////////////////////////////////////////////////////
 
 reserve_ok2:
         push    eax
-        mov     eax, [CURRENT_TASK]
-        shl     eax, 5
-        mov     eax, [TASK_DATA + eax - sizeof.task_data_t + task_data_t.pid]
+        mov     eax, [current_slot]
+        shl     eax, 9 ; * sizeof.legacy.slot_t
+        mov     eax, [legacy_slots + eax + legacy.slot_t.task.pid]
         mov     [cd_status], eax
         pop     eax
         sti

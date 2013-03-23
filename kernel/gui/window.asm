@@ -81,7 +81,7 @@ kproc sysfn.set_draw_state.begin_drawing ;//////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 12.1
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     ecx, [CURRENT_TASK]
+        mov     ecx, [current_slot]
 
   .sys_newba2:
         mov     edi, [BTN_ADDR]
@@ -120,14 +120,13 @@ kproc sysfn.set_draw_state.end_drawing ;////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 12.2
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     edx, [TASK_BASE]
-        add     edx, draw_data - (TASK_DATA - sizeof.task_data_t)
-        mov     [edx + draw_data_t.left], 0
-        mov     [edx + draw_data_t.top], 0
+        mov     edx, [current_slot_ptr]
+        mov     [edx + legacy.slot_t.draw.left], 0
+        mov     [edx + legacy.slot_t.draw.top], 0
         mov     eax, [Screen_Max_Pos.x]
-        mov     [edx + draw_data_t.right], eax
+        mov     [edx + legacy.slot_t.draw.right], eax
         mov     eax, [Screen_Max_Pos.y]
-        mov     [edx + draw_data_t.bottom], eax
+        mov     [edx + legacy.slot_t.draw.bottom], eax
         ret
 kendp
 
@@ -173,9 +172,9 @@ kproc sysfn.draw_window ;///////////////////////////////////////////////////////
         jmp     window._.draw_window_caption.2
 
     @@: ; type IV & V - skinned window (resizable & not)
-        mov     eax, [TASK_COUNT]
+        mov     eax, [legacy_slots.last_valid_slot]
         movzx   eax, [wnd_pos_to_pslot + eax * 2]
-        cmp     eax, [CURRENT_TASK]
+        cmp     eax, [current_slot]
         setz    al
         movzx   eax, al
         push    eax
@@ -228,7 +227,7 @@ endg
         mov     [draw_limits.right], eax
         mov     eax, [Screen_Max_Pos.y]
         mov     [draw_limits.bottom], eax
-        mov     eax, window_data
+        mov     eax, legacy_slots
         jmp     redrawscreen
 kendp
 
@@ -460,16 +459,16 @@ kproc sysfn.set_window_shape ;//////////////////////////////////////////////////
 ;> ebx = 1
 ;> ecx = scale power (resulting scale is 2^ebx)
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     edi, [current_slot]
+        mov     edi, [current_slot_ptr]
 
         test    ebx, ebx
         jne     .shape_scale
-        mov     [edi + app_data_t.wnd_shape], ecx
+        mov     [edi + legacy.slot_t.app.wnd_shape], ecx
 
   .shape_scale:
         dec     ebx
         jnz     .exit
-        mov     [edi + app_data_t.wnd_shape_scale], ecx
+        mov     [edi + legacy.slot_t.app.wnd_shape_scale], ecx
 
   .exit:
         ret
@@ -480,35 +479,33 @@ kproc sysfn.move_window ;///////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 67
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     edi, [CURRENT_TASK]
-        shl     edi, 5
-        add     edi, window_data
+        mov     edi, [current_slot_ptr]
 
-        test    [edi + window_data_t.fl_wdrawn], 1
+        test    [edi + legacy.slot_t.window.fl_wdrawn], 1
         jz      .exit
 
-        test    [edi + window_data_t.fl_wstate], WINDOW_STATE_MAXIMIZED
+        test    [edi + legacy.slot_t.window.fl_wstate], WINDOW_STATE_MAXIMIZED
         jnz     .exit
 
         cmp     ebx, -1
         jne     @f
-        mov     ebx, [edi + window_data_t.box.left]
+        mov     ebx, [edi + legacy.slot_t.window.box.left]
 
     @@: cmp     ecx, -1
         jne     @f
-        mov     ecx, [edi + window_data_t.box.top]
+        mov     ecx, [edi + legacy.slot_t.window.box.top]
 
     @@: cmp     edx, -1
         jne     @f
-        mov     edx, [edi + window_data_t.box.width]
+        mov     edx, [edi + legacy.slot_t.window.box.width]
 
     @@: cmp     esi, -1
         jne     @f
-        mov     esi, [edi + window_data_t.box.height]
+        mov     esi, [edi + legacy.slot_t.window.box.height]
 
     @@: push    esi edx ecx ebx
         mov     eax, esp
-        mov     bl, [edi + window_data_t.fl_wstate]
+        mov     bl, [edi + legacy.slot_t.window.fl_wstate]
         call    window._.set_window_box
         add     esp, sizeof.box32_t
 
@@ -535,11 +532,11 @@ kproc sysfn.window_settings ;///////////////////////////////////////////////////
         ; NOTE: only window owner thread can set its caption,
         ;       so there's no parameter for PID/TID
 
-        mov     edi, [CURRENT_TASK]
-        shl     edi, 5
+        mov     edi, [current_slot]
+        shl     edi, 9 ; * sizeof.legacy.slot_t
 
-        mov     [SLOT_BASE + edi * 8 + app_data_t.wnd_caption], ecx
-        or      [window_data + edi + window_data_t.fl_wstyle], WSTYLE_HASCAPTION
+        mov     [legacy_slots + edi + legacy.slot_t.app.wnd_caption], ecx
+        or      [legacy_slots + edi + legacy.slot_t.window.fl_wstyle], WSTYLE_HASCAPTION
 
         call    window._.draw_window_caption
 
@@ -563,7 +560,7 @@ kproc set_window_defaults ;/////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? <description>
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     byte[window_data + sizeof.window_data_t + window_data_t.cl_titlebar + 3], 1 ; desktop is not movable
+        mov     byte[legacy_os_idle_slot.window.cl_titlebar + 3], 1 ; desktop is not movable
         push    eax ecx
         xor     eax, eax
         mov     ecx, pslot_to_wnd_pos
@@ -600,7 +597,7 @@ kproc calculatescreen ;/////////////////////////////////////////////////////////
 
         push    ebp
 
-        mov     ebp, [TASK_COUNT]
+        mov     ebp, [legacy_slots.last_valid_slot]
         cmp     ebp, 1
         jbe     .exit
 
@@ -608,26 +605,26 @@ kproc calculatescreen ;/////////////////////////////////////////////////////////
 
   .next_window:
         movzx   edi, [wnd_pos_to_pslot + esi * 2]
-        shl     edi, 5
+        shl     edi, 9 ; * sizeof.legacy.slot_t
 
-        cmp     [TASK_DATA + edi - sizeof.task_data_t + task_data_t.state], THREAD_STATE_FREE
+        cmp     [legacy_slots + edi + legacy.slot_t.task.state], THREAD_STATE_FREE
         je      .skip_window
 
-        add     edi, window_data
-        test    [edi + window_data_t.fl_wstate], WINDOW_STATE_MINIMIZED
+        add     edi, legacy_slots
+        test    [edi + legacy.slot_t.window.fl_wstate], WINDOW_STATE_MINIMIZED
         jnz     .skip_window
 
-        mov     eax, [edi + window_data_t.box.left]
+        mov     eax, [edi + legacy.slot_t.window.box.left]
         cmp     eax, [esp + rect32_t.right]
         jg      .skip_window
-        mov     ebx, [edi + window_data_t.box.top]
+        mov     ebx, [edi + legacy.slot_t.window.box.top]
         cmp     ebx, [esp + rect32_t.bottom]
         jg      .skip_window
-        mov     ecx, [edi + window_data_t.box.width]
+        mov     ecx, [edi + legacy.slot_t.window.box.width]
         add     ecx, eax
         cmp     ecx, [esp + rect32_t.left]
         jl      .skip_window
-        mov     edx, [edi + window_data_t.box.height]
+        mov     edx, [edi + legacy.slot_t.window.box.height]
         add     edx, ebx
         cmp     edx, [esp + rect32_t.top]
         jl      .skip_window
@@ -672,64 +669,65 @@ kproc repos_windows ;///////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? <description>
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     ecx, [TASK_COUNT]
-        mov     edi, window_data + 2 * sizeof.window_data_t
+        mov     ecx, [legacy_slots.last_valid_slot]
+        mov     edi, legacy_slots + 2 * sizeof.legacy.slot_t
         call    force_redraw_background
         dec     ecx
         jle     .exit
 
   .next_window:
-        mov     [edi + window_data_t.fl_redraw], 1
-        test    [edi + window_data_t.fl_wstate], WINDOW_STATE_MAXIMIZED
+        mov     [edi + legacy.slot_t.window.fl_redraw], 1
+        test    [edi + legacy.slot_t.window.fl_wstate], WINDOW_STATE_MAXIMIZED
         jnz     .fix_maximized
 
-        mov     eax, [edi + window_data_t.box.left]
-        add     eax, [edi + window_data_t.box.width]
+        mov     eax, [edi + legacy.slot_t.window.box.left]
+        add     eax, [edi + legacy.slot_t.window.box.width]
         mov     ebx, [Screen_Max_Pos.x]
         cmp     eax, ebx
         jle     .fix_vertical
-        mov     eax, [edi + window_data_t.box.width]
+        mov     eax, [edi + legacy.slot_t.window.box.width]
         sub     eax, ebx
         jle     @f
-        mov     [edi + window_data_t.box.width], ebx
+        mov     [edi + legacy.slot_t.window.box.width], ebx
 
-    @@: sub     ebx, [edi + window_data_t.box.width]
-        mov     [edi + window_data_t.box.left], ebx
+    @@: sub     ebx, [edi + legacy.slot_t.window.box.width]
+        mov     [edi + legacy.slot_t.window.box.left], ebx
 
   .fix_vertical:
-        mov     eax, [edi + window_data_t.box.top]
-        add     eax, [edi + window_data_t.box.height]
+        mov     eax, [edi + legacy.slot_t.window.box.top]
+        add     eax, [edi + legacy.slot_t.window.box.height]
         mov     ebx, [Screen_Max_Pos.y]
         cmp     eax, ebx
         jle     .fix_client_box
-        mov     eax, [edi + window_data_t.box.height]
+        mov     eax, [edi + legacy.slot_t.window.box.height]
         sub     eax, ebx
         jle     @f
-        mov     [edi + window_data_t.box.height], ebx
+        mov     [edi + legacy.slot_t.window.box.height], ebx
 
-    @@: sub     ebx, [edi + window_data_t.box.height]
-        mov     [edi + window_data_t.box.top], ebx
+    @@: sub     ebx, [edi + legacy.slot_t.window.box.height]
+        mov     [edi + legacy.slot_t.window.box.top], ebx
         jmp     .fix_client_box
 
   .fix_maximized:
         mov     eax, [screen_workarea.left]
-        mov     [edi + window_data_t.box.left], eax
+        mov     [edi + legacy.slot_t.window.box.left], eax
         sub     eax, [screen_workarea.right]
         neg     eax
-        mov     [edi + window_data_t.box.width], eax
+        mov     [edi + legacy.slot_t.window.box.width], eax
         mov     eax, [screen_workarea.top]
-        mov     [edi + window_data_t.box.top], eax
-        test    [edi + window_data_t.fl_wstate], WINDOW_STATE_ROLLEDUP
+        mov     [edi + legacy.slot_t.window.box.top], eax
+        test    [edi + legacy.slot_t.window.fl_wstate], WINDOW_STATE_ROLLEDUP
         jnz     .fix_client_box
         sub     eax, [screen_workarea.bottom]
         neg     eax
-        mov     [edi + window_data_t.box.height], eax
+        mov     [edi + legacy.slot_t.window.box.height], eax
 
   .fix_client_box:
         call    window._.set_window_clientbox
 
-        add     edi, sizeof.window_data_t
-        loop    .next_window
+        add     edi, sizeof.legacy.slot_t
+        dec     ecx
+        jnz     .next_window
 
   .exit:
         ret
@@ -817,14 +815,14 @@ kproc drawwindow_I_caption ;////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? <description>
 ;-----------------------------------------------------------------------------------------------------------------------
-        push    [edx + window_data_t.cl_titlebar]
+        push    [edx + legacy.slot_t.window.cl_titlebar]
         mov     esi, edx
 
-        mov     edx, [esi + window_data_t.box.top]
+        mov     edx, [esi + legacy.slot_t.window.box.top]
         mov     eax, edx
         lea     ebx, [edx + 21]
         inc     edx
-        add     eax, [esi + window_data_t.box.height]
+        add     eax, [esi + legacy.slot_t.window.box.height]
 
         cmp     ebx, eax
         jbe     @f
@@ -837,17 +835,17 @@ kproc drawwindow_I_caption ;////////////////////////////////////////////////////
         mov     ebx, edx
         shl     ebx, 16
         add     ebx, edx
-        mov     eax, [esi + window_data_t.box.left]
+        mov     eax, [esi + legacy.slot_t.window.box.left]
         inc     eax
         shl     eax, 16
-        add     eax, [esi + window_data_t.box.left]
-        add     eax, [esi + window_data_t.box.width]
+        add     eax, [esi + legacy.slot_t.window.box.left]
+        add     eax, [esi + legacy.slot_t.window.box.width]
         dec     eax
-        mov     ecx, [esi + window_data_t.cl_titlebar]
+        mov     ecx, [esi + legacy.slot_t.window.cl_titlebar]
         test    ecx, 0x80000000
         jz      @f
         sub     ecx, 0x00040404
-        mov     [esi + window_data_t.cl_titlebar], ecx
+        mov     [esi + legacy.slot_t.window.cl_titlebar], ecx
 
     @@: and     ecx, 0x00ffffff
         call    [draw_line]
@@ -856,7 +854,7 @@ kproc drawwindow_I_caption ;////////////////////////////////////////////////////
         jb      .next_line
 
         add     esp, 4
-        pop     [esi + window_data_t.cl_titlebar]
+        pop     [esi + legacy.slot_t.window.cl_titlebar]
         ret
 kendp
 
@@ -869,14 +867,14 @@ kproc drawwindow_I ;////////////////////////////////////////////////////////////
 
         ; window border
 
-        mov     eax, [edx + window_data_t.box.left - 2]
-        mov     ax, word[edx + window_data_t.box.left]
-        add     ax, word[edx + window_data_t.box.width]
-        mov     ebx, [edx + window_data_t.box.top - 2]
-        mov     bx, word[edx + window_data_t.box.top]
-        add     bx, word[edx + window_data_t.box.height]
+        mov     eax, [edx + legacy.slot_t.window.box.left - 2]
+        mov     ax, word[edx + legacy.slot_t.window.box.left]
+        add     ax, word[edx + legacy.slot_t.window.box.width]
+        mov     ebx, [edx + legacy.slot_t.window.box.top - 2]
+        mov     bx, word[edx + legacy.slot_t.window.box.top]
+        add     bx, word[edx + legacy.slot_t.window.box.height]
 
-        mov     esi, [edx + window_data_t.cl_frames]
+        mov     esi, [edx + legacy.slot_t.window.cl_frames]
         call    draw_rectangle
 
         ; window caption
@@ -886,23 +884,23 @@ kproc drawwindow_I ;////////////////////////////////////////////////////////////
         ; window client area
 
         ; do we need to draw it?
-        mov     edi, [esi + window_data_t.cl_workarea]
+        mov     edi, [esi + legacy.slot_t.window.cl_workarea]
         test    edi, 0x40000000
         jnz     .exit
 
         ; does client area have a positive size on screen?
-        mov     edx, [esi + window_data_t.box.top]
+        mov     edx, [esi + legacy.slot_t.window.box.top]
         add     edx, 21 + 5
-        mov     ebx, [esi + window_data_t.box.top]
-        add     ebx, [esi + window_data_t.box.height]
+        mov     ebx, [esi + legacy.slot_t.window.box.top]
+        add     ebx, [esi + legacy.slot_t.window.box.height]
         cmp     edx, ebx
         jg      .exit
 
         ; okay, let's draw it
         mov     eax, 1
         mov     ebx, 21
-        mov     ecx, [esi + window_data_t.box.width]
-        mov     edx, [esi + window_data_t.box.height]
+        mov     ecx, [esi + legacy.slot_t.window.box.width]
+        mov     edx, [esi + legacy.slot_t.window.box.height]
         call    [drawbar]
 
   .exit:
@@ -915,15 +913,15 @@ kproc drawwindow_III_caption ;//////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? <description>
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     ecx, [edx + window_data_t.cl_titlebar]
+        mov     ecx, [edx + legacy.slot_t.window.cl_titlebar]
         push    ecx
         mov     esi, edx
-        mov     edx, [esi + window_data_t.box.top]
+        mov     edx, [esi + legacy.slot_t.window.box.top]
         add     edx, 4
-        mov     ebx, [esi + window_data_t.box.top]
+        mov     ebx, [esi + legacy.slot_t.window.box.top]
         add     ebx, 20
-        mov     eax, [esi + window_data_t.box.top]
-        add     eax, [esi + window_data_t.box.height]
+        mov     eax, [esi + legacy.slot_t.window.box.top]
+        add     eax, [esi + legacy.slot_t.window.box.height]
 
         cmp     ebx, eax
         jb      @f
@@ -937,12 +935,12 @@ kproc drawwindow_III_caption ;//////////////////////////////////////////////////
         mov     ebx, edx
         shl     ebx, 16
         add     ebx, edx
-        mov     eax, [esi + window_data_t.box.left]
+        mov     eax, [esi + legacy.slot_t.window.box.left]
         shl     eax, 16
-        add     eax, [esi + window_data_t.box.left]
-        add     eax, [esi + window_data_t.box.width]
+        add     eax, [esi + legacy.slot_t.window.box.left]
+        add     eax, [esi + legacy.slot_t.window.box.width]
         add     eax, 4 * 65536 - 4
-        mov     ecx, [esi + window_data_t.cl_titlebar]
+        mov     ecx, [esi + legacy.slot_t.window.cl_titlebar]
         test    ecx, 0x40000000
         jz      @f
         add     ecx, 0x00040404
@@ -951,7 +949,7 @@ kproc drawwindow_III_caption ;//////////////////////////////////////////////////
         jz      @f
         sub     ecx, 0x00040404
 
-    @@: mov     [esi + window_data_t.cl_titlebar], ecx
+    @@: mov     [esi + legacy.slot_t.window.cl_titlebar], ecx
         and     ecx, 0x00ffffff
         call    [draw_line]
         inc     edx
@@ -959,7 +957,7 @@ kproc drawwindow_III_caption ;//////////////////////////////////////////////////
         jb      .next_line
 
         add     esp, 4
-        pop     [esi + window_data_t.cl_titlebar]
+        pop     [esi + legacy.slot_t.window.cl_titlebar]
         ret
 kendp
 
@@ -972,21 +970,21 @@ kproc drawwindow_III ;//////////////////////////////////////////////////////////
 
         ; window border
 
-        mov     eax, [edx + window_data_t.box.left - 2]
-        mov     ax, word[edx + window_data_t.box.left]
-        add     ax, word[edx + window_data_t.box.width]
-        mov     ebx, [edx + window_data_t.box.top - 2]
-        mov     bx, word[edx + window_data_t.box.top]
-        add     bx, word[edx + window_data_t.box.height]
+        mov     eax, [edx + legacy.slot_t.window.box.left - 2]
+        mov     ax, word[edx + legacy.slot_t.window.box.left]
+        add     ax, word[edx + legacy.slot_t.window.box.width]
+        mov     ebx, [edx + legacy.slot_t.window.box.top - 2]
+        mov     bx, word[edx + legacy.slot_t.window.box.top]
+        add     bx, word[edx + legacy.slot_t.window.box.height]
 
-        mov     esi, [edx + window_data_t.cl_frames]
+        mov     esi, [edx + legacy.slot_t.window.cl_frames]
         shr     esi, 1
         and     esi, 0x007f7f7f
         call    draw_rectangle
 
         push    esi
         mov     ecx, 3
-        mov     esi, [edx + window_data_t.cl_frames]
+        mov     esi, [edx + legacy.slot_t.window.cl_frames]
 
   .next_frame:
         add     eax, 1 * 65536 - 1
@@ -1007,23 +1005,23 @@ kproc drawwindow_III ;//////////////////////////////////////////////////////////
         ; window client area
 
         ; do we need to draw it?
-        mov     edi, [esi + window_data_t.cl_workarea]
+        mov     edi, [esi + legacy.slot_t.window.cl_workarea]
         test    edi, 0x40000000
         jnz     .exit
 
         ; does client area have a positive size on screen?
-        mov     edx, [esi + window_data_t.box.top]
+        mov     edx, [esi + legacy.slot_t.window.box.top]
         add     edx, 21 + 5
-        mov     ebx, [esi + window_data_t.box.top]
-        add     ebx, [esi + window_data_t.box.height]
+        mov     ebx, [esi + legacy.slot_t.window.box.top]
+        add     ebx, [esi + legacy.slot_t.window.box.height]
         cmp     edx, ebx
         jg      .exit
 
         ; okay, let's draw it
         mov     eax, 5
         mov     ebx, 20
-        mov     ecx, [esi + window_data_t.box.width]
-        mov     edx, [esi + window_data_t.box.height]
+        mov     ecx, [esi + legacy.slot_t.window.box.width]
+        mov     edx, [esi + legacy.slot_t.window.box.height]
         sub     ecx, 4
         sub     edx, 4
         call    [drawbar]
@@ -1039,7 +1037,7 @@ kproc waredraw ;////////////////////////////////////////////////////////////////
 ;? Activate window, redrawing if necessary
 ;-----------------------------------------------------------------------------------------------------------------------
         push    -1
-        mov     eax, [TASK_COUNT]
+        mov     eax, [legacy_slots.last_valid_slot]
         lea     eax, [wnd_pos_to_pslot + eax * 2]
         cmp     eax, esi
         pop     eax
@@ -1057,26 +1055,26 @@ kproc waredraw ;////////////////////////////////////////////////////////////////
         call    window._.window_activate
 
         pushad
-        mov     edi, [TASK_COUNT]
+        mov     edi, [legacy_slots.last_valid_slot]
         movzx   esi, [wnd_pos_to_pslot + edi * 2]
-        shl     esi, 5
-        add     esi, window_data
+        shl     esi, 9 ; * sizeof.legacy.slot_t
+        add     esi, legacy_slots
 
-        mov     eax, [esi + window_data_t.box.left]
-        mov     ebx, [esi + window_data_t.box.top]
-        mov     ecx, [esi + window_data_t.box.width]
-        mov     edx, [esi + window_data_t.box.height]
+        mov     eax, [esi + legacy.slot_t.window.box.left]
+        mov     ebx, [esi + legacy.slot_t.window.box.top]
+        mov     ecx, [esi + legacy.slot_t.window.box.width]
+        mov     edx, [esi + legacy.slot_t.window.box.height]
 
         add     ecx, eax
         add     edx, ebx
 
-        mov     edi, [TASK_COUNT]
+        mov     edi, [legacy_slots.last_valid_slot]
         movzx   esi, [wnd_pos_to_pslot + edi * 2]
         call    window._.set_screen
         popad
 
         ; tell application to redraw itself
-        mov     [edi + window_data_t.fl_redraw], 1
+        mov     [edi + legacy.slot_t.window.fl_redraw], 1
         xor     eax, eax
         jmp     .exit
 
@@ -1107,24 +1105,24 @@ kproc minimize_window ;/////////////////////////////////////////////////////////
 
         ; is it already minimized?
         movzx   edi, [wnd_pos_to_pslot + eax * 2]
-        shl     edi, 5
-        add     edi, window_data
-        test    [edi + window_data_t.fl_wstate], WINDOW_STATE_MINIMIZED
+        shl     edi, 9 ; * sizeof.legacy.slot_t
+        add     edi, legacy_slots
+        test    [edi + legacy.slot_t.window.fl_wstate], WINDOW_STATE_MINIMIZED
         jnz     .exit
 
         push    eax ebx ecx edx esi
 
         ; no it's not, let's do that
-        or      [edi + window_data_t.fl_wstate], WINDOW_STATE_MINIMIZED
-        mov     eax, [edi + window_data_t.box.left]
+        or      [edi + legacy.slot_t.window.fl_wstate], WINDOW_STATE_MINIMIZED
+        mov     eax, [edi + legacy.slot_t.window.box.left]
         mov     [draw_limits.left], eax
         mov     ecx, eax
-        add     ecx, [edi + window_data_t.box.width]
+        add     ecx, [edi + legacy.slot_t.window.box.width]
         mov     [draw_limits.right], ecx
-        mov     ebx, [edi + window_data_t.box.top]
+        mov     ebx, [edi + legacy.slot_t.window.box.top]
         mov     [draw_limits.top], ebx
         mov     edx, ebx
-        add     edx, [edi + window_data_t.box.height]
+        add     edx, [edi + legacy.slot_t.window.box.height]
         mov     [draw_limits.bottom], edx
         call    calculatescreen
         xor     esi, esi
@@ -1153,23 +1151,23 @@ kproc restore_minimized_window ;////////////////////////////////////////////////
         ; is it already restored?
         movzx   esi, [wnd_pos_to_pslot + eax * 2]
         mov     edi, esi
-        shl     edi, 5
-        add     edi, window_data
-        test    [edi + window_data_t.fl_wstate], WINDOW_STATE_MINIMIZED
+        shl     edi, 9 ; * sizeof.legacy.slot_t
+        add     edi, legacy_slots
+        test    [edi + legacy.slot_t.window.fl_wstate], WINDOW_STATE_MINIMIZED
         jz      .exit
 
         ; no it's not, let's do that
-        mov     [edi + window_data_t.fl_redraw], 1
-        and     [edi + window_data_t.fl_wstate], not WINDOW_STATE_MINIMIZED
+        mov     [edi + legacy.slot_t.window.fl_redraw], 1
+        and     [edi + legacy.slot_t.window.fl_wstate], not WINDOW_STATE_MINIMIZED
         mov     ebp, window._.set_screen
-        cmp     eax, [TASK_COUNT]
+        cmp     eax, [legacy_slots.last_valid_slot]
         jz      @f
         mov     ebp, calculatescreen
 
-    @@: mov     eax, [edi + window_data_t.box.left]
-        mov     ebx, [edi + window_data_t.box.top]
-        mov     ecx, [edi + window_data_t.box.width]
-        mov     edx, [edi + window_data_t.box.height]
+    @@: mov     eax, [edi + legacy.slot_t.window.box.left]
+        mov     ebx, [edi + legacy.slot_t.window.box.top]
+        mov     ecx, [edi + legacy.slot_t.window.box.width]
+        mov     edx, [edi + legacy.slot_t.window.box.height]
         add     ecx, eax
         add     edx, ebx
         call    ebp
@@ -1193,7 +1191,7 @@ kproc window_check_events ;/////////////////////////////////////////////////////
         je      .exit
 
         ; okay, minimize or restore top-most window and exit
-        mov     eax, [TASK_COUNT]
+        mov     eax, [legacy_slots.last_valid_slot]
         mov     bl, 0
         xchg    [window_minimize], bl
         dec     bl
@@ -1215,17 +1213,17 @@ kproc sys_window_maximize_handler ;/////////////////////////////////////////////
 ;> esi = process slot
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     edi, esi
-        shl     edi, 5
-        add     edi, window_data
+        shl     edi, 9 ; * sizeof.legacy.slot_t
+        add     edi, legacy_slots
 
         ; can window change its height?
         ; only types 2 and 3 can be resized
-        mov     dl, [edi + window_data_t.fl_wstyle]
+        mov     dl, [edi + legacy.slot_t.window.fl_wstyle]
         test    dl, 2
         jz      .exit
 
         ; toggle normal/maximized window state
-        mov     bl, [edi + window_data_t.fl_wstate]
+        mov     bl, [edi + legacy.slot_t.window.fl_wstate]
         xor     bl, WINDOW_STATE_MAXIMIZED
 
         ; calculate and set appropriate window bounds
@@ -1244,9 +1242,7 @@ kproc sys_window_maximize_handler ;/////////////////////////////////////////////
         jmp     .set_box
 
   .restore_size:
-        mov     eax, esi
-        shl     eax, 8
-        add     eax, SLOT_BASE + app_data_t.saved_box
+        lea     eax, [edi + legacy.slot_t.app.saved_box]
         push    [eax + box32_t.height] \
                 [eax + box32_t.width] \
                 [eax + box32_t.top] \
@@ -1276,12 +1272,8 @@ kproc sys_window_rollup_handler ;///////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> esi = process slot
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     edx, esi
-        shl     edx, 8
-        add     edx, SLOT_BASE
-
         ; toggle normal/rolled up window state
-        mov     bl, [edi + window_data_t.fl_wstate]
+        mov     bl, [edi + legacy.slot_t.window.fl_wstate]
         xor     bl, WINDOW_STATE_ROLLEDUP
 
         ; calculate and set appropriate window bounds
@@ -1290,9 +1282,9 @@ kproc sys_window_rollup_handler ;///////////////////////////////////////////////
 
         call    window._.get_rolledup_height
         push    eax \
-                [edi + window_data_t.box.width] \
-                [edi + window_data_t.box.top] \
-                [edi + window_data_t.box.left]
+                [edi + legacy.slot_t.window.box.width] \
+                [edi + legacy.slot_t.window.box.top] \
+                [edi + legacy.slot_t.window.box.left]
         mov     eax, esp
         jmp     .set_box
 
@@ -1300,14 +1292,14 @@ kproc sys_window_rollup_handler ;///////////////////////////////////////////////
         test    bl, WINDOW_STATE_MAXIMIZED
         jnz     @f
         add     esp, -sizeof.box32_t
-        lea     eax, [edx + app_data_t.saved_box]
+        lea     eax, [edi + legacy.slot_t.app.saved_box]
         jmp     .set_box
 
     @@: mov     eax, [screen_workarea.top]
         push    [screen_workarea.bottom] \
-                [edi + window_data_t.box.width] \
+                [edi + legacy.slot_t.window.box.width] \
                 eax \
-                [edi + window_data_t.box.left]
+                [edi + legacy.slot_t.window.box.left]
         sub     [esp + box32_t.height], eax
         mov     eax, esp
 
@@ -1345,11 +1337,11 @@ kproc sys_window_end_moving_handler ;///////////////////////////////////////////
         call    window._.draw_negative_box
 
         mov     edi, esi
-        shl     edi, 5
-        add     edi, window_data
+        shl     edi, 9 ; * sizeof.legacy.slot_t
+        add     edi, legacy_slots
 
         mov     eax, ebx
-        mov     bl, [edi + window_data_t.fl_wstate]
+        mov     bl, [edi + legacy.slot_t.window.fl_wstate]
         call    window._.set_window_box
         ret
 kendp
@@ -1396,7 +1388,7 @@ kproc window._.invalidate_screen ;//////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax = old (original) window box
 ;> ebx = new (final) window box
-;> edi = pointer to window_data_t struct
+;> edi = pointer to legacy.slot_t struct
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax ebx
 
@@ -1457,7 +1449,7 @@ kproc window._.invalidate_screen ;//////////////////////////////////////////////
         call    redrawscreen
 
         ; tell window to redraw itself
-        mov     [edi + window_data_t.fl_redraw], 1
+        mov     [edi + legacy.slot_t.window.fl_redraw], 1
 
         pop     ebx eax
         ret
@@ -1470,19 +1462,19 @@ kproc window._.set_window_box ;/////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax = pointer to box32_t struct
 ;> bl = new window state flags
-;> edi = pointer to window_data_t struct
+;> edi = pointer to legacy.slot_t struct
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax ebx esi
 
         ; don't do anything if the new box is identical to the old
-        cmp     bl, [edi + window_data_t.fl_wstate]
+        cmp     bl, [edi + legacy.slot_t.window.fl_wstate]
         jnz     @f
         mov     esi, eax
         push    edi
 
-if window_data_t.box
+if legacy.slot_t.window.box <> 0
 
-        add     edi, window_data_t.box
+        add     edi, legacy.slot_t.window.box
 
 end if
 
@@ -1496,13 +1488,13 @@ end if
 
         mov     ebx, esp
 
-if window_data_t.box
+if legacy.slot_t.window.box <> 0
 
-        lea     esi, [edi + window_data_t.box]
+        lea     esi, [edi + legacy.slot_t.window.box]
 
 else
 
-        mov     esi, edi ; optimization for window_data_t.box = 0
+        mov     esi, edi ; optimization for legacy.slot_t.window.box = 0
 
 end if
 
@@ -1523,23 +1515,18 @@ end if
 
         mov     cl, [esp + 4]
         mov     ch, cl
-        xchg    cl, [edi + window_data_t.fl_wstate]
+        xchg    cl, [edi + legacy.slot_t.window.fl_wstate]
 
         or      cl, ch
         test    cl, WINDOW_STATE_MAXIMIZED
         jnz     .exit
 
-        mov     eax, edi
-        sub     eax, window_data
-        shl     eax, 3
-        add     eax, SLOT_BASE
-
-        lea     ebx, [edi + window_data_t.box]
+        lea     ebx, [edi + legacy.slot_t.window.box]
         xchg    esp, ebx
 
-        pop     [eax + app_data_t.saved_box.left] \
-                [eax + app_data_t.saved_box.top] \
-                [eax + app_data_t.saved_box.width] \
+        pop     [edi + legacy.slot_t.app.saved_box.left] \
+                [edi + legacy.slot_t.app.saved_box.top] \
+                [edi + legacy.slot_t.app.saved_box.width] \
                 edx
 
         xchg    esp, ebx
@@ -1547,7 +1534,7 @@ end if
         test    ch, WINDOW_STATE_ROLLEDUP
         jnz     .exit
 
-        mov     [eax + app_data_t.saved_box.height], edx
+        mov     [edi + legacy.slot_t.app.saved_box.height], edx
 
   .exit:
         pop     esi ebx eax
@@ -1559,52 +1546,49 @@ kproc window._.set_window_clientbox ;///////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? <description>
 ;-----------------------------------------------------------------------------------------------------------------------
-;> edi = pointer to window_data_t struct
+;> edi = pointer to legacy.slot_t struct
 ;-----------------------------------------------------------------------------------------------------------------------
-        push    eax ecx edi
+        push    eax edi
 
         mov     eax, [_skinh]
         mov     [window_topleft + 3 * sizeof.point32_t + point32_t.y], eax
         mov     [window_topleft + 4 * sizeof.point32_t + point32_t.y], eax
 
-        mov     ecx, edi
-        sub     edi, window_data
-        shl     edi, 3
-        test    [ecx + window_data_t.fl_wstyle], WSTYLE_CLIENTRELATIVE
+        test    [edi + legacy.slot_t.window.fl_wstyle], WSTYLE_CLIENTRELATIVE
         jz      .whole_window
 
-        movzx   eax, [ecx + window_data_t.fl_wstyle]
+        movzx   eax, [edi + legacy.slot_t.window.fl_wstyle]
         and     eax, 0x0f
         mov     eax, [window_topleft + eax * sizeof.point32_t + point32_t.x]
-        mov     [SLOT_BASE + edi + app_data_t.wnd_clientbox.left], eax
+        mov     [edi + legacy.slot_t.app.wnd_clientbox.left], eax
         shl     eax, 1
         neg     eax
-        add     eax, [ecx + window_data_t.box.width]
-        mov     [SLOT_BASE + edi + app_data_t.wnd_clientbox.width], eax
+        add     eax, [edi + legacy.slot_t.window.box.width]
+        mov     [edi + legacy.slot_t.app.wnd_clientbox.width], eax
 
-        movzx   eax, [ecx + window_data_t.fl_wstyle]
+        movzx   eax, [edi + legacy.slot_t.window.fl_wstyle]
         and     eax, 0x0f
         push    [window_topleft + eax * sizeof.point32_t + point32_t.x]
         mov     eax, [window_topleft + eax * sizeof.point32_t + point32_t.y]
-        mov     [SLOT_BASE + edi + app_data_t.wnd_clientbox.top], eax
+        mov     [edi + legacy.slot_t.app.wnd_clientbox.top], eax
         neg     eax
         sub     eax, [esp]
-        add     eax, [ecx + window_data_t.box.height]
-        mov     [SLOT_BASE + edi + app_data_t.wnd_clientbox.height], eax
+        add     eax, [edi + legacy.slot_t.window.box.height]
+        mov     [edi + legacy.slot_t.app.wnd_clientbox.height], eax
         add     esp, 4
         jmp     .exit
 
   .whole_window:
         xor     eax, eax
-        mov     [SLOT_BASE + edi + app_data_t.wnd_clientbox.left], eax
-        mov     [SLOT_BASE + edi + app_data_t.wnd_clientbox.top], eax
-        mov     eax, [ecx + window_data_t.box.width]
-        mov     [SLOT_BASE + edi + app_data_t.wnd_clientbox.width], eax
-        mov     eax, [ecx + window_data_t.box.height]
-        mov     [SLOT_BASE + edi + app_data_t.wnd_clientbox.height], eax
+        mov     [edi + legacy.slot_t.app.wnd_clientbox.left], eax
+        mov     [edi + legacy.slot_t.app.wnd_clientbox.top], eax
+        mov     eax, [edi + legacy.slot_t.window.box.width]
+        mov     [edi + legacy.slot_t.app.wnd_clientbox.width], eax
+        mov     eax, [edi + legacy.slot_t.window.box.height]
+        mov     [edi + legacy.slot_t.app.wnd_clientbox.height], eax
 
   .exit:
-        pop     edi ecx eax
+        pop     edi eax
         ret
 kendp
 
@@ -1613,23 +1597,21 @@ kproc window._.sys_set_window ;/////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? <description>
 ;-----------------------------------------------------------------------------------------------------------------------
-;< edx = pointer to window_data_t struct
+;< edx = pointer to legacy.slot_t struct
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, [CURRENT_TASK]
-        shl     eax, 5
-        add     eax, window_data
+        mov     eax, [current_slot_ptr]
 
         ; save window colors
-        mov     [eax + window_data_t.cl_workarea], edx
-        mov     [eax + window_data_t.cl_titlebar], esi
-        mov     [eax + window_data_t.cl_frames], edi
+        mov     [eax + legacy.slot_t.window.cl_workarea], edx
+        mov     [eax + legacy.slot_t.window.cl_titlebar], esi
+        mov     [eax + legacy.slot_t.window.cl_frames], edi
 
         mov     edi, eax
 
         ; was it already defined before?
-        test    [edi + window_data_t.fl_wdrawn], 1
+        test    [edi + legacy.slot_t.window.fl_wdrawn], 1
         jnz     .set_client_box
-        or      [edi + window_data_t.fl_wdrawn], 1
+        or      [edi + legacy.slot_t.window.fl_wdrawn], 1
 
         ; NOTE: commented out since doesn't provide necessary functionality anyway, to be reworked
 ;       mov     eax, [timer_ticks] ; [0xfdf0]
@@ -1638,24 +1620,20 @@ kproc window._.sys_set_window ;/////////////////////////////////////////////////
 
         ; no it wasn't, performing initial window definition
         movzx   eax, bx
-        mov     [edi + window_data_t.box.width], eax
+        mov     [edi + legacy.slot_t.window.box.width], eax
         movzx   eax, cx
-        mov     [edi + window_data_t.box.height], eax
+        mov     [edi + legacy.slot_t.window.box.height], eax
         sar     ebx, 16
         sar     ecx, 16
-        mov     [edi + window_data_t.box.left], ebx
-        mov     [edi + window_data_t.box.top], ecx
+        mov     [edi + legacy.slot_t.window.box.left], ebx
+        mov     [edi + legacy.slot_t.window.box.top], ecx
 
         call    window._.check_window_position
 
         push    ecx edi
 
-        mov     cl, [edi + window_data_t.fl_wstyle]
-        mov     eax, [edi + window_data_t.cl_frames]
-
-        sub     edi, window_data
-        shl     edi, 3
-        add     edi, SLOT_BASE
+        mov     cl, [edi + legacy.slot_t.window.fl_wstyle]
+        mov     eax, [edi + legacy.slot_t.window.cl_frames]
 
         and     cl, 0x0f
         cmp     cl, 3
@@ -1665,10 +1643,10 @@ kproc window._.sys_set_window ;/////////////////////////////////////////////////
 
         xor     eax, eax
 
-    @@: mov     [edi + app_data_t.wnd_caption], eax
+    @@: mov     [edi + legacy.slot_t.app.wnd_caption], eax
 
         mov     esi, [esp]
-        add     edi, app_data_t.saved_box
+        add     edi, legacy.slot_t.app.saved_box
         movsd
         movsd
         movsd
@@ -1676,15 +1654,15 @@ kproc window._.sys_set_window ;/////////////////////////////////////////////////
 
         pop     edi ecx
 
-        mov     esi, [CURRENT_TASK]
+        mov     esi, [current_slot]
         movzx   esi, [pslot_to_wnd_pos + esi * 2]
         lea     esi, [wnd_pos_to_pslot + esi * 2]
         call    waredraw
 
-        mov     eax, [edi + window_data_t.box.left]
-        mov     ebx, [edi + window_data_t.box.top]
-        mov     ecx, [edi + window_data_t.box.width]
-        mov     edx, [edi + window_data_t.box.height]
+        mov     eax, [edi + legacy.slot_t.window.box.left]
+        mov     ebx, [edi + legacy.slot_t.window.box.top]
+        mov     ecx, [edi + legacy.slot_t.window.box.width]
+        mov     edx, [edi + legacy.slot_t.window.box.height]
         add     ecx, eax
         add     edx, ebx
         call    calculatescreen
@@ -1697,7 +1675,7 @@ kproc window._.sys_set_window ;/////////////////////////////////////////////////
         call    window._.set_window_clientbox
 
         ; reset window redraw flag and exit
-        mov     [edi + window_data_t.fl_redraw], 0
+        mov     [edi + legacy.slot_t.window.fl_redraw], 0
         mov     edx, edi
         ret
 kendp
@@ -1707,14 +1685,14 @@ kproc window._.check_window_position ;//////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Check if window is inside screen area
 ;-----------------------------------------------------------------------------------------------------------------------
-;> edi = pointer to window_data_t
+;> edi = pointer to legacy.slot_t
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax ebx ecx edx esi
 
-        mov     eax, [edi + window_data_t.box.left]
-        mov     ebx, [edi + window_data_t.box.top]
-        mov     ecx, [edi + window_data_t.box.width]
-        mov     edx, [edi + window_data_t.box.height]
+        mov     eax, [edi + legacy.slot_t.window.box.left]
+        mov     ebx, [edi + legacy.slot_t.window.box.top]
+        mov     ecx, [edi + legacy.slot_t.window.box.width]
+        mov     edx, [edi + legacy.slot_t.window.box.height]
 
         mov     esi, [Screen_Max_Pos.x]
         cmp     ecx, esi
@@ -1745,34 +1723,34 @@ kproc window._.check_window_position ;//////////////////////////////////////////
 
   .fix_width_high:
         mov     ecx, esi
-        mov     [edi + window_data_t.box.width], esi
+        mov     [edi + legacy.slot_t.window.box.width], esi
         jmp     .check_left
 
   .fix_left_low:
         xor     eax, eax
-        mov     [edi + window_data_t.box.left], eax
+        mov     [edi + legacy.slot_t.window.box.left], eax
         jmp     .check_height
 
   .fix_left_high:
         mov     eax, esi
         sub     eax, ecx
-        mov     [edi + window_data_t.box.left], eax
+        mov     [edi + legacy.slot_t.window.box.left], eax
         jmp     .check_height
 
   .fix_height_high:
         mov     edx, esi
-        mov     [edi + window_data_t.box.height], esi
+        mov     [edi + legacy.slot_t.window.box.height], esi
         jmp     .check_top
 
   .fix_top_low:
         xor     ebx, ebx
-        mov     [edi + window_data_t.box.top], ebx
+        mov     [edi + legacy.slot_t.window.box.top], ebx
         jmp     .exit
 
   .fix_top_high:
         mov     ebx, esi
         sub     ebx, edx
-        mov     [edi + window_data_t.box.top], ebx
+        mov     [edi + legacy.slot_t.window.box.top], ebx
         jmp     .exit
 kendp
 
@@ -1781,9 +1759,9 @@ kproc window._.get_titlebar_height ;////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? <description>
 ;-----------------------------------------------------------------------------------------------------------------------
-;> edi = pointer to window_data_t
+;> edi = pointer to legacy.slot_t
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     al, [edi + window_data_t.fl_wstyle]
+        mov     al, [edi + legacy.slot_t.window.fl_wstyle]
         and     al, 0x0f
         cmp     al, 0x03
         jne     @f
@@ -1799,9 +1777,9 @@ kproc window._.get_rolledup_height ;////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? <description>
 ;-----------------------------------------------------------------------------------------------------------------------
-;> edi = pointer to window_data_t
+;> edi = pointer to legacy.slot_t
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     al, [edi + window_data_t.fl_wstyle]
+        mov     al, [edi + legacy.slot_t.window.fl_wstyle]
         and     al, 0x0f
         cmp     al, 0x03
         jb      @f
@@ -1843,17 +1821,17 @@ end virtual
         cmp     esi, 1
         jz      .check_for_shaped_window
         mov     edi, esi
-        shl     edi, 5
-        cmp     [window_data + edi + window_data_t.box.width], 0
+        shl     edi, 9 ; * sizeof.legacy.slot_t
+        cmp     [legacy_slots + edi + legacy.slot_t.window.box.width], 0
         jnz     .check_for_shaped_window
-        cmp     [window_data + edi + window_data_t.box.height], 0
+        cmp     [legacy_slots + edi + legacy.slot_t.window.box.height], 0
         jz      .exit
 
   .check_for_shaped_window:
         mov     edi, esi
-        shl     edi, 8
-        add     edi, SLOT_BASE
-        cmp     [edi + app_data_t.wnd_shape], 0
+        shl     edi, 9 ; * sizeof.legacy.slot_t
+        add     edi, legacy_slots
+        cmp     [edi + legacy.slot_t.app.wnd_shape], 0
         jne     .shaped_window
 
         ; get x&y size
@@ -1904,7 +1882,7 @@ end virtual
         inc     ecx
         inc     edx
 
-        push    [edi + app_data_t.wnd_shape_scale] ; push scale first -> for loop
+        push    [edi + legacy.slot_t.app.wnd_shape_scale] ; push scale first -> for loop
 
         ; get WinMap start  -> ebp
         push    eax
@@ -1915,7 +1893,7 @@ end virtual
         add     eax, [_WinMapRange.address]
         mov     ebp, eax
 
-        mov     edi, [edi + app_data_t.wnd_shape]
+        mov     edi, [edi + legacy.slot_t.app.wnd_shape]
         pop     eax
 
         ; eax = x_start
@@ -1928,10 +1906,10 @@ end virtual
         push    edx ecx ; for loop - x,y size
 
         mov     ecx, esi
-        shl     ecx, 5
-        mov     edx, [window_data + ecx + window_data_t.box.top]
-        push    [window_data + ecx + window_data_t.box.width] ; for loop - width
-        mov     ecx, [window_data + ecx + window_data_t.box.left]
+        shl     ecx, 9 ; * sizeof.legacy.slot_t
+        mov     edx, [legacy_slots + ecx + legacy.slot_t.window.box.top]
+        push    [legacy_slots + ecx + legacy.slot_t.window.box.width] ; for loop - width
+        mov     ecx, [legacy_slots + ecx + legacy.slot_t.window.box.left]
         sub     ebx, edx
         sub     eax, ecx
         push    ebx eax ; for loop - x,y
@@ -2005,11 +1983,10 @@ kproc window._.window_activate ;////////////////////////////////////////////////
         push    eax ebx
 
         ; if type of current active window is 3 or 4, it must be redrawn
-        mov     ebx, [TASK_COUNT]
+        mov     ebx, [legacy_slots.last_valid_slot]
         movzx   ebx, [wnd_pos_to_pslot + ebx * 2]
-        shl     ebx, 5
-        add     eax, window_data
-        mov     al, [window_data + ebx + window_data_t.fl_wstyle]
+        shl     ebx, 9 ; * sizeof.legacy.slot_t
+        mov     al, [legacy_slots + ebx + legacy.slot_t.window.fl_wstyle]
         and     al, 0x0f
         cmp     al, 0x03
         je      .set_window_redraw_flag
@@ -2017,7 +1994,7 @@ kproc window._.window_activate ;////////////////////////////////////////////////
         jne     .move_others_down
 
   .set_window_redraw_flag:
-        mov     [window_data + ebx + window_data_t.fl_redraw], 1
+        mov     [legacy_slots + ebx + legacy.slot_t.window.fl_redraw], 1
 
   .move_others_down:
         ; ax <- process no
@@ -2029,7 +2006,7 @@ kproc window._.window_activate ;////////////////////////////////////////////////
         xor     eax, eax
 
   .next_stack_window:
-        cmp     eax, [TASK_COUNT]
+        cmp     eax, [legacy_slots.last_valid_slot]
         jae     .move_self_up
         inc     eax
         cmp     [pslot_to_wnd_pos + eax * 2], bx
@@ -2040,7 +2017,7 @@ kproc window._.window_activate ;////////////////////////////////////////////////
   .move_self_up:
         movzx   ebx, word[esi]
         ; number of processes
-        mov     eax, [TASK_COUNT]
+        mov     eax, [legacy_slots.last_valid_slot]
         ; this is the last (and the upper)
         mov     [pslot_to_wnd_pos + ebx * 2], ax
 
@@ -2048,7 +2025,7 @@ kproc window._.window_activate ;////////////////////////////////////////////////
         xor     eax, eax
 
   .next_window_pos:
-        cmp     eax, [TASK_COUNT]
+        cmp     eax, [legacy_slots.last_valid_slot]
         jae     .reset_vars
         inc     eax
         movzx   ebx, [pslot_to_wnd_pos + eax * 2]
@@ -2070,9 +2047,9 @@ kproc window._.check_window_draw ;//////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Check if window is necessary to draw
 ;-----------------------------------------------------------------------------------------------------------------------
-;> edi = pointer to window_data_t
+;> edi = pointer to legacy.slot_t
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     cl, [edi + window_data_t.fl_wstyle]
+        mov     cl, [edi + legacy.slot_t.window.fl_wstyle]
         and     cl, 0x0f
         cmp     cl, 3
         je      .exit.redraw ; window type 3
@@ -2082,8 +2059,8 @@ kproc window._.check_window_draw ;//////////////////////////////////////////////
         push    eax ebx edx esi
 
         mov     eax, edi
-        sub     eax, window_data
-        shr     eax, 5
+        sub     eax, legacy_slots
+        shr     eax, 9 ; / sizeof.legacy.slot_t
 
         movzx   eax, [pslot_to_wnd_pos + eax * 2] ; get value of the curr process
         lea     esi, [wnd_pos_to_pslot + eax * 2] ; get address of this process at 0xC400
@@ -2091,36 +2068,36 @@ kproc window._.check_window_draw ;//////////////////////////////////////////////
   .next_window:
         add     esi, 2
 
-        mov     eax, [TASK_COUNT]
+        mov     eax, [legacy_slots.last_valid_slot]
         lea     eax, [wnd_pos_to_pslot + eax * 2] ; number of the upper window
 
         cmp     esi, eax
         ja      .exit.no_redraw
 
         movzx   edx, word[esi]
-        shl     edx, 5
-        cmp     [TASK_DATA + edx - sizeof.task_data_t + task_data_t.state], THREAD_STATE_FREE
+        shl     edx, 9 ; * sizeof.legacy.slot_t
+        cmp     [legacy_slots + edx + legacy.slot_t.task.state], THREAD_STATE_FREE
         je      .next_window
 
-        mov     eax, [edi + window_data_t.box.top]
-        mov     ebx, [edi + window_data_t.box.height]
+        mov     eax, [edi + legacy.slot_t.window.box.top]
+        mov     ebx, [edi + legacy.slot_t.window.box.height]
         add     ebx, eax
 
-        mov     ecx, [window_data + edx + window_data_t.box.top]
+        mov     ecx, [legacy_slots + edx + legacy.slot_t.window.box.top]
         cmp     ecx, ebx
         jge     .next_window
-        add     ecx, [window_data + edx + window_data_t.box.height]
+        add     ecx, [legacy_slots + edx + legacy.slot_t.window.box.height]
         cmp     eax, ecx
         jge     .next_window
 
-        mov     eax, [edi + window_data_t.box.left]
-        mov     ebx, [edi + window_data_t.box.width]
+        mov     eax, [edi + legacy.slot_t.window.box.left]
+        mov     ebx, [edi + legacy.slot_t.window.box.width]
         add     ebx, eax
 
-        mov     ecx, [window_data + edx + window_data_t.box.left]
+        mov     ecx, [legacy_slots + edx + legacy.slot_t.window.box.left]
         cmp     ecx, ebx
         jge     .next_window
-        add     ecx, [window_data + edx + window_data_t.box.width]
+        add     ecx, [legacy_slots + edx + legacy.slot_t.window.box.width]
         cmp     eax, ecx
         jge     .next_window
 
@@ -2146,16 +2123,14 @@ kproc window._.draw_window_caption ;////////////////////////////////////////////
         call    [_display.disable_mouse]
 
         xor     eax, eax
-        mov     edx, [TASK_COUNT]
+        mov     edx, [legacy_slots.last_valid_slot]
         movzx   edx, [wnd_pos_to_pslot + edx * 2]
-        cmp     edx, [CURRENT_TASK]
+        cmp     edx, [current_slot]
         jne     @f
         inc     eax
 
-    @@: mov     edx, [CURRENT_TASK]
-        shl     edx, 5
-        add     edx, window_data
-        movzx   ebx, [edx + window_data_t.fl_wstyle]
+    @@: mov     edx, [current_slot_ptr]
+        movzx   ebx, [edx + legacy.slot_t.window.fl_wstyle]
         and     bl, 0x0f
         cmp     bl, 3
         je      .draw_caption_style_3
@@ -2184,15 +2159,14 @@ kproc window._.draw_window_caption ;////////////////////////////////////////////
         call    drawwindow_I_caption
 
   .2:
-        mov     edi, [CURRENT_TASK]
-        shl     edi, 5
-        test    [window_data + edi + window_data_t.fl_wstyle], WSTYLE_HASCAPTION
+        mov     edi, [current_slot_ptr]
+        test    [edi + legacy.slot_t.window.fl_wstyle], WSTYLE_HASCAPTION
         jz      .exit
-        mov     edx, [SLOT_BASE + edi * 8 + app_data_t.wnd_caption]
+        mov     edx, [edi + legacy.slot_t.app.wnd_caption]
         or      edx, edx
         jz      .exit
 
-        movzx   eax, [window_data + edi + window_data_t.fl_wstyle]
+        movzx   eax, [edi + legacy.slot_t.window.fl_wstyle]
         and     al, 0x0f
         cmp     al, 3
         je      .skinned
@@ -2202,9 +2176,9 @@ kproc window._.draw_window_caption ;////////////////////////////////////////////
         jmp     .not_skinned
 
   .skinned:
-        mov     ebp, [window_data + edi + window_data_t.box.left - 2]
-        mov     bp, word[window_data + edi + window_data_t.box.top]
-        movzx   eax, word[window_data + edi + window_data_t.box.width]
+        mov     ebp, [edi + legacy.slot_t.window.box.left - 2]
+        mov     bp, word[edi + legacy.slot_t.window.box.top]
+        movzx   eax, word[edi + legacy.slot_t.window.box.width]
         sub     ax, [_skinmargins.left]
         sub     ax, [_skinmargins.right]
         push    edx
@@ -2232,9 +2206,9 @@ kproc window._.draw_window_caption ;////////////////////////////////////////////
         cmp     al, 1
         je      .exit
 
-        mov     ebp, [window_data + edi + window_data_t.box.left - 2]
-        mov     bp, word[window_data + edi + window_data_t.box.top]
-        movzx   eax, word[window_data + edi + window_data_t.box.width]
+        mov     ebp, [edi + legacy.slot_t.window.box.left - 2]
+        mov     bp, word[edi + legacy.slot_t.window.box.top]
+        movzx   eax, word[edi + legacy.slot_t.window.box.width]
         sub     eax, 16
         push    edx
         cwde

@@ -292,13 +292,13 @@ align 4
 proc get_notify stdcall, p_ev:dword ;///////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
   .wait:
-        mov     ebx, [current_slot]
-        test    [ebx + app_data_t.event_mask], EVENT_NOTIFY
+        mov     ebx, [current_slot_ptr]
+        test    [ebx + legacy.slot_t.app.event_mask], EVENT_NOTIFY
         jz      @f
-        and     [ebx + app_data_t.event_mask], not EVENT_NOTIFY
+        and     [ebx + legacy.slot_t.app.event_mask], not EVENT_NOTIFY
         mov     edi, [p_ev]
         mov     dword[edi], EV_INTR
-        mov     eax, [ebx + app_data_t.event]
+        mov     eax, [ebx + legacy.slot_t.app.event]
         mov     [edi + 4], eax
         ret
 
@@ -591,8 +591,10 @@ align 4
 ;-----------------------------------------------------------------------------------------------------------------------
 proc get_curr_task ;////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, [CURRENT_TASK]
-        shl     eax, 8
+        ; FIXME: WTF? Exposing internal kernel structure it not a good idea
+;       mov     eax, [current_slot]
+;       shl     eax, 8
+        xor     eax, eax
         ret
 endp
 
@@ -1198,10 +1200,10 @@ endl
 
         ; scan for required DLL in list of already loaded for this process,
         ; ignore timestamp
-        mov     esi, [CURRENT_TASK]
-        shl     esi, 8
+        mov     esi, [current_slot]
+        shl     esi, 9 ; * sizeof.legacy.slot_t
         lea     edi, [fullname]
-        mov     ebx, [SLOT_BASE + esi + app_data_t.dlls_list_ptr]
+        mov     ebx, [legacy_slots + esi + legacy.slot_t.app.dlls_list_ptr]
         test    ebx, ebx
         jz      .not_in_process
         mov     esi, [ebx + dll_handle_t.next_ptr]
@@ -1488,9 +1490,9 @@ endl
         call    malloc
         test    eax, eax
         jz      .fail_and_free_user
-        mov     ebx, [CURRENT_TASK]
-        shl     ebx, 5
-        mov     edx, [TASK_DATA + ebx - sizeof.task_data_t + task_data_t.pid]
+        mov     ebx, [current_slot]
+        shl     ebx, 9 ; * sizeof.legacy.slot_t
+        mov     edx, [legacy_slots + ebx + legacy.slot_t.task.pid]
         mov     [eax + dll_handle_t.pid], edx
         push    eax
         call    init_dlls_in_thread
@@ -1570,17 +1572,17 @@ endp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc init_dlls_in_thread ;/////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;? initialize [app_data_t.dlls_list_ptr] for given thread
+;? initialize [legacy.slot_t.app.dlls_list_ptr] for given thread
 ;-----------------------------------------------------------------------------------------------------------------------
-;< eax = app_data_t.dlls_list_ptr if all is OK, NULL if memory allocation failed
+;< eax = legacy.slot_t.app.dlls_list_ptr if all is OK, NULL if memory allocation failed
 ;-----------------------------------------------------------------------------------------------------------------------
-;# DLL is per-process object, so app_data_t.dlls_list_ptr must be kept in sync for all threads of one process.
+;# DLL is per-process object, so legacy.slot_t.app.dlls_list_ptr must be kept in sync for all threads of one process.
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     ebx, [current_slot]
-        mov     eax, [ebx + app_data_t.dlls_list_ptr]
+        mov     ebx, [current_slot_ptr]
+        mov     eax, [ebx + legacy.slot_t.app.dlls_list_ptr]
         test    eax, eax
         jnz     .ret
-        push    [ebx + app_data_t.dir_table]
+        push    [ebx + legacy.slot_t.app.dir_table]
         mov     eax, 8
         call    malloc
         pop     edx
@@ -1588,15 +1590,15 @@ kproc init_dlls_in_thread ;/////////////////////////////////////////////////////
         jz      .ret
         mov     [eax], eax
         mov     [eax + 4], eax
-        mov     ecx, [TASK_COUNT]
-        mov     ebx, SLOT_BASE + sizeof.app_data_t
+        mov     ecx, [legacy_slots.last_valid_slot]
+        mov     ebx, legacy_os_idle_slot
 
   .set:
-        cmp     [ebx + app_data_t.dir_table], edx
+        cmp     [ebx + legacy.slot_t.app.dir_table], edx
         jnz     @f
-        mov     [ebx + app_data_t.dlls_list_ptr], eax
+        mov     [ebx + legacy.slot_t.app.dlls_list_ptr], eax
 
-    @@: add     ebx, sizeof.app_data_t
+    @@: add     ebx, sizeof.legacy.slot_t
         dec     ecx
         jnz     .set
 
@@ -1637,14 +1639,14 @@ kproc destroy_hdll ;////////////////////////////////////////////////////////////
         ; However, destroy_hdll can be called in the context of OS thread when
         ; cleaning up objects created by the application which is destroyed.
         ; So remember current cr3 and set it to page table of target.
-        mov     eax, [ecx + app_data_t.dir_table]
+        mov     eax, [ecx + legacy.slot_t.app.dir_table]
         ; Because we cheat with cr3, disable interrupts: task switch would restore
-        ; page table from app_data_t of current thread.
-        ; Also set [current_slot] because it is used by user_free.
+        ; page table from legacy.slot_t of current thread.
+        ; Also set [current_slot_ptr] because it is used by user_free.
         pushf
         cli
-        push    [current_slot]
-        mov     [current_slot], ecx
+        push    [current_slot_ptr]
+        mov     [current_slot_ptr], ecx
         mov     ecx, cr3
         push    ecx
         mov     cr3, eax
@@ -1679,7 +1681,7 @@ kproc destroy_hdll ;////////////////////////////////////////////////////////////
         ; Restore context.
         pop     eax
         mov     cr3, eax
-        pop     [current_slot]
+        pop     [current_slot_ptr]
         popf
         ; Ok, cheating is done.
         pop     eax
@@ -1700,7 +1702,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc destroy_all_hdlls ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ecx = pointer to app_data_t for slot
+;> ecx = pointer to legacy.slot_t for slot
 ;> esi = dlls_list_ptr
 ;-----------------------------------------------------------------------------------------------------------------------
         test    esi, esi
@@ -1762,8 +1764,8 @@ kproc create_kernel_object ;////////////////////////////////////////////////////
         test    eax, eax
         jz      .fail
 
-        mov     ecx, [current_slot]
-        add     ecx, app_data_t.obj
+        mov     ecx, [current_slot_ptr]
+        add     ecx, legacy.slot_t.app.obj
 
         pushfd
         cli
@@ -1794,11 +1796,11 @@ kproc destroy_kernel_object ;///////////////////////////////////////////////////
         popfd
 
         xor     edx, edx ; clear common header
-        mov     [eax], edx
-        mov     [eax + 4], edx
-        mov     [eax + 8], edx
-        mov     [eax + 12], edx
-        mov     [eax + 16], edx
+        mov     [eax + app_object_t.prev_ptr], edx
+        mov     [eax + app_object_t.next_ptr], edx
+        mov     [eax + app_object_t.magic], edx
+        mov     [eax + app_object_t.destroy], edx
+        mov     [eax + app_object_t.pid], edx
 
         call    free ; release object memory
         ret

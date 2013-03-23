@@ -39,9 +39,9 @@ kproc reserve_hd1 ;/////////////////////////////////////////////////////////////
 
   .reserve_ok1:
         push    eax
-        mov     eax, [CURRENT_TASK]
-        shl     eax, 5
-        mov     eax, [TASK_DATA + eax - sizeof.task_data_t + task_data_t.pid]
+        mov     eax, [current_slot]
+        shl     eax, 9 ; * sizeof.legacy.slot_t
+        mov     eax, [legacy_slots + eax + legacy.slot_t.task.pid]
         mov     [hd1_status], eax
         pop     eax
         sti
@@ -627,16 +627,16 @@ kproc hdd_irq14 ;///////////////////////////////////////////////////////////////
         out     dx, al
 ;       call    update_counters
 ;       mov     ebx, [dma_process]
-;       cmp     [CURRENT_TASK], ebx
+;       cmp     [current_slot], ebx
 ;       jz      .noswitch
 ;       mov     [dma_task_switched], 1
 ;       mov     edi, [dma_slot_ptr]
-;       mov     eax, [CURRENT_TASK]
+;       mov     eax, [current_slot]
 ;       mov     [dma_process], eax
-;       mov     eax, [TASK_BASE]
+;       mov     eax, [current_slot_ptr]
 ;       mov     [dma_slot_ptr], eax
-;       mov     [CURRENT_TASK], ebx
-;       mov     [TASK_BASE], edi
+;       mov     [current_slot], ebx
+;       mov     [current_slot_ptr], edi
 ;       mov     [DONT_SWITCH], 1
 ;       call    do_change_task
 
@@ -664,16 +664,16 @@ kproc hdd_irq15 ;///////////////////////////////////////////////////////////////
         out     dx, al
 ;       call    update_counters
 ;       mov     ebx, [dma_process]
-;       cmp     [CURRENT_TASK], ebx
+;       cmp     [current_slot], ebx
 ;       jz      .noswitch
 ;       mov     [dma_task_switched], 1
 ;       mov     edi, [dma_slot_ptr]
-;       mov     eax, [CURRENT_TASK]
+;       mov     eax, [current_slot]
 ;       mov     [dma_process], eax
-;       mov     eax, [TASK_BASE]
+;       mov     eax, [current_slot_ptr]
 ;       mov     [dma_slot_ptr], eax
-;       mov     [CURRENT_TASK], ebx
-;       mov     [TASK_BASE], edi
+;       mov     [current_slot], ebx
+;       mov     [current_slot_ptr], edi
 ;       mov     [DONT_SWITCH], 1
 ;       call    do_change_task
 
@@ -773,9 +773,9 @@ kproc hd_read_dma ;/////////////////////////////////////////////////////////////
 
     @@: mov     al, 9
         out     dx, al
-        mov     eax, [CURRENT_TASK]
+        mov     eax, [current_slot]
         mov     [dma_process], eax
-        mov     eax, [TASK_BASE]
+        mov     eax, [current_slot_ptr]
         mov     [dma_slot_ptr], eax
         cmp     [hdbase], 0x1f0
         jnz     .ide1
@@ -888,9 +888,9 @@ kproc write_cache_chain ;///////////////////////////////////////////////////////
 
     @@: mov     al, 1
         out     dx, al
-        mov     eax, [CURRENT_TASK]
+        mov     eax, [current_slot]
         mov     [dma_process], eax
-        mov     eax, [TASK_BASE]
+        mov     eax, [current_slot_ptr]
         mov     [dma_slot_ptr], eax
         cmp     [hdbase], 0x1f0
         jnz     .ide1

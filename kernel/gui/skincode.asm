@@ -225,7 +225,7 @@ kproc drawwindow_IV_caption ;///////////////////////////////////////////////////
         mov     ebp, skin_inactive
 
     @@: mov     esi, [esp + 4]
-        mov     eax, [esi + window_data_t.box.width] ; window width
+        mov     eax, [esi + legacy.slot_t.window.box.width] ; window width
         mov     edx, [ebp + skin_data_t.left.left]
         shl     edx, 16
         mov     ecx, [ebp + skin_data_t.left.width]
@@ -236,7 +236,7 @@ kproc drawwindow_IV_caption ;///////////////////////////////////////////////////
         call    sys_putimage_with_check
 
         mov     esi, [esp + 4]
-        mov     eax, [esi + window_data_t.box.width]
+        mov     eax, [esi + legacy.slot_t.window.box.width]
         sub     eax, [ebp + skin_data_t.left.width]
         sub     eax, [ebp + skin_data_t.oper.width]
         cmp     eax, [ebp + skin_data_t.base.left]
@@ -270,7 +270,7 @@ kproc drawwindow_IV_caption ;///////////////////////////////////////////////////
 
   .non_base:
         mov     esi, [esp + 4]
-        mov     edx, [esi + window_data_t.box.width]
+        mov     edx, [esi + legacy.slot_t.window.box.width]
         sub     edx, [ebp + skin_data_t.oper.width]
         inc     edx
         shl     edx, 16
@@ -300,14 +300,14 @@ kproc drawwindow_IV ;///////////////////////////////////////////////////////////
         jne     @f
         mov     ebp, skin_inactive
 
-    @@: mov     eax, [edi + window_data_t.box.left]
+    @@: mov     eax, [edi + legacy.slot_t.window.box.left]
         shl     eax, 16
-        mov     ax, word[edi + window_data_t.box.left]
-        add     ax, word[edi + window_data_t.box.width]
-        mov     ebx, [edi + window_data_t.box.top]
+        mov     ax, word[edi + legacy.slot_t.window.box.left]
+        add     ax, word[edi + legacy.slot_t.window.box.width]
+        mov     ebx, [edi + legacy.slot_t.window.box.top]
         shl     ebx, 16
-        mov     bx, word[edi + window_data_t.box.top]
-        add     bx, word[edi + window_data_t.box.height]
+        mov     bx, word[edi + legacy.slot_t.window.box.top]
+        add     bx, word[edi + legacy.slot_t.window.box.height]
 ;       mov     esi, [edi + 24]
 ;       shr     esi, 1
 ;       and     esi, 0x007f7f7f
@@ -340,7 +340,7 @@ kproc drawwindow_IV ;///////////////////////////////////////////////////////////
         xor     eax, eax
         xor     ebx, ebx
         mov     esi, [esp]
-        mov     ecx, [esi + window_data_t.box.width]
+        mov     ecx, [esi + legacy.slot_t.window.box.width]
         inc     ecx
         mov     edx, [_skinh]
         mov     edi, [common_colours.grab] ; standard grab color
@@ -353,19 +353,19 @@ kproc drawwindow_IV ;///////////////////////////////////////////////////////////
   .draw_clientbar:
         mov     esi, [esp]
 
-        mov     edx, [esi + window_data_t.box.top] ; WORK AREA
+        mov     edx, [esi + legacy.slot_t.window.box.top] ; WORK AREA
         add     edx, 21 + 5
-        mov     ebx, [esi + window_data_t.box.top]
-        add     ebx, [esi + window_data_t.box.height]
+        mov     ebx, [esi + legacy.slot_t.window.box.top]
+        add     ebx, [esi + legacy.slot_t.window.box.height]
         cmp     edx, ebx
         jg      ._noinside2
         mov     eax, 5
         mov     ebx, [_skinh]
-        mov     ecx, [esi + window_data_t.box.width]
-        mov     edx, [esi + window_data_t.box.height]
+        mov     ecx, [esi + legacy.slot_t.window.box.width]
+        mov     edx, [esi + legacy.slot_t.window.box.height]
         sub     ecx, 4
         sub     edx, 4
-        mov     edi, [esi + window_data_t.cl_workarea]
+        mov     edi, [esi + legacy.slot_t.window.cl_workarea]
         test    edi, 0x40000000
         jnz     ._noinside2
         call    [drawbar]
@@ -385,7 +385,7 @@ kproc drawwindow_IV ;///////////////////////////////////////////////////////////
         shl     eax, 4 ; *= sizeof.sys_button_t
         add     eax, edi
 
-        mov     ebx, [CURRENT_TASK]
+        mov     ebx, [current_slot]
         mov     [eax + sys_button_t.pslot], ebx
 
         mov     ebx, 1
@@ -394,7 +394,7 @@ kproc drawwindow_IV ;///////////////////////////////////////////////////////////
         cmp     [skin_btn_close.left], 0
         jge     ._bCx_at_right
         mov     ebx, [esp]
-        mov     ebx, [ebx + window_data_t.box.width]
+        mov     ebx, [ebx + legacy.slot_t.window.box.width]
         inc     ebx
 
   ._bCx_at_right:
@@ -420,7 +420,7 @@ kproc drawwindow_IV ;///////////////////////////////////////////////////////////
         shl     eax, 4 ; *= sizeof.sys_button_t
         add     eax, edi
 
-        mov     ebx, [CURRENT_TASK]
+        mov     ebx, [current_slot]
         mov     [eax + sys_button_t.pslot], ebx
 
         mov     ebx, 65535
@@ -429,7 +429,7 @@ kproc drawwindow_IV ;///////////////////////////////////////////////////////////
         cmp     [skin_btn_minimize.left], 0
         jge     ._bMx_at_right
         mov     ebx, [esp]
-        mov     ebx, [ebx + window_data_t.box.width]
+        mov     ebx, [ebx + legacy.slot_t.window.box.width]
         inc     ebx
 
   ._bMx_at_right:

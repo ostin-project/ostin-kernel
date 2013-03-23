@@ -268,7 +268,7 @@ kproc sysfn.set_background_ctl.map ;////////////////////////////////////////////
         call    change_task
         jmp     @b
 
-    @@: mov     eax, [CURRENT_TASK]
+    @@: mov     eax, [current_slot]
         mov     [bgrlockpid], eax
         cmp     [img_background], static_background_data
         jz      .nomem
@@ -315,7 +315,7 @@ kproc sysfn.set_background_ctl.unmap ;//////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     [bgrlock], 0
         jz      .err
-        mov     eax, [CURRENT_TASK]
+        mov     eax, [current_slot]
         cmp     [bgrlockpid], eax
         jnz     .err
         mov     eax, ecx
@@ -401,13 +401,13 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc force_redraw_background ;/////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        and     [draw_data + sizeof.draw_data_t + draw_data_t.left], 0
-        and     [draw_data + sizeof.draw_data_t + draw_data_t.top], 0
+        and     [legacy_os_idle_slot.draw.left], 0
+        and     [legacy_os_idle_slot.draw.top], 0
         push    eax ebx
         mov     eax, [Screen_Max_Pos.x]
         mov     ebx, [Screen_Max_Pos.y]
-        mov     [draw_data + sizeof.draw_data_t + draw_data_t.right], eax
-        mov     [draw_data + sizeof.draw_data_t + draw_data_t.bottom], ebx
+        mov     [legacy_os_idle_slot.draw.right], eax
+        mov     [legacy_os_idle_slot.draw.bottom], ebx
         pop     ebx eax
         inc     [REDRAW_BACKGROUND]
         ret

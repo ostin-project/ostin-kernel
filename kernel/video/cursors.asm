@@ -307,14 +307,14 @@ proc set_cursor stdcall, hcursor:dword ;////////////////////////////////////////
         jne     .fail
 ;       cmp     [eax + cursor_t.size], CURSOR_SIZE
 ;       jne     .fail
-        mov     ebx, [current_slot]
-        xchg    eax, [ebx + app_data_t.cursor]
+        mov     ebx, [current_slot_ptr]
+        xchg    eax, [ebx + legacy.slot_t.app.cursor]
         ret
 
   .fail:
         mov     eax, [def_cursor]
-        mov     ebx, [current_slot]
-        xchg    eax, [ebx + app_data_t.cursor]
+        mov     ebx, [current_slot_ptr]
+        xchg    eax, [ebx + legacy.slot_t.app.cursor]
         ret
 endp
 
@@ -430,9 +430,8 @@ endl
         push    esi
         push    edi
 
-        mov     eax, [CURRENT_TASK]
-        shl     eax, 5
-        mov     eax, [TASK_DATA + eax - sizeof.task_data_t + task_data_t.pid]
+        mov     eax, [current_slot_ptr]
+        mov     eax, [eax + legacy.slot_t.task.pid]
         mov     ebx, [src]
         mov     ecx, [flags]
         call    create_cursor ; eax, ebx, ecx
@@ -471,17 +470,16 @@ endl
         cmp     [esi + cursor_t.magic], 'CURS'
         jne     .fail
 
-        mov     ebx, [CURRENT_TASK]
-        shl     ebx, 5
-        mov     ebx, [TASK_DATA + ebx - sizeof.task_data_t + task_data_t.pid]
+        mov     ebx, [current_slot_ptr]
+        mov     ebx, [ebx + legacy.slot_t.task.pid]
         cmp     ebx, [esi + cursor_t.pid]
         jne     .fail
 
-        mov     ebx, [current_slot]
-        cmp     esi, [ebx + app_data_t.cursor]
+        mov     ebx, [current_slot_ptr]
+        cmp     esi, [ebx + legacy.slot_t.app.cursor]
         jne     @f
         mov     eax, [def_cursor]
-        mov     [ebx + app_data_t.cursor], eax
+        mov     [ebx + legacy.slot_t.app.cursor], eax
 
     @@: mov     eax, [hcursor]
         call    [eax + app_object_t.destroy]

@@ -24,14 +24,14 @@ kproc sysfn.draw_text ;/////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 4
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, [TASK_BASE]
-        mov     ebp, [eax - twdw + window_data_t.box.left]
+        mov     eax, [current_slot_ptr]
+        mov     ebp, [eax + legacy.slot_t.window.box.left]
         push    esi
-        mov     esi, [current_slot]
-        add     ebp, [esi + app_data_t.wnd_clientbox.left]
+        mov     esi, [current_slot_ptr]
+        add     ebp, [esi + legacy.slot_t.app.wnd_clientbox.left]
         shl     ebp, 16
-        add     ebp, [eax - twdw + window_data_t.box.top]
-        add     bp, word[esi + app_data_t.wnd_clientbox.top]
+        add     ebp, [eax + legacy.slot_t.window.box.top]
+        add     bp, word[esi + legacy.slot_t.app.wnd_clientbox.top]
         pop     esi
         add     ebx, ebp
         mov     eax, edi
@@ -240,16 +240,13 @@ kproc draw_num_text ;///////////////////////////////////////////////////////////
         mov     ebx, [esp + 64 + 32 - 8 + 4]
 
         ; add window start x & y
-        mov     ecx, [TASK_BASE]
+        mov     ecx, [current_slot_ptr]
 
-        mov     edi, [CURRENT_TASK]
-        shl     edi, 8
-
-        mov     eax, [ecx - twdw + window_data_t.box.left]
-        add     eax, [SLOT_BASE + edi + app_data_t.wnd_clientbox.left]
+        mov     eax, [ecx + legacy.slot_t.window.box.left]
+        add     eax, [ecx + legacy.slot_t.app.wnd_clientbox.left]
         shl     eax, 16
-        add     eax, [ecx - twdw + window_data_t.box.top]
-        add     eax, [SLOT_BASE + edi + app_data_t.wnd_clientbox.top]
+        add     eax, [ecx + legacy.slot_t.window.box.top]
+        add     eax, [ecx + legacy.slot_t.app.wnd_clientbox.top]
         add     ebx, eax
         mov     ecx, [esp + 64 + 32 - 12 + 4]
         and     ecx, not 0x80000000 ; force counted string

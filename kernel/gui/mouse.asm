@@ -226,10 +226,10 @@ kproc mouse._.left_button_press_handler ;///////////////////////////////////////
         call    sys_window_maximize_handler
         jmp     .exit
 
-    @@: test    [edi + window_data_t.fl_wstate], WINDOW_STATE_MAXIMIZED
+    @@: test    [edi + legacy.slot_t.window.fl_wstate], WINDOW_STATE_MAXIMIZED
         jnz     .exit
         mov     [mouse.active_sys_window.pslot], esi
-        lea     eax, [edi + window_data_t.box]
+        lea     eax, [edi + legacy.slot_t.window.box]
         mov     ebx, mouse.active_sys_window.old_box
         mov     ecx, sizeof.box32_t
         call    memmove
@@ -299,8 +299,8 @@ kproc mouse._.left_button_release_handler ;/////////////////////////////////////
         jz      .exit
 
         mov     eax, esi
-        shl     eax, 5
-        add     eax, window_data + window_data_t.box
+        shl     eax, 9 ; * sizeof.legacy.slot_t
+        add     eax, legacy_slots + legacy.slot_t.window.box
         mov     ebx, mouse.active_sys_window.old_box
         mov     ecx, sizeof.box32_t
         call    memmove
@@ -447,8 +447,8 @@ kproc mouse._.move_handler ;////////////////////////////////////////////////////
 
         push    eax
         mov     edi, esi
-        shl     edi, 5
-        add     edi, window_data
+        shl     edi, 9 ; * sizeof.legacy.slot_t
+        add     edi, legacy_slots
         call    window._.get_rolledup_height
         mov     ecx, eax
         pop     eax
@@ -522,7 +522,7 @@ kproc mouse._.find_sys_window_under_cursor ;////////////////////////////////////
 ;? mouse cursor within its bounds
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< esi = process slot
-;< edi = pointer to window_data_t struct
+;< edi = pointer to legacy.slot_t struct
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     esi, [Screen_Max_Pos.x]
         inc     esi
@@ -531,8 +531,8 @@ kproc mouse._.find_sys_window_under_cursor ;////////////////////////////////////
         add     esi, [mouse.state.pos.x]
         movzx   esi, byte[esi]
         mov     edi, esi
-        shl     edi, 5
-        add     edi, window_data
+        shl     edi, 9 ; * sizeof.legacy.slot_t
+        add     edi, legacy_slots
         ret
 kendp
 
@@ -582,13 +582,13 @@ kproc mouse._.find_sys_button_under_cursor ;////////////////////////////////////
 
         ; does it contain cursor coordinates?
         mov     eax, [mouse.state.pos.x]
-        sub     eax, [edi + window_data_t.box.left]
+        sub     eax, [edi + legacy.slot_t.window.box.left]
         sub     ax, [esi + sys_button_t.box.left]
         jl      .next_button
         sub     ax, [esi + sys_button_t.box.width]
         jge     .next_button
         mov     eax, [mouse.state.pos.y]
-        sub     eax, [edi + window_data_t.box.top]
+        sub     eax, [edi + legacy.slot_t.window.box.top]
         sub     ax, [esi + sys_button_t.box.top]
         jl      .next_button
         sub     ax, [esi + sys_button_t.box.height]
@@ -620,13 +620,13 @@ kproc mouse._.check_sys_window_actions ;////////////////////////////////////////
 ;< eax = action flags or 0
 ;-----------------------------------------------------------------------------------------------------------------------
         ; is window movable?
-        test    byte[edi + window_data_t.cl_titlebar + 3], 0x01
+        test    byte[edi + legacy.slot_t.window.cl_titlebar + 3], 0x01
         jnz     .no_action
 
         mov     eax, [mouse.state.pos.x]
         mov     ebx, [mouse.state.pos.y]
-        sub     eax, [edi + window_data_t.box.left]
-        sub     ebx, [edi + window_data_t.box.top]
+        sub     eax, [edi + legacy.slot_t.window.box.left]
+        sub     ebx, [edi + legacy.slot_t.window.box.top]
 
         ; is there a window titlebar under cursor?
         push    eax
@@ -636,20 +636,20 @@ kproc mouse._.check_sys_window_actions ;////////////////////////////////////////
         jl      .move_action
 
         ; no there isn't, can it be resized then?
-        mov     dl, [edi + window_data_t.fl_wstyle]
+        mov     dl, [edi + legacy.slot_t.window.fl_wstyle]
         and     dl, 0x0f
         ; NOTE: dangerous optimization, revise if window types changed;
         ;       this currently implies only types 2 and 3 could be resized
         test    dl, 2
         jz      .no_action
 
-        mov     ecx, [edi + window_data_t.box.width]
+        mov     ecx, [edi + legacy.slot_t.window.box.width]
         add     ecx, -window.BORDER_SIZE
-        mov     edx, [edi + window_data_t.box.height]
+        mov     edx, [edi + legacy.slot_t.window.box.height]
         add     edx, -window.BORDER_SIZE
 
         ; is it rolled up?
-        test    [edi + window_data_t.fl_wstate], WINDOW_STATE_ROLLEDUP
+        test    [edi + legacy.slot_t.window.fl_wstate], WINDOW_STATE_ROLLEDUP
         jnz     .resize_w_or_e_action
 
         cmp     eax, window.BORDER_SIZE

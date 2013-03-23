@@ -48,8 +48,8 @@ kproc sysfn.debug_ctl.set_event_data ;//////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;# destroys eax
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, [current_slot]
-        mov     [eax + app_data_t.dbg_event_mem], ecx
+        mov     eax, [current_slot_ptr]
+        mov     [eax + legacy.slot_t.app.dbg_event_mem], ecx
         ret
 kendp
 
@@ -67,10 +67,10 @@ kproc get_debuggee_slot ;///////////////////////////////////////////////////////
         call    pid_to_slot
         test    eax, eax
         jz      .ret_bad
-        shl     eax, 5
+        shl     eax, 9 ; * sizeof.legacy.slot_t
         push    ebx
-        mov     ebx, [CURRENT_TASK]
-        cmp     [SLOT_BASE + eax * 8 + app_data_t.debugger_slot], ebx
+        mov     ebx, [current_slot]
+        cmp     [legacy_slots + eax + legacy.slot_t.app.debugger_slot], ebx
         pop     ebx
         jnz     .ret_bad
 ;       clc     ; automatically
@@ -92,7 +92,7 @@ kproc sysfn.debug_ctl.detach ;//////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         call    get_debuggee_slot
         jc      .ret
-        and     [SLOT_BASE + eax * 8 + app_data_t.debugger_slot], 0
+        and     [legacy_slots + eax + legacy.slot_t.app.debugger_slot], 0
         call    do_resume
 
   .ret:
@@ -110,7 +110,7 @@ kproc sysfn.debug_ctl.terminate ;///////////////////////////////////////////////
         call    get_debuggee_slot
         jc      sysfn.debug_ctl.detach.ret
         mov     ecx, eax
-        shr     ecx, 5
+        shr     ecx, 9 ; / sizeof.legacy.slot_t
 ;       push    2
 ;       pop     ebx
         mov     edx, esi
@@ -129,9 +129,9 @@ kproc sysfn.debug_ctl.suspend ;/////////////////////////////////////////////////
         cli
         mov     eax, ecx
         call    pid_to_slot
-        shl     eax, 5
+        shl     eax, 9 ; * sizeof.legacy.slot_t
         jz      .ret
-        mov     cl, [TASK_DATA + eax - sizeof.task_data_t + task_data_t.state] ; process state
+        mov     cl, [legacy_slots + eax + legacy.slot_t.task.state] ; process state
         test    cl, cl ; THREAD_STATE_RUNNING
         jz      .1
         cmp     cl, THREAD_STATE_WAITING
@@ -139,7 +139,7 @@ kproc sysfn.debug_ctl.suspend ;/////////////////////////////////////////////////
         mov     cl, THREAD_STATE_WAIT_SUSPENDED
 
   .2:
-        mov     [TASK_DATA + eax - sizeof.task_data_t + task_data_t.state], cl
+        mov     [legacy_slots + eax + legacy.slot_t.task.state], cl
 
   .ret:
         sti
@@ -153,7 +153,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc do_resume ;///////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     cl, [TASK_DATA + eax - sizeof.task_data_t + task_data_t.state]
+        mov     cl, [legacy_slots + eax + legacy.slot_t.task.state]
         cmp     cl, THREAD_STATE_RUN_SUSPENDED
         jz      .1
         cmp     cl, THREAD_STATE_WAIT_SUSPENDED
@@ -161,7 +161,7 @@ kproc do_resume ;///////////////////////////////////////////////////////////////
         mov     cl, THREAD_STATE_WAITING
 
   .2:
-        mov     [TASK_DATA + eax - sizeof.task_data_t + task_data_t.state], cl
+        mov     [legacy_slots + eax + legacy.slot_t.task.state], cl
 
   .ret:
         ret
@@ -183,7 +183,7 @@ kproc sysfn.debug_ctl.resume ;//////////////////////////////////////////////////
         cli
         mov     eax, ecx
         call    pid_to_slot
-        shl     eax, 5
+        shl     eax, 9 ; * sizeof.legacy.slot_t
         jz      .ret
         call    do_resume
 
@@ -214,7 +214,7 @@ kproc sysfn.debug_ctl.get_context ;/////////////////////////////////////////////
         call    get_debuggee_slot
         jc      .ret
         mov     edi, esi
-        mov     eax, [SLOT_BASE + eax * 8 + app_data_t.pl0_stack]
+        mov     eax, [legacy_slots + eax + legacy.slot_t.app.pl0_stack]
         lea     esi, [eax + sizeof.ring0_stack_data_t]
 
   .ring0:
@@ -272,7 +272,7 @@ kproc sysfn.debug_ctl.set_context ;/////////////////////////////////////////////
         call    get_debuggee_slot
         jc      .stiret
 ;       mov     esi, edx
-        mov     eax, [SLOT_BASE + eax * 8 + app_data_t.pl0_stack]
+        mov     eax, [legacy_slots + eax + legacy.slot_t.app.pl0_stack]
         lea     edi, [eax + sizeof.ring0_stack_data_t]
 
   .ring0:
@@ -315,7 +315,7 @@ kproc sysfn.debug_ctl.set_drx ;/////////////////////////////////////////////////
         call    get_debuggee_slot
         jc      .errret
         mov     ebp, eax
-        lea     eax, [SLOT_BASE + eax * 8 + app_data_t.dbg_regs]
+        lea     eax, [legacy_slots + eax + legacy.slot_t.app.dbg_regs]
         ; [eax]=dr0, [eax+4]=dr1, [eax+8]=dr2, [eax+C]=dr3
         ; [eax+10]=dr7
         cmp     esi, OS_BASE
@@ -342,7 +342,7 @@ kproc sysfn.debug_ctl.set_drx ;/////////////////////////////////////////////////
         jnz     .okret
 ;       imul    eax, ebp, sizeof.sizeof.tss_t / 32
 ;       and     byte[eax + tss_data + tss_t._trap], not 1
-        and     [SLOT_BASE + ebp * 8 + app_data_t.dbg_state], not 1
+        and     [legacy_slots + ebp + legacy.slot_t.app.dbg_state], not 1
 
   .okret:
         and     [esp + 4 + regs_context32_t.eax], 0
@@ -393,7 +393,7 @@ kproc sysfn.debug_ctl.set_drx ;/////////////////////////////////////////////////
         or      [eax + 0x10 + 2], dx ; set R/W and LEN fields
 ;       imul    eax, ebp, sizeof.sizeof.tss_t / 32
 ;       or      byte[eax + tss_data + tss_t._trap], 1
-        or      [SLOT_BASE + ebp * 8 + app_data_t.dbg_state], 1
+        or      [legacy_slots + ebp + legacy.slot_t.app.dbg_state], 1
         jmp     .okret
 kendp
 
@@ -419,7 +419,7 @@ kproc sysfn.debug_ctl.read_process_memory ;/////////////////////////////////////
         jnz     .err
         call    get_debuggee_slot
         jc      .err
-        shr     eax, 5
+        shr     eax, 9 ; / sizeof.legacy.slot_t
         mov     ecx, edi
         call    read_process_memory
         sti
@@ -453,7 +453,7 @@ kproc sysfn.debug_ctl.write_process_memory ;////////////////////////////////////
         jnz     sysfn.debug_ctl.read_process_memory.err
         call    get_debuggee_slot
         jc      sysfn.debug_ctl.read_process_memory.err
-        shr     eax, 5
+        shr     eax, 9 ; / sizeof.legacy.slot_t
         mov     ecx, edi
         call    write_process_memory
         sti
@@ -478,8 +478,8 @@ kproc debugger_notify ;/////////////////////////////////////////////////////////
 
   .1:
         mov     eax, ebp
-        shl     eax, 8
-        mov     esi, [SLOT_BASE + eax + app_data_t.dbg_event_mem]
+        shl     eax, 9 ; * sizeof.legacy.slot_t
+        mov     esi, [legacy_slots + eax + legacy.slot_t.app.dbg_event_mem]
         test    esi, esi
         jz      .ret
         ; read buffer header
@@ -502,7 +502,7 @@ kproc debugger_notify ;/////////////////////////////////////////////////////////
         pop     ecx
         pop     ecx
         pop     ecx
-        cmp     [CURRENT_TASK], 1
+        cmp     [current_slot], 1
         jnz     .notos
         cmp     dword[timer_ticks], edi
         jae     .ret
@@ -536,8 +536,8 @@ kproc debugger_notify ;/////////////////////////////////////////////////////////
         call    write_process_memory
         ; new debug event
         mov     eax, ebp
-        shl     eax, 8
-        or      [SLOT_BASE + eax + app_data_t.event_mask], EVENT_DEBUG
+        shl     eax, 9 ; * sizeof.legacy.slot_t
+        or      [legacy_slots + eax + legacy.slot_t.app.event_mask], EVENT_DEBUG
 
   .ret:
         ret

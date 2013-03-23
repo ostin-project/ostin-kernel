@@ -475,11 +475,11 @@ proc new_mem_resize stdcall, new_size:dword ;///////////////////////////////////
         and     edi, not 4095
         mov     [new_size], edi
 
-        mov     edx, [current_slot]
-        cmp     [edx + app_data_t.heap_base], 0
+        mov     edx, [current_slot_ptr]
+        cmp     [edx + legacy.slot_t.app.heap_base], 0
         jne     .exit
 
-        mov     esi, [edx + app_data_t.mem_size]
+        mov     esi, [edx + legacy.slot_t.app.mem_size]
         add     esi, 4095
         and     esi, not 4095
 
@@ -597,26 +597,25 @@ kproc update_mem_size ;/////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;# destroys eax, ecx, edx
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     [app_data_t.mem_size + edx], ebx
+        mov     [edx + legacy.slot_t.app.mem_size], ebx
         ; search threads and update
         ; application memory size infomation
-        mov     ecx, [app_data_t.dir_table + edx]
+        mov     ecx, [edx + legacy.slot_t.app.dir_table]
         mov     eax, 2
 
   .search_threads:
         ; eax = current slot
         ; ebx = new memory size
         ; ecx = page directory
-        cmp     eax, [TASK_COUNT]
+        cmp     eax, [legacy_slots.last_valid_slot]
         jg      .search_threads_end
         mov     edx, eax
-        shl     edx, 5
-        cmp     [TASK_DATA + edx - sizeof.task_data_t + task_data_t.state], THREAD_STATE_FREE ; if slot empty?
+        shl     edx, 9 ; * sizeof.legacy.slot_t
+        cmp     [legacy_slots + edx + legacy.slot_t.task.state], THREAD_STATE_FREE ; if slot empty?
         jz      .search_threads_next
-        shl     edx, 3
-        cmp     [SLOT_BASE + edx + app_data_t.dir_table], ecx ; if it is our thread?
+        cmp     [legacy_slots + edx + legacy.slot_t.app.dir_table], ecx ; if it is our thread?
         jnz     .search_threads_next
-        mov     [SLOT_BASE + edx + app_data_t.mem_size], ebx ; update memory size
+        mov     [legacy_slots + edx + legacy.slot_t.app.mem_size], ebx ; update memory size
 
   .search_threads_next:
         inc     eax
@@ -728,9 +727,8 @@ end if
         ; access denied? this may be a result of copy-on-write protection for DLL
         ; check list of HDLLs
         and     ebx, not 0x0fff
-        mov     eax, [CURRENT_TASK]
-        shl     eax, 8
-        mov     eax, [SLOT_BASE + eax + app_data_t.dlls_list_ptr]
+        mov     eax, [current_slot_ptr]
+        mov     eax, [eax + legacy.slot_t.app.dlls_list_ptr]
         test    eax, eax
         jz      .fail
         mov     esi, [eax + dll_handle_t.next_ptr]
@@ -794,9 +792,9 @@ end if
 
         mov     ebx, esi
         shr     ebx, 12
-        mov     edx, [current_slot]
+        mov     edx, [current_slot_ptr]
         or      eax, PG_SW
-        mov     [edx + app_data_t.io_map + ebx * 4], eax
+        mov     [edx + legacy.slot_t.app.io_map + ebx * 4], eax
 
         add     esi, [default_io_map]
         mov     ecx, 4096 / 4
@@ -816,8 +814,8 @@ proc map_mem stdcall, lin_addr:dword, slot:dword, ofs:dword, buf_size:dword, req
         jz      .exit
 
         mov     eax, [slot]
-        shl     eax, 8
-        mov     eax, [SLOT_BASE + eax + app_data_t.dir_table]
+        shl     eax, 9 ; * sizeof.legacy.slot_t
+        mov     eax, [legacy_slots + eax + legacy.slot_t.app.dir_table]
         and     eax, 0xfffff000
 
         stdcall map_page, [ipc_pdir], eax, PG_UW
@@ -883,8 +881,8 @@ proc map_memEx stdcall, lin_addr:dword, slot:dword, ofs:dword, buf_size:dword, r
         jz      .exit
 
         mov     eax, [slot]
-        shl     eax, 8
-        mov     eax, [SLOT_BASE + eax + app_data_t.dir_table]
+        shl     eax, 9 ; * sizeof.legacy.slot_t
+        mov     eax, [legacy_slots + eax + legacy.slot_t.app.dir_table]
         and     eax, 0xfffff000
 
         stdcall map_page, [proc_mem_pdir], eax, PG_UW
@@ -973,8 +971,8 @@ proc safe_map_page stdcall, slot:dword, req_access:dword, ofs:dword ;///////////
         cli
         push    ebx ecx
         mov     eax, [slot]
-        shl     eax, 8
-        mov     eax, [SLOT_BASE + eax + app_data_t.dlls_list_ptr]
+        shl     eax, 9 ; * sizeof.legacy.slot_t
+        mov     eax, [legacy_slots + eax + legacy.slot_t.app.dlls_list_ptr]
         test    eax, eax
         jz      .no_hdll
         mov     ecx, [eax + dll_handle_t.next_ptr]
@@ -1084,11 +1082,11 @@ kproc sysfn.ipc_ctl.set_buffer ;////////////////////////////////////////////////
 ;> ecx = address of buffer
 ;> edx = size of buffer
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, [current_slot]
+        mov     eax, [current_slot_ptr]
         pushf
         cli
-        mov     [eax + app_data_t.ipc.address], ecx ; set fields in extended information area
-        mov     [eax + app_data_t.ipc.size], edx
+        mov     [eax + legacy.slot_t.app.ipc.address], ecx ; set fields in extended information area
+        mov     [eax + legacy.slot_t.app.ipc.size], edx
 
         add     edx, ecx
         add     edx, 4095
@@ -1124,11 +1122,11 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 ;proc set_ipc_buff ;////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;       mov     eax, [current_slot]
+;       mov     eax, [current_slot_ptr]
 ;       pushf
 ;       cli
-;       mov     [eax + app_data_t.ipc.offset], ebx ; set fields in extended information area
-;       mov     [eax + app_data_t.ipc.length], ecx
+;       mov     [eax + legacy.slot_t.app.ipc.offset], ebx ; set fields in extended information area
+;       mov     [eax + legacy.slot_t.app.ipc.length], ecx
 ;
 ;       add     ecx, ebx
 ;       add     ecx, 4095
@@ -1164,8 +1162,8 @@ endl
         jz      .no_pid
 
         mov     [dst_slot], eax
-        shl     eax, 8
-        mov     edi, [SLOT_BASE + eax + app_data_t.ipc.address] ; is ipc area defined?
+        shl     eax, 9 ; * sizeof.legacy.slot_t
+        mov     edi, [legacy_slots + eax + legacy.slot_t.app.ipc.address]
         test    edi, edi
         jz      .no_ipc_area
 
@@ -1173,7 +1171,7 @@ endl
         and     ebx, 0x0fff
         mov     [dst_offset], ebx
 
-        mov     esi, [SLOT_BASE + eax + app_data_t.ipc.size]
+        mov     esi, [legacy_slots + eax + legacy.slot_t.app.ipc.size]
         mov     [buf_size], esi
 
         mov     ecx, [ipc_tmp]
@@ -1200,8 +1198,8 @@ endl
         ja      .buffer_overflow ; esi<0 - not enough memory in buffer
 
         mov     [edi + 4], ebx
-        mov     eax, [TASK_BASE]
-        mov     eax, [eax + 0x04] ; eax - our PID
+        mov     eax, [current_slot_ptr]
+        mov     eax, [eax + legacy.slot_t.task.pid] ; eax - our PID
         add     edi, edx
         mov     [edi], eax
         mov     ecx, [msg_size]
@@ -1235,12 +1233,12 @@ endl
         invlpg  [edx]
 
         mov     eax, [dst_slot]
-        shl     eax, 8
-        or      [SLOT_BASE + eax + app_data_t.event_mask], EVENT_IPC
-        cmp     dword[check_idle_semaphore], 20
+        shl     eax, 9 ; * sizeof.legacy.slot_t
+        or      [legacy_slots + eax + legacy.slot_t.app.event_mask], EVENT_IPC
+        cmp     [check_idle_semaphore], 20
         jge     .ipc_no_cis
 
-        mov     dword[check_idle_semaphore], 5
+        mov     [check_idle_semaphore], 5
 
   .ipc_no_cis:
         push    0
@@ -1507,9 +1505,9 @@ kproc sysfn.system_service.set_exception_handler ;//////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 68.24
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, [current_slot]
-        xchg    ecx, [eax + app_data_t.exc_handler]
-        xchg    edx, [eax + app_data_t.except_mask]
+        mov     eax, [current_slot_ptr]
+        xchg    ecx, [eax + legacy.slot_t.app.exc_handler]
+        xchg    edx, [eax + legacy.slot_t.app.except_mask]
         mov     [esp + 4 + regs_context32_t.eax], ecx ; reg_eax+8
         mov     [esp + 4 + regs_context32_t.ebx], edx ; reg_ebx+8
         ret
@@ -1523,11 +1521,11 @@ kproc sysfn.system_service.unmask_exception ;///////////////////////////////////
         cmp     ecx, 32
         jae     sysfn.system_service.error
 
-        mov     eax, [current_slot]
-        btr     [eax + app_data_t.except_mask], ecx
+        mov     eax, [current_slot_ptr]
+        btr     [eax + legacy.slot_t.app.except_mask], ecx
         setc    [esp + 4 + regs_context32_t.al]
         jecxz   .exit
-        bts     [eax + app_data_t.except_mask], ecx
+        bts     [eax + legacy.slot_t.app.except_mask], ecx
 
   .exit:
         ret

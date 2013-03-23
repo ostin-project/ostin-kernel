@@ -77,7 +77,7 @@ endg
         cmp     ebx, .countof.subfn
         jae     sysfn.not_implemented
 
-        mov     edi, [CURRENT_TASK]
+        mov     edi, [current_slot]
         jmp     [.subfn + ebx * 4]
 kendp
 
@@ -86,8 +86,8 @@ kproc sysfn.keyboard_ctl.set_input_mode ;///////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 66.1: set keyboard mode
 ;-----------------------------------------------------------------------------------------------------------------------
-        shl     edi, 8
-        mov     [SLOT_BASE + edi + app_data_t.keyboard_mode], cl
+        shl     edi, 9 ; * sizeof.legacy.slot_t
+        mov     [legacy_slots + edi + legacy.slot_t.app.keyboard_mode], cl
         ret
 kendp
 
@@ -96,8 +96,8 @@ kproc sysfn.keyboard_ctl.get_input_mode ;///////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 66.2: get keyboard mode
 ;-----------------------------------------------------------------------------------------------------------------------
-        shl     edi, 8
-        movzx   eax, [SLOT_BASE + edi + app_data_t.keyboard_mode]
+        shl     edi, 9 ; * sizeof.legacy.slot_t
+        movzx   eax, [legacy_slots + edi + legacy.slot_t.app.keyboard_mode]
         mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 kendp
@@ -207,9 +207,9 @@ kproc sysfn.get_key ;///////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     [esp + 4 + regs_context32_t.eax], 1
         ; test main buffer
-        mov     ebx, [CURRENT_TASK] ; TOP OF WINDOW STACK
+        mov     ebx, [current_slot] ; TOP OF WINDOW STACK
         movzx   ecx, [pslot_to_wnd_pos + ebx * 2]
-        mov     edx, [TASK_COUNT]
+        mov     edx, [legacy_slots.last_valid_slot]
         cmp     ecx, edx
         jne     .finish
         cmp     [key_buffer.count], 0
@@ -313,10 +313,10 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc set_keyboard_data ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, [TASK_COUNT] ; top window process
+        mov     eax, [legacy_slots.last_valid_slot] ; top window process
         movzx   eax, [wnd_pos_to_pslot + eax * 2]
-        shl     eax, 8
-        mov     al, [SLOT_BASE + eax + app_data_t.keyboard_mode]
+        shl     eax, 9 ; * sizeof.legacy.slot_t
+        mov     al, [legacy_slots + eax + legacy.slot_t.app.keyboard_mode]
         mov     [keyboard_mode], al
 
         mov     eax, ecx
@@ -338,10 +338,10 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc irq1 ;////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, [TASK_COUNT] ; top window process
+        mov     eax, [legacy_slots.last_valid_slot] ; top window process
         movzx   eax, [wnd_pos_to_pslot + eax * 2]
-        shl     eax, 8
-        mov     al, [SLOT_BASE + eax + app_data_t.keyboard_mode]
+        shl     eax, 9 ; * sizeof.legacy.slot_t
+        mov     al, [legacy_slots + eax + legacy.slot_t.app.keyboard_mode]
         mov     [keyboard_mode], al
 
         in      al, 0x60

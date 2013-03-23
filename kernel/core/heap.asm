@@ -694,21 +694,21 @@ align 4
 ;-----------------------------------------------------------------------------------------------------------------------
 proc init_heap ;////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     ebx, [current_slot]
-        mov     eax, [ebx + app_data_t.heap_top]
+        mov     ebx, [current_slot_ptr]
+        mov     eax, [ebx + legacy.slot_t.app.heap_top]
         test    eax, eax
         jz      @f
-        sub     eax, [ebx + app_data_t.heap_base]
+        sub     eax, [ebx + legacy.slot_t.app.heap_base]
         sub     eax, 4096
         ret
 
-    @@: mov     esi, [ebx + app_data_t.mem_size]
+    @@: mov     esi, [ebx + legacy.slot_t.app.mem_size]
         add     esi, 4095
         and     esi, not 4095
-        mov     [ebx + app_data_t.mem_size], esi
+        mov     [ebx + legacy.slot_t.app.mem_size], esi
         mov     eax, HEAP_TOP
-        mov     [ebx + app_data_t.heap_base], esi
-        mov     [ebx + app_data_t.heap_top], eax
+        mov     [ebx + legacy.slot_t.app.heap_base], esi
+        mov     [ebx + legacy.slot_t.app.heap_top], eax
 
         sub     eax, esi
         shr     esi, 10
@@ -731,9 +731,9 @@ proc user_alloc stdcall, alloc_size:dword ;/////////////////////////////////////
         add     ecx, (4095 + 4096)
         and     ecx, not 4095
 
-        mov     ebx, [current_slot]
-        mov     esi, [ebx + app_data_t.heap_base] ; heap_base
-        mov     edi, [ebx + app_data_t.heap_top] ; heap_top
+        mov     ebx, [current_slot_ptr]
+        mov     esi, [ebx + legacy.slot_t.app.heap_base] ; heap_base
+        mov     edi, [ebx + legacy.slot_t.app.heap_top] ; heap_top
 
   .l_0:
         cmp     esi, edi
@@ -768,11 +768,11 @@ proc user_alloc stdcall, alloc_size:dword ;/////////////////////////////////////
         jnz     @b
 
   .no:
-        mov     edx, [current_slot]
+        mov     edx, [current_slot_ptr]
         mov     ebx, [alloc_size]
         add     ebx, 0x0fff
         and     ebx, not 0x0fff
-        add     ebx, [edx + app_data_t.mem_size]
+        add     ebx, [edx + legacy.slot_t.app.mem_size]
         call    update_mem_size
 
         lea     eax, [esi + 4096]
@@ -808,14 +808,14 @@ proc user_alloc_at stdcall, address:dword, alloc_size:dword ;///////////////////
         push    esi
         push    edi
 
-        mov     ebx, [current_slot]
+        mov     ebx, [current_slot_ptr]
         mov     edx, [address]
         and     edx, not 0x0fff
         mov     [address], edx
         sub     edx, 0x1000
         jb      .error
-        mov     esi, [ebx + app_data_t.heap_base]
-        mov     edi, [ebx + app_data_t.heap_top]
+        mov     esi, [ebx + legacy.slot_t.app.heap_base]
+        mov     edi, [ebx + legacy.slot_t.app.heap_top]
         cmp     edx, esi
         jb      .error
 
@@ -888,11 +888,11 @@ proc user_alloc_at stdcall, address:dword, alloc_size:dword ;///////////////////
         mov     [page_tabs + ebx * 4], ecx
 
   .nothird:
-        mov     edx, [current_slot]
+        mov     edx, [current_slot_ptr]
         mov     ebx, [alloc_size]
         add     ebx, 0x0fff
         and     ebx, not 0x0fff
-        add     ebx, [edx + app_data_t.mem_size]
+        add     ebx, [edx + legacy.slot_t.app.mem_size]
         call    update_mem_size
 
         mov     eax, [address]
@@ -951,10 +951,10 @@ proc user_free stdcall, base:dword ;////////////////////////////////////////////
   .released:
         push    edi
 
-        mov     edx, [current_slot]
-        mov     esi, [edx + app_data_t.heap_base]
-        mov     edi, [edx + app_data_t.heap_top]
-        sub     ebx, [edx + app_data_t.mem_size]
+        mov     edx, [current_slot_ptr]
+        mov     esi, [edx + legacy.slot_t.app.heap_base]
+        mov     edi, [edx + legacy.slot_t.app.heap_top]
+        sub     ebx, [edx + legacy.slot_t.app.mem_size]
         neg     ebx
         call    update_mem_size
         call    user_normalize
@@ -1159,15 +1159,15 @@ kproc user_realloc ;////////////////////////////////////////////////////////////
         jnz     .nofreeall
         mov     eax, [page_tabs + ecx * 4]
         and     eax, not 0x0fff
-        mov     edx, [current_slot]
-        mov     ebx, [app_data_t.mem_size + edx]
+        mov     edx, [current_slot_ptr]
+        mov     ebx, [edx + legacy.slot_t.app.mem_size]
         sub     ebx, eax
         add     ebx, 0x1000
         or      al, FREE_BLOCK
         mov     [page_tabs + ecx * 4], eax
         push    esi edi
-        mov     esi, [app_data_t.heap_base + edx]
-        mov     edi, [app_data_t.heap_top + edx]
+        mov     esi, [edx + legacy.slot_t.app.heap_base]
+        mov     edi, [edx + legacy.slot_t.app.heap_top]
         call    update_mem_size
         call    user_normalize
         pop     edi esi
@@ -1181,9 +1181,9 @@ kproc user_realloc ;////////////////////////////////////////////////////////////
         shr     ebx, 12
         sub     ebx, edx
         push    ebx ecx edx
-        mov     edx, [current_slot]
+        mov     edx, [current_slot_ptr]
         shl     ebx, 12
-        sub     ebx, [app_data_t.mem_size + edx]
+        sub     ebx, [edx + legacy.slot_t.app.mem_size]
         neg     ebx
         call    update_mem_size
         pop     edx ecx ebx
@@ -1195,8 +1195,8 @@ kproc user_realloc ;////////////////////////////////////////////////////////////
         shl     ebx, 12
         jz      .ret
         push    esi
-        mov     esi, [current_slot]
-        mov     esi, [app_data_t.heap_top + esi]
+        mov     esi, [current_slot_ptr]
+        mov     esi, [esi + legacy.slot_t.app.heap_top]
         shr     esi, 12
 
     @@: cmp     edx, esi
@@ -1222,8 +1222,8 @@ kproc user_realloc ;////////////////////////////////////////////////////////////
 
   .realloc_add:
         ; get some additional memory
-        mov     eax, [current_slot]
-        mov     eax, [app_data_t.heap_top + eax]
+        mov     eax, [current_slot_ptr]
+        mov     eax, [eax + legacy.slot_t.app.heap_top]
         shr     eax, 12
         cmp     edx, eax
         jae     .cant_inplace
@@ -1255,18 +1255,18 @@ kproc user_realloc ;////////////////////////////////////////////////////////////
         rep
         stosd
         pop     edi
-        mov     edx, [current_slot]
+        mov     edx, [current_slot_ptr]
         shl     ebx, 12
-        add     ebx, [app_data_t.mem_size + edx]
+        add     ebx, [edx + legacy.slot_t.app.mem_size]
         call    update_mem_size
         pop     eax edx ecx
         ret
 
   .cant_inplace:
         push    esi edi
-        mov     eax, [current_slot]
-        mov     esi, [app_data_t.heap_base + eax]
-        mov     edi, [app_data_t.heap_top + eax]
+        mov     eax, [current_slot_ptr]
+        mov     esi, [eax + legacy.slot_t.app.heap_base]
+        mov     edi, [eax + legacy.slot_t.app.heap_top]
         shr     esi, 12
         shr     edi, 12
         sub     ebx, ecx
@@ -1334,9 +1334,9 @@ kproc user_realloc ;////////////////////////////////////////////////////////////
 
   .no:
         push    ebx
-        mov     edx, [current_slot]
+        mov     edx, [current_slot_ptr]
         shl     ebx, 12
-        add     ebx, [app_data_t.mem_size + edx]
+        add     ebx, [edx + legacy.slot_t.app.mem_size]
         call    update_mem_size
         pop     ebx
 
@@ -1576,9 +1576,8 @@ align 4
         mov     edx, E_ACCESS
         ja      .fail
 
-        mov     ebx, [CURRENT_TASK]
-        shl     ebx, 5
-        mov     ebx, [TASK_DATA + ebx - sizeof.task_data_t + task_data_t.pid]
+        mov     ebx, [current_slot_ptr]
+        mov     ebx, [ebx + legacy.slot_t.task.pid]
         mov     eax, sizeof.smap_t
 
         call    create_kernel_object
@@ -1667,8 +1666,8 @@ proc shmem_close stdcall, name:dword ;//////////////////////////////////////////
         pushfd
         cli
 
-        mov     esi, [current_slot]
-        add     esi, app_data_t.obj
+        mov     esi, [current_slot_ptr]
+        add     esi, legacy.slot_t.app.obj
 
   .next:
         mov     eax, [esi + app_object_t.next_ptr]

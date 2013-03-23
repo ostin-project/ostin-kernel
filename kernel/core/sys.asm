@@ -125,11 +125,11 @@ kproc exc_c ;///////////////////////////////////////////////////////////////////
 ;? exceptions (all but 7th - #NM)
 ;-----------------------------------------------------------------------------------------------------------------------
 ; Stack frame on exception/interrupt from 3rd ring + pushad (i.e. right here)
-reg_ss     equ esp + 0x30
-reg_esp3   equ esp + 0x2c
-reg_eflags equ esp + 0x28
-reg_cs3    equ esp + 0x24
-reg_eip    equ esp + 0x20
+reg_ss     equ esp + sizeof.regs_context32_t + 16
+reg_esp3   equ esp + sizeof.regs_context32_t + 12
+reg_eflags equ esp + sizeof.regs_context32_t + 8
+reg_cs3    equ esp + sizeof.regs_context32_t + 4
+reg_eip    equ esp + sizeof.regs_context32_t + 0
 ;-----------------------------------------------------------------------------------------------------------------------
         Mov     ds, ax, app_data ; load correct values
         mov     es, ax ; into segment registers
@@ -142,22 +142,21 @@ reg_eip    equ esp + 0x20
         jne     @f
         call    page_fault_handler ; SEE: core/memory.inc
 
-    @@: mov     esi, [current_slot]
-        btr     [esi + app_data_t.except_mask], ebx
+    @@: mov     esi, [current_slot_ptr]
+        btr     [esi + legacy.slot_t.app.except_mask], ebx
         jnc     @f
-        mov     eax, [esi + app_data_t.exc_handler]
+        mov     eax, [esi + legacy.slot_t.app.exc_handler]
         test    eax, eax
         jnz     IRetToUserHook
 
     @@: cli
-        mov     eax, [esi + app_data_t.debugger_slot]
+        mov     eax, [esi + legacy.slot_t.app.debugger_slot]
         test    eax, eax
         jnz     .debug
         sti
         ; not debuggee => say error and terminate
         call    show_error_parameters ;; only ONE using, inline ???
-;       mov     edx, [TASK_BASE]
-        mov     [edx + task_data_t.state], THREAD_STATE_TERMINATING ; terminate
+        mov     [esi + legacy.slot_t.task.state], THREAD_STATE_TERMINATING ; terminate
         jmp     change_task ; stack - here it does not matter at all, SEE: core/shed.inc
 
   .debug:
@@ -183,14 +182,13 @@ reg_eip    equ esp + 0x20
 
   .notify:
         push    ebx ; debug_message data
-        mov     ebx, [TASK_BASE]
-        push    [ebx + task_data_t.pid] ; PID
+        push    [esi + legacy.slot_t.task.pid] ; PID
         push    ecx ; debug_message code ((here: ecx==1/3))
         mov     cl, 12 ; debug_message size
         call    debugger_notify ;; only ONE using, inline ??? SEE: core/debug.inc
         add     esp, 12
-        mov     edx, [TASK_BASE]
-        mov     [edx + task_data_t.state], THREAD_STATE_RUN_SUSPENDED ; suspended
+        mov     esi, [current_slot_ptr]
+        mov     [esi + legacy.slot_t.task.state], THREAD_STATE_RUN_SUSPENDED ; suspended
         call    change_task ; SEE: core/shed.inc
         restore_ring3_context
         iretd
@@ -216,8 +214,10 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc show_error_parameters ;///////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     edx, [TASK_BASE] ; not scratched below
-        klog_   LOG_ERROR, "Process - forced terminate PID: %x\n", [edx + task_data_t.pid]
+        mov     edx, [current_slot_ptr] ; not scratched below
+        lea     eax, [edx + legacy.slot_t.app.app_name]
+        klog_   LOG_ERROR, "Process - forced terminate PID: %x (%s)\n", [edx + legacy.slot_t.task.pid], \
+                eax:PROCESS_MAX_NAME_LEN
         cmp     bl, 0x08
         jb      .l0
         cmp     bl, 0x0e
@@ -371,9 +371,8 @@ kproc set_application_table_status ;////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax
 
-        mov     eax, [CURRENT_TASK]
-        shl     eax, 5
-        mov     eax, [TASK_DATA + eax - sizeof.task_data_t + task_data_t.pid]
+        mov     eax, [current_slot_ptr]
+        mov     eax, [eax + legacy.slot_t.task.pid]
 
         mov     [application_table_status], eax
 
@@ -416,16 +415,16 @@ kproc terminate ;///////////////////////////////////////////////////////////////
 
         push    esi ; save .slot
 
-        shl     esi, 8
-        cmp     [SLOT_BASE + esi + app_data_t.dir_table], 0
+        shl     esi, 9 ; * sizeof.legacy.slot_t
+        cmp     [legacy_slots + esi + legacy.slot_t.app.dir_table], 0
         jne     @f
         pop     esi
-        shl     esi, 5
-        mov     [TASK_DATA + esi - sizeof.task_data_t + task_data_t.state], THREAD_STATE_FREE
+        shl     esi, 9 ; * sizeof.legacy.slot_t
+        mov     [legacy_slots + esi + legacy.slot_t.task.state], THREAD_STATE_FREE
 
         pusha
-        lea     eax, [TASK_DATA + esi - sizeof.task_data_t]
-        call    core.thread.compat.find_by_task_data
+        lea     eax, [legacy_slots + esi]
+        call    core.thread.compat.find_by_slot
         test    eax, eax
         jz      .thread_not_found_1
 
@@ -457,25 +456,25 @@ kproc terminate ;///////////////////////////////////////////////////////////////
 
         ; if the process is in V86 mode...
         mov     eax, [.slot]
-        shl     eax, 8
-        mov     esi, [SLOT_BASE + eax + app_data_t.pl0_stack]
+        shl     eax, 9 ; * sizeof.legacy.slot_t
+        mov     esi, [legacy_slots + eax + legacy.slot_t.app.pl0_stack]
         add     esi, sizeof.ring0_stack_data_t
-        cmp     [SLOT_BASE + eax + app_data_t.saved_esp0], esi
+        cmp     [legacy_slots + eax + legacy.slot_t.app.saved_esp0], esi
         jz      .nov86
         ; ...it has page directory for V86 mode
-        mov     esi, [SLOT_BASE + eax + app_data_t.saved_esp0]
+        mov     esi, [legacy_slots + eax + legacy.slot_t.app.saved_esp0]
         mov     ecx, [esi + 4]
-        mov     [SLOT_BASE + eax + app_data_t.dir_table], ecx
+        mov     [legacy_slots + eax + legacy.slot_t.app.dir_table], ecx
         ; ...and I/O permission map for V86 mode
         mov     ecx, [esi + 12]
-        mov     [SLOT_BASE + eax + app_data_t.io_map], ecx
+        mov     [legacy_slots + eax + legacy.slot_t.app.io_map], ecx
         mov     ecx, [esi + 8]
-        mov     [SLOT_BASE + eax + app_data_t.io_map + 4], ecx
+        mov     [legacy_slots + eax + legacy.slot_t.app.io_map + 4], ecx
 
   .nov86:
         mov     esi, [.slot]
-        shl     esi, 8
-        add     esi, SLOT_BASE + app_data_t.obj
+        shl     esi, 9 ; * sizeof.legacy.slot_t
+        add     esi, legacy_slots + legacy.slot_t.app.obj
 
     @@: mov     eax, [esi + app_object_t.next_ptr]
         test    eax, eax
@@ -491,15 +490,15 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         jmp     @b
 
     @@: mov     eax, [.slot]
-        shl     eax, 8
-        stdcall destroy_app_space, [SLOT_BASE + eax + app_data_t.dir_table], [SLOT_BASE + eax + app_data_t.dlls_list_ptr]
+        shl     eax, 9 ; * sizeof.legacy.slot_t
+        stdcall destroy_app_space, [legacy_slots + eax + legacy.slot_t.app.dir_table], [legacy_slots + eax + legacy.slot_t.app.dlls_list_ptr]
 
         mov     esi, [.slot]
         cmp     [fpu_owner], esi ; if user fpu last -> fpu user = 1
         jne     @f
 
         mov     [fpu_owner], 1
-        mov     eax, [SLOT_BASE + sizeof.app_data_t + app_data_t.fpu_state]
+        mov     eax, [legacy_os_idle_slot.app.fpu_state]
         clts
         bt      [cpu_caps], CAPS_SSE
         jnc     .no_SSE
@@ -579,28 +578,28 @@ kproc terminate ;///////////////////////////////////////////////////////////////
 
   .bnmba:
         pusha   ; save window coordinates for window restoring
-        shl     esi, 5
-        add     esi, window_data
-        mov     eax, [esi + window_data_t.box.left]
+        shl     esi, 9 ; * sizeof.legacy.slot_t
+        add     esi, legacy_slots
+        mov     eax, [esi + legacy.slot_t.window.box.left]
         mov     [draw_limits.left], eax
-        add     eax, [esi + window_data_t.box.width]
+        add     eax, [esi + legacy.slot_t.window.box.width]
         mov     [draw_limits.right], eax
-        mov     eax, [esi + window_data_t.box.top]
+        mov     eax, [esi + legacy.slot_t.window.box.top]
         mov     [draw_limits.top], eax
-        add     eax, [esi + window_data_t.box.height]
+        add     eax, [esi + legacy.slot_t.window.box.height]
         mov     [draw_limits.bottom], eax
 
         xor     eax, eax
-        mov     [esi + window_data_t.box.left], eax
-        mov     [esi + window_data_t.box.width], eax
-        mov     [esi + window_data_t.box.top], eax
-        mov     [esi + window_data_t.box.height], eax
-        mov     [esi + window_data_t.cl_workarea], eax
-        mov     [esi + window_data_t.cl_titlebar], eax
-        mov     [esi + window_data_t.cl_frames], eax
-        mov     dword[esi + window_data_t.reserved], eax ; clear all flags: wstate, redraw, wdrawn
-        lea     edi, [esi - window_data + draw_data]
-        mov     ecx, sizeof.draw_data_t / 4
+        mov     [esi + legacy.slot_t.window.box.left], eax
+        mov     [esi + legacy.slot_t.window.box.width], eax
+        mov     [esi + legacy.slot_t.window.box.top], eax
+        mov     [esi + legacy.slot_t.window.box.height], eax
+        mov     [esi + legacy.slot_t.window.cl_workarea], eax
+        mov     [esi + legacy.slot_t.window.cl_titlebar], eax
+        mov     [esi + legacy.slot_t.window.cl_frames], eax
+        mov     dword[esi + legacy.slot_t.window.reserved], eax ; clear all flags: wstate, redraw, wdrawn
+        lea     edi, [esi + legacy.slot_t.draw]
+        mov     ecx, sizeof.legacy.draw_data_t / 4
         rep
         stosd
         popa
@@ -608,13 +607,12 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         ; debuggee test
         pushad
         mov     edi, esi
-        shl     edi, 5
-        mov     eax, [SLOT_BASE + edi * 8 + app_data_t.debugger_slot]
+        shl     edi, 9 ; * sizeof.legacy.slot_t
+        mov     eax, [legacy_slots + edi + legacy.slot_t.app.debugger_slot]
         test    eax, eax
         jz      .nodebug
-        push    8
-        pop     ecx
-        push    [TASK_DATA + edi - sizeof.task_data_t + task_data_t.pid] ; PID
+        mov_s_  ecx, 8
+        push    [legacy_slots + edi + legacy.slot_t.task.pid] ; PID
         push    2
         call    debugger_notify
         pop     ecx
@@ -624,42 +622,39 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         popad
 
         mov     ebx, [.slot]
-        shl     ebx, 8
+        shl     ebx, 9 ; * sizeof.legacy.slot_t
         push    ebx
-        mov     ebx, [SLOT_BASE + ebx + app_data_t.pl0_stack]
+        mov     ebx, [legacy_slots + ebx + legacy.slot_t.app.pl0_stack]
 
         stdcall kernel_free, ebx
 
         pop     ebx
-        mov     ebx, [SLOT_BASE + ebx + app_data_t.cur_dir]
+        mov     ebx, [legacy_slots + ebx + legacy.slot_t.app.cur_dir]
         stdcall kernel_free, ebx
 
         mov     edi, [.slot]
-        shl     edi, 8
-        add     edi, SLOT_BASE
+        shl     edi, 9 ; * sizeof.legacy.slot_t
+        add     edi, legacy_slots
 
-        mov     eax, [edi + app_data_t.io_map]
-        cmp     eax, [SLOT_BASE + sizeof.app_data_t + app_data_t.io_map]
+        mov     eax, [edi + legacy.slot_t.app.io_map]
+        cmp     eax, [legacy_os_idle_slot.app.io_map]
         je      @f
         call    free_page
 
-    @@: mov     eax, [edi + app_data_t.io_map + 4]
-        cmp     eax, [SLOT_BASE + sizeof.app_data_t + app_data_t.io_map + 4]
+    @@: mov     eax, [edi + legacy.slot_t.app.io_map + 4]
+        cmp     eax, [legacy_os_idle_slot.app.io_map + 4]
         je      @f
         call    free_page
 
-    @@: mov     eax, 0x20202020
-        stosd
-        stosd
-        stosd
-        mov     ecx, (sizeof.app_data_t - 12) / 4
+    @@: mov     ecx, sizeof.legacy.app_data_t / 4
+        add     edi, legacy.slot_t.app
         xor     eax, eax
         rep
         stosd
 
         ; activate window
         movzx   eax, [pslot_to_wnd_pos + esi * 2]
-        cmp     eax, [TASK_COUNT]
+        cmp     eax, [legacy_slots.last_valid_slot]
         jne     .dont_activate
         pushad
 
@@ -669,13 +664,13 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         jbe     .nothing_to_activate
         lea     esi, [wnd_pos_to_pslot + eax * 2]
         movzx   edi, word[esi] ; edi = process
-        shl     edi, 5
-        cmp     [TASK_DATA + edi - sizeof.task_data_t + task_data_t.state], THREAD_STATE_FREE ; skip dead slots
+        shl     edi, 9 ; * sizeof.legacy.slot_t
+        cmp     [legacy_slots + edi + legacy.slot_t.task.state], THREAD_STATE_FREE ; skip dead slots
         je      .check_next_window
-        add     edi, window_data
+        add     edi, legacy_slots
 
         ; skip minimized windows
-        test    [edi + window_data_t.fl_wstate], WINDOW_STATE_MINIMIZED
+        test    [edi + legacy.slot_t.window.fl_wstate], WINDOW_STATE_MINIMIZED
         jnz     .check_next_window
 
         call    waredraw
@@ -685,8 +680,8 @@ kproc terminate ;///////////////////////////////////////////////////////////////
 
   .dont_activate:
         push    esi ; remove hd1 & cd & flp reservation
-        shl     esi, 5
-        mov     esi, [TASK_DATA + esi - sizeof.task_data_t + task_data_t.pid]
+        shl     esi, 9 ; * sizeof.legacy.slot_t
+        mov     esi, [legacy_slots + esi + legacy.slot_t.task.pid]
         cmp     [hd1_status], esi
         jnz     @f
         call    free_hd_channel
@@ -705,8 +700,8 @@ kproc terminate ;///////////////////////////////////////////////////////////////
 
     @@: pusha   ; remove all irq reservations
         mov     eax, esi
-        shl     eax, 5
-        mov     eax, [TASK_DATA + eax - sizeof.task_data_t + task_data_t.pid]
+        shl     eax, 9 ; * sizeof.legacy.slot_t
+        mov     eax, [legacy_slots + eax + legacy.slot_t.task.pid]
         mov     edi, irq_owner
         xor     ebx, ebx
         xor     edx, edx
@@ -726,8 +721,8 @@ kproc terminate ;///////////////////////////////////////////////////////////////
 
         pusha   ; remove all port reservations
         mov     edx, esi
-        shl     edx, 5
-        mov     edx, [TASK_DATA + edx - sizeof.task_data_t + task_data_t.pid]
+        shl     edx, 9 ; * sizeof.legacy.slot_t
+        mov     edx, [legacy_slots + edx + legacy.slot_t.task.pid]
 
   .rmpr0:
         mov     esi, [RESERVED_PORTS.count]
@@ -765,12 +760,12 @@ kproc terminate ;///////////////////////////////////////////////////////////////
   .rmpr9:
         popa
         mov     edi, esi ; do not run this process slot
-        shl     edi, 5
-        mov     [TASK_DATA + edi - sizeof.task_data_t + task_data_t.state], THREAD_STATE_FREE
+        shl     edi, 9 ; * sizeof.legacy.slot_t
+        mov     [legacy_slots + edi + legacy.slot_t.task.state], THREAD_STATE_FREE
 
         pusha
-        lea     eax, [TASK_DATA + edi - sizeof.task_data_t]
-        call    core.thread.compat.find_by_task_data
+        lea     eax, [legacy_slots + edi]
+        call    core.thread.compat.find_by_slot
         test    eax, eax
         jz      .thread_not_found_2
 
@@ -790,10 +785,10 @@ kproc terminate ;///////////////////////////////////////////////////////////////
 
         ; debugger test - terminate all debuggees
         mov     eax, 2
-        mov     ecx, SLOT_BASE + 2 * sizeof.app_data_t + app_data_t.debugger_slot
+        mov     ecx, legacy_slots + 2 * sizeof.legacy.slot_t + legacy.slot_t.app.debugger_slot
 
   .xd0:
-        cmp     eax, [TASK_COUNT]
+        cmp     eax, [legacy_slots.last_valid_slot]
         ja      .xd1
         cmp     [ecx], esi
         jnz     @f
@@ -805,7 +800,7 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         popad
 
     @@: inc     eax
-        add     ecx, sizeof.task_data_t
+        add     ecx, sizeof.legacy.slot_t
         jmp     .xd0
 
   .xd1:

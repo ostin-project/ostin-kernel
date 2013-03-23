@@ -225,14 +225,14 @@ ends
 
 OS_BASE = 0x80000000
 
-MAX_TASK_COUNT = 256
+MAX_TASK_COUNT = 255
 RESERVED_PORTS_MAX_COUNT = 255
 
 virtual at OS_BASE
                         rb 0x1000
-  window_data:          rb MAX_TASK_COUNT * sizeof.window_data_t
-                        rb OS_BASE + 0x00003000 - $
-  TASK_DATA:            rb MAX_TASK_COUNT * sizeof.task_data_t
+; window_data:          rb MAX_TASK_COUNT * sizeof.window_data_t
+;                       rb OS_BASE + 0x00003000 - $
+; TASK_DATA:            rb MAX_TASK_COUNT * sizeof.task_data_t
                         rb OS_BASE + 0x00007000 - $
   CDDataBuf:            rb 0x1000
 
@@ -251,7 +251,8 @@ end if ; KCONFIG_BLK_FLOPPY
   sys_pgdir             rd 0x400
   DRIVE_DATA            rb 0x10000
                         rb OS_BASE + 0x00080000 - $
-  SLOT_BASE:            rb MAX_TASK_COUNT * sizeof.app_data_t
+; SLOT_BASE:            rb MAX_TASK_COUNT * sizeof.app_data_t
+  legacy_slots:         rb sizeof.legacy.slot_t + MAX_TASK_COUNT * sizeof.legacy.slot_t
                         rb OS_BASE + 0x000a0000 - $
   VGABasePtr:           rb 0x10000
                         rb OS_BASE + 0x000b0000 - $
@@ -280,7 +281,7 @@ end if ; KCONFIG_BLK_FLOPPY
   resendQ:              rb 32 * 1024
   VMODE_BASE:           rb 32 * 1024
   skin_data:            rb 32 * 1024
-  draw_data:            rb MAX_TASK_COUNT * sizeof.draw_data_t
+; draw_data:            rb MAX_TASK_COUNT * sizeof.draw_data_t
                         rb OS_BASE + 0x00340000 - $
   boot_data_area:
                         rb BOOT_VAR_LOW_BASE
@@ -292,8 +293,6 @@ end if ; KCONFIG_BLK_FLOPPY
                         rb OS_BASE + 0x00800000 - $
   HEAP_BASE:
 end virtual
-
-assert (SLOT_BASE and 0x0000ff00) = 0
 
 ;;----------------------------------------------------------------------------------------------------------------------
 ;;///// boot time variables ////////////////////////////////////////////////////////////////////////////////////////////
@@ -322,7 +321,9 @@ LFB_BASE            = 0xfe000000
 
 new_app_base        = 0
 
-twdw                = (TASK_DATA - sizeof.task_data_t) - window_data
+virtual at legacy_slots + sizeof.legacy.slot_t
+  legacy_os_idle_slot legacy.slot_t
+end virtual
 
 struct ring0_stack_data_t
   rb 0x2000 - 512 - 56

@@ -18,8 +18,11 @@
 include "mutex.asm"
 
 uglobal
-  current_slot rd 1
-  DONT_SWITCH  db ?
+  current_slot dd ?
+  current_slot_ptr dd ?
+  current_thread_ptr dd ?
+  current_process_ptr dd ?
+  DONT_SWITCH db ?
 endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -77,11 +80,11 @@ if 0
         jne     .find_next_task
         mov     [dma_task_switched], 0
         mov     ebx, [dma_process]
-        cmp     [CURRENT_TASK], ebx
+        cmp     [current_slot], ebx
         je      .return
         mov     edi, [dma_slot_ptr]
-        mov     [CURRENT_TASK], ebx
-        mov     [TASK_BASE], edi
+        mov     [current_slot], ebx
+        mov     [current_slot_ptr], edi
         jmp     @f
 
   .find_next_task:
@@ -114,7 +117,7 @@ endg
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc update_counters ;/////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     edi, [CURRENT_THREAD]
+        mov     edi, [current_thread_ptr]
         test    edi, edi
         jz      .exit
 
@@ -154,36 +157,36 @@ kproc find_next_task ;//////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Find next task to execute
 ;-----------------------------------------------------------------------------------------------------------------------
-;< ebx = address of the app_data_t for the selected task (slot-base)
-;< esi = previous slot-base ([current_slot] at the begin)
-;< edi = address of the task_data_t for the selected task
+;< ebx = address of the legacy.slot_t for the selected task (slot-base)
+;< esi = previous slot-base ([current_slot_ptr] at the begin)
+;< edi = address of the legacy.slot_t for the selected task
 ;< ZF = 1 if the task is the same
 ;-----------------------------------------------------------------------------------------------------------------------
 ; warning:
-;   [CURRENT_TASK] = bh, [TASK_BASE] = edi -- as result
-;   [current_slot] is not set to new value (ebx)!!!
+;   [current_slot] = new slot number as result
+;   [current_slot_ptr] is not set to new value!!!
 ; scratched: eax,ecx
 ;-----------------------------------------------------------------------------------------------------------------------
         call    update_counters
-        mov     edi, [TASK_BASE]
-        Mov     esi, ebx, [current_slot]
+        mov     edi, [current_slot]
+        Mov     esi, ebx, [current_slot_ptr]
 
   .loop:
-        cmp     bh, byte[TASK_COUNT]
+        cmp     edi, [legacy_slots.last_valid_slot]
         jb      @f
-        xor     bh, bh
-        mov     edi, TASK_DATA - sizeof.task_data_t
+        xor     edi, edi
+        mov     ebx, legacy_slots
 
-    @@: inc     bh ; ebx += app_data_t.size
-        add     edi, sizeof.task_data_t ; edi += sizeof.task_data_t
-        mov     al, [edi + task_data_t.state]
+    @@: inc     edi
+        add     ebx, sizeof.legacy.slot_t
+        mov     al, [ebx + legacy.slot_t.task.state]
         test    al, al ; THREAD_STATE_RUNNING
         jz      .found ; state == 0
         cmp     al, THREAD_STATE_WAITING
         jne     .loop ; state == 1,2,3,4,9
         ; state == 5
-        pushad  ; more freedom for [app_data_t.wait_test]
-        call    [ebx + app_data_t.wait_test]
+        pushad  ; more freedom for wait_test
+        call    [ebx + legacy.slot_t.app.wait_test]
         mov     [esp + regs_context32_t.eax], eax
         popad
         or      eax, eax
@@ -193,32 +196,31 @@ kproc find_next_task ;//////////////////////////////////////////////////////////
         push    eax edx
         mov     eax, dword[timer_ticks]
         mov     edx, dword[timer_ticks + 4]
-        push    dword[ebx + app_data_t.wait_timeout + 4] dword[ebx + app_data_t.wait_timeout]
+        push    dword[ebx + legacy.slot_t.app.wait_timeout + 4] dword[ebx + legacy.slot_t.app.wait_timeout]
         call    util.64bit.compare
         pop     edx eax
         jb      .loop
 
-    @@: mov     [ebx + app_data_t.wait_param], eax ; retval for wait
-        mov     [edi + task_data_t.state], THREAD_STATE_RUNNING
+    @@: mov     [ebx + legacy.slot_t.app.wait_param], eax ; retval for wait
+        mov     [ebx + legacy.slot_t.task.state], THREAD_STATE_RUNNING
 
   .found:
-        mov     byte[CURRENT_TASK], bh
+        mov     [current_slot], edi
 
         pushad
 
-        mov     eax, edi
-        call    core.thread.compat.find_by_task_data
-        mov     [CURRENT_THREAD], eax
+        mov     eax, ebx
+        call    core.thread.compat.find_by_slot
+        mov     [current_thread_ptr], eax
         test    eax, eax
         jz      @f
 
         mov     eax, [eax + core.thread_t.process_ptr]
 
-    @@: mov     [CURRENT_PROCESS], eax
+    @@: mov     [current_process_ptr], eax
         popad
 
-        mov     [TASK_BASE], edi
-        mov     ecx, [CURRENT_THREAD]
+        mov     ecx, [current_thread_ptr]
         test    ecx, ecx
         jz      .exit
 
@@ -227,6 +229,7 @@ kproc find_next_task ;//////////////////////////////////////////////////////////
         mov     [ecx + core.thread_t.stats.counter_add], eax ; for next using update_counters
 
   .exit:
+        mov     edi, ebx
         cmp     ebx, esi ; esi - previous slot-base
         ret
 kendp
@@ -234,34 +237,35 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc do_change_task ;//////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx = address of the app_data_t for incoming task (new)
+;> ebx = address of the legacy.slot_t for incoming task (new)
 ;-----------------------------------------------------------------------------------------------------------------------
 ;# warning:
-;#   [CURRENT_TASK] and [TASK_BASE] must be changed before (e.g. in find_next_task)
-;#   [current_slot] is the outcoming (old), and set here to a new value (ebx)
+;#   [current_slot] must be changed before (e.g. in find_next_task)
+;#   [current_slot_ptr] is the outcoming (old), and set here to a new value (ebx)
 ;# scratched: eax,ecx,esi
-;# TODO: Eliminate use of do_change_task in V86 and then move task_data_t.counter_add/sum handling to do_change_task
+;# TODO: Eliminate use of do_change_task in V86 and then move legacy.slot_t.task.counter_add/sum handling to
+;#       do_change_task
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     esi, ebx
-        xchg    esi, [current_slot]
+        xchg    esi, [current_slot_ptr]
         ; set new stack after saving old
-        mov     [esi + app_data_t.saved_esp], esp
-        mov     esp, [ebx + app_data_t.saved_esp]
+        mov     [esi + legacy.slot_t.app.saved_esp], esp
+        mov     esp, [ebx + legacy.slot_t.app.saved_esp]
         ; set new thread io-map
-        Mov     dword[page_tabs + ((tss.io_map_0 and -4096) shr 10)], eax, [ebx + app_data_t.io_map]
-        Mov     dword[page_tabs + ((tss.io_map_1 and -4096) shr 10)], eax, [ebx + app_data_t.io_map + 4]
+        Mov     dword[page_tabs + ((tss.io_map_0 and -4096) shr 10)], eax, [ebx + legacy.slot_t.app.io_map]
+        Mov     dword[page_tabs + ((tss.io_map_1 and -4096) shr 10)], eax, [ebx + legacy.slot_t.app.io_map + 4]
         ; set new thread memory-map
-        mov     ecx, app_data_t.dir_table
+        mov     ecx, legacy.slot_t.app.dir_table
         mov     eax, [ebx + ecx] ; offset>0x7F
         cmp     eax, [esi + ecx] ; offset>0x7F
         je      @f
         mov     cr3, eax
 
     @@: ; set tss.esp0
-        Mov     [tss.esp0], eax, [ebx + app_data_t.saved_esp0]
+        Mov     [tss.esp0], eax, [ebx + legacy.slot_t.app.saved_esp0]
 
-        mov     edx, [ebx + app_data_t.tls_base]
-        cmp     edx, [esi + app_data_t.tls_base]
+        mov     edx, [ebx + legacy.slot_t.app.tls_base]
+        cmp     edx, [esi + legacy.slot_t.app.tls_base]
         je      @f
 
         mov     [gdts.tls_data.base_low], dx
@@ -285,11 +289,11 @@ kproc do_change_task ;//////////////////////////////////////////////////////////
     @@: ; set context_counter (only for user pleasure ???)
         inc     [context_counter]
         ; set debug-registers, if it's necessary
-        test    byte[ebx + app_data_t.dbg_state], 1
+        test    byte[ebx + legacy.slot_t.app.dbg_state], 1
         jz      @f
         xor     eax, eax
         mov     dr6, eax
-        lea     esi, [ebx + ecx + app_data_t.dbg_regs - app_data_t.dir_table] ; offset>0x7F
+        lea     esi, [ebx + legacy.slot_t.app.dbg_regs] ; offset>0x7F
 
 macro lodsReg [reg]
 {

@@ -190,11 +190,7 @@ cpu_sign          rd 1
 cpu_info          rd 1
 cpu_caps          rd 4
 
-CURRENT_TASK      dd ?
-CURRENT_THREAD    dd ?
-CURRENT_PROCESS   dd ?
-TASK_COUNT        dd ?
-TASK_BASE         dd ?
+legacy_slots.last_valid_slot dd ?
 
 pslot_to_wnd_pos  rw MAX_TASK_COUNT ; formely WIN_STACK
 wnd_pos_to_pslot  rw MAX_TASK_COUNT ; formely WIN_POS

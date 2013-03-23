@@ -18,7 +18,7 @@ THREAD_FLAG_VALID = 0x01
 
 struct core.thread_events_t
   event_mask    dd ?
-  queued_events dd ? ; app_data_t.event_mask
+  queued_events dd ? ; legacy.slot_t.app.event_mask
   list          linked_list_t
   wait_timeout  dq ?
   wait_test     dd ?
@@ -210,64 +210,47 @@ kproc core.thread.enumerate ;///////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc core.thread.compat.find_by_task_data ;////////////////////////////////////////////////////////////////////////////
+kproc core.thread.compat.find_by_slot ;/////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> eax ^= task_data_t
+;> eax ^= legacy.slot_t
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax ^= core.thread_t
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, [eax + task_data_t.new_pid]
+        mov     eax, [eax + legacy.slot_t.task.new_pid]
         call    core.thread.find_by_id
         ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc core.thread.compat.find_by_app_data ;/////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;> eax ^= app_data_t
-;-----------------------------------------------------------------------------------------------------------------------
-;< eax ^= core.thread_t
-;-----------------------------------------------------------------------------------------------------------------------
-        sub     eax, SLOT_BASE
-        shr     eax, 3
-        add     eax, TASK_BASE - sizeof.task_data_t
-        jmp     core.thread.compat.find_by_task_data
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc core.thread.compat.init_with_app_data ;///////////////////////////////////////////////////////////////////////////
+kproc core.thread.compat.init_with_slot ;///////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax ^= core.thread_t
-;> ebx ^= app_data_t
+;> ebx ^= legacy.slot_t
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax ebx ecx
-        mov     cl, [ebx + app_data_t.keyboard_mode]
+        mov     cl, [ebx + legacy.slot_t.app.keyboard_mode]
         mov     [eax + core.thread_t.keyboard_mode], cl
 
-        mov_s_  [eax + core.thread_t.events.list.prev_ptr], [ebx + app_data_t.ev.prev_ptr]
-        mov_s_  [eax + core.thread_t.events.list.next_ptr], [ebx + app_data_t.ev.next_ptr]
-        mov_s_  [eax + core.thread_t.saved_esp], [ebx + app_data_t.saved_esp]
-        mov_s_  [eax + core.thread_t.saved_esp0], [ebx + app_data_t.saved_esp0]
-        mov_s_  [eax + core.thread_t.pl0_stack], [ebx + app_data_t.pl0_stack]
-        mov_s_  [eax + core.thread_t.fpu_state], [ebx + app_data_t.fpu_state]
-        mov_s_  [eax + core.thread_t.except_mask], [ebx + app_data_t.except_mask]
-        mov_s_  [eax + core.thread_t.exc_handler], [ebx + app_data_t.exc_handler]
-        mov_s_  [eax + core.thread_t.cur_dir], [ebx + app_data_t.cur_dir]
-        mov_s_  [eax + core.thread_t.tls_base], [ebx + app_data_t.tls_base]
-        mov_s_  [eax + core.thread_t.io_map], [ebx + app_data_t.io_map]
-        mov_s_  [eax + core.thread_t.io_map + 4], [ebx + app_data_t.io_map + 4]
-        mov_s_  [eax + core.thread_t.debug.debugger_slot], [ebx + app_data_t.debugger_slot]
+        mov_s_  [eax + core.thread_t.events.list.prev_ptr], [ebx + legacy.slot_t.app.ev.prev_ptr]
+        mov_s_  [eax + core.thread_t.events.list.next_ptr], [ebx + legacy.slot_t.app.ev.next_ptr]
+        mov_s_  [eax + core.thread_t.saved_esp], [ebx + legacy.slot_t.app.saved_esp]
+        mov_s_  [eax + core.thread_t.saved_esp0], [ebx + legacy.slot_t.app.saved_esp0]
+        mov_s_  [eax + core.thread_t.pl0_stack], [ebx + legacy.slot_t.app.pl0_stack]
+        mov_s_  [eax + core.thread_t.fpu_state], [ebx + legacy.slot_t.app.fpu_state]
+        mov_s_  [eax + core.thread_t.except_mask], [ebx + legacy.slot_t.app.except_mask]
+        mov_s_  [eax + core.thread_t.exc_handler], [ebx + legacy.slot_t.app.exc_handler]
+        mov_s_  [eax + core.thread_t.cur_dir], [ebx + legacy.slot_t.app.cur_dir]
+        mov_s_  [eax + core.thread_t.tls_base], [ebx + legacy.slot_t.app.tls_base]
+        mov_s_  [eax + core.thread_t.io_map], [ebx + legacy.slot_t.app.io_map]
+        mov_s_  [eax + core.thread_t.io_map + 4], [ebx + legacy.slot_t.app.io_map + 4]
+        mov_s_  [eax + core.thread_t.debug.debugger_slot], [ebx + legacy.slot_t.app.debugger_slot]
 
-        sub     ebx, SLOT_BASE
-        shr     ebx, 3
-        add     ebx, TASK_DATA - sizeof.task_data_t
-
-        mov     cl, [ebx + task_data_t.state]
+        mov     cl, [ebx + legacy.slot_t.task.state]
         mov     [eax + core.thread_t.state], cl
 
-        mov_s_  [eax + core.thread_t.events.event_mask], [ebx + task_data_t.event_mask]
+        mov_s_  [eax + core.thread_t.events.event_mask], [ebx + legacy.slot_t.task.event_mask]
 
-        mov_s_  [ebx + task_data_t.new_pid], [eax + core.thread_t.id]
+        mov_s_  [ebx + legacy.slot_t.task.new_pid], [eax + core.thread_t.id]
 
   .exit:
         pop     ecx ebx eax

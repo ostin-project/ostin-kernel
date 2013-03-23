@@ -185,11 +185,11 @@ endl
         jz      .err
 
         mov     [slot], eax
-        shl     eax, 8
-        add     eax, SLOT_BASE
+        shl     eax, 9 ; * sizeof.legacy.slot_t
+        add     eax, legacy_slots
         mov     [slot_base], eax
-        mov     edi, eax
-        _clear_ sizeof.app_data_t ; clean extended information about process
+        lea     edi, [eax + legacy.slot_t.app]
+        _clear_ sizeof.legacy.app_data_t ; clean extended information about process
 
         ; write application name
         lea     eax, [filename]
@@ -202,7 +202,7 @@ endl
 
     @@: mov     ecx, 8 ; 8 chars for name
         mov     edi, [slot_base]
-        add     edi, app_data_t.app_name
+        add     edi, legacy.slot_t.app.app_name
 
   .copy_process_name_loop:
         lodsb
@@ -223,9 +223,9 @@ endl
         jz      .failed
 
         mov     ebx, [slot_base]
-        mov     [ebx + app_data_t.dir_table], eax
+        mov     [ebx + legacy.slot_t.app.dir_table], eax
         mov     eax, [hdr_mem]
-        mov     [ebx + app_data_t.mem_size], eax
+        mov     [ebx + legacy.slot_t.app.mem_size], eax
 
         xor     edx, edx
         cmp     word[6], '02'
@@ -233,7 +233,7 @@ endl
 
         not     edx
 
-    @@: mov     [ebx + app_data_t.tls_base], edx
+    @@: mov     [ebx + legacy.slot_t.app.tls_base], edx
 
 if ~KCONFIG_GREEDY_KERNEL
 
@@ -346,29 +346,29 @@ proc get_new_process_place ;////////////////////////////////////////////////////
 ;< eax = [new_process_place] != 0 (ok) or 0 (error)
 ;-----------------------------------------------------------------------------------------------------------------------
 ;# This function find least empty slot.
-;# It doesn't increase [TASK_COUNT]!
+;# It doesn't increase [legacy_slots.last_valid_slot]!
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, TASK_DATA - sizeof.task_data_t
-        mov     ebx, [TASK_COUNT]
+        mov     eax, legacy_slots
+        mov     ebx, [legacy_slots.last_valid_slot]
         inc     ebx
-        shl     ebx, 5
+        shl     ebx, 9 ; * sizeof.legacy.slot_t
         add     ebx, eax ; ebx - address of process information for (last+1) slot
 
   .newprocessplace:
         ; eax = address of process information for current slot
         cmp     eax, ebx
         jz      .endnewprocessplace ; empty slot after high boundary
-        add     eax, sizeof.task_data_t
-        cmp     [eax + task_data_t.state], THREAD_STATE_FREE ; check process state, 9 means that process slot is empty
+        add     eax, sizeof.legacy.slot_t
+        cmp     [eax + legacy.slot_t.task.state], THREAD_STATE_FREE ; check process state, 9 means that process slot is empty
         jnz     .newprocessplace
 
   .endnewprocessplace:
         mov     ebx, eax
-        sub     eax, TASK_DATA - sizeof.task_data_t
-        shr     eax, 5 ; calculate slot index
+        sub     eax, legacy_slots
+        shr     eax, 9 ; / sizeof.legacy.slot_t, calculate slot index
         cmp     eax, MAX_TASK_COUNT
         jge     .failed
-        mov     [ebx + task_data_t.state], THREAD_STATE_FREE ; set process state to 9 (for slot after hight boundary)
+        mov     [ebx + legacy.slot_t.task.state], THREAD_STATE_FREE ; set process state to 9 (for slot after hight boundary)
         ret
 
   .failed:
@@ -536,8 +536,8 @@ endp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc set_cr3 ;/////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     ebx, [current_slot]
-        mov     [ebx + app_data_t.dir_table], eax
+        mov     ebx, [current_slot_ptr]
+        mov     [ebx + legacy.slot_t.app.dir_table], eax
         mov     cr3, eax
         ret
 kendp
@@ -579,18 +579,17 @@ proc destroy_app_space stdcall, pg_dir:dword, dlls_list:dword ;/////////////////
   .loop:
         ; eax = current slot of process
         mov     ecx, eax
-        shl     ecx, 5
-        cmp     [TASK_DATA + ecx - sizeof.task_data_t + task_data_t.state], THREAD_STATE_FREE ; if process running?
+        shl     ecx, 9 ; * sizeof.legacy.slot_t
+        cmp     [legacy_slots + ecx + legacy.slot_t.task.state], THREAD_STATE_FREE ; if process running?
         jz      @f ; skip empty slots
-        shl     ecx, 3
-        add     ecx, SLOT_BASE
-        cmp     [ecx + app_data_t.dir_table], ebx ; compare page directory addresses
+        add     ecx, legacy_slots
+        cmp     [ecx + legacy.slot_t.app.dir_table], ebx ; compare page directory addresses
         jnz     @f
         mov     [ebp - 4], ecx
         inc     edx ; thread found
 
     @@: inc     eax
-        cmp     eax, [TASK_COUNT] ; exit loop if we look through all processes
+        cmp     eax, [legacy_slots.last_valid_slot] ; exit loop if we look through all processes
         jle     .loop
 
         ; edx = number of threads
@@ -641,8 +640,8 @@ endp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc get_pid ;/////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, [TASK_BASE]
-        mov     eax, [eax + task_data_t.pid]
+        mov     eax, [current_slot_ptr]
+        mov     eax, [eax + legacy.slot_t.task.pid]
         ret
 kendp
 
@@ -657,20 +656,20 @@ kproc pid_to_slot ;/////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    ebx
         push    ecx
-        mov     ebx, [TASK_COUNT]
-        shl     ebx, 5
-        mov     ecx, 2 * sizeof.task_data_t
+        mov     ebx, [legacy_slots.last_valid_slot]
+        shl     ebx, 9 ; * sizeof.legacy.slot_t
+        mov     ecx, 2 * sizeof.legacy.slot_t
 
   .loop:
         ; ecx=offset of current process info entry
         ; ebx=maximum permitted offset
-        cmp     [TASK_DATA + ecx - sizeof.task_data_t + task_data_t.state], THREAD_STATE_FREE
+        cmp     [legacy_slots + ecx + legacy.slot_t.task.state], THREAD_STATE_FREE
         jz      .endloop ; skip empty slots
-        cmp     [TASK_DATA + ecx - sizeof.task_data_t + task_data_t.pid], eax ; check PID
+        cmp     [legacy_slots + ecx + legacy.slot_t.task.pid], eax ; check PID
         jz      .pid_found
 
   .endloop:
-        add     ecx, sizeof.task_data_t
+        add     ecx, sizeof.legacy.slot_t
         cmp     ecx, ebx
         jle     .loop
 
@@ -680,7 +679,7 @@ kproc pid_to_slot ;/////////////////////////////////////////////////////////////
         ret
 
   .pid_found:
-        shr     ecx, 5
+        shr     ecx, 9 ; / sizeof.legacy.slot_t
         mov     eax, ecx ; convert offset to index of slot
         pop     ecx
         pop     ebx
@@ -696,7 +695,7 @@ kproc check_region ;////////////////////////////////////////////////////////////
 ;< eax = 1 region lays in app memory
 ;< eax = 0 region don't lays in app memory
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, [CURRENT_TASK]
+        mov     eax, [current_slot]
 ;       jmp     check_process_region
 ;kendp
 
@@ -712,11 +711,10 @@ kproc check_region ;////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         test    edx, edx
         jle     .ok
-        shl     eax, 5
-        cmp     [TASK_DATA + eax - sizeof.task_data_t + task_data_t.state], THREAD_STATE_RUNNING
+        shl     eax, 9 ; * sizeof.legacy.slot_t
+        cmp     [legacy_slots + eax + legacy.slot_t.task.state], THREAD_STATE_RUNNING
         jnz     .failed
-        shl     eax, 3
-        mov     eax, [SLOT_BASE + eax + app_data_t.dir_table]
+        mov     eax, [legacy_slots + eax + legacy.slot_t.app.dir_table]
         test    eax, eax
         jz      .failed
 
@@ -968,39 +966,40 @@ endl
 
         mov     [slot], eax
 
-        mov     esi, [current_slot]
+        mov     esi, [current_slot_ptr]
         mov     ebx, esi ; ebx=esi - pointer to extended information about current thread
 
         mov     edi, eax
-        shl     edi, 8
-        add     edi, SLOT_BASE
+        shl     edi, 9 ; * sizeof.legacy.slot_t
+        add     edi, legacy_slots
         mov     edx, edi ; edx=edi - pointer to extended infomation about new thread
-        mov     ecx, sizeof.app_data_t / 4
+        mov     ecx, sizeof.legacy.app_data_t / 4
+        add     edi, legacy.slot_t.app
         xor     eax, eax
         rep
         stosd   ; clean extended information about new thread
-        mov     esi, ebx
-        mov     edi, edx
+        lea     esi, [ebx + legacy.slot_t.app.app_name]
+        lea     edi, [edx + legacy.slot_t.app.app_name]
         mov     ecx, PROCESS_MAX_NAME_LEN
         rep
         movsb   ; copy process name
 
-        mov     eax, [ebx + app_data_t.heap_base]
-        mov     [edx + app_data_t.heap_base], eax
+        mov     eax, [ebx + legacy.slot_t.app.heap_base]
+        mov     [edx + legacy.slot_t.app.heap_base], eax
 
-        mov     ecx, [ebx + app_data_t.heap_top]
-        mov     [edx + app_data_t.heap_top], ecx
+        mov     ecx, [ebx + legacy.slot_t.app.heap_top]
+        mov     [edx + legacy.slot_t.app.heap_top], ecx
 
-        mov     eax, [ebx + app_data_t.mem_size]
-        mov     [edx + app_data_t.mem_size], eax
+        mov     eax, [ebx + legacy.slot_t.app.mem_size]
+        mov     [edx + legacy.slot_t.app.mem_size], eax
 
-        mov     ecx, [ebx + app_data_t.dir_table]
-        mov     [edx + app_data_t.dir_table], ecx ; copy page directory
+        mov     ecx, [ebx + legacy.slot_t.app.dir_table]
+        mov     [edx + legacy.slot_t.app.dir_table], ecx ; copy page directory
 
-        mov     eax, [ebx + app_data_t.dlls_list_ptr]
-        mov     [edx + app_data_t.dlls_list_ptr], eax
+        mov     eax, [ebx + legacy.slot_t.app.dlls_list_ptr]
+        mov     [edx + legacy.slot_t.app.dlls_list_ptr], eax
 
-        mov     eax, [ebx + app_data_t.tls_base]
+        mov     eax, [ebx + legacy.slot_t.app.tls_base]
         test    eax, eax
         jz      @f
 
@@ -1010,7 +1009,7 @@ endl
         test    eax, eax
         jz      .failed1 ; eax=0
 
-    @@: mov     [edx + app_data_t.tls_base], eax
+    @@: mov     [edx + legacy.slot_t.app.tls_base], eax
 
         lea     eax, [app_cmdline]
         stdcall set_app_params, [slot], eax, 0, 0, 0
@@ -1055,8 +1054,8 @@ kproc tls_app_entry ;///////////////////////////////////////////////////////////
         call    init_heap
         stdcall user_alloc, 4096
 
-        mov     edx, [current_slot]
-        mov     [edx + app_data_t.tls_base], eax
+        mov     edx, [current_slot_ptr]
+        mov     [edx + legacy.slot_t.app.tls_base], eax
         mov     [gdts.tls_data.base_low], ax
         shr     eax, 16
         mov     [gdts.tls_data.base_mid], al
@@ -1088,57 +1087,56 @@ endl
         mov     eax, [slot]
         mov     ebx, eax
 
-        shl     eax, 8
-        mov     [SLOT_BASE + eax + app_data_t.fpu_state], edi
-        mov     [SLOT_BASE + eax + app_data_t.exc_handler], 0
-        mov     [SLOT_BASE + eax + app_data_t.except_mask], 0
+        shl     eax, 9 ; * sizeof.legacy.slot_t
+        mov     [legacy_slots + eax + legacy.slot_t.app.fpu_state], edi
+        mov     [legacy_slots + eax + legacy.slot_t.app.exc_handler], 0
+        mov     [legacy_slots + eax + legacy.slot_t.app.except_mask], 0
 
         ; set default io permission map
-        mov     ecx, [SLOT_BASE + sizeof.app_data_t + app_data_t.io_map]
-        mov     [SLOT_BASE + eax + app_data_t.io_map], ecx
-        mov     ecx, [SLOT_BASE + sizeof.app_data_t + app_data_t.io_map + 4]
-        mov     [SLOT_BASE + eax + app_data_t.io_map + 4], ecx
+        mov     ecx, [legacy_os_idle_slot.app.io_map]
+        mov     [legacy_slots + eax + legacy.slot_t.app.io_map], ecx
+        mov     ecx, [legacy_os_idle_slot.app.io_map + 4]
+        mov     [legacy_slots + eax + legacy.slot_t.app.io_map + 4], ecx
 
         mov     esi, fpu_data
         mov     ecx, 512 / 4
         rep
         movsd
 
-        cmp     ebx, [TASK_COUNT]
+        cmp     ebx, [legacy_slots.last_valid_slot]
         jle     .noinc
-        inc     [TASK_COUNT] ; update number of processes
+        inc     [legacy_slots.last_valid_slot] ; update number of processes
 
   .noinc:
-        shl     ebx, 8
-        lea     edx, [SLOT_BASE + ebx + app_data_t.ev]
-        mov     [SLOT_BASE + ebx + app_data_t.ev.next_ptr], edx
-        mov     [SLOT_BASE + ebx + app_data_t.ev.prev_ptr], edx
+        shl     ebx, 9 ; * sizeof.legacy.slot_t
+        lea     edx, [legacy_slots + ebx + legacy.slot_t.app.ev]
+        mov     [legacy_slots + ebx + legacy.slot_t.app.ev.next_ptr], edx
+        mov     [legacy_slots + ebx + legacy.slot_t.app.ev.prev_ptr], edx
 
-        add     edx, app_data_t.obj - app_data_t.ev
-        mov     [SLOT_BASE + ebx + app_data_t.obj.next_ptr], edx
-        mov     [SLOT_BASE + ebx + app_data_t.obj.prev_ptr], edx
+        add     edx, legacy.slot_t.app.obj - legacy.slot_t.app.ev
+        mov     [legacy_slots + ebx + legacy.slot_t.app.obj.next_ptr], edx
+        mov     [legacy_slots + ebx + legacy.slot_t.app.obj.prev_ptr], edx
 
         mov     ecx, [def_cursor]
-        mov     [SLOT_BASE + ebx + app_data_t.cursor], ecx
+        mov     [legacy_slots + ebx + legacy.slot_t.app.cursor], ecx
         mov     eax, [pl0_stack]
-        mov     [SLOT_BASE + ebx + app_data_t.pl0_stack], eax
+        mov     [legacy_slots + ebx + legacy.slot_t.app.pl0_stack], eax
         add     eax, sizeof.ring0_stack_data_t
-        mov     [SLOT_BASE + ebx + app_data_t.saved_esp0], eax
+        mov     [legacy_slots + ebx + legacy.slot_t.app.saved_esp0], eax
 
         push    ebx
         stdcall kernel_alloc, 0x1000
         pop     ebx
-        mov     esi, [current_slot]
-        mov     esi, [esi + app_data_t.cur_dir]
+        mov     esi, [current_slot_ptr]
+        mov     esi, [esi + legacy.slot_t.app.cur_dir]
         mov     ecx, 0x1000 / 4
         mov     edi, eax
-        mov     [SLOT_BASE + ebx + app_data_t.cur_dir], eax
+        mov     [legacy_slots + ebx + legacy.slot_t.app.cur_dir], eax
         rep
         movsd
 
-        shr     ebx, 3
         mov     eax, new_app_base
-        mov     [TASK_DATA + ebx - sizeof.task_data_t + task_data_t.mem_start], eax
+        mov     [legacy_slots + ebx + legacy.slot_t.task.mem_start], eax
 
   .add_command_line:
         mov     edx, [params]
@@ -1150,7 +1148,7 @@ endl
         add     eax, 256
         jc      @f
 
-        cmp     eax, [SLOT_BASE + ebx * 8 + app_data_t.mem_size]
+        cmp     eax, [legacy_slots + ebx + legacy.slot_t.app.mem_size]
         ja      @f
 
         mov     byte[edx], 0 ; force empty string if no cmdline given
@@ -1166,41 +1164,41 @@ endl
         mov     eax, edx
         add     eax, 1024
         jc      @f
-        cmp     eax, [SLOT_BASE + ebx * 8 + app_data_t.mem_size]
+        cmp     eax, [legacy_slots + ebx + legacy.slot_t.app.mem_size]
         ja      @f
         stdcall strncpy, edx, [app_path], 1024
 
     @@: mov     ebx, [slot]
         mov     eax, ebx
-        shl     ebx, 5
-        lea     ecx, [draw_data + ebx] ; ecx - pointer to draw data
+        shl     ebx, 9 ; * sizeof.legacy.slot_t
+        lea     ecx, [legacy_slots + ebx] ; ecx - pointer to draw data
 
         mov     edx, irq0.return
-        cmp     [SLOT_BASE + ebx * 8 + app_data_t.tls_base], -1
+        cmp     [legacy_slots + ebx + legacy.slot_t.app.tls_base], -1
         jne     @f
         mov     edx, tls_app_entry
 
     @@: ; set window state to 'normal' (non-minimized/maximized/rolled-up) state
-        mov     [window_data + ebx + window_data_t.fl_wstate], WINDOW_STATE_NORMAL
-        mov     [window_data + ebx + window_data_t.fl_redraw], 1
-        add     ebx, TASK_DATA - sizeof.task_data_t ; ebx - pointer to information about process
-        mov     [ebx + task_data_t.wnd_number], al ; set window number on screen = process slot
+        mov     [legacy_slots + ebx + legacy.slot_t.window.fl_wstate], WINDOW_STATE_NORMAL
+        mov     [legacy_slots + ebx + legacy.slot_t.window.fl_redraw], 1
+        add     ebx, legacy_slots ; ebx - pointer to information about process
+        mov     [ebx + legacy.slot_t.task.wnd_number], al ; set window number on screen = process slot
 
         ; set default event flags (see 40 function)
-        mov     [ebx + task_data_t.event_mask], EVENT_REDRAW + EVENT_KEY + EVENT_BUTTON
+        mov     [ebx + legacy.slot_t.task.event_mask], EVENT_REDRAW + EVENT_KEY + EVENT_BUTTON
 
         inc     dword[process_number]
         mov     eax, [process_number]
-        mov     [ebx + task_data_t.pid], eax ; set PID
+        mov     [ebx + legacy.slot_t.task.pid], eax ; set PID
 
         ; set draw data to full screen
         xor     eax, eax
-        mov     [ecx + draw_data_t.left], eax
-        mov     [ecx + draw_data_t.top], eax
+        mov     [ecx + legacy.slot_t.draw.left], eax
+        mov     [ecx + legacy.slot_t.draw.top], eax
         mov     eax, [Screen_Max_Pos.x]
-        mov     [ecx + draw_data_t.right], eax
+        mov     [ecx + legacy.slot_t.draw.right], eax
         mov     eax, [Screen_Max_Pos.y]
-        mov     [ecx + draw_data_t.bottom], eax
+        mov     [ecx + legacy.slot_t.draw.bottom], eax
 
         mov     ebx, [pl0_stack]
         mov     esi, [params]
@@ -1228,50 +1226,50 @@ endl
 
         lea     ecx, [ebx + ring0_stack_data_t.irq0_ret_addr]
         mov     ebx, [slot]
-        shl     ebx, 5
-        mov     [SLOT_BASE + ebx * 8 + app_data_t.saved_esp], ecx
+        shl     ebx, 9 ; * sizeof.legacy.slot_t
+        mov     [legacy_slots + ebx + legacy.slot_t.app.saved_esp], ecx
 
         xor     ecx, ecx ; THREAD_STATE_RUNNING, process state - running
         ; set if debuggee
         test    byte[flags], 1
         jz      .no_debug
         inc     ecx ; THREAD_STATE_RUN_SUSPENDED, process state - suspended
-        mov     eax, [CURRENT_TASK]
-        mov     [SLOT_BASE + ebx * 8 + app_data_t.debugger_slot], eax
+        mov     eax, [current_slot]
+        mov     [legacy_slots + ebx + legacy.slot_t.app.debugger_slot], eax
 
   .no_debug:
         pusha
-        mov     eax, [CURRENT_PROCESS]
+        mov     eax, [current_process_ptr]
         cmp     [app_path], 0
         je      .thread
 
         call    core.process.alloc
         mov     ebx, [slot]
-        shl     ebx, 8
-        add     ebx, SLOT_BASE
-        call    core.process.compat.init_with_app_data
+        shl     ebx, 9 ; * sizeof.legacy.slot_t
+        add     ebx, legacy_slots
+        call    core.process.compat.init_with_slot
 
   .thread:
         call    core.thread.alloc
         mov     ebx, [slot]
-        shl     ebx, 8
-        add     ebx, SLOT_BASE
-        call    core.thread.compat.init_with_app_data
+        shl     ebx, 9 ; * sizeof.legacy.slot_t
+        add     ebx, legacy_slots
+        call    core.thread.compat.init_with_slot
 
         mov     cl, [esp + regs_context32_t.cl]
         mov     [eax + core.thread_t.state], cl
         or      [eax + core.thread_t.flags], THREAD_FLAG_VALID
         popa
 
-        mov     [TASK_DATA + ebx - sizeof.task_data_t + task_data_t.state], cl
+        mov     [legacy_slots + ebx + legacy.slot_t.task.state], cl
         ret
 endp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc get_stack_base ;//////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, [current_slot]
-        mov     eax, [eax + app_data_t.pl0_stack]
+        mov     eax, [current_slot_ptr]
+        mov     eax, [eax + legacy.slot_t.app.pl0_stack]
         ret
 kendp
 

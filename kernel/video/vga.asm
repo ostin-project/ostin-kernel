@@ -470,9 +470,9 @@ kendp
 kproc VGA_draw_bar_1 ;//////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     [temp.cx], eax
-        mov     eax, [TASK_BASE]
-        add     ebx, [eax - twdw + window_data_t.box.top]
-        mov     eax, [eax - twdw + window_data_t.box.left]
+        mov     eax, [current_slot_ptr]
+        add     ebx, [eax + legacy.slot_t.window.box.top]
+        mov     eax, [eax + legacy.slot_t.window.box.left]
         add     eax, [temp.cx]
         and     eax, 0xfff8
         shl     ebx, 9

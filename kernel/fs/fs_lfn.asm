@@ -178,8 +178,8 @@ kproc sysfn.file_system_lfn ;///////////////////////////////////////////////////
         jnz     @f
         xor     ebp, ebp
 
-    @@: mov     esi, [current_slot]
-        mov     esi, [esi + app_data_t.cur_dir]
+    @@: mov     esi, [current_slot_ptr]
+        mov     esi, [esi + legacy.slot_t.app.cur_dir]
         jmp     .parse_normal
 
   .notcurdir:
@@ -1578,8 +1578,8 @@ endg
         jae     sysfn.not_implemented
 
         ; get length string of appdata.cur_dir
-        mov     eax, [current_slot]
-        mov     edi, [eax + app_data_t.cur_dir]
+        mov     eax, [current_slot_ptr]
+        mov     edi, [eax + legacy.slot_t.app.cur_dir]
 
         jmp     [.subfn + ebx * 4]
 kendp
@@ -1632,7 +1632,7 @@ kproc sysfn.current_directory_ctl.get ;/////////////////////////////////////////
 
   .error:
         add     esp, 8
-        or      [esp + 4 + regs_context32_t.eax], -1 ; error not found zerro at string ->[eax+app_data_t.cur_dir]
+        or      [esp + 4 + regs_context32_t.eax], -1 ; 0-terminator not found
         ret
 kendp
 
@@ -1643,7 +1643,7 @@ kproc sysfn.current_directory_ctl.set ;/////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> ecx ^= directory path string
 ;-----------------------------------------------------------------------------------------------------------------------
-        ; use generic resolver with app_data_t.cur_dir as destination
+        ; use generic resolver with legacy.slot_t.app.cur_dir as destination
         push    max_cur_dir ; 0x1000
         push    edi ; destination
         mov     ebx, ecx
@@ -1661,8 +1661,8 @@ kproc get_full_file_name ;//////////////////////////////////////////////////////
 ;# destroys all registers except ebp,esp
 ;-----------------------------------------------------------------------------------------------------------------------
         push    ebp
-        mov     esi, [current_slot]
-        mov     esi, [esi + app_data_t.cur_dir]
+        mov     esi, [current_slot_ptr]
+        mov     esi, [esi + legacy.slot_t.app.cur_dir]
         mov     edx, esi
 
     @@: inc     esi
@@ -1698,7 +1698,7 @@ kproc get_full_file_name ;//////////////////////////////////////////////////////
         jmp     .relative
 
   .set_ok:
-        cmp     edx, edi ; is destination equal to app_data_t.cur_dir?
+        cmp     edx, edi ; is destination equal to legacy.slot_t.app.cur_dir?
         jz      .set_ok.cur_dir
         sub     esi, edx
         cmp     esi, [esp + 12]

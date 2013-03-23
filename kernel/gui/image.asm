@@ -30,10 +30,10 @@ kproc sysfn.put_image ;/////////////////////////////////////////////////////////
   .exit:
         ret
 
-    @@: mov     edi, [current_slot]
-        add     dx, word[edi + app_data_t.wnd_clientbox.top]
+    @@: mov     edi, [current_slot_ptr]
+        add     dx, word[edi + legacy.slot_t.app.wnd_clientbox.top]
         rol     edx, 16
-        add     dx, word[edi + app_data_t.wnd_clientbox.left]
+        add     dx, word[edi + legacy.slot_t.app.wnd_clientbox.left]
         rol     edx, 16
 
   .forced:
@@ -75,11 +75,11 @@ kproc sysfn.put_image_with_palette ;////////////////////////////////////////////
 ;> edi = pointer to palette
 ;> ebp = row delta
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, [CURRENT_TASK]
-        shl     eax, 8
-        add     dx, word[SLOT_BASE + eax + app_data_t.wnd_clientbox.top]
+        mov     eax, [current_slot]
+        shl     eax, 9 ; * sizeof.legacy.slot_t
+        add     dx, word[legacy_slots + eax + legacy.slot_t.app.wnd_clientbox.top]
         rol     edx, 16
-        add     dx, word[SLOT_BASE + eax + app_data_t.wnd_clientbox.left]
+        add     dx, word[legacy_slots + eax + legacy.slot_t.app.wnd_clientbox.left]
         rol     edx, 16
 
   .forced:

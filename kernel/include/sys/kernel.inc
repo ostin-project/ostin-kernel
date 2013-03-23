@@ -49,26 +49,26 @@ ends
 WSTYLE_HASCAPTION     = 00010000b
 WSTYLE_CLIENTRELATIVE = 00100000b
 
-struct task_stats_t
+struct legacy.task_stats_t
   counter_sum dd ?
   counter_add dd ?
   cpu_usage   dd ?
 ends
 
-struct task_data_t
+struct legacy.task_data_t
   pid        dd ?
   mem_start  dd ?
   state      db ?
   wnd_number db ?
              dw ?
   event_mask dd ? ; -> core.thread_t.events.event_mask
-  stats      task_stats_t ; -> core.thread_t.stats
+  stats      legacy.task_stats_t ; -> core.thread_t.stats
   new_pid    dd ?
 ends
 
-assert sizeof.task_data_t = 32
+assert sizeof.legacy.task_data_t mod 4 = 0
 
-struct window_data_t
+struct legacy.window_data_t
   box           box32_t
   union
     cl_workarea dd ?
@@ -85,14 +85,13 @@ struct window_data_t
   fl_redraw     db ?
 ends
 
-assert sizeof.window_data_t = 32
+assert sizeof.legacy.window_data_t mod 4 = 0
 
-struct draw_data_t rect32_t
+struct legacy.draw_data_t rect32_t
   rb 16
 ends
 
-assert sizeof.draw_data_t = sizeof.task_data_t
-assert sizeof.draw_data_t = sizeof.window_data_t
+assert sizeof.legacy.draw_data_t mod 4 = 0
 
 struct app_data_debug_regs_t
   dr0 dd ?
@@ -102,7 +101,7 @@ struct app_data_debug_regs_t
   dr7 dd ?
 ends
 
-struct app_data_t
+struct legacy.app_data_t
   app_name        rb PROCESS_MAX_NAME_LEN
                   rb 16 - PROCESS_MAX_NAME_LEN
   fpu_state       dd ?
@@ -142,10 +141,19 @@ struct app_data_t
   dbg_regs        app_data_debug_regs_t
   wnd_caption     dd ?
   wnd_clientbox   box32_t
-                  rb 256 - $
 ends
 
-assert sizeof.app_data_t = 256
+assert sizeof.legacy.app_data_t mod 4 = 0
+
+struct legacy.slot_t
+  task   legacy.task_data_t
+  window legacy.window_data_t
+  draw   legacy.draw_data_t
+  app    legacy.app_data_t
+         rb 512 - legacy.slot_t.app - sizeof.legacy.app_data_t
+ends
+
+assert sizeof.legacy.slot_t = 512
 
 struct app_io_ports_header_t
   count      dd ?

@@ -48,7 +48,7 @@ kproc mutex_lock ;//////////////////////////////////////////////////////////////
 
         list_add_tail esp, ecx ; esp = new waiter, ecx = list head
 
-        mov     edx, [TASK_BASE]
+        mov     edx, [current_slot_ptr]
         mov     [esp + mutex_waiter_t.task], edx
 
   .forever:
@@ -57,7 +57,7 @@ kproc mutex_lock ;//////////////////////////////////////////////////////////////
         dec     eax
         jz      @f
 
-        mov     [edx + task_data_t.state], THREAD_STATE_RUN_SUSPENDED
+        mov     [edx + legacy.slot_t.task.state], THREAD_STATE_RUN_SUSPENDED
         call    change_task
         jmp     .forever
 
@@ -93,7 +93,7 @@ kproc mutex_unlock ;////////////////////////////////////////////////////////////
         je      @f
 
         mov     eax, [eax + mutex_waiter_t.task]
-        mov     [eax + task_data_t.state], THREAD_STATE_RUNNING
+        mov     [eax + legacy.slot_t.task.state], THREAD_STATE_RUNNING
 
     @@: popfd
         ret

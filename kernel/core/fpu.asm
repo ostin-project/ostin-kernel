@@ -72,7 +72,7 @@ kproc fpu_save ;////////////////////////////////////////////////////////////////
         mov     edi, eax
 
         mov     ecx, [fpu_owner]
-        mov     esi, [CURRENT_TASK]
+        mov     esi, [current_slot]
         cmp     ecx, esi
         jne     .save
 
@@ -82,13 +82,13 @@ kproc fpu_save ;////////////////////////////////////////////////////////////////
   .save:
         mov     [fpu_owner], esi
 
-        shl     ecx, 8
-        mov     eax, [SLOT_BASE + ecx + app_data_t.fpu_state]
+        shl     ecx, 9 ; * sizeof.legacy.slot_t
+        mov     eax, [legacy_slots + ecx + legacy.slot_t.app.fpu_state]
 
         call    save_context
 
-        shl     esi, 8
-        mov     esi, [SLOT_BASE + esi + app_data_t.fpu_state]
+        shl     esi, 9 ; * sizeof.legacy.slot_t
+        mov     esi, [legacy_slots + esi + legacy.slot_t.app.fpu_state]
         mov     ecx, 512 / 4
         rep
         movsd
@@ -128,7 +128,7 @@ kproc fpu_restore ;/////////////////////////////////////////////////////////////
         cli
 
         mov     ecx, [fpu_owner]
-        mov     eax, [CURRENT_TASK]
+        mov     eax, [current_slot]
         cmp     ecx, eax
         jne     .copy
 
@@ -151,8 +151,8 @@ kproc fpu_restore ;/////////////////////////////////////////////////////////////
         ret
 
   .copy:
-        shl     eax, 8
-        mov     edi, [SLOT_BASE + eax + app_data_t.fpu_state]
+        shl     eax, 9 ; * sizeof.legacy.slot_t
+        mov     edi, [legacy_slots + eax + legacy.slot_t.app.fpu_state]
         mov     ecx, 512 / 4
         rep
         movsd
@@ -175,19 +175,19 @@ kproc except_7 ;////////////////////////////////////////////////////////////////
         cld
 
         mov     ebx, [fpu_owner]
-        cmp     ebx, [CURRENT_TASK]
+        cmp     ebx, [current_slot]
         je      .exit
 
-        shl     ebx, 8
-        mov     eax, [SLOT_BASE + ebx + app_data_t.fpu_state]
+        shl     ebx, 9 ; * sizeof.legacy.slot_t
+        mov     eax, [legacy_slots + ebx + legacy.slot_t.app.fpu_state]
         bt      [cpu_caps], CAPS_SSE
         jnc     .no_SSE
 
         fxsave  [eax]
-        mov     ebx, [CURRENT_TASK]
+        mov     ebx, [current_slot]
         mov     [fpu_owner], ebx
-        shl     ebx, 8
-        mov     eax, [SLOT_BASE + ebx + app_data_t.fpu_state]
+        shl     ebx, 9 ; * sizeof.legacy.slot_t
+        mov     eax, [legacy_slots + ebx + legacy.slot_t.app.fpu_state]
         fxrstor [eax]
 
   .exit:
@@ -196,10 +196,10 @@ kproc except_7 ;////////////////////////////////////////////////////////////////
 
   .no_SSE:
         fnsave  [eax]
-        mov     ebx, [CURRENT_TASK]
+        mov     ebx, [current_slot]
         mov     [fpu_owner], ebx
-        shl     ebx, 8
-        mov     eax, [SLOT_BASE + ebx + app_data_t.fpu_state]
+        shl     ebx, 9 ; * sizeof.legacy.slot_t
+        mov     eax, [legacy_slots + ebx + legacy.slot_t.app.fpu_state]
         frstor  [eax]
         restore_ring3_context
         iret

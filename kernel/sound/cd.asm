@@ -110,9 +110,8 @@ kproc sysfn.cd_audio_ctl.get_tracks_info ;//////////////////////////////////////
 ;> ebx ^= buffer
 ;> ecx #= buffer size
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     edi, [TASK_BASE]
-        add     edi, task_data_t.mem_start
-        add     ebx, [edi]
+        mov     edi, [current_slot_ptr]
+        add     ebx, [edi + legacy.slot_t.task.mem_start]
         call    sys_cdtracklist
         mov     [esp + 4 + regs_context32_t.eax], eax
         ret

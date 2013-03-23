@@ -415,11 +415,11 @@ high_code:
         stdcall map_page, tss - 0x0f80, eax, PG_SW
         stdcall alloc_page
         inc     eax
-        mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.io_map], eax
+        mov     [legacy_os_idle_slot.app.io_map], eax
         stdcall map_page, tss + 0x080, eax, PG_SW
         stdcall alloc_page
         inc     eax
-        mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.io_map + 4], eax
+        mov     [legacy_os_idle_slot.app.io_map + 4], eax
         stdcall map_page, tss + 0x1080, eax, PG_SW
 
         ; LOAD IDT
@@ -547,10 +547,9 @@ end if ; KCONFIG_BLK_ATAPI
 
         xor     eax, eax
         inc     eax
-        mov     [CURRENT_TASK], eax ; 1
-        mov     [TASK_COUNT], eax ; 1
-        mov     [TASK_BASE], TASK_DATA
-        mov     [current_slot], SLOT_BASE + sizeof.app_data_t
+        mov     [current_slot], eax ; 1
+        mov     [legacy_slots.last_valid_slot], eax ; 1
+        mov     [current_slot_ptr], legacy_os_idle_slot
 
         ; set background
         mov     [BgrDrawMode], eax
@@ -559,7 +558,7 @@ end if ; KCONFIG_BLK_ATAPI
         mov     [mem_BACKGROUND], 4
         mov     [img_background], static_background_data
 
-        mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.dir_table], sys_pgdir - OS_BASE
+        mov     [legacy_os_idle_slot.app.dir_table], sys_pgdir - OS_BASE
 
         stdcall kernel_alloc, 0x10000 / 8
         mov     edi, eax
@@ -689,61 +688,56 @@ end if
         call    boot_log
 
         xor     eax, eax
-        mov     [SLOT_BASE + app_data_t.fpu_state], fpu_data
-        mov     [SLOT_BASE + app_data_t.exc_handler], eax
-        mov     [SLOT_BASE + app_data_t.except_mask], eax
 
         ; name for OS/IDLE process
-        mov     dword[SLOT_BASE + sizeof.app_data_t + app_data_t.app_name], 'OS/I'
-        mov     dword[SLOT_BASE + sizeof.app_data_t + app_data_t.app_name + 4], 'DLE '
+        mov     dword[legacy_os_idle_slot.app.app_name], 'OS/I'
+        mov     dword[legacy_os_idle_slot.app.app_name + 4], 'DLE'
 
         mov     edi, [os_stack_seg]
-        mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.pl0_stack], edi
-        add     edi, 0x2000 - 512
-        mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.fpu_state], edi
-        mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.saved_esp0], edi ; just in case
-        ; [SLOT_BASE + sizeof.app_data_t + app_data_t.io_map] was set earlier
+        mov     [legacy_os_idle_slot.app.pl0_stack], edi
+        add     edi, sizeof.ring0_stack_data_t
+        mov     [legacy_os_idle_slot.app.fpu_state], edi
+        mov     [legacy_os_idle_slot.app.saved_esp0], edi ; just in case
+        ; [legacy_os_idle_slot.app.io_map] was set earlier
 
         mov     esi, fpu_data
         mov     ecx, 512 / 4
         rep
         movsd
 
-        mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.exc_handler], eax
-        mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.except_mask], eax
+        mov     [legacy_os_idle_slot.app.exc_handler], eax
+        mov     [legacy_os_idle_slot.app.except_mask], eax
 
-        mov     ebx, SLOT_BASE + sizeof.app_data_t + app_data_t.obj
-        mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.obj.next_ptr], ebx
-        mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.obj.prev_ptr], ebx
+        mov     ebx, legacy_os_idle_slot.app.obj
+        mov     [legacy_os_idle_slot.app.obj.next_ptr], ebx
+        mov     [legacy_os_idle_slot.app.obj.prev_ptr], ebx
 
-        mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.cur_dir], sysdir_path
-        mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.tls_base], eax
+        mov     [legacy_os_idle_slot.app.cur_dir], sysdir_path
+        mov     [legacy_os_idle_slot.app.tls_base], eax
 
         ; task list
-        mov     [TASK_DATA + task_data_t.mem_start], eax ; process base address
+        mov     [legacy_os_idle_slot.task.mem_start], eax  ; process base address
         inc     eax
-        mov     [CURRENT_TASK], eax
-        mov     [TASK_COUNT], eax
-        mov     [current_slot], SLOT_BASE + sizeof.app_data_t
-        mov     [TASK_BASE], TASK_DATA
-        mov     [TASK_DATA + task_data_t.wnd_number], al ; on screen number
-        mov     [TASK_DATA + task_data_t.pid], eax ; process id number
+        mov     [current_slot], eax
+        mov     [legacy_slots.last_valid_slot], eax
+        mov     [current_slot_ptr], legacy_os_idle_slot
+        mov     [legacy_os_idle_slot.task.wnd_number], al ; on screen number
+        mov     [legacy_os_idle_slot.task.pid], eax ; process id number
 
         call    init_display
         mov     eax, [def_cursor]
-        mov     [SLOT_BASE + app_data_t.cursor], eax
-        mov     [SLOT_BASE + sizeof.app_data_t + app_data_t.cursor], eax
+        mov     [legacy_os_idle_slot.app.cursor], eax
 
         call    core.process.alloc
-        mov     [CURRENT_PROCESS], eax
-        mov     ebx, SLOT_BASE + sizeof.app_data_t
-        call    core.process.compat.init_with_app_data
+        mov     [current_process_ptr], eax
+        mov     ebx, legacy_os_idle_slot
+        call    core.process.compat.init_with_slot
         or      [eax + core.process_t.flags], PROCESS_FLAG_VALID
 
         call    core.thread.alloc
-        mov     [CURRENT_THREAD], eax
-        mov     ebx, SLOT_BASE + sizeof.app_data_t
-        call    core.thread.compat.init_with_app_data
+        mov     [current_thread_ptr], eax
+        mov     ebx, legacy_os_idle_slot
+        call    core.thread.compat.init_with_slot
         or      [eax + core.thread_t.flags], THREAD_FLAG_VALID
 
         ; READ TSC / SECOND
@@ -811,12 +805,12 @@ no_pal_ega:
 
         ; protect io permission map
         mov     esi, [default_io_map]
-        stdcall map_page, esi, [SLOT_BASE + sizeof.app_data_t + app_data_t.io_map], PG_MAP
+        stdcall map_page, esi, [legacy_os_idle_slot.app.io_map], PG_MAP
         add     esi, 0x1000
-        stdcall map_page, esi, [SLOT_BASE + sizeof.app_data_t + app_data_t.io_map + 4], PG_MAP
+        stdcall map_page, esi, [legacy_os_idle_slot.app.io_map + 4], PG_MAP
 
-        stdcall map_page, tss.io_map_0, [SLOT_BASE + sizeof.app_data_t + app_data_t.io_map], PG_MAP
-        stdcall map_page, tss.io_map_1, [SLOT_BASE + sizeof.app_data_t + app_data_t.io_map + 4], PG_MAP
+        stdcall map_page, tss.io_map_0, [legacy_os_idle_slot.app.io_map], PG_MAP
+        stdcall map_page, tss.io_map_1, [legacy_os_idle_slot.app.io_map + 4], PG_MAP
 
         ; LOAD FIRST APPLICATION
         cli
@@ -837,9 +831,9 @@ no_pal_ega:
 first_app_found:
         cli
 
-;       mov     [TASK_COUNT], 2
+;       mov     [legacy_slots.last_valid_slot], 2
         push    1
-        pop     [CURRENT_TASK] ; set OS task fisrt
+        pop     [current_slot] ; set OS task fisrt
 
         ; SET KEYBOARD PARAMETERS
         mov     al, 0xf6 ; reset keyboard, scan enabled
@@ -1217,8 +1211,8 @@ kproc sysfn.write_to_port ;/////////////////////////////////////////////////////
         ret
 
   .sopl8:
-        mov     edx, [TASK_BASE]
-        mov     edx, [edx + task_data_t.pid]
+        mov     edx, [current_slot_ptr]
+        mov     edx, [edx + legacy.slot_t.task.pid]
 ;       and     ecx,65535
 
   .sopl1:
@@ -1323,8 +1317,8 @@ kproc sysfn.set_config.keyboard_layout ;////////////////////////////////////////
 ;? System function 21.2
 ;? 1, base keymap 2, shift keymap, 9 country 1eng 2fi 3ger 4rus
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     edi, [TASK_BASE]
-        mov     eax, [edi + task_data_t.mem_start]
+        mov     edi, [current_slot_ptr]
+        mov     eax, [edi + legacy.slot_t.task.mem_start]
         add     eax, edx
 
         dec     ecx
@@ -1565,8 +1559,8 @@ kproc sysfn.get_config.keyboard_layout ;////////////////////////////////////////
 ;? System function 26.2
 ;? 1, base keymap 2, shift keymap, 9 country 1eng 2fi 3ger 4rus
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     edi, [TASK_BASE]
-        mov     ebx, [edi + task_data_t.mem_start]
+        mov     edi, [current_slot_ptr]
+        mov     ebx, [edi + legacy.slot_t.task.mem_start]
         add     ebx, edx
 
 ;       cmp     ebx, 1
@@ -1700,15 +1694,15 @@ kproc sysfn.exit_process ;//////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function -1
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     ecx, [current_slot]
-        mov     eax, [ecx + app_data_t.tls_base]
+        mov     ecx, [current_slot_ptr]
+        mov     eax, [ecx + legacy.slot_t.app.tls_base]
         test    eax, eax
         jz      @f
 
         stdcall user_free, eax
 
-    @@: mov     eax, [TASK_BASE]
-        mov     [eax + task_data_t.state], THREAD_STATE_ZOMBIE ; terminate this program
+    @@: mov     eax, [current_slot_ptr]
+        mov     [eax + legacy.slot_t.task.state], THREAD_STATE_ZOMBIE ; terminate this program
 
   .waitterm:
         ; wait here for termination
@@ -1766,7 +1760,7 @@ kproc sysfn.system_ctl.shutdown ;///////////////////////////////////////////////
         jg      exit_for_anyone
         mov     [boot_var.shutdown_param], cl
 
-        mov     eax, [TASK_COUNT]
+        mov     eax, [legacy_slots.last_valid_slot]
         mov     [SYS_SHUTDOWN], al
         mov     [shutdown_processes], eax
         and     [esp + 4 + regs_context32_t.eax], 0
@@ -1786,13 +1780,13 @@ kproc sysfn.system_ctl.kill_process_by_slot ;///////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     ecx, 2
         jb      .noprocessterminate
-        mov     edx, [TASK_COUNT]
+        mov     edx, [legacy_slots.last_valid_slot]
         cmp     ecx, edx
         ja      .noprocessterminate
-        mov     eax, [TASK_COUNT]
-        shl     ecx, 5
-        mov     edx, [TASK_DATA + ecx - sizeof.task_data_t + task_data_t.pid]
-        add     ecx, TASK_DATA - sizeof.task_data_t + task_data_t.state
+        mov     eax, [legacy_slots.last_valid_slot]
+        shl     ecx, 9 ; * sizeof.legacy.slot_t
+        mov     edx, [legacy_slots + ecx + legacy.slot_t.task.pid]
+        add     ecx, legacy_slots + legacy.slot_t.task.state
         cmp     byte[ecx], THREAD_STATE_FREE
         jz      .noprocessterminate
 
@@ -1850,18 +1844,18 @@ kproc sysfn.system_ctl.activate_window ;////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     ecx, 2
         jb      .nowindowactivate
-        cmp     ecx, [TASK_COUNT]
+        cmp     ecx, [legacy_slots.last_valid_slot]
         ja      .nowindowactivate
 
         mov     [window_minimize], 2 ; restore window if minimized
 
         movzx   esi, [pslot_to_wnd_pos + ecx * 2]
-        cmp     esi, [TASK_COUNT]
+        cmp     esi, [legacy_slots.last_valid_slot]
         je      .nowindowactivate ; already active
 
         mov     edi, ecx
-        shl     edi, 5
-        add     edi, window_data
+        shl     edi, 9 ; * sizeof.legacy.slot_t
+        add     edi, legacy_slots
         movzx   esi, [pslot_to_wnd_pos + ecx * 2]
         lea     esi, [wnd_pos_to_pslot + esi * 2]
         call    waredraw
@@ -1898,7 +1892,7 @@ kproc sysfn.system_ctl.get_active_window_slot ;/////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 18.7: get process slot number of active window
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, [TASK_COUNT]
+        mov     eax, [legacy_slots.last_valid_slot]
         movzx   eax, [wnd_pos_to_pslot + eax * 2]
         mov     [esp + 4 + regs_context32_t.eax], eax
         ret
@@ -2206,7 +2200,7 @@ kproc sysfn.get_process_info ;//////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cmp     ecx, -1 ; who am I ?
         jne     .no_who_am_i
-        mov     ecx, [CURRENT_TASK]
+        mov     ecx, [current_slot]
 
   .no_who_am_i:
         cmp     ecx, MAX_TASK_COUNT
@@ -2220,10 +2214,10 @@ kproc sysfn.get_process_info ;//////////////////////////////////////////////////
         mov     ax, [wnd_pos_to_pslot + ecx * 2]
         mov     [ebx + process_info_t.window_stack_value], ax
 
-        shl     ecx, 5
+        shl     ecx, 9 ; * sizeof.legacy.slot_t
 
-        lea     eax, [TASK_DATA + ecx - sizeof.task_data_t]
-        call    core.thread.compat.find_by_task_data
+        lea     eax, [legacy_slots + ecx]
+        call    core.thread.compat.find_by_slot
         test    eax, eax
         jz      .nofillbuf
 
@@ -2248,9 +2242,9 @@ kproc sysfn.get_process_info ;//////////////////////////////////////////////////
         lea     edi, [ebx - process_info_t.process_name + process_info_t.process_memory_range]
         xor     eax, eax
         mov     edx, 0x100000 * 16
-        cmp     ecx, 1 shl 5
+        cmp     ecx, 1 shl 9 ; sizeof.legacy.slot_t
         je      .os_mem
-        mov     edx, [SLOT_BASE + ecx * 8 + app_data_t.mem_size]
+        mov     edx, [legacy_slots + ecx + legacy.slot_t.app.mem_size]
         mov     eax, new_app_base
 
   .os_mem:
@@ -2261,14 +2255,14 @@ kproc sysfn.get_process_info ;//////////////////////////////////////////////////
 assert process_info_t.thread_id = 30
 
         ; +30: PID/TID
-        mov     eax, [TASK_DATA + ecx - sizeof.task_data_t + task_data_t.pid]
+        mov     eax, [legacy_slots + ecx + legacy.slot_t.task.pid]
         stosd
 
 assert process_info_t.window_box = 34
 
         ; window position and size
         push    esi
-        lea     esi, [window_data + ecx + window_data_t.box]
+        lea     esi, [legacy_slots + ecx + legacy.slot_t.window.box]
         movsd
         movsd
         movsd
@@ -2277,13 +2271,13 @@ assert process_info_t.window_box = 34
 assert process_info_t.thread_state = 50
 
         ; Process state (+50)
-        movzx   eax, [TASK_DATA + ecx - sizeof.task_data_t + task_data_t.state]
+        movzx   eax, [legacy_slots + ecx + legacy.slot_t.task.state]
         stosd
 
 assert process_info_t.window_client_box = 54
 
         ; Window client area box
-        lea     esi, [SLOT_BASE + ecx * 8 + app_data_t.wnd_clientbox]
+        lea     esi, [legacy_slots + ecx + legacy.slot_t.app.wnd_clientbox]
         movsd
         movsd
         movsd
@@ -2292,7 +2286,7 @@ assert process_info_t.window_client_box = 54
 assert process_info_t.window_state = 70
 
         ; Window state
-        mov     al, [window_data + ecx + window_data_t.fl_wstate]
+        mov     al, [legacy_slots + ecx + legacy.slot_t.window.fl_wstate]
         stosb
 
 assert process_info_t.thread_event_mask = 71
@@ -2306,7 +2300,7 @@ assert process_info_t.thread_event_mask = 71
 
   .exit:
         ; return number of processes
-        mov     eax, [TASK_COUNT]
+        mov     eax, [legacy_slots.last_valid_slot]
         mov     [esp + 4 + regs_context32_t.eax], eax
         ret
 
@@ -2495,22 +2489,22 @@ kproc checkmisc ;///////////////////////////////////////////////////////////////
         jne     .mouse_not_active
         mov     [mouse_active], 0
         xor     edi, edi
-        mov     ecx, [TASK_COUNT]
+        mov     ecx, [legacy_slots.last_valid_slot]
 
   .set_mouse_event:
-        add     edi, sizeof.app_data_t
-        or      [SLOT_BASE + edi + app_data_t.event_mask], EVENT_MOUSE
+        add     edi, sizeof.legacy.slot_t
+        or      [legacy_slots + edi + legacy.slot_t.app.event_mask], EVENT_MOUSE
         loop    .set_mouse_event
 
   .mouse_not_active:
         cmp     [BACKGROUND_CHANGED], 0
         jz      .no_set_bgr_event
         xor     edi, edi
-        mov     ecx, [TASK_COUNT]
+        mov     ecx, [legacy_slots.last_valid_slot]
 
   .set_bgr_event:
-        add     edi, sizeof.app_data_t
-        or      [SLOT_BASE + edi + app_data_t.event_mask], EVENT_BACKGROUND
+        add     edi, sizeof.legacy.slot_t
+        or      [legacy_slots + edi + legacy.slot_t.app.event_mask], EVENT_BACKGROUND
         loop    .set_bgr_event
         mov     [BACKGROUND_CHANGED], 0
 
@@ -2519,22 +2513,22 @@ kproc checkmisc ;///////////////////////////////////////////////////////////////
         jz      .nobackgr
         cmp     [background_defined], 0
         jz      .nobackgr
-;       mov     [draw_data + sizeof.draw_data_t + draw_data_t.left], 0
-;       mov     [draw_data + sizeof.draw_data_t + draw_data_t.top], 0
+;       mov     [legacy_os_idle_slot.draw.left], 0
+;       mov     [legacy_os_idle_slot.draw.top], 0
 ;       mov     eax, [Screen_Max_Pos.x]
 ;       mov     ebx, [Screen_Max_Pos.y]
-;       mov     [draw_data + sizeof.draw_data_t + draw_data_t.right], eax
-;       mov     [draw_data + sizeof.draw_data_t + draw_data_t.bottom], ebx
+;       mov     [legacy_os_idle_slot.draw.right], eax
+;       mov     [legacy_os_idle_slot.draw.bottom], ebx
 
     @@: call    drawbackground
         xor     eax, eax
         xchg    al, [REDRAW_BACKGROUND]
         test    al, al ; got new update request?
         jnz     @b
-        mov     [draw_data + sizeof.draw_data_t + draw_data_t.left], eax
-        mov     [draw_data + sizeof.draw_data_t + draw_data_t.top], eax
-        mov     [draw_data + sizeof.draw_data_t + draw_data_t.right], eax
-        mov     [draw_data + sizeof.draw_data_t + draw_data_t.bottom], eax
+        mov     [legacy_os_idle_slot.draw.left], eax
+        mov     [legacy_os_idle_slot.draw.top], eax
+        mov     [legacy_os_idle_slot.draw.right], eax
+        mov     [legacy_os_idle_slot.draw.bottom], eax
 ;       mov     [MOUSE_BACKGROUND], 0
 
   .nobackgr:
@@ -2548,12 +2542,12 @@ kproc checkmisc ;///////////////////////////////////////////////////////////////
         jne     .no_mark_system_shutdown
 
         lea     ecx, [edx - 1]
-        mov     edx, OS_BASE + 0x3040
+        mov     edx, legacy_slots + 2 * sizeof.legacy.slot_t
         jecxz   @f
 
   .markz:
-        mov     byte[edx + task_data_t.state], THREAD_STATE_ZOMBIE
-        add     edx, sizeof.task_data_t
+        mov     byte[edx + legacy.slot_t.task.state], THREAD_STATE_ZOMBIE
+        add     edx, sizeof.legacy.slot_t
         loop    .markz
 
   .no_mark_system_shutdown:
@@ -2564,8 +2558,8 @@ kproc checkmisc ;///////////////////////////////////////////////////////////////
 
   .noshutdown:
         ; termination
-        mov     eax, [TASK_COUNT]
-        mov     ebx, TASK_DATA + task_data_t.state
+        mov     eax, [legacy_slots.last_valid_slot]
+        mov     ebx, legacy_slots + sizeof.legacy.slot_t + legacy.slot_t.task.state
         mov     esi, 1
 
   .newct:
@@ -2575,7 +2569,7 @@ kproc checkmisc ;///////////////////////////////////////////////////////////////
         cmp     cl, THREAD_STATE_TERMINATING
         jz      terminate
 
-        add     ebx, sizeof.task_data_t
+        add     ebx, sizeof.legacy.slot_t
         inc     esi
         dec     eax
         jnz     .newct
@@ -2601,8 +2595,8 @@ kproc redrawscreen ;////////////////////////////////////////////////////////////
         push    ecx
 
         mov     eax, ecx
-        shl     eax, 5
-        add     eax, window_data
+        shl     eax, 9 ; * sizeof.legacy.slot_t
+        add     eax, legacy_slots
 
         cmp     eax, [esp + 4]
         je      .not_this_task
@@ -2613,10 +2607,10 @@ kproc redrawscreen ;////////////////////////////////////////////////////////////
         cmp     ecx, 1 ; limit for background
         jz      .bgli
 
-        mov     eax, [edi + window_data_t.box.left]
-        mov     ebx, [edi + window_data_t.box.top]
-        mov     ecx, [edi + window_data_t.box.width]
-        mov     edx, [edi + window_data_t.box.height]
+        mov     eax, [edi + legacy.slot_t.window.box.left]
+        mov     ebx, [edi + legacy.slot_t.window.box.top]
+        mov     ecx, [edi + legacy.slot_t.window.box.width]
+        mov     edx, [edi + legacy.slot_t.window.box.height]
         add     ecx, eax
         add     edx, ebx
 
@@ -2628,10 +2622,10 @@ kproc redrawscreen ;////////////////////////////////////////////////////////////
         cmp     ecx, eax
         jb      .ricino
 
-        mov     eax, [edi + window_data_t.box.left]
-        mov     ebx, [edi + window_data_t.box.top]
-        mov     ecx, [edi + window_data_t.box.width]
-        mov     edx, [edi + window_data_t.box.height]
+        mov     eax, [edi + legacy.slot_t.window.box.left]
+        mov     ebx, [edi + legacy.slot_t.window.box.top]
+        mov     ecx, [edi + legacy.slot_t.window.box.width]
+        mov     edx, [edi + legacy.slot_t.window.box.height]
         add     ecx, eax
         add     edx, ebx
 
@@ -2651,29 +2645,29 @@ kproc redrawscreen ;////////////////////////////////////////////////////////////
         cmp     [REDRAW_BACKGROUND], 0
         jz      .az
         mov     dl, 0
-        lea     eax, [edi + draw_data - window_data]
+        mov     eax, edi
         mov     ebx, [draw_limits.left]
-        cmp     ebx, [eax + draw_data_t.left]
+        cmp     ebx, [eax + legacy.slot_t.draw.left]
         jae     @f
-        mov     [eax + draw_data_t.left], ebx
+        mov     [eax + legacy.slot_t.draw.left], ebx
         mov     dl, 1
 
     @@: mov     ebx, [draw_limits.top]
-        cmp     ebx, [eax + draw_data_t.top]
+        cmp     ebx, [eax + legacy.slot_t.draw.top]
         jae     @f
-        mov     [eax + draw_data_t.top], ebx
+        mov     [eax + legacy.slot_t.draw.top], ebx
         mov     dl, 1
 
     @@: mov     ebx, [draw_limits.right]
-        cmp     ebx, [eax + draw_data_t.right]
+        cmp     ebx, [eax + legacy.slot_t.draw.right]
         jbe     @f
-        mov     [eax + draw_data_t.right], ebx
+        mov     [eax + legacy.slot_t.draw.right], ebx
         mov     dl, 1
 
     @@: mov     ebx, [draw_limits.bottom]
-        cmp     ebx, [eax + draw_data_t.bottom]
+        cmp     ebx, [eax + legacy.slot_t.draw.bottom]
         jbe     @f
-        mov     [eax + draw_data_t.bottom], ebx
+        mov     [eax + legacy.slot_t.draw.bottom], ebx
         mov     dl, 1
 
     @@: add     [REDRAW_BACKGROUND], dl
@@ -2681,19 +2675,16 @@ kproc redrawscreen ;////////////////////////////////////////////////////////////
 
   .az:
         mov     eax, edi
-        add     eax, draw_data - window_data
 
         ; set limits
         mov     ebx, [draw_limits.left]
-        mov     [eax + draw_data_t.left], ebx
+        mov     [eax + legacy.slot_t.draw.left], ebx
         mov     ebx, [draw_limits.top]
-        mov     [eax + draw_data_t.top], ebx
+        mov     [eax + legacy.slot_t.draw.top], ebx
         mov     ebx, [draw_limits.right]
-        mov     [eax + draw_data_t.right], ebx
+        mov     [eax + legacy.slot_t.draw.right], ebx
         mov     ebx, [draw_limits.bottom]
-        mov     [eax + draw_data_t.bottom], ebx
-
-        sub     eax, draw_data - window_data
+        mov     [eax + legacy.slot_t.draw.bottom], ebx
 
         cmp     dword[esp], 1
         jne     .nobgrd
@@ -2701,13 +2692,13 @@ kproc redrawscreen ;////////////////////////////////////////////////////////////
 
   .newdw8:
   .nobgrd:
-        mov     [eax + window_data_t.fl_redraw], 1 ; mark as redraw
+        mov     [eax + legacy.slot_t.window.fl_redraw], 1 ; mark as redraw
 
   .ricino:
   .not_this_task:
         pop     ecx
 
-        cmp     ecx, [TASK_COUNT]
+        cmp     ecx, [legacy_slots.last_valid_slot]
         jle     .newdw2
 
         pop     eax
@@ -2758,7 +2749,7 @@ kproc sysfn.set_process_event_mask ;////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 40
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     edi, [CURRENT_THREAD]
+        mov     edi, [current_thread_ptr]
         mov     eax, [edi + core.thread_t.events.event_mask]
         mov     [edi + core.thread_t.events.event_mask], ebx
 
@@ -2801,12 +2792,12 @@ kproc sysfn.program_irq ;///////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 44
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, [TASK_BASE]
-        add     ebx, [eax + task_data_t.mem_start]
+        mov     eax, [current_slot_ptr]
+        add     ebx, [eax + legacy.slot_t.task.mem_start]
 
         cmp     ecx, 16
         jae     .not_owner
-        mov     edi, [eax + task_data_t.pid]
+        mov     edi, [eax + legacy.slot_t.task.pid]
         cmp     edi, [irq_owner + ecx * 4]
         je      .spril1
 
@@ -2841,9 +2832,9 @@ kproc sysfn.get_irq_data ;//////////////////////////////////////////////////////
         jae     .not_owner
         mov     edx, [irq_owner + ebx * 4] ; check for irq owner
 
-        mov     eax, [TASK_BASE]
+        mov     eax, [current_slot_ptr]
 
-        cmp     edx, [eax + task_data_t.pid]
+        cmp     edx, [eax + legacy.slot_t.task.pid]
         je      .gidril1
 
   .not_owner:
@@ -3012,8 +3003,8 @@ kproc r_f_port_area ;///////////////////////////////////////////////////////////
         mov     [RESERVED_PORTS.count], eax
         shl     eax, 4
         add     eax, RESERVED_PORTS
-        mov     ebx, [TASK_BASE]
-        mov     ebx, [ebx + task_data_t.pid]
+        mov     ebx, [current_slot_ptr]
+        mov     ebx, [ebx + legacy.slot_t.task.pid]
         mov     [eax + app_io_ports_range_t.pid], ebx
         mov     [eax + app_io_ports_range_t.start_port], ecx
         mov     [eax + app_io_ports_range_t.end_port], edx
@@ -3026,8 +3017,8 @@ kproc r_f_port_area ;///////////////////////////////////////////////////////////
         mov     eax, [RESERVED_PORTS.count] ; no reserved areas?
         test    eax, eax
         jz      .frpal2
-        mov     ebx, [TASK_BASE]
-        mov     ebx, [ebx + task_data_t.pid]
+        mov     ebx, [current_slot_ptr]
+        mov     ebx, [ebx + legacy.slot_t.task.pid]
 
   .frpal3:
         mov     edi, eax
@@ -3100,8 +3091,8 @@ kproc sysfn.reserve_irq ;///////////////////////////////////////////////////////
         push    ecx
         lea     ecx, [irq_owner + ecx * 4]
         mov     edx, [ecx]
-        mov     eax, [TASK_BASE]
-        mov     edi, [eax + task_data_t.pid]
+        mov     eax, [current_slot_ptr]
+        mov     edi, [eax + legacy.slot_t.task.pid]
         pop     eax
         dec     ebx
         jnz     .reserve_irq
@@ -3421,12 +3412,12 @@ kproc sysfn.set_pixel ;/////////////////////////////////////////////////////////
         mov     eax, ebx
         mov     ebx, ecx
         mov     ecx, edx
-        mov     edx, [TASK_BASE]
-        add     eax, [edx - twdw + window_data_t.box.left]
-        add     ebx, [edx - twdw + window_data_t.box.top]
-        mov     edi, [current_slot]
-        add     eax, [edi + app_data_t.wnd_clientbox.left]
-        add     ebx, [edi + app_data_t.wnd_clientbox.top]
+        mov     edx, [current_slot_ptr]
+        add     eax, [edx + legacy.slot_t.window.box.left]
+        add     ebx, [edx + legacy.slot_t.window.box.top]
+        mov     edi, [current_slot_ptr]
+        add     eax, [edi + legacy.slot_t.app.wnd_clientbox.left]
+        add     ebx, [edi + legacy.slot_t.app.wnd_clientbox.top]
         xor     edi, edi ; no force
 ;       mov     edi, 1
         call    [_display.disable_mouse]
@@ -3452,10 +3443,10 @@ kproc sysfn.draw_rect ;/////////////////////////////////////////////////////////
         shr     eax, 16 ; eax - x.coord
         movzx   edx, bx ; edx - y.size
         shr     ebx, 16 ; ebx - y.coord
-        mov     esi, [current_slot]
+        mov     esi, [current_slot_ptr]
 
-        add     eax, [esi + app_data_t.wnd_clientbox.left]
-        add     ebx, [esi + app_data_t.wnd_clientbox.top]
+        add     eax, [esi + legacy.slot_t.app.wnd_clientbox.left]
+        add     ebx, [esi + legacy.slot_t.app.wnd_clientbox.top]
         add     ecx, eax
         add     edx, ebx
         jmp     [drawbar]
@@ -3587,19 +3578,19 @@ kproc sysfn.draw_line ;/////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 38
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     edi, [TASK_BASE]
-        movzx   eax, word[edi - twdw + window_data_t.box.left]
+        mov     edi, [current_slot_ptr]
+        movzx   eax, word[edi + legacy.slot_t.window.box.left]
         mov     ebp, eax
-        mov     esi, [current_slot]
-        add     ebp, [esi + app_data_t.wnd_clientbox.left]
-        add     ax, word[esi + app_data_t.wnd_clientbox.left]
+        mov     esi, [current_slot_ptr]
+        add     ebp, [esi + legacy.slot_t.app.wnd_clientbox.left]
+        add     ax, word[esi + legacy.slot_t.app.wnd_clientbox.left]
         add     ebp, ebx
         shl     eax, 16
-        movzx   ebx, word[edi - twdw + window_data_t.box.top]
+        movzx   ebx, word[edi + legacy.slot_t.window.box.top]
         add     eax, ebp
         mov     ebp, ebx
-        add     ebp, [esi + app_data_t.wnd_clientbox.top]
-        add     bx, word[esi + app_data_t.wnd_clientbox.top]
+        add     ebp, [esi + legacy.slot_t.app.wnd_clientbox.top]
+        add     bx, word[esi + legacy.slot_t.app.wnd_clientbox.top]
         add     ebp, ecx
         shl     ebx, 16
         xor     edi, edi

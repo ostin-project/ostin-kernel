@@ -302,9 +302,9 @@ kproc sysfn.blit_32 ;///////////////////////////////////////////////////////////
         push    ebx
         sub     esp, 72
 
-        mov     eax, [TASK_BASE]
-        mov     ebx, [eax - twdw + window_data_t.box.width]
-        mov     edx, [eax - twdw + window_data_t.box.height]
+        mov     eax, [current_slot_ptr]
+        mov     ebx, [eax + legacy.slot_t.window.box.width]
+        mov     edx, [eax + legacy.slot_t.window.box.height]
 
         xor     eax, eax
 
@@ -350,12 +350,12 @@ kproc sysfn.blit_32 ;///////////////////////////////////////////////////////////
         inc     [mouse_pause]
         call    [_display.disable_mouse]
 
-        mov     eax, [TASK_BASE]
+        mov     eax, [current_slot_ptr]
 
         mov     ebx, [esp + blitter_t.dst.x]
         mov     ebp, [esp + blitter_t.dst.y]
-        add     ebx, [eax - twdw + window_data_t.box.left]
-        add     ebp, [eax - twdw + window_data_t.box.top]
+        add     ebx, [eax + legacy.slot_t.window.box.left]
+        add     ebp, [eax + legacy.slot_t.window.box.top]
         mov     edi, ebp
 
         imul    edi, [_display.pitch]
@@ -383,7 +383,7 @@ kproc sysfn.blit_32 ;///////////////////////////////////////////////////////////
 
         lea     edi, [edi + ebx * 4]
 
-        mov     ebx, [CURRENT_TASK]
+        mov     ebx, [current_slot]
 
 align 4
   .outer32:
@@ -424,7 +424,7 @@ align 4
   .core_24:
         lea     ebx, [ebx + ebx * 2]
         lea     edi, [LFB_BASE + edi + ebx]
-        mov     ebx, [CURRENT_TASK]
+        mov     ebx, [current_slot]
 
 align 4
   .outer24:

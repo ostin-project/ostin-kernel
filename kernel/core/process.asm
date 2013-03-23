@@ -161,33 +161,28 @@ kproc core.process.enumerate ;//////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc core.process.compat.init_with_app_data ;//////////////////////////////////////////////////////////////////////////
+kproc core.process.compat.init_with_slot ;//////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax ^= core.thread_t
-;> ebx ^= app_data_t
+;> ebx ^= legacy.slot_t
 ;-----------------------------------------------------------------------------------------------------------------------
         push    ebx
 
 assert (PROCESS_MAX_NAME_LEN + 3) / 4 = 3
 
-        push    dword[ebx + app_data_t.app_name] dword[ebx + app_data_t.app_name + 4] \
-                dword[ebx + app_data_t.app_name + 8]
+        push    dword[ebx + legacy.slot_t.app.app_name] dword[ebx + legacy.slot_t.app.app_name + 4] \
+                dword[ebx + legacy.slot_t.app.app_name + 8]
         pop     dword[eax + core.process_t.name + 8] dword[eax + core.process_t.name + 4] \
                 dword[eax + core.process_t.name]
 
-        mov_s_  [eax + core.process_t.mem_range.size], [ebx + app_data_t.mem_size]
-        mov_s_  [eax + core.process_t.heap_base], [ebx + app_data_t.heap_base]
-        mov_s_  [eax + core.process_t.heap_top], [ebx + app_data_t.heap_top]
-        mov_s_  [eax + core.process_t.dir_table], [ebx + app_data_t.dir_table]
-        mov_s_  [eax + core.process_t.dlls_list_ptr], [ebx + app_data_t.dlls_list_ptr]
-        mov_s_  [eax + core.process_t.obj.prev_ptr], [ebx + app_data_t.obj.prev_ptr]
-        mov_s_  [eax + core.process_t.obj.next_ptr], [ebx + app_data_t.obj.next_ptr]
-
-        sub     ebx, SLOT_BASE
-        shr     ebx, 3
-        add     ebx, TASK_DATA - sizeof.task_data_t
-
-        mov_s_  [eax + core.process_t.mem_range.address], [ebx + task_data_t.mem_start]
+        mov_s_  [eax + core.process_t.mem_range.size], [ebx + legacy.slot_t.app.mem_size]
+        mov_s_  [eax + core.process_t.heap_base], [ebx + legacy.slot_t.app.heap_base]
+        mov_s_  [eax + core.process_t.heap_top], [ebx + legacy.slot_t.app.heap_top]
+        mov_s_  [eax + core.process_t.dir_table], [ebx + legacy.slot_t.app.dir_table]
+        mov_s_  [eax + core.process_t.dlls_list_ptr], [ebx + legacy.slot_t.app.dlls_list_ptr]
+        mov_s_  [eax + core.process_t.obj.prev_ptr], [ebx + legacy.slot_t.app.obj.prev_ptr]
+        mov_s_  [eax + core.process_t.obj.next_ptr], [ebx + legacy.slot_t.app.obj.next_ptr]
+        mov_s_  [eax + core.process_t.mem_range.address], [ebx + legacy.slot_t.task.mem_start]
         pop     ebx
         ret
 kendp

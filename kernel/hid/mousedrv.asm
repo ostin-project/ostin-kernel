@@ -91,17 +91,15 @@ kproc sysfn.mouse_ctl.get_window_coordinates ;//////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 37.1: get window-relative cursor coordinates
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     esi, [TASK_BASE]
-        mov     edi, [CURRENT_TASK]
-        shl     edi, 8
+        mov     esi, [current_slot_ptr]
 
         mov     eax, [MOUSE_CURSOR_POS.x]
-        sub     eax, [esi - twdw + window_data_t.box.left]
-        sub     eax, [SLOT_BASE + edi + app_data_t.wnd_clientbox.left]
+        sub     eax, [esi + legacy.slot_t.window.box.left]
+        sub     eax, [esi + legacy.slot_t.app.wnd_clientbox.left]
         shl     eax, 16
         mov     ax, word[MOUSE_CURSOR_POS.y]
-        sub     ax, word[esi - twdw + window_data_t.box.top]
-        sub     ax, word[SLOT_BASE + edi + app_data_t.wnd_clientbox.top]
+        sub     ax, word[esi + legacy.slot_t.window.box.top]
+        sub     ax, word[esi + legacy.slot_t.app.wnd_clientbox.top]
 
         mov     [esp + 4 + regs_context32_t.eax], eax
         ret
@@ -122,9 +120,9 @@ kproc sysfn.mouse_ctl.get_scroll_info ;/////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 37.7: get mouse wheel changes from last query
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     edi, [TASK_COUNT]
+        mov     edi, [legacy_slots.last_valid_slot]
         movzx   edi, [wnd_pos_to_pslot + edi * 2]
-        cmp     edi, [CURRENT_TASK]
+        cmp     edi, [current_slot]
         jne     @f
         mov     ax, [MOUSE_SCROLL_OFS.x]
         shl     eax, 16
@@ -255,8 +253,8 @@ kproc save_draw_mouse ;/////////////////////////////////////////////////////////
         mul     ecx
         add     eax, [_WinMapRange.address]
         movzx   edx, byte[ebx + eax]
-        shl     edx, 8
-        mov     esi, [SLOT_BASE + edx + app_data_t.cursor]
+        shl     edx, 9 ; * sizeof.legacy.slot_t
+        mov     esi, [legacy_slots + edx + legacy.slot_t.app.cursor]
 
         cmp     esi, [current_cursor]
         je      .draw
@@ -272,7 +270,7 @@ kproc save_draw_mouse ;/////////////////////////////////////////////////////////
 
   .fail:
         mov     ecx, [def_cursor]
-        mov     [SLOT_BASE + edx + app_data_t.cursor], ecx
+        mov     [legacy_slots + edx + legacy.slot_t.app.cursor], ecx
         stdcall [_display.move_cursor], ecx ; stdcall: [esp]=ebx,eax
         popad
         ret
@@ -426,11 +424,8 @@ kproc __sys_disable_mouse ;/////////////////////////////////////////////////////
         ret
 
     @@: pushad
-        cmp     [CURRENT_TASK], 1
+        cmp     [current_slot], 1
         je      .disable_m
-        mov     edx, [CURRENT_TASK]
-        shl     edx, 5
-        add     edx, window_data
         mov     eax, [MOUSE_CURSOR_POS.x]
         mov     ebx, [MOUSE_CURSOR_POS.y]
         mov     ecx, [Screen_Max_Pos.x]
@@ -438,7 +433,7 @@ kproc __sys_disable_mouse ;/////////////////////////////////////////////////////
         imul    ecx, ebx
         add     ecx, eax
         add     ecx, [_WinMapRange.address]
-        mov     eax, [CURRENT_TASK]
+        mov     eax, [current_slot]
         cmp     al, [ecx]
         je      .yes_mouse_disable
         cmp     al, [ecx + 16]
@@ -457,25 +452,24 @@ kproc __sys_disable_mouse ;/////////////////////////////////////////////////////
         jmp     .no_mouse_disable
 
   .yes_mouse_disable:
-        mov     edx, [CURRENT_TASK]
-        shl     edx, 5
-        add     edx, window_data
+        mov     edx, [current_slot_ptr]
+        add     edx, legacy.slot_t.window.box
         mov     eax, [MOUSE_CURSOR_POS.x]
         mov     ebx, [MOUSE_CURSOR_POS.y]
-        mov     ecx, [edx + 0] ; mouse inside the area ?
+        mov     ecx, [edx + box32_t.left] ; mouse inside the area ?
         add     eax, 10
         cmp     eax, ecx
         jb      .no_mouse_disable
         sub     eax, 10
-        add     ecx, [edx + 8]
+        add     ecx, [edx + box32_t.width]
         cmp     eax, ecx
         jg      .no_mouse_disable
-        mov     ecx, [edx + 4]
+        mov     ecx, [edx + box32_t.top]
         add     ebx, 14
         cmp     ebx, ecx
         jb      .no_mouse_disable
         sub     ebx, 14
-        add     ecx, [edx + 12]
+        add     ecx, [edx + box32_t.height]
         cmp     ebx, ecx
         jg      .no_mouse_disable
 

@@ -327,29 +327,27 @@ kproc v86_start ;///////////////////////////////////////////////////////////////
 
         cli
 
-        mov     ecx, [CURRENT_TASK]
-        shl     ecx, 8
-        add     ecx, SLOT_BASE
+        mov     ecx, [current_slot_ptr]
 
         mov     eax, [esi + v86_machine_t.iopm]
         call    get_pg_addr
         inc     eax
-        push    dword[ecx + app_data_t.io_map]
-        push    dword[ecx + app_data_t.io_map + 4]
-        mov     dword[ecx + app_data_t.io_map], eax
+        push    dword[ecx + legacy.slot_t.app.io_map]
+        push    dword[ecx + legacy.slot_t.app.io_map + 4]
+        mov     dword[ecx + legacy.slot_t.app.io_map], eax
         mov     dword[page_tabs + (tss.io_map_0 shr 10)], eax
         add     eax, 0x1000
-        mov     dword[ecx + app_data_t.io_map + 4], eax
+        mov     dword[ecx + legacy.slot_t.app.io_map + 4], eax
         mov     dword[page_tabs + (tss.io_map_1 shr 10)], eax
 
-        push    [ecx + app_data_t.dir_table]
-        push    [ecx + app_data_t.saved_esp0]
-        mov     [ecx + app_data_t.saved_esp0], esp
+        push    [ecx + legacy.slot_t.app.dir_table]
+        push    [ecx + legacy.slot_t.app.saved_esp0]
+        mov     [ecx + legacy.slot_t.app.saved_esp0], esp
         mov     [tss.esp0], esp
 
         mov     eax, [esi + v86_machine_t.pagedir]
         call    get_pg_addr
-        mov     [ecx + app_data_t.dir_table], eax
+        mov     [ecx + legacy.slot_t.app.dir_table], eax
         mov     cr3, eax
 
 ;       mov     [irq_tab + 5 * 4], my05
@@ -830,18 +828,17 @@ end if
         mov     esp, esi
 
         cli
-        mov     ecx, [CURRENT_TASK]
-        shl     ecx, 8
+        mov     ecx, [current_slot_ptr]
         pop     eax
-        mov     [SLOT_BASE + ecx + app_data_t.saved_esp0], eax
+        mov     [ecx + legacy.slot_t.app.saved_esp0], eax
         mov     [tss.esp0], eax
         pop     eax
-        mov     [SLOT_BASE + ecx + app_data_t.dir_table], eax
+        mov     [ecx + legacy.slot_t.app.dir_table], eax
         pop     ebx
-        mov     [SLOT_BASE + ecx + app_data_t.io_map + 4], ebx
+        mov     [ecx + legacy.slot_t.app.io_map + 4], ebx
         mov     dword[page_tabs + (tss.io_map_1 shr 10)], ebx
         pop     ebx
-        mov     [SLOT_BASE + ecx + app_data_t.io_map], ebx
+        mov     [ecx + legacy.slot_t.app.io_map], ebx
         mov     dword[page_tabs + (tss.io_map_0 shr 10)], ebx
         mov     cr3, eax
 ;       mov     [irq_tab + 5 * 4], 0
@@ -906,9 +903,8 @@ kproc v86_irq ;/////////////////////////////////////////////////////////////////
         mov     esi, [v86_irqhooks + edi * 8] ; get VM handle
         mov     eax, [esi + v86_machine_t.pagedir]
         call    get_pg_addr
-        mov     ecx, [CURRENT_TASK]
-        shl     ecx, 8
-        cmp     [SLOT_BASE + ecx + app_data_t.dir_table], eax
+        mov     ecx, [current_slot_ptr]
+        cmp     [ecx + legacy.slot_t.app.dir_table], eax
         jnz     .notcurrent
         lea     eax, [edi + 8]
         cmp     al, 0x10
@@ -919,14 +915,14 @@ kproc v86_irq ;/////////////////////////////////////////////////////////////////
     @@: jmp     v86_exc_c.simulate_int
 
   .notcurrent:
-        mov     ebx, SLOT_BASE + sizeof.app_data_t
-        mov     ecx, [TASK_COUNT]
+        mov     ebx, legacy_slots + sizeof.legacy.slot_t
+        mov     ecx, [legacy_slots.last_valid_slot]
 
   .scan:
-        cmp     [ebx + app_data_t.dir_table], eax
+        cmp     [ebx + legacy.slot_t.app.dir_table], eax
         jnz     .cont
         push    ecx
-        mov     ecx, [ebx + app_data_t.saved_esp0]
+        mov     ecx, [ebx + legacy.slot_t.app.saved_esp0]
         cmp     word[ecx - sizeof.v86_regs_t + v86_regs_t.esp], 6
         jb      .cont2
         movzx   edx, word[ecx - sizeof.v86_regs_t + v86_regs_t.ss]
@@ -954,6 +950,7 @@ kproc v86_irq ;/////////////////////////////////////////////////////////////////
         pop     ecx
 
   .cont:
+        add     ebx, sizeof.legacy.slot_t
         loop    .scan
         mov     al, 0x20
         out     0x20, al
@@ -984,9 +981,7 @@ kproc v86_irq ;/////////////////////////////////////////////////////////////////
         mov     word[esi - sizeof.v86_regs_t + v86_regs_t.cs], cx
         and     byte[esi - sizeof.v86_regs_t + v86_regs_t.eflags + 1], not 3
         call    update_counters
-        lea     edi, [ebx - (SLOT_BASE - OS_BASE)]
-        shr     edi, 3
-        add     edi, TASK_DATA
+        mov     edi, ebx
         call    find_next_task.found
         call    do_change_task
         popad

@@ -260,8 +260,8 @@ kproc vesa12_drawbackground ;///////////////////////////////////////////////////
         mov     ebx, 3
         mul     ebx
         mov     [imax], eax
-        mov     eax, [draw_data + sizeof.draw_data_t + draw_data_t.left]
-        mov     ebx, [draw_data + sizeof.draw_data_t + draw_data_t.top]
+        mov     eax, [legacy_os_idle_slot.draw.left]
+        mov     ebx, [legacy_os_idle_slot.draw.top]
         xor     edi, edi ; no force
 
   .v12dp3:
@@ -361,14 +361,14 @@ kproc vesa12_drawbackground ;///////////////////////////////////////////////////
         popa
         add     esi, 3
         inc     eax
-        cmp     eax, [draw_data + sizeof.draw_data_t + draw_data_t.right]
+        cmp     eax, [legacy_os_idle_slot.draw.right]
         jg      .v12nodp31
         jmp     .v12dp3
 
   .v12nodp31:
-        mov     eax, [draw_data + sizeof.draw_data_t + draw_data_t.left]
+        mov     eax, [legacy_os_idle_slot.draw.left]
         inc     ebx
-        cmp     ebx, [draw_data + sizeof.draw_data_t + draw_data_t.bottom]
+        cmp     ebx, [legacy_os_idle_slot.draw.bottom]
         jg      .v12dp4
         jmp     .v12dp3
 
@@ -394,9 +394,9 @@ kproc vesa12_drawbar ;//////////////////////////////////////////////////////////
         push    ebx
         push    ecx
         push    edx
-        mov     ecx, [TASK_BASE]
-        add     eax, [ecx - twdw + window_data_t.box.left]
-        add     ebx, [ecx - twdw + window_data_t.box.top]
+        mov     ecx, [current_slot_ptr]
+        add     eax, [ecx + legacy.slot_t.window.box.left]
+        add     ebx, [ecx + legacy.slot_t.window.box.top]
         push    eax
         mov     eax, ebx ; y
         mov     ebx, [BytesPerScanLine]
@@ -430,17 +430,17 @@ kproc vesa12_drawbar ;//////////////////////////////////////////////////////////
 
         push    eax
         push    ecx
-        mov     eax, [TASK_BASE]
-        mov     ecx, [eax + draw_data - (TASK_DATA - sizeof.task_data_t) + draw_data_t.left]
+        mov     eax, [current_slot_ptr]
+        mov     ecx, [eax + legacy.slot_t.draw.left]
         cmp     ecx, 0
         jnz     .dbcblimitlset12
-        mov     ecx, [eax + draw_data - (TASK_DATA - sizeof.task_data_t) + draw_data_t.top]
+        mov     ecx, [eax + legacy.slot_t.draw.top]
         cmp     ecx, 0
         jnz     .dbcblimitlset12
-        mov     ecx, [eax + draw_data - (TASK_DATA - sizeof.task_data_t) + draw_data_t.right]
+        mov     ecx, [eax + legacy.slot_t.draw.right]
         cmp     ecx, [Screen_Max_Pos.x]
         jnz     .dbcblimitlset12
-        mov     ecx, [eax + draw_data - (TASK_DATA - sizeof.task_data_t) + draw_data_t.bottom]
+        mov     ecx, [eax + legacy.slot_t.draw.bottom]
         cmp     ecx, [Screen_Max_Pos.y]
         jnz     .dbcblimitlset12
         pop     ecx
@@ -486,7 +486,7 @@ kproc dbpi24bit12 ;/////////////////////////////////////////////////////////////
         mov     ebx, 3
         div     ebx
         add     eax, [_WinMapRange.address]
-        mov     ebx, [CURRENT_TASK]
+        mov     ebx, [current_slot]
 
   .dbnp2412:
         mov     dl, [eax]
@@ -566,7 +566,7 @@ kproc dbpi32bit12 ;/////////////////////////////////////////////////////////////
         sub     eax, VGABasePtr
         shr     eax, 2
         add     eax, [_WinMapRange.address]
-        mov     ebx, [CURRENT_TASK]
+        mov     ebx, [current_slot]
 
   .dbnp3212:
         mov     dl, [eax]
@@ -740,9 +740,9 @@ kproc vesa12_putimage ;/////////////////////////////////////////////////////////
         push    edx
         movzx   eax, word[esp + 2]
         movzx   ebx, word[esp + 0]
-        mov     ecx, [TASK_BASE]
-        add     eax, [ecx - twdw + window_data_t.box.left]
-        add     ebx, [ecx - twdw + window_data_t.box.top]
+        mov     ecx, [current_slot_ptr]
+        add     eax, [ecx + legacy.slot_t.window.box.left]
+        add     ebx, [ecx + legacy.slot_t.window.box.top]
         push    eax
         mov     eax, ebx ; y
         mul     [BytesPerScanLine]
@@ -768,15 +768,15 @@ kproc vesa12_putimage ;/////////////////////////////////////////////////////////
         ; check limits while draw ?
 
         push    ecx
-        mov     eax, [TASK_BASE]
-        cmp     [eax + draw_data - (TASK_DATA - sizeof.task_data_t) + draw_data_t.left], 0
+        mov     eax, [current_slot_ptr]
+        cmp     [eax + legacy.slot_t.draw.left], 0
         jnz     .dbcblimitlset212
-        cmp     [eax + draw_data - (TASK_DATA - sizeof.task_data_t) + draw_data_t.top], 0
+        cmp     [eax + legacy.slot_t.draw.top], 0
         jnz     .dbcblimitlset212
-        mov     ecx, [eax + draw_data - (TASK_DATA - sizeof.task_data_t) + draw_data_t.right]
+        mov     ecx, [eax + legacy.slot_t.draw.right]
         cmp     ecx, [Screen_Max_Pos.x]
         jnz     .dbcblimitlset212
-        mov     ecx, [eax + draw_data - (TASK_DATA - sizeof.task_data_t) + draw_data_t.bottom]
+        mov     ecx, [eax + legacy.slot_t.draw.bottom]
         cmp     ecx, [Screen_Max_Pos.y]
         jnz     .dbcblimitlset212
         pop     ecx
@@ -805,7 +805,7 @@ kproc pi24bit12 ;///////////////////////////////////////////////////////////////
         mov     ebx, 3
         div     ebx
         add     edx, [_WinMapRange.address]
-        mov     ebx, [CURRENT_TASK]
+        mov     ebx, [current_slot]
         mov     bh, [esp + 4 * 3]
 
   .np2412:
@@ -880,7 +880,7 @@ kproc pi32bit12 ;///////////////////////////////////////////////////////////////
         sub     edx, VGABasePtr
         shr     edx, 2
         add     edx, [_WinMapRange.address]
-        mov     ebx, [CURRENT_TASK]
+        mov     ebx, [current_slot]
         mov     bh, [esp + 4 * 3]
 
   .np3212:

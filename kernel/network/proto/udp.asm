@@ -108,21 +108,21 @@ proc udp_rx stdcall ;///////////////////////////////////////////////////////////
         ; flag an event to the application
         mov     eax, [ebx + socket_t.pid] ; get socket owner PID
         mov     ecx, 1
-        mov     esi, TASK_DATA + task_data_t.pid
+        mov     esi, legacy_slots + sizeof.legacy.slot_t + legacy.slot_t.task.pid
 
   .next_pid:
         cmp     [esi], eax
         je      .found_pid
         inc     ecx
-        add     esi, sizeof.task_data_t
-        cmp     ecx, [TASK_COUNT]
+        add     esi, sizeof.legacy.slot_t
+        cmp     ecx, [legacy_slots.last_valid_slot]
         jbe     .next_pid
 
         jmp     .exit
 
   .found_pid:
-        shl     ecx, 8
-        or      [SLOT_BASE + ecx + app_data_t.event_mask], EVENT_NETWORK ; stack event
+        shl     ecx, 9 ; * sizeof.legacy.slot_t
+        or      [legacy_slots + ecx + legacy.slot_t.app.event_mask], EVENT_NETWORK ; stack event
 
         mov     [check_idle_semaphore], 200
 

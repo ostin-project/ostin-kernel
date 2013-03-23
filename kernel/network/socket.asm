@@ -111,8 +111,8 @@ proc net_socket_alloc stdcall uses ebx ecx edx edi ;////////////////////////////
         mov     [ebx + socket_t.prev_ptr], eax
 
     @@: ; set socket owner PID to the one of calling process
-        mov     ebx, [TASK_BASE]
-        mov     ebx, [ebx + task_data_t.pid]
+        mov     ebx, [current_slot_ptr]
+        mov     ebx, [ebx + legacy.slot_t.task.pid]
         mov     [eax + socket_t.pid], ebx
 
         ; find first free socket number and use it
@@ -156,8 +156,8 @@ proc net_socket_free stdcall uses ebx ecx edx, sockAddr:DWORD ;/////////////////
 
         ; make sure sockAddr is one of the socket addresses in the list
         mov     ebx, net_sockets
-;       mov     ecx, [TASK_BASE]
-;       mov     ecx, [ecx + task_data_t.pid]
+;       mov     ecx, [current_slot_ptr]
+;       mov     ecx, [ecx + legacy.slot_t.task.pid]
 
   .next_socket:
         mov     ebx, [ebx + socket_t.next_ptr]
@@ -213,8 +213,8 @@ proc net_socket_num_to_addr stdcall uses ebx ecx, sockNum:DWORD ;///////////////
 
         ; scan through sockets list
         mov     ebx, net_sockets
-;       mov     ecx, [TASK_BASE]
-;       mov     ecx, [ecx + task_data_t.pid]
+;       mov     ecx, [current_slot_ptr]
+;       mov     ecx, [ecx + legacy.slot_t.task.pid]
 
   .next_socket:
         mov     ebx, [ebx + socket_t.next_ptr]
@@ -253,8 +253,8 @@ proc net_socket_addr_to_num stdcall uses ebx ecx, sockAddr:DWORD ;//////////////
 
         ; scan through sockets list
         mov     ebx, net_sockets
-;       mov     ecx, [TASK_BASE]
-;       mov     ecx, [ecx + task_data_t.pid]
+;       mov     ecx, [current_slot_ptr]
+;       mov     ecx, [ecx + legacy.slot_t.task.pid]
 
   .next_socket:
         mov     ebx, [ebx + socket_t.next_ptr]
@@ -961,9 +961,8 @@ proc socket_write stdcall ;/////////////////////////////////////////////////////
         pop     eax ; get callers ptr to data to send
 
         ; Get the address of the callers data
-        mov     edi, [TASK_BASE]
-        add     edi, task_data_t.mem_start
-        add     eax, [edi]
+        mov     edi, [current_slot_ptr]
+        add     eax, [edi + legacy.slot_t.task.mem_start]
         mov     esi, eax
 
         mov     edi, edx
@@ -1070,9 +1069,8 @@ local sockAddr dd ?
         push    eax
 
         ; Get the address of the callers data
-        mov     edi, [TASK_BASE]
-        add     edi, task_data_t.mem_start
-        add     edx, [edi]
+        mov     edi, [current_slot_ptr]
+        add     edx, [edi + legacy.slot_t.task.mem_start]
         mov     esi, edx
 
         pop     eax

@@ -107,16 +107,16 @@ kproc vesa20_putimage ;/////////////////////////////////////////////////////////
         mov     [putimg.image_box.left], eax
         mov     [putimg.image_box.top], edx
         ; calculate absolute (i.e. screen) coordinates
-        mov     eax, [TASK_BASE]
-        mov     ebx, [eax - twdw + window_data_t.box.left]
+        mov     eax, [current_slot_ptr]
+        mov     ebx, [eax + legacy.slot_t.window.box.left]
         add     ebx, [putimg.image_box.left]
         mov     [putimg.abs_pos.x], ebx
-        mov     ebx, [eax - twdw + window_data_t.box.top]
+        mov     ebx, [eax + legacy.slot_t.window.box.top]
         add     ebx, [putimg.image_box.top]
         mov     [putimg.abs_pos.y], ebx
         ; real_sx = MIN(wnd_sx-image_cx, image_sx);
-        mov     ebx, [eax - twdw + window_data_t.box.width] ; ebx = wnd_sx
-        ; note that window_data_t.box.width is one pixel less than real window x-size
+        mov     ebx, [eax + legacy.slot_t.window.box.width] ; ebx = wnd_sx
+        ; note that legacy.slot_t.window.box.width is one pixel less than real window x-size
         inc     ebx
         sub     ebx, [putimg.image_box.left]
         ja      @f
@@ -131,7 +131,7 @@ kproc vesa20_putimage ;/////////////////////////////////////////////////////////
   .end_x:
         mov     [putimg.real_size.width], ebx
         ; init real_sy
-        mov     ebx, [eax - twdw + window_data_t.box.height] ; ebx = wnd_sy
+        mov     ebx, [eax + legacy.slot_t.window.box.height] ; ebx = wnd_sy
         inc     ebx
         sub     ebx, [putimg.image_box.top]
         ja      @f
@@ -184,7 +184,7 @@ kproc vesa20_putimage ;/////////////////////////////////////////////////////////
         add     eax, [_WinMapRange.address]
         xchg    eax, ebp
         ; get process number
-        mov     ebx, [CURRENT_TASK]
+        mov     ebx, [current_slot]
         cmp     [ScreenBPP], 32
         je      put_image_end_32
 
@@ -313,7 +313,7 @@ kproc __sys_putpixel ;//////////////////////////////////////////////////////////
         imul    edx, ebx
         add     eax, [_WinMapRange.address]
         movzx   edx, byte[eax + edx]
-        cmp     edx, [CURRENT_TASK]
+        cmp     edx, [current_slot]
         pop     eax
         jne     .exit
 
@@ -612,14 +612,14 @@ kproc vesa20_drawbar ;//////////////////////////////////////////////////////////
         mov     [drbar.bar_sx], ecx
         mov     [drbar.bar_cx], eax
         mov     [drbar.bar_cy], ebx
-        mov     edi, [TASK_BASE]
-        add     eax, [edi - twdw + window_data_t.box.left] ; win_cx
-        add     ebx, [edi - twdw + window_data_t.box.top] ; win_cy
+        mov     edi, [current_slot_ptr]
+        add     eax, [edi + legacy.slot_t.window.box.left] ; win_cx
+        add     ebx, [edi + legacy.slot_t.window.box.top] ; win_cy
         mov     [drbar.abs_cx], eax
         mov     [drbar.abs_cy], ebx
         ; real_sx = MIN(wnd_sx-bar_cx, bar_sx);
-        mov     ebx, [edi - twdw + window_data_t.box.width] ; ebx = wnd_sx
-        ; note that window_data_t.box.width is one pixel less than real window x-size
+        mov     ebx, [edi + legacy.slot_t.window.box.width] ; ebx = wnd_sx
+        ; note that legacy.slot_t.window.box.width is one pixel less than real window x-size
         inc     ebx
         sub     ebx, [drbar.bar_cx]
         ja      @f
@@ -638,7 +638,7 @@ kproc vesa20_drawbar ;//////////////////////////////////////////////////////////
   .end_x:
         mov     [drbar.real_sx], ebx
         ; real_sy = MIN(wnd_sy-bar_cy, bar_sy);
-        mov     ebx, [edi - twdw + window_data_t.box.height] ; ebx = wnd_sy
+        mov     ebx, [edi + legacy.slot_t.window.box.height] ; ebx = wnd_sy
         inc     ebx
         sub     ebx, [drbar.bar_cy]
         ja      @f
@@ -683,7 +683,7 @@ kproc vesa20_drawbar ;//////////////////////////////////////////////////////////
         add     eax, [_WinMapRange.address]
         xchg    eax, ebp
         ; get process number
-        mov     ebx, [CURRENT_TASK]
+        mov     ebx, [current_slot]
         cmp     [ScreenBPP], 24
         jne     draw_bar_end_32
 
@@ -780,10 +780,10 @@ kproc vesa20_drawbackground_tiled ;/////////////////////////////////////////////
         call    [_display.disable_mouse]
         pushad
         ; External loop for all y from start to end
-        mov     ebx, [draw_data + sizeof.draw_data_t + draw_data_t.top] ; y start
+        mov     ebx, [legacy_os_idle_slot.draw.top] ; y start
 
   .dp2:
-        mov     ebp, [draw_data + sizeof.draw_data_t + draw_data_t.left] ; x start
+        mov     ebp, [legacy_os_idle_slot.draw.left] ; x start
         ; 1) Calculate pointers in WinMapAddress (does pixel belong to OS thread?) [ebp]
         ;                       and LFB data (output for our function) [edi]
         mov     eax, [BytesPerScanLine]
@@ -846,7 +846,7 @@ kproc vesa20_drawbackground_tiled ;/////////////////////////////////////////////
         ; I do not use 'inc eax' because this is slightly slower then 'add eax,1'
         add     ebp, edx
         add     eax, edx
-        cmp     eax, [draw_data + sizeof.draw_data_t + draw_data_t.right]
+        cmp     eax, [legacy_os_idle_slot.draw.right]
         ja      .dp4
         sub     ecx, edx
         jnz     .dp3
@@ -860,7 +860,7 @@ kproc vesa20_drawbackground_tiled ;/////////////////////////////////////////////
   .dp4:
         ; next scan line
         inc     ebx
-        cmp     ebx, [draw_data + sizeof.draw_data_t + draw_data_t.bottom]
+        cmp     ebx, [legacy_os_idle_slot.draw.bottom]
         jbe     .dp2
         popad
         mov     [EGA_counter], 1
@@ -893,8 +893,8 @@ kproc vesa20_drawbackground_stretch ;///////////////////////////////////////////
         div     [Screen_Max_Pos.y]
         push    eax ; low
         ; External loop for all y from start to end
-        mov     ebx, [draw_data + sizeof.draw_data_t + draw_data_t.top] ; y start
-        mov     ebp, [draw_data + sizeof.draw_data_t + draw_data_t.left] ; x start
+        mov     ebx, [legacy_os_idle_slot.draw.top] ; y start
+        mov     ebp, [legacy_os_idle_slot.draw.left] ; x start
         ; 1) Calculate pointers in WinMapAddress (does pixel belong to OS thread?) [ebp]
         ;                       and LFB data (output for our function) [edi]
         mov     eax, [BytesPerScanLine]
@@ -1002,7 +1002,7 @@ kproc vesa20_drawbackground_stretch ;///////////////////////////////////////////
         add     eax, 1
         mov     [esp + 20], eax
         add     esi, 4
-        cmp     eax, [draw_data + sizeof.draw_data_t + draw_data_t.right]
+        cmp     eax, [legacy_os_idle_slot.draw.right]
         jbe     .sdp3a
 
   .sdp4:
@@ -1010,10 +1010,10 @@ kproc vesa20_drawbackground_stretch ;///////////////////////////////////////////
         mov     ebx, [esp + 24]
         add     ebx, 1
         mov     [esp + 24], ebx
-        cmp     ebx, [draw_data + sizeof.draw_data_t + draw_data_t.bottom]
+        cmp     ebx, [legacy_os_idle_slot.draw.bottom]
         ja      .sdpdone
         ; advance edi, ebp to next scan line
-        sub     eax, [draw_data + sizeof.draw_data_t + draw_data_t.left]
+        sub     eax, [legacy_os_idle_slot.draw.left]
         sub     ebp, eax
         add     ebp, [Screen_Max_Pos.x]
         add     ebp, 1
@@ -1036,7 +1036,7 @@ kproc vesa20_drawbackground_stretch ;///////////////////////////////////////////
         lea     eax, [eax * 3]
         imul    eax, [BgrDataSize.width]
         sub     [esp], eax
-        mov     eax, [draw_data + sizeof.draw_data_t + draw_data_t.left]
+        mov     eax, [legacy_os_idle_slot.draw.left]
         mov     [esp + 20], eax
         test    ebx, ebx
         jz      .sdp3
@@ -1080,7 +1080,7 @@ kproc smooth_line ;/////////////////////////////////////////////////////////////
         mov     eax, [esp + 20 + 8]
         add     eax, 1
         mov     [esp + 20 + 8], eax
-        cmp     eax, [draw_data + sizeof.draw_data_t + draw_data_t.right]
+        cmp     eax, [legacy_os_idle_slot.draw.right]
         ja      @f
         add     ecx, [esp + 36 + 8]
         mov     eax, edx
@@ -1090,7 +1090,7 @@ kproc smooth_line ;/////////////////////////////////////////////////////////////
         sub     esi, eax
         jmp     smooth_line
 
-    @@: mov     eax, [draw_data + sizeof.draw_data_t + draw_data_t.left]
+    @@: mov     eax, [legacy_os_idle_slot.draw.left]
         mov     [esp + 20 + 8], eax
         ret
 kendp

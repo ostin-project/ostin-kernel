@@ -782,9 +782,8 @@ kproc stack_get_packet ;////////////////////////////////////////////////////////
 
         push    eax ; save address of IP data
         ; Get the address of the callers data
-        mov     edi, [TASK_BASE]
-        add     edi, task_data_t.mem_start
-        add     edx, [edi]
+        mov     edi, [current_slot_ptr]
+        add     edx, [edi + legacy.slot_t.task.mem_start]
         mov     edi, edx
         pop     eax
 
@@ -840,9 +839,8 @@ kproc stack_insert_packet ;/////////////////////////////////////////////////////
         pop     eax ; get callers ptr to data to send
 
         ; Get the address of the callers data
-        mov     edi, [TASK_BASE]
-        add     edi, task_data_t.mem_start
-        add     eax, [edi]
+        mov     edi, [current_slot_ptr]
+        add     eax, [edi + legacy.slot_t.task.mem_start]
         mov     esi, eax
 
         mov     edi, edx

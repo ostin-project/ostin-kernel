@@ -105,10 +105,9 @@ kproc create_event ;////////////////////////////////////////////////////////////
 ;# scratched: ebx, ecx, esi, edi
 ;# EXPORT use
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     ebx, [current_slot]
-        add     ebx, app_data_t.obj
-        mov     edx, [TASK_BASE]
-        mov     edx, [edx + task_data_t.pid]
+        mov     ebx, [current_slot_ptr]
+        mov     edx, [ebx + legacy.slot_t.task.pid]
+        add     ebx, legacy.slot_t.app.obj
         pushfd
         cli
 kendp
@@ -232,7 +231,7 @@ kproc raise_event ;/////////////////////////////////////////////////////////////
         jz      RemoveEventTo.break ; POPF+RET
 
     @@: or      byte[ebx + event_t.state + 3], EVENT_SIGNALED shr 24
-        add     eax, SLOT_BASE + app_data_t.ev
+        add     eax, legacy_slots + legacy.slot_t.app.ev
         xchg    eax, ebx
         jmp     RemoveEventTo
 kendp
@@ -247,7 +246,7 @@ kproc clear_event ;/////////////////////////////////////////////////////////////
 ;# EXPORT use
 ;-----------------------------------------------------------------------------------------------------------------------
         call    NotDummyTest ; not returned for fail !!!
-        add     eax, SLOT_BASE + app_data_t.obj
+        add     eax, legacy_slots + legacy.slot_t.app.obj
         and     byte[ebx + event_t.state + 3], not ((EVENT_SIGNALED + EVENT_WATCHED) shr 24)
         xchg    eax, ebx
         jmp     RemoveEventTo
@@ -275,7 +274,7 @@ kproc send_event ;//////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     edx, eax
         call    NotDummyTest.small ; not returned for fail !!!
-        lea     ebx, [SLOT_BASE + eax + app_data_t.ev]
+        lea     ebx, [legacy_slots + eax + legacy.slot_t.app.ev]
         mov     ecx, EVENT_SIGNALED
         jmp     set_event
 kendp
@@ -310,7 +309,7 @@ kendp
 kproc Wait_events_ex ;//////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Waiting for an "abstract" event putting slot into 5th state.
-;? Abstractness is in the fact that event is being detected by app_data_t.wait_test function,
+;? Abstractness is in the fact that event is being detected by legacy.slot_t.app.wait_test function,
 ;? which is provided by client and could do almost anything.
 ;? This allowes shed detecting the event reliably, without making any "dummy" switches to
 ;? do "our/foreign" kind of analysis inside the task.
@@ -323,8 +322,8 @@ kproc Wait_events_ex ;//////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;# scratched: esi
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     esi, [current_slot]
-        mov     [esi + app_data_t.wait_param], ecx
+        mov     esi, [current_slot_ptr]
+        mov     [esi + legacy.slot_t.app.wait_param], ecx
         pushad
         mov     ebx, esi ; still a question, what goes where...
         pushfd  ; consequence of general concept: allow test function to disable interrupts,
@@ -336,7 +335,7 @@ kproc Wait_events_ex ;//////////////////////////////////////////////////////////
         or      eax, eax
         jnz     .exit
 
-        mov     [esi + app_data_t.wait_test], edx
+        mov     [esi + legacy.slot_t.app.wait_test], edx
 
         push    edx
         mov     eax, ebx
@@ -349,14 +348,14 @@ kproc Wait_events_ex ;//////////////////////////////////////////////////////////
         add     eax, dword[timer_ticks]
         adc     edx, dword[timer_ticks + 4]
 
-    @@: mov     dword[esi + app_data_t.wait_timeout], eax
-        mov     dword[esi + app_data_t.wait_timeout + 4], edx
+    @@: mov     dword[esi + legacy.slot_t.app.wait_timeout], eax
+        mov     dword[esi + legacy.slot_t.app.wait_timeout + 4], edx
         pop     edx
 
-        mov     eax, [TASK_BASE]
-        mov     [eax + task_data_t.state], THREAD_STATE_WAITING
+        mov     eax, [current_slot_ptr]
+        mov     [eax + legacy.slot_t.task.state], THREAD_STATE_WAITING
         call    change_task
-        mov     eax, [esi + app_data_t.wait_param]
+        mov     eax, [esi + legacy.slot_t.app.wait_param]
 
   .exit:
         ret
@@ -416,8 +415,8 @@ wait_finish:
         and     byte[eax + event_t.state + 3], not ((EVENT_SIGNALED + EVENT_WATCHED) shr 24)
         test    byte[eax + event_t.state + 3], MANUAL_DESTROY shr 24
         jz      destroy_event.internal
-        mov     ebx, [current_slot]
-        add     ebx, app_data_t.obj
+        mov     ebx, [current_slot_ptr]
+        add     ebx, legacy.slot_t.app.obj
         pushfd
         cli
         jmp     RemoveEventTo
@@ -455,16 +454,16 @@ kproc get_event_queue ;/////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Client testing function for get_event_ex
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx = pointer to app_data_t of slot being tested
+;> ebx = pointer to legacy.slot_t of slot being tested
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax = pointer to event_t (=0 => fail)
 ;-----------------------------------------------------------------------------------------------------------------------
 ;# warning:
-;#   * don't use [TASK_BASE],[current_slot],[CURRENT_TASK] - it is not for your slot
+;#   * don't use [current_slot_ptr], [current_slot] - it is not for your slot
 ;#   * may be assumed, that interrupt are disabled
 ;#   * it is not restriction for scratched registers
 ;-----------------------------------------------------------------------------------------------------------------------
-        add     ebx, app_data_t.ev
+        add     ebx, legacy.slot_t.app.ev
         mov     eax, [ebx + app_object_t.prev_ptr] ; checking from the end (FIFO)
         cmp     eax, ebx ; empty ???
         je      get_event_alone.ret0
@@ -478,16 +477,16 @@ kproc get_event_alone ;/////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Client testing function for wait_event
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx = pointer to app_data_t of slot being tested
+;> ebx = pointer to legacy.slot_t of slot being tested
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax = pointer to event_t (=0 => fail)
 ;-----------------------------------------------------------------------------------------------------------------------
 ;# warning:
-;#   * don't use [TASK_BASE],[current_slot],[CURRENT_TASK] - it is not for your slot
+;#   * don't use [current_slot_ptr], [current_slot] - it is not for your slot
 ;#   * may be assumed, that interrupt are disabled
 ;#   * it is not restriction for scratched registers
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, [ebx + app_data_t.wait_param]
+        mov     eax, [ebx + legacy.slot_t.app.wait_param]
         test    byte[eax + event_t.state + 3], EVENT_SIGNALED shr 24
         jnz     .ret
         or      byte[eax + event_t.state + 3], EVENT_WATCHED shr 24
@@ -543,7 +542,7 @@ kproc sysfn.check_for_event ;///////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 11
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     ebx, [current_slot] ; still a question, what goes where...
+        mov     ebx, [current_slot_ptr] ; still a question, what goes where...
         pushfd  ; consequence of general concept: allow test function to disable interrupts,
         cli     ; like if it was called from shed
         call    get_event_for_app
@@ -576,22 +575,20 @@ kproc get_event_for_app ;///////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Client test function for applcations (f10,f23)
 ;-----------------------------------------------------------------------------------------------------------------------
-;> ebx = pointer to app_data_t of slot being tested
+;> ebx = pointer to legacy.slot_t of slot being tested
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax = pointer to event_t (=0 => no events)
 ;-----------------------------------------------------------------------------------------------------------------------
 ;# used from f10,f11,f23
 ;# warning:
-;#   * don't use [TASK_BASE],[current_slot],[CURRENT_TASK] - it is not for your slot
+;#   * don't use [current_slot_ptr], [current_slot] - it is not for your slot
 ;#   * may be assumed, that interrupt are disabled
 ;#   * it is not restriction for scratched registers
 ;-----------------------------------------------------------------------------------------------------------------------
-        movzx   edi, bh ; bh  is assumed as [CURRENT_TASK]
-        shl     edi, 5
-        add     edi, TASK_DATA - sizeof.task_data_t ; edi is assumed as [TASK_BASE]
+        mov     edi, ebx
 
         mov     eax, edi
-        call    core.thread.compat.find_by_task_data
+        call    core.thread.compat.find_by_slot
         test    eax, eax
         jz      .no_events
 
@@ -615,7 +612,7 @@ kproc get_event_for_app ;///////////////////////////////////////////////////////
 
   .WndRedraw:
         ; eax=0, retval WndRedraw=1
-        cmp     [edi - twdw + window_data_t.fl_redraw], al ; al==0
+        cmp     [edi + legacy.slot_t.window.fl_redraw], al ; al==0
         jne     .result
         jmp     .loop
 
@@ -626,7 +623,7 @@ kproc get_event_for_app ;///////////////////////////////////////////////////////
   .IRQ:
         ; TODO: do the same as for FlagAutoReset (BgrRedraw,Mouse,IPC,Stack,Debug)
         mov     edx, [irq_owner + eax * 4 - 64] ; eax==16+irq
-        cmp     edx, [edi + task_data_t.pid]
+        cmp     edx, [edi + legacy.slot_t.task.pid]
         jne     .loop
         mov     edx, eax
         shl     edx, 12
@@ -646,7 +643,7 @@ kproc get_event_for_app ;///////////////////////////////////////////////////////
         pop     eax
         jnz     .loop
 
-    @@: btr     [ebx + app_data_t.event_mask], eax
+    @@: btr     [ebx + legacy.slot_t.app.event_mask], eax
         jnc     .loop
 
   .result:
@@ -655,7 +652,11 @@ kproc get_event_for_app ;///////////////////////////////////////////////////////
         ret
 
   .BtKy:
-        movzx   edx, bh
+        pushf
+        mov     edx, ebx
+        sub     edx, legacy_slots
+        shr     edx, 9 ; / sizeof.legacy.slot_t
+        popf
         movzx   edx, [pslot_to_wnd_pos + edx * 2]
         je      .Keys ; eax=1, retval Keys=2
 
@@ -663,7 +664,7 @@ kproc get_event_for_app ;///////////////////////////////////////////////////////
         ; eax=2, retval Buttons=3
         cmp     [button_buffer.count], 0
         je      .loop ; empty ???
-        cmp     edx, [TASK_COUNT]
+        cmp     edx, [legacy_slots.last_valid_slot]
         jne     .loop ; not Top ???
         mov     edx, [button_buffer]
         shr     edx, 8
@@ -675,14 +676,17 @@ kproc get_event_for_app ;///////////////////////////////////////////////////////
 
   .Keys:
         ; eax==1
-        cmp     edx, [TASK_COUNT]
+        cmp     edx, [legacy_slots.last_valid_slot]
         jne     @f ; not Top ???
         cmp     [key_buffer.count], al ; al==1
         jae     .result ; not empty ???
 
     @@: mov     edx, hotkey_buffer
+        mov     esi, ebx
+        sub     esi, legacy_slots
+        shr     esi, 9 ; / sizeof.legacy.slot_t
 
-    @@: cmp     byte[edx + queued_hotkey_t.pslot], bh ; bh - slot for testing
+    @@: cmp     [edx + queued_hotkey_t.pslot], esi ; bh - slot for testing
         je      .result
         add     edx, sizeof.queued_hotkey_t
         cmp     edx, hotkey_buffer + HOTKEY_BUFFER_SIZE * sizeof.queued_hotkey_t

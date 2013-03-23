@@ -85,12 +85,12 @@ kproc sysfn.define_button ;/////////////////////////////////////////////////////
 
         ; make coordinates clientbox-relative
         push    eax
-        mov     eax, [current_slot]
+        mov     eax, [current_slot_ptr]
         rol     ebx, 16
-        add     bx, word[eax + app_data_t.wnd_clientbox.left]
+        add     bx, word[eax + legacy.slot_t.app.wnd_clientbox.left]
         rol     ebx, 16
         rol     ecx, 16
-        add     cx, word[eax + app_data_t.wnd_clientbox.top]
+        add     cx, word[eax + legacy.slot_t.app.wnd_clientbox.top]
         rol     ecx, 16
         pop     eax
 
@@ -101,7 +101,7 @@ kproc sysfn.define_button ;/////////////////////////////////////////////////////
         shl     eax, 4 ; *= sizeof.sys_button_t
         add     edi, eax
         ; NOTE: this code doesn't rely on sys_button_t struct, please revise it if you change something
-        mov     eax, [CURRENT_TASK]
+        mov     eax, [current_slot]
         stosd   ; sys_button_t.pslot
         mov     eax, edx
         stosd   ; button id number and flags
@@ -128,9 +128,9 @@ kproc sysfn.define_button ;/////////////////////////////////////////////////////
         movzx   edi, cx
         shr     ebx, 16
         shr     ecx, 16
-        mov     eax, [TASK_BASE]
-        add     ebx, [eax - twdw + window_data_t.box.left]
-        add     ecx, [eax - twdw + window_data_t.box.top]
+        mov     eax, [current_slot_ptr]
+        add     ebx, [eax + legacy.slot_t.window.box.left]
+        add     ecx, [eax + legacy.slot_t.window.box.top]
         mov     eax, ebx
         shl     eax, 16
         mov     ax, bx
@@ -167,9 +167,9 @@ kproc sysfn.define_button ;/////////////////////////////////////////////////////
         ; calculate window-relative coordinates
         shr     ebx, 16
         shr     ecx, 16
-        mov     eax, [TASK_BASE]
-        add     ebx, [eax - twdw + window_data_t.box.left]
-        add     ecx, [eax - twdw + window_data_t.box.top]
+        mov     eax, [current_slot_ptr]
+        add     ebx, [eax + legacy.slot_t.window.box.left]
+        add     ecx, [eax + legacy.slot_t.window.box.top]
 
         ; top border
         mov     eax, ebx
@@ -244,7 +244,7 @@ sysfn.define_button.remove_button:
         add     esi, -sizeof.sys_button_t
 
         ; does it belong to our process?
-        mov     eax, [CURRENT_TASK]
+        mov     eax, [current_slot]
         cmp     eax, [esi + sys_button_t.pslot]
         jne     .next_button
 
@@ -273,10 +273,10 @@ kproc sysfn.get_clicked_button_id ;/////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 17: get clicked button identifier
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     ebx, [CURRENT_TASK] ; TOP OF WINDOW STACK
+        mov     ebx, [current_slot] ; TOP OF WINDOW STACK
         mov     [esp + 4 + regs_context32_t.eax], 1
         movzx   ecx, [pslot_to_wnd_pos + ebx * 2]
-        mov     edx, [TASK_COUNT] ; less than MAX_TASK_COUNT processes
+        mov     edx, [legacy_slots.last_valid_slot] ; less than MAX_TASK_COUNT processes
         cmp     ecx, edx
         jne     .exit
         movzx   eax, [button_buffer.count]
@@ -534,15 +534,15 @@ kproc button._.negative_button ;////////////////////////////////////////////////
         xchg    esi, eax
 
         mov     ecx, [esi + sys_button_t.pslot]
-        shl     ecx, 5
-        add     ecx, window_data
+        shl     ecx, 9 ; * sizeof.legacy.slot_t
+        add     ecx, legacy_slots
 
         mov     eax, dword[esi + sys_button_t.box.width - 2]
         mov     ax, [esi + sys_button_t.box.left]
         mov     ebx, dword[esi + sys_button_t.box.height - 2]
         mov     bx, [esi + sys_button_t.box.top]
-        add     ax, word[ecx + window_data_t.box.left]
-        add     bx, word[ecx + window_data_t.box.top]
+        add     ax, word[ecx + legacy.slot_t.window.box.left]
+        add     bx, word[ecx + legacy.slot_t.window.box.top]
         push    eax ebx
         pop     edx ecx
         rol     eax, 16
