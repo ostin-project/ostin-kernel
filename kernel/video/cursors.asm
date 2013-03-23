@@ -37,6 +37,11 @@ virtual at 0
   BI bitmap_info_header_t
 end virtual
 
+iglobal
+  def_arrow:
+    file 'rsrc/arrow.cur'
+endg
+
 uglobal
   align 16
   cur_saved_data rb 4096
@@ -858,7 +863,3 @@ kproc init_display ;////////////////////////////////////////////////////////////
         mov     [_display.move_cursor], eax
         ret
 kendp
-
-align 4
-def_arrow:
-  file 'arrow.cur'

@@ -635,13 +635,6 @@ no_lib_load:
 
 end if
 
-        ; LOAD FONTS I and II
-        stdcall read_file, char, FONT_I, 0, 2304
-        stdcall read_file, char2, FONT_II, 0, 2560
-
-        mov     esi, boot_fonts
-        call    boot_log
-
         ; PRINT AMOUNT OF MEMORY
         mov     esi, boot_memdetect
         call    boot_log
@@ -688,6 +681,9 @@ end if
         call    boot_log
 
         xor     eax, eax
+        mov     [legacy_slots + legacy.slot_t.app.fpu_state], fpu_data
+        mov     [legacy_slots + legacy.slot_t.app.exc_handler], eax
+        mov     [legacy_slots + legacy.slot_t.app.except_mask], eax
 
         ; name for OS/IDLE process
         mov     dword[legacy_os_idle_slot.app.app_name], 'OS/I'
@@ -726,6 +722,7 @@ end if
 
         call    init_display
         mov     eax, [def_cursor]
+        mov     [legacy_slots + legacy.slot_t.app.cursor], eax
         mov     [legacy_os_idle_slot.app.cursor], eax
 
         call    core.process.alloc

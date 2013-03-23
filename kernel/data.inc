@@ -51,7 +51,6 @@ keymap_alt:
   db 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
 boot_memdetect   db 'Determining amount of memory', 0
-boot_fonts       db 'Fonts loaded', 0
 boot_tss         db 'Setting TSSs', 0
 boot_cpuid       db 'Reading CPUIDs', 0
 boot_devices     db 'Detecting devices', 0
@@ -97,9 +96,6 @@ szIMPORTS        db 'IMPORTS', 0
 
 read_firstapp    db '/sys/'
 firstapp         db 'LAUNCHER', 0
-
-char             db '/sys/FONTS/CHAR.MT', 0
-char2            db '/sys/FONTS/CHAR2.MT', 0
 
 bootpath         db '/KOLIBRI    '
 bootpath2        db 0
