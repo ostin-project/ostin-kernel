@@ -35,7 +35,7 @@ struct fs.ext2.partition_data_t
 ends
 
 iglobal
-  jump_table fs.ext2, vftbl, 0, \
+  JumpTable fs.ext2, vftbl, 0, \
     read_file, \
     read_directory, \
     -, \
@@ -183,7 +183,7 @@ kproc fs.ext2.create_from_base ;////////////////////////////////////////////////
 ;> ebx ^= fs.partition_t (base)
 ;> edi ^= ext2_sb_t
 ;-----------------------------------------------------------------------------------------------------------------------
-        klog_   LOG_DEBUG, "fs.ext2.create_from_base\n"
+        KLog    LOG_DEBUG, "fs.ext2.create_from_base\n"
 
         xor     eax, eax
         ret

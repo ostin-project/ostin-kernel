@@ -101,28 +101,8 @@ last_1hsTick        = queueList + (2 * NUMQUEUEENTRIES)
 resendBuffer        = resendQ + ( 8 * NUMRESENDENTRIES ) ; for TCP
 
 uglobal
-  net_sockets rd 2
+  net_sockets linked_list_t
 endg
-
-; simple macro for memory set operation
-macro _memset_dw adr, value, amount
-{
-        mov     edi, adr
-        mov     ecx, amount
-
-  if value = 0
-
-        xor     eax, eax
-
-  else
-
-        mov     eax, value
-
-  end if
-
-        rep
-        stosd
-}
 
 ; Below, the main network layer source code is included
 ;
@@ -154,12 +134,20 @@ kproc stack_init ;//////////////////////////////////////////////////////////////
 ;? This is a kernel function, called prior to the OS main loop
 ;? in set_variables
 ;-----------------------------------------------------------------------------------------------------------------------
-        ; Init two address spaces with default values
-        _memset_dw      stack_data_start, 0, 0x20000 / 4
-        _memset_dw      resendQ, 0, NUMRESENDENTRIES * 2
+        xor     eax, eax
 
-        mov     [net_sockets], 0
-        mov     [net_sockets + 4], 0
+        ; Init two address spaces with default values
+        mov     edi, stack_data_start
+        mov     ecx, 0x20000 / 4
+        rep
+        stosd
+        mov     edi, resendQ
+        mov     ecx, NUMRESENDENTRIES * 2
+        rep
+        stosd
+
+        mov     [net_sockets.prev_ptr], eax
+        mov     [net_sockets.next_ptr], eax
 
         ; Queries initialization
         call    queueInit

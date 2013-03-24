@@ -518,7 +518,7 @@ kproc fs.fat.util.gen_short_name ;//////////////////////////////////////////////
         stosd
         pop     edi
         xor     eax, eax
-        mov_s_  ebx, 8
+        MovStk  ebx, 8
         lea     ecx, [edi + 8]
 
   .loop:

@@ -126,10 +126,10 @@ include "detect/biosdisk.asm"
         mov     cr0, eax
         jmp     pword os_code:B32 ; jmp to enable 32 bit mode
 
-gdt_begin tmp_gdts, KERNEL_CODE - OS_BASE
-  gdt_entry os_code, 0, 0xfffff, cpl0, GDT_FLAG_A + GDT_FLAG_D + GDT_FLAG_G
-  gdt_entry os_data, 0, 0xfffff, drw0, GDT_FLAG_A + GDT_FLAG_D + GDT_FLAG_G
-gdt_end
+GdtBegin tmp_gdts, KERNEL_CODE - OS_BASE
+  GdtEntry os_code, 0, 0xfffff, cpl0, GDT_FLAG_A + GDT_FLAG_D + GDT_FLAG_G
+  GdtEntry os_data, 0, 0xfffff, drw0, GDT_FLAG_A + GDT_FLAG_D + GDT_FLAG_G
+GdtEnd
 
 include "data16.inc"
 
@@ -1114,27 +1114,27 @@ kproc reserve_irqs_ports ;//////////////////////////////////////////////////////
         mov     byte[irq_owner + 4 * 15], al ; ide II
 
         ; RESERVE PORTS
-        mov_s_  [RESERVED_PORTS.count], 4
+        MovStk  [RESERVED_PORTS.count], 4
 
         mov     eax, RESERVED_PORTS + sizeof.app_io_ports_header_t
-        mov_s_  [eax + app_io_ports_range_t.pid], 1
+        MovStk  [eax + app_io_ports_range_t.pid], 1
         and     [eax + app_io_ports_range_t.start_port], 0
-        mov_s_  [eax + app_io_ports_range_t.end_port], 0x2d
+        MovStk  [eax + app_io_ports_range_t.end_port], 0x2d
 
         add     eax, sizeof.app_io_ports_range_t
-        mov_s_  [eax + app_io_ports_range_t.pid], 1
-        mov_s_  [eax + app_io_ports_range_t.start_port], 0x30
-        mov_s_  [eax + app_io_ports_range_t.end_port], 0x4d
+        MovStk  [eax + app_io_ports_range_t.pid], 1
+        MovStk  [eax + app_io_ports_range_t.start_port], 0x30
+        MovStk  [eax + app_io_ports_range_t.end_port], 0x4d
 
         add     eax, sizeof.app_io_ports_range_t
-        mov_s_  [eax + app_io_ports_range_t.pid], 1
-        mov_s_  [eax + app_io_ports_range_t.start_port], 0x50
-        mov_s_  [eax + app_io_ports_range_t.end_port], 0xdf
+        MovStk  [eax + app_io_ports_range_t.pid], 1
+        MovStk  [eax + app_io_ports_range_t.start_port], 0x50
+        MovStk  [eax + app_io_ports_range_t.end_port], 0xdf
 
         add     eax, sizeof.app_io_ports_range_t
-        mov_s_  [eax + app_io_ports_range_t.pid], 1
-        mov_s_  [eax + app_io_ports_range_t.start_port], 0xe5
-        mov_s_  [eax + app_io_ports_range_t.end_port], 0xff
+        MovStk  [eax + app_io_ports_range_t.pid], 1
+        MovStk  [eax + app_io_ports_range_t.start_port], 0xe5
+        MovStk  [eax + app_io_ports_range_t.end_port], 0xff
 
         pop     eax
         ret
@@ -1255,7 +1255,7 @@ kproc sysfn.set_config ;////////////////////////////////////////////////////////
 ;? System function 21
 ;-----------------------------------------------------------------------------------------------------------------------
 iglobal
-  jump_table sysfn.set_config, subfn, sysfn.not_implemented, \
+  JumpTable sysfn.set_config, subfn, sysfn.not_implemented, \
     midi_base_port, \ ; 1
     keyboard_layout, \ ; 2
     cd_base, \ ; 3
@@ -1517,7 +1517,7 @@ kproc sysfn.get_config ;////////////////////////////////////////////////////////
 ;? System function 26
 ;-----------------------------------------------------------------------------------------------------------------------
 iglobal
-  jump_table sysfn.get_config, subfn, sysfn.not_implemented, \
+  JumpTable sysfn.get_config, subfn, sysfn.not_implemented, \
     midi_base_port, \ ; 1
     keyboard_layout, \ ; 2
     cd_base, \ ; 3
@@ -1714,7 +1714,7 @@ kproc sysfn.system_ctl ;////////////////////////////////////////////////////////
 ;? System function 18
 ;-----------------------------------------------------------------------------------------------------------------------
 iglobal
-  jump_table sysfn.system_ctl, subfn, sysfn.not_implemented, \
+  JumpTable sysfn.system_ctl, subfn, sysfn.not_implemented, \
     -, \
     kill_process_by_slot, \ ; 2
     activate_window, \ ; 3
@@ -2012,7 +2012,7 @@ kproc sysfn.system_ctl.mouse_ctl ;//////////////////////////////////////////////
 ;? System function 18.19: mouse control
 ;-----------------------------------------------------------------------------------------------------------------------
 iglobal
-  jump_table sysfn.system_ctl.mouse_ctl, subfn, sysfn.not_implemented, \
+  JumpTable sysfn.system_ctl.mouse_ctl, subfn, sysfn.not_implemented, \
     get_cursor_acceleration, \ ; 0
     set_cursor_acceleration, \ ; 1
     get_cursor_delay, \ ; 2
@@ -3274,7 +3274,7 @@ kproc sysfn.debug_board ;///////////////////////////////////////////////////////
 ;? System function 63
 ;-----------------------------------------------------------------------------------------------------------------------
 iglobal
-  jump_table sysfn.debug_board, subfn, sysfn.not_implemented_cross_order, \
+  JumpTable sysfn.debug_board, subfn, sysfn.not_implemented_cross_order, \
     push_back, \ ; 1
     pop_front ; 2
 endg
@@ -3355,7 +3355,7 @@ kproc sysfs.direct_screen_access ;//////////////////////////////////////////////
 ;? System function 61: direct screen access
 ;-----------------------------------------------------------------------------------------------------------------------
 iglobal
-  jump_table sysfs.direct_screen_access, subfn, sysfn.not_implemented, \
+  JumpTable sysfs.direct_screen_access, subfn, sysfn.not_implemented, \
     get_screen_resolution, \ ; 1
     get_bits_per_pixel, \ ; 2
     get_bytes_per_scanline ; 3
@@ -4013,4 +4013,5 @@ end if
 include "data.inc"
 
 uglobals_size = $ - endofcode
-diff16 "end of kernel code", 0, $
+
+Diff16 "end of kernel code", 0, $

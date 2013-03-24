@@ -376,7 +376,7 @@ endg
         jz      @f
         cmp     [v86_irqhooks + edx * 8], eax
         jz      @f
-        klog_   LOG_WARNING, "V86: IRQ already hooked\n"
+        KLog    LOG_WARNING, "V86: IRQ already hooked\n"
         inc     [v86_irqhooks + edx * 8 + 4]
         mov     eax, 3
         jmp     v86_exc_c.exit
@@ -757,7 +757,7 @@ kproc v86_exc_c ;///////////////////////////////////////////////////////////////
         jz      @f
         mov     esi, v86_io_dword
 
-    @@: klog_   LOG_ERROR, "V86: access to disabled i/o port %u (%s)\n", ebx, esi
+    @@: KLog    LOG_ERROR, "V86: access to disabled i/o port %u (%s)\n", ebx, esi
 
 if KCONFIG_DEBUG_SHOW_IO
 
@@ -781,8 +781,8 @@ else
 end if
 
   .nogp:
-        klog_   LOG_ERROR, "V86: unexpected exception %u at %x:%x\n", bl, [esp + 32 + 4]:4, [esp + 32]:4
-        klog_   LOG_ERROR, "V86: faulted code:"
+        KLog    LOG_ERROR, "V86: unexpected exception %u at %x:%x\n", bl, [esp + 32 + 4]:4, [esp + 32]:4
+        KLog    LOG_ERROR, "V86: faulted code:"
         mov     ecx, 8
         movzx   edx, word[esp + 32 + 4]
         shl     edx, 4
@@ -793,15 +793,15 @@ end if
         call    v86_get_lin_addr
         cmp     eax, 0x1000
         jb      .nopage
-        klog2_  LOG_ERROR, " %x", [edx]:2
+        KLog2   LOG_ERROR, " %x", [edx]:2
         inc     edx
         loop    @b
         jmp     @f
 
   .nopage:
-        klog2_  LOG_ERROR, " (unavailable)"
+        KLog2   LOG_ERROR, " (unavailable)"
 
-    @@: klog2_  LOG_ERROR, "\n"
+    @@: KLog2   LOG_ERROR, "\n"
         mov     eax, 1
         jmp     .exit
 

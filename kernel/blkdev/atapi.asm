@@ -21,7 +21,7 @@ iglobal
   blk.atapi.last_index  dd 0
   blk.atapi.name_prefix db 'atapi', 0
 
-  jump_table blk.atapi, vftbl, blk.not_implemented, \
+  JumpTable blk.atapi, vftbl, blk.not_implemented, \
     destroy, \
     read, \
     -

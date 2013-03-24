@@ -23,21 +23,21 @@ struct memory_block_t
   handle     dd ?
 ends
 
-macro calc_index op
+macro CalcIndex _op
 {
-        shr     op, 12
-        dec     op
-        cmp     op, 63
+        shr     _op, 12
+        dec     _op
+        cmp     _op, 63
         jna     @f
-        mov     op, 63
+        mov     _op, 63
 
     @@:
 }
 
-macro remove_from_list op
+macro RemoveFromList _op
 {
-        mov     edx, [op + memory_block_t.list.next_ptr]
-        mov     ecx, [op + memory_block_t.list.prev_ptr]
+        mov     edx, [_op + memory_block_t.list.next_ptr]
+        mov     ecx, [_op + memory_block_t.list.prev_ptr]
         test    edx, edx
         jz      @f
         mov     [edx + memory_block_t.list.prev_ptr], ecx
@@ -46,17 +46,17 @@ macro remove_from_list op
         jz      @f
         mov     [ecx + memory_block_t.list.next_ptr], edx
 
-    @@: mov     [op + memory_block_t.list.next_ptr], 0
-        mov     [op + memory_block_t.list.prev_ptr], 0
+    @@: mov     [_op + memory_block_t.list.next_ptr], 0
+        mov     [_op + memory_block_t.list.prev_ptr], 0
 }
 
-macro remove_from_free op
+macro RemoveFromFree _op
 {
-        remove_from_list op
+        RemoveFromList _op
 
-        mov     eax, [op + memory_block_t.range.size]
-        calc_index eax
-        cmp     [mem_block_list + eax * 4], op
+        mov     eax, [_op + memory_block_t.range.size]
+        CalcIndex eax
+        cmp     [mem_block_list + eax * 4], _op
         jne     @f
         mov     [mem_block_list + eax * 4], edx
 
@@ -67,14 +67,14 @@ macro remove_from_free op
     @@:
 }
 
-macro remove_from_used op
+macro RemoveFromUsed _op
 {
-        mov     edx, [op + memory_block_t.list.next_ptr]
-        mov     ecx, [op + memory_block_t.list.prev_ptr]
+        mov     edx, [_op + memory_block_t.list.next_ptr]
+        mov     ecx, [_op + memory_block_t.list.prev_ptr]
         mov     [edx + memory_block_t.list.prev_ptr], ecx
         mov     [ecx + memory_block_t.list.next_ptr], edx
-        mov     [op + memory_block_t.list.next_ptr], 0
-        mov     [op + memory_block_t.list.prev_ptr], 0
+        mov     [_op + memory_block_t.list.next_ptr], 0
+        mov     [_op + memory_block_t.list.prev_ptr], 0
 }
 
 uglobal
@@ -355,7 +355,7 @@ endl
     @@: cmp     eax, [block_ind]
         je      .m_eq_ind
 
-        remove_from_list edi
+        RemoveFromList edi
 
         mov     ecx, [block_ind]
         mov     [mem_block_list + ecx * 4], edx
@@ -392,7 +392,7 @@ endl
         ret
 
   .m_eq_size:
-        remove_from_list edi
+        RemoveFromList edi
         mov     [mem_block_list + ebx * 4], edx
         and     edx, edx
         jnz     @f
@@ -459,7 +459,7 @@ proc free_kernel_space stdcall uses ebx ecx edx esi edi, base:dword ;///////////
         cmp     [edi + memory_block_t.flags], FREE_BLOCK
         jne     .prev
 
-        remove_from_free edi
+        RemoveFromFree edi
 
         mov     edx, [edi + memory_block_t.next_block]
         mov     [esi + memory_block_t.next_block], edx
@@ -482,7 +482,7 @@ proc free_kernel_space stdcall uses ebx ecx edx esi edi, base:dword ;///////////
         cmp     [edi + memory_block_t.flags], FREE_BLOCK
         jne     .insert
 
-        remove_from_used esi
+        RemoveFromUsed esi
 
         mov     edx, [esi + memory_block_t.next_block]
         mov     [edi + memory_block_t.next_block], edx
@@ -498,13 +498,13 @@ proc free_kernel_space stdcall uses ebx ecx edx esi edi, base:dword ;///////////
         add     eax, ecx
         mov     [edi + memory_block_t.range.size], eax
 
-        calc_index eax
-        calc_index ecx
+        CalcIndex eax
+        CalcIndex ecx
         cmp     eax, ecx
         je      .m_eq
 
         push    ecx
-        remove_from_list edi
+        RemoveFromList edi
         pop     ecx
 
         cmp     [mem_block_list + ecx * 4], edi
@@ -534,10 +534,10 @@ proc free_kernel_space stdcall uses ebx ecx edx esi edi, base:dword ;///////////
         ret
 
   .insert:
-        remove_from_used esi
+        RemoveFromUsed esi
 
         mov     eax, [esi + memory_block_t.range.size]
-        calc_index eax
+        CalcIndex eax
 
         mov     edi, [mem_block_list + eax * 4]
         mov     [mem_block_list + eax * 4], esi
@@ -1702,3 +1702,5 @@ proc shmem_close stdcall, name:dword ;//////////////////////////////////////////
   .fail:
         ret
 endp
+
+purge CalcIndex, RemoveFromList, RemoveFromFree, RemoveFromUsed

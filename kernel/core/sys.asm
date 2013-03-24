@@ -85,26 +85,30 @@ end if
   msg_sel_app db "application", 0
 endg
 
-macro exc_wo_code [num]
+macro ExcWithoutCode [_num]
 {
-  e#num:
-        save_ring3_context
-        mov     bl, num
+  e#_num:
+        SaveRing3Context
+        mov     bl, _num
         jmp     exc_c
 }
 
-exc_wo_code 0, 1, 2, 3, 4, 5, 6, 15, 16, 19
+ExcWithoutCode 0, 1, 2, 3, 4, 5, 6, 15, 16, 19
 
-macro exc_w_code [num]
+purge ExcWithoutCode
+
+macro ExcWithCode [_num]
 {
-  e#num:
+  e#_num:
         add     esp, 4
-        save_ring3_context
-        mov     bl, num
+        SaveRing3Context
+        mov     bl, _num
         jmp     exc_c
 }
 
-exc_w_code 8, 9, 10, 11, 12, 13, 17, 18
+ExcWithCode 8, 9, 10, 11, 12, 13, 17, 18
+
+purge ExcWithCode
 
 uglobal
   pf_err_code dd ?
@@ -115,7 +119,7 @@ kproc page_fault_exc ;//////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         ; foolproof: selectors are currupted...
         pop     [ss:pf_err_code] ; valid until next #PF
-        save_ring3_context
+        SaveRing3Context
         mov     bl, 14
 kendp
 
@@ -131,7 +135,7 @@ reg_eflags equ esp + sizeof.regs_context32_t + 8
 reg_cs3    equ esp + sizeof.regs_context32_t + 4
 reg_eip    equ esp + sizeof.regs_context32_t + 0
 ;-----------------------------------------------------------------------------------------------------------------------
-        Mov     ds, ax, app_data ; load correct values
+        Mov3    ds, ax, app_data ; load correct values
         mov     es, ax ; into segment registers
         cld     ; and set DF to standard
         movzx   ebx, bl
@@ -190,7 +194,7 @@ reg_eip    equ esp + sizeof.regs_context32_t + 0
         mov     esi, [current_slot_ptr]
         mov     [esi + legacy.slot_t.task.state], THREAD_STATE_RUN_SUSPENDED ; suspended
         call    change_task ; SEE: core/shed.inc
-        restore_ring3_context
+        RestoreRing3Context
         iretd
 kendp
 
@@ -202,7 +206,7 @@ kproc IRetToUserHook ;//////////////////////////////////////////////////////////
         mov     edi, [reg_esp3]
         stosd
         mov     [edi], ebx
-        restore_ring3_context
+        RestoreRing3Context
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -216,7 +220,7 @@ kproc show_error_parameters ;///////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     edx, [current_slot_ptr] ; not scratched below
         lea     eax, [edx + legacy.slot_t.app.app_name]
-        klog_   LOG_ERROR, "Process - forced terminate PID: %x (%s)\n", [edx + legacy.slot_t.task.pid], \
+        KLog    LOG_ERROR, "Process - forced terminate: #%u (%s)\n", [edx + legacy.slot_t.task.pid], \
                 eax:PROCESS_MAX_NAME_LEN
         cmp     bl, 0x08
         jb      .l0
@@ -228,7 +232,7 @@ kproc show_error_parameters ;///////////////////////////////////////////////////
 
   .l1:
         mov     eax, [msg_fault_sel + ebx * 4 - 0x08 * 4]
-        klog_   LOG_ERROR, "%s\n", eax
+        KLog    LOG_ERROR, "%s\n", eax
         mov     eax, [reg_cs3 + 4]
         mov     edi, msg_sel_app
         mov     ebx, [reg_esp3 + 4]
@@ -237,12 +241,12 @@ kproc show_error_parameters ;///////////////////////////////////////////////////
         mov     edi, msg_sel_ker
         mov     ebx, [esp + 4 + regs_context32_t.esp]
 
-    @@: klog_   LOG_ERROR, "EAX : %x EBX : %x ECX : %x\n", [esp + 4 + regs_context32_t.eax], \
+    @@: KLog    LOG_ERROR, "EAX : %x EBX : %x ECX : %x\n", [esp + 4 + regs_context32_t.eax], \
                 [esp + 4 + regs_context32_t.ebx], [esp + 4 + regs_context32_t.ecx]
-        klog_   LOG_ERROR, "EDX : %x ESI : %x EDI : %x\n", [esp + 4 + regs_context32_t.edx], \
+        KLog    LOG_ERROR, "EDX : %x ESI : %x EDI : %x\n", [esp + 4 + regs_context32_t.edx], \
                 [esp + 4 + regs_context32_t.esi], [esp + 4 + regs_context32_t.edi]
-        klog_   LOG_ERROR, "EBP : %x EIP : %x ESP : %x\n", [esp + 4 + regs_context32_t.ebp], [reg_eip + 4], ebx
-        klog_   LOG_ERROR, "Flags : %x CS : %x (%s)\n", [reg_eflags + 4], eax, edi
+        KLog    LOG_ERROR, "EBP : %x EIP : %x ESP : %x\n", [esp + 4 + regs_context32_t.ebp], [reg_eip + 4], ebx
+        KLog    LOG_ERROR, "Flags : %x CS : %x (%s)\n", [reg_eflags + 4], eax, edi
         ret
 kendp
 
@@ -253,12 +257,16 @@ restore reg_cs
 restore reg_eip
 
 ; irq1  ->  hid/keyboard.inc
-macro irqh [num]
+macro IrqHandler [_num]
 {
-  p_irq#num:
-        mov     edi, num
+  p_irq#_num:
+        mov     edi, _num
         jmp     irqhandler
 }
+
+IrqHandler 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
+
+purge IrqHandler
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc ready_for_next_irq ;//////////////////////////////////////////////////////////////////////////////////////////////
@@ -297,8 +305,6 @@ kproc irqD ;////////////////////////////////////////////////////////////////////
         pop     eax
         iret
 kendp
-
-irqh 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc irqhandler ;//////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -485,7 +491,7 @@ kproc terminate ;///////////////////////////////////////////////////////////////
 
         push    esi
         call    [eax + app_object_t.destroy]
-        klog_   LOG_DEBUG, "destroy app object\n"
+        KLog    LOG_DEBUG, "destroy app object\n"
         pop     esi
         jmp     @b
 
@@ -611,7 +617,7 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         mov     eax, [legacy_slots + edi + legacy.slot_t.app.debugger_slot]
         test    eax, eax
         jz      .nodebug
-        mov_s_  ecx, 8
+        MovStk  ecx, 8
         push    [legacy_slots + edi + legacy.slot_t.task.pid] ; PID
         push    2
         call    debugger_notify

@@ -43,13 +43,6 @@ ends
 ;  .app_mem     ; 0x10
 ;}
 
-macro _clear_ op
-{  mov ecx, op/4
-   xor eax, eax
-   rep
-   stosd
-}
-
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc sysfn.thread_ctl ;////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -188,8 +181,13 @@ endl
         shl     eax, 9 ; * sizeof.legacy.slot_t
         add     eax, legacy_slots
         mov     [slot_base], eax
+
+        ; clean extended information about process
         lea     edi, [eax + legacy.slot_t.app]
-        _clear_ sizeof.legacy.app_data_t ; clean extended information about process
+        mov     ecx, sizeof.legacy.app_data_t / 4
+        xor     eax, eax
+        rep
+        stosd
 
         ; write application name
         lea     eax, [filename]

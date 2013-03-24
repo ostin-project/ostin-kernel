@@ -46,7 +46,7 @@ kproc mutex_lock ;//////////////////////////////////////////////////////////////
 
         sub     esp, sizeof.mutex_waiter_t
 
-        list_add_tail esp, ecx ; esp = new waiter, ecx = list head
+        ListAppend esp, ecx ; esp = new waiter, ecx = list head
 
         mov     edx, [current_slot_ptr]
         mov     [esp + mutex_waiter_t.task], edx

@@ -20,7 +20,7 @@ struct fs.cdfs.partition_t fs.partition_t
 ends
 
 iglobal
-  jump_table fs.cdfs, vftbl, 0, \
+  JumpTable fs.cdfs, vftbl, 0, \
     read_file, \
     read_directory, \
     -, \
@@ -93,7 +93,7 @@ kproc fs.cdfs.read_file ;///////////////////////////////////////////////////////
 
         xor     edx, edx
         shld    eax, edx, 2
-        mov_s_  ecx, 4
+        MovStk  ecx, 4
         call    fs.read
         test    eax, eax
         jnz     .device_error_2
@@ -746,7 +746,7 @@ kproc fs.cdfs._.read_sector ;///////////////////////////////////////////////////
 
         xor     edx, edx
         shld    eax, edx, 2
-        mov_s_  ecx, 4
+        MovStk  ecx, 4
         lea     edi, [ebx + fs.cdfs.partition_t.buffer]
         call    fs.read
 

@@ -377,7 +377,7 @@ kproc create_cursor ;///////////////////////////////////////////////////////////
 
         pushfd
         cli
-        list_add ecx, edx
+        ListPrepend ecx, edx
         popfd
 
         mov     eax, [.hcursor]
@@ -506,7 +506,7 @@ kproc destroy_cursor ;//////////////////////////////////////////////////////////
 
         pushfd
         cli
-        list_del eax
+        ListDelete eax
         popfd
 
         pop     eax

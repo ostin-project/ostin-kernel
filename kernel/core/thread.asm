@@ -111,7 +111,7 @@ kproc core.thread.alloc ;///////////////////////////////////////////////////////
 
         pop     eax
 
-        klog_   LOG_DEBUG, "thread #%u allocated\n", [eax + core.thread_t.id]
+        KLog    LOG_DEBUG, "thread #%u allocated\n", [eax + core.thread_t.id]
 
   .exit:
         add     esp, 4
@@ -125,7 +125,7 @@ kproc core.thread.free ;////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax
 
-        klog_   LOG_DEBUG, "thread #%u freed\n", [eax + core.thread_t.id]
+        KLog    LOG_DEBUG, "thread #%u freed\n", [eax + core.thread_t.id]
 
         call    core.thread._.lock_tree
 
@@ -231,26 +231,26 @@ kproc core.thread.compat.init_with_slot ;///////////////////////////////////////
         mov     cl, [ebx + legacy.slot_t.app.keyboard_mode]
         mov     [eax + core.thread_t.keyboard_mode], cl
 
-        mov_s_  [eax + core.thread_t.events.list.prev_ptr], [ebx + legacy.slot_t.app.ev.prev_ptr]
-        mov_s_  [eax + core.thread_t.events.list.next_ptr], [ebx + legacy.slot_t.app.ev.next_ptr]
-        mov_s_  [eax + core.thread_t.saved_esp], [ebx + legacy.slot_t.app.saved_esp]
-        mov_s_  [eax + core.thread_t.saved_esp0], [ebx + legacy.slot_t.app.saved_esp0]
-        mov_s_  [eax + core.thread_t.pl0_stack], [ebx + legacy.slot_t.app.pl0_stack]
-        mov_s_  [eax + core.thread_t.fpu_state], [ebx + legacy.slot_t.app.fpu_state]
-        mov_s_  [eax + core.thread_t.except_mask], [ebx + legacy.slot_t.app.except_mask]
-        mov_s_  [eax + core.thread_t.exc_handler], [ebx + legacy.slot_t.app.exc_handler]
-        mov_s_  [eax + core.thread_t.cur_dir], [ebx + legacy.slot_t.app.cur_dir]
-        mov_s_  [eax + core.thread_t.tls_base], [ebx + legacy.slot_t.app.tls_base]
-        mov_s_  [eax + core.thread_t.io_map], [ebx + legacy.slot_t.app.io_map]
-        mov_s_  [eax + core.thread_t.io_map + 4], [ebx + legacy.slot_t.app.io_map + 4]
-        mov_s_  [eax + core.thread_t.debug.debugger_slot], [ebx + legacy.slot_t.app.debugger_slot]
+        MovStk  [eax + core.thread_t.events.list.prev_ptr], [ebx + legacy.slot_t.app.ev.prev_ptr]
+        MovStk  [eax + core.thread_t.events.list.next_ptr], [ebx + legacy.slot_t.app.ev.next_ptr]
+        MovStk  [eax + core.thread_t.saved_esp], [ebx + legacy.slot_t.app.saved_esp]
+        MovStk  [eax + core.thread_t.saved_esp0], [ebx + legacy.slot_t.app.saved_esp0]
+        MovStk  [eax + core.thread_t.pl0_stack], [ebx + legacy.slot_t.app.pl0_stack]
+        MovStk  [eax + core.thread_t.fpu_state], [ebx + legacy.slot_t.app.fpu_state]
+        MovStk  [eax + core.thread_t.except_mask], [ebx + legacy.slot_t.app.except_mask]
+        MovStk  [eax + core.thread_t.exc_handler], [ebx + legacy.slot_t.app.exc_handler]
+        MovStk  [eax + core.thread_t.cur_dir], [ebx + legacy.slot_t.app.cur_dir]
+        MovStk  [eax + core.thread_t.tls_base], [ebx + legacy.slot_t.app.tls_base]
+        MovStk  [eax + core.thread_t.io_map], [ebx + legacy.slot_t.app.io_map]
+        MovStk  [eax + core.thread_t.io_map + 4], [ebx + legacy.slot_t.app.io_map + 4]
+        MovStk  [eax + core.thread_t.debug.debugger_slot], [ebx + legacy.slot_t.app.debugger_slot]
 
         mov     cl, [ebx + legacy.slot_t.task.state]
         mov     [eax + core.thread_t.state], cl
 
-        mov_s_  [eax + core.thread_t.events.event_mask], [ebx + legacy.slot_t.task.event_mask]
+        MovStk  [eax + core.thread_t.events.event_mask], [ebx + legacy.slot_t.task.event_mask]
 
-        mov_s_  [ebx + legacy.slot_t.task.new_pid], [eax + core.thread_t.id]
+        MovStk  [ebx + legacy.slot_t.task.new_pid], [eax + core.thread_t.id]
 
   .exit:
         pop     ecx ebx eax
@@ -381,9 +381,9 @@ kproc core.thread._.remove_from_siblings_list ;/////////////////////////////////
         add     eax, core.thread_t.siblings
 
         mov     ecx, [eax + linked_list_t.prev_ptr]
-        mov_s_  [ecx + linked_list_t.next_ptr], [eax + linked_list_t.next_ptr]
+        MovStk  [ecx + linked_list_t.next_ptr], [eax + linked_list_t.next_ptr]
         mov     ecx, [eax + linked_list_t.next_ptr]
-        mov_s_  [ecx + linked_list_t.prev_ptr], [eax + linked_list_t.prev_ptr]
+        MovStk  [ecx + linked_list_t.prev_ptr], [eax + linked_list_t.prev_ptr]
 
         pop     ecx eax
         ret

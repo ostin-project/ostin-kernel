@@ -21,7 +21,7 @@ struct blk.floppy.device_t blk.device_t
 ends
 
 iglobal
-  jump_table blk.floppy, vftbl, blk.not_implemented, \
+  JumpTable blk.floppy, vftbl, blk.not_implemented, \
     destroy, \
     read, \
     write
@@ -236,7 +236,7 @@ kproc blk.floppy._.perform_operation_with_retry ;///////////////////////////////
         mov     ebp, eax
 
         ; try recalibrating 3 times
-        mov_s_  ecx, 3
+        MovStk  ecx, 3
 
   .next_seek_attempt:
         push    ecx
@@ -247,7 +247,7 @@ kproc blk.floppy._.perform_operation_with_retry ;///////////////////////////////
         jnz     .recalibrate
 
         ; try reading 3 times
-        mov_s_  ecx, 3
+        MovStk  ecx, 3
 
   .next_read_attempt:
         push    ecx

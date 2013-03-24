@@ -201,7 +201,7 @@ sis900_get_mac_func  dd 0
 sis900_special_func  dd 0
 sis900_table_entries db 8
 
-cond_klog_begin klogc, KCONFIG_NET_DRIVER_SIS900_DEBUG
+ConditionalKLogBegin KLogC, KCONFIG_NET_DRIVER_SIS900_DEBUG
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc SIS900_probe ;////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -274,7 +274,7 @@ kproc SIS900_probe ;////////////////////////////////////////////////////////////
         ret
 
   .unsupported:
-        klogc_  LOG_DEBUG, "Sorry your card is unsupported\n"
+        KLogC   LOG_DEBUG, "Sorry your card is unsupported\n"
 
         ret
 kendp
@@ -332,7 +332,7 @@ kproc SIS900_reset ;////////////////////////////////////////////////////////////
         jmp     .wait
 
   .doneWait_e:
-        klogc_  LOG_DEBUG, "Reset Failed\n"
+        KLogC   LOG_DEBUG, "Reset Failed\n"
 
   .doneWait:
         ; Set Configuration Register depending on Card Revision
@@ -579,7 +579,7 @@ kproc SIS960_get_mac_addr ;/////////////////////////////////////////////////////
         jl      .Get_Mac_Wait ; if not ask again
         xor     eax, eax ; return zero in eax indicating failure
 
-        klogc_  LOG_DEBUG, "Access to EEprom Failed\n"
+        KLogC   LOG_DEBUG, "Access to EEprom Failed\n"
 
         jmp     .get_mac_addr_done
 
@@ -600,7 +600,7 @@ kproc SIS960_get_mac_addr ;/////////////////////////////////////////////////////
         jns     .mac_read_loop ; if more read more
         mov     eax, 1 ; return non-zero indicating success
 
-        klogc_  LOG_DEBUG, "Your SIS96x Mac ID is: %x:%x:%x:%x:%x:%x\n", [node_addr]:2, [node_addr + 1]:2, \
+        KLogC   LOG_DEBUG, "Your SIS96x Mac ID is: %x:%x:%x:%x:%x:%x\n", [node_addr]:2, [node_addr + 1]:2, \
                 [node_addr + 2]:2, [node_addr + 3]:2, [node_addr + 4]:2, [node_addr + 5]:2
 
         ; Tell EEPROM We are Done Accessing It
@@ -624,7 +624,7 @@ kproc SIS900_get_mac_addr ;/////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;# Older SiS900 and friends, use EEPROM to store MAC address.
 ;-----------------------------------------------------------------------------------------------------------------------
-        klogc_  LOG_DEBUG, "Attempting to get SIS900 Mac ID\n"
+        KLogC   LOG_DEBUG, "Attempting to get SIS900 Mac ID\n"
 
         ; check to see if we have sane EEPROM
         mov     eax, SIS900_EEPROMSignature ; Base Eeprom Signature
@@ -649,7 +649,7 @@ kproc SIS900_get_mac_addr ;/////////////////////////////////////////////////////
         jns     .mac_read_loop ; if more read more
         mov     eax, 1 ; return non-zero indicating success
 
-        klogc_  LOG_DEBUG, "Your Mac ID is: %x:%x:%x:%x:%x:%x\n", [node_addr]:2, [node_addr + 1]:2, [node_addr + 2]:2, \
+        KLogC   LOG_DEBUG, "Your Mac ID is: %x:%x:%x:%x:%x:%x\n", [node_addr]:2, [node_addr + 1]:2, [node_addr + 2]:2, \
                 [node_addr + 3]:2, [node_addr + 4]:2, [node_addr + 5]:2
 
         ret
@@ -657,7 +657,7 @@ kproc SIS900_get_mac_addr ;/////////////////////////////////////////////////////
   .Bad_Eeprom:
         xor     eax, eax
 
-        klogc_   LOG_DEBUG, "Access to EEprom Failed\n"
+        KLogC    LOG_DEBUG, "Access to EEprom Failed\n"
 
         ret
 kendp
@@ -667,7 +667,7 @@ kproc Get_Mac_SIS635_900_REV ;//////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? Get MAC address for model 635
 ;-----------------------------------------------------------------------------------------------------------------------
-        klogc_  LOG_DEBUG, "Attempting to get SIS900 Mac ID\n"
+        KLogC   LOG_DEBUG, "Attempting to get SIS900 Mac ID\n"
 
         mov     ebp, [io_addr]
         lea     edx, [ebp + SIS900_rfcr]
@@ -705,7 +705,7 @@ kproc Get_Mac_SIS635_900_REV ;//////////////////////////////////////////////////
 ;       or      eax, SIS900_RFEN
 ;       out     dx, eax
 
-        klogc_  LOG_DEBUG, "Your Mac ID is: %x:%x:%x:%x:%x:%x\n", [node_addr]:2, [node_addr + 1]:2, [node_addr + 2]:2, \
+        KLogC   LOG_DEBUG, "Your Mac ID is: %x:%x:%x:%x:%x:%x\n", [node_addr]:2, [node_addr + 1]:2, [node_addr + 2]:2, \
                 [node_addr + 3]:2, [node_addr + 4]:2, [node_addr + 5]:2
 
         ret
@@ -857,20 +857,20 @@ kproc SIS900_poll ;/////////////////////////////////////////////////////////////
         rep
         movsb
 
-        klogc_  LOG_DEBUG, "Good Packet Waiting\n"
+        KLogC   LOG_DEBUG, "Good Packet Waiting\n"
 
         jmp     .Cnt
 
   .Error_Status:
         ; Error occured let user know through debug window
 
-        klogc_  LOG_DEBUG, "Bad Packet Waiting: Status\n"
+        KLogC   LOG_DEBUG, "Bad Packet Waiting: Status\n"
 
         jmp     .Cnt
 
   .Error_Size:
 
-        klogc_  LOG_DEBUG, "Bad Packet Waiting: Size\n"
+        KLogC   LOG_DEBUG, "Bad Packet Waiting: Size\n"
 
         ; Increment to next available descriptor
   .Cnt:
@@ -950,7 +950,7 @@ kproc SIS900_transmit ;/////////////////////////////////////////////////////////
         mov     [txd + 4], 0x80000000 ; card owns descriptor
         or      [txd + 4], ecx ; set size of packet
 
-        klogc_  LOG_DEBUG, "Transmitting Packet\n"
+        KLogC   LOG_DEBUG, "Transmitting Packet\n"
 
         ; restart the transmitter
         lea     edx, [ebp + SIS900_cr]
@@ -965,7 +965,7 @@ kproc SIS900_transmit ;/////////////////////////////////////////////////////////
         jz      .OK
         ; Tell user there was an error through debug window
 
-        klogc_  LOG_DEBUG, "Transmitting Packet Error\n"
+        KLogC   LOG_DEBUG, "Transmitting Packet Error\n"
 
   .OK:
         ; Disable interrupts by clearing the interrupt mask
@@ -1025,4 +1025,4 @@ kproc SIS900_adjust_pci_device ;////////////////////////////////////////////////
         ret
 kendp
 
-cond_klog_end klogc
+ConditionalKLogEnd klogc

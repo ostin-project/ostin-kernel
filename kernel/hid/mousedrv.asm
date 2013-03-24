@@ -58,7 +58,7 @@ kproc sysfn.mouse_ctl ;/////////////////////////////////////////////////////////
 ;? System function 37
 ;-----------------------------------------------------------------------------------------------------------------------
 iglobal
-  jump_table sysfn.mouse_ctl, subfn, sysfn.not_implemented, \
+  JumpTable sysfn.mouse_ctl, subfn, sysfn.not_implemented, \
     get_screen_coordinates, \ ; 0
     get_window_coordinates, \ ; 1
     get_buttons_state, \ ; 2

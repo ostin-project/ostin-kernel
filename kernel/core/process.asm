@@ -64,7 +64,7 @@ kproc core.process.alloc ;//////////////////////////////////////////////////////
 
         pop     eax
 
-        klog_   LOG_DEBUG, "process #%u allocated\n", [eax + core.process_t.id]
+        KLog    LOG_DEBUG, "process #%u allocated\n", [eax + core.process_t.id]
 
   .exit:
         ret
@@ -77,7 +77,7 @@ kproc core.process.free ;///////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax
 
-        klog_   LOG_DEBUG, "process #%u freed\n", [eax + core.process_t.id]
+        KLog    LOG_DEBUG, "process #%u freed\n", [eax + core.process_t.id]
 
         call    core.process._.lock_tree
 
@@ -175,14 +175,14 @@ assert (PROCESS_MAX_NAME_LEN + 3) / 4 = 3
         pop     dword[eax + core.process_t.name + 8] dword[eax + core.process_t.name + 4] \
                 dword[eax + core.process_t.name]
 
-        mov_s_  [eax + core.process_t.mem_range.size], [ebx + legacy.slot_t.app.mem_size]
-        mov_s_  [eax + core.process_t.heap_base], [ebx + legacy.slot_t.app.heap_base]
-        mov_s_  [eax + core.process_t.heap_top], [ebx + legacy.slot_t.app.heap_top]
-        mov_s_  [eax + core.process_t.dir_table], [ebx + legacy.slot_t.app.dir_table]
-        mov_s_  [eax + core.process_t.dlls_list_ptr], [ebx + legacy.slot_t.app.dlls_list_ptr]
-        mov_s_  [eax + core.process_t.obj.prev_ptr], [ebx + legacy.slot_t.app.obj.prev_ptr]
-        mov_s_  [eax + core.process_t.obj.next_ptr], [ebx + legacy.slot_t.app.obj.next_ptr]
-        mov_s_  [eax + core.process_t.mem_range.address], [ebx + legacy.slot_t.task.mem_start]
+        MovStk  [eax + core.process_t.mem_range.size], [ebx + legacy.slot_t.app.mem_size]
+        MovStk  [eax + core.process_t.heap_base], [ebx + legacy.slot_t.app.heap_base]
+        MovStk  [eax + core.process_t.heap_top], [ebx + legacy.slot_t.app.heap_top]
+        MovStk  [eax + core.process_t.dir_table], [ebx + legacy.slot_t.app.dir_table]
+        MovStk  [eax + core.process_t.dlls_list_ptr], [ebx + legacy.slot_t.app.dlls_list_ptr]
+        MovStk  [eax + core.process_t.obj.prev_ptr], [ebx + legacy.slot_t.app.obj.prev_ptr]
+        MovStk  [eax + core.process_t.obj.next_ptr], [ebx + legacy.slot_t.app.obj.next_ptr]
+        MovStk  [eax + core.process_t.mem_range.address], [ebx + legacy.slot_t.task.mem_start]
         pop     ebx
         ret
 kendp

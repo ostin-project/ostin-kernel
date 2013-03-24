@@ -22,7 +22,7 @@ kproc sysfn.dtc_ctl ;///////////////////////////////////////////////////////////
 ;< [esp + 4 + regs_context32_t.eax] = 0 (ok),  1 (wrong format) or 2 (battery low)
 ;-----------------------------------------------------------------------------------------------------------------------
 iglobal
-  jump_table sysfn.dtc_ctl, subfn, sysfn.not_implemented, \
+  JumpTable sysfn.dtc_ctl, subfn, sysfn.not_implemented, \
     set_time, \ ; 0
     set_date, \ ; 1
     set_day_of_week, \ ; 2

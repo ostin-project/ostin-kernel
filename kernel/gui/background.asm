@@ -33,7 +33,7 @@ kproc sysfn.get_background_ctl ;////////////////////////////////////////////////
 ;? System function 39
 ;-----------------------------------------------------------------------------------------------------------------------
 iglobal
-  jump_table sysfn.get_background_ctl, subfn, sysfn.not_implemented, \
+  JumpTable sysfn.get_background_ctl, subfn, sysfn.not_implemented, \
     get_size, \ ; 1
     get_pixel, \ ; 2
     -, \
@@ -102,7 +102,7 @@ kproc sysfn.set_background_ctl ;////////////////////////////////////////////////
 ;? System function 15
 ;-----------------------------------------------------------------------------------------------------------------------
 iglobal
-  jump_table sysfn.set_background_ctl, subfn, sysfn.not_implemented, \
+  JumpTable sysfn.set_background_ctl, subfn, sysfn.not_implemented, \
     set_size, \ ; 1
     set_pixel, \ ; 2
     redraw, \ ; 3

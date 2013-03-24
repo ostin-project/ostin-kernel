@@ -65,7 +65,7 @@ kproc sysfn.keyboard_ctl ;//////////////////////////////////////////////////////
 ;? System function 66
 ;-----------------------------------------------------------------------------------------------------------------------
 iglobal
-  jump_table sysfn.keyboard_ctl, subfn, sysfn.not_implemented, \
+  JumpTable sysfn.keyboard_ctl, subfn, sysfn.not_implemented, \
     set_input_mode, \ ; 1
     get_input_mode, \ ; 2
     get_modifiers_state, \ ; 3
@@ -255,7 +255,7 @@ kendp
 kproc hotkey_do_test ;//////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 iglobal
-  jump_table hotkey_do_test, subfn, , \
+  JumpTable hotkey_do_test, subfn, , \
     test0, \
     test1, \
     test2, \

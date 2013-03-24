@@ -282,7 +282,7 @@ kproc blk.floppy.ctl.select_drive ;/////////////////////////////////////////////
         or      al, 00001100b
         out     dx, al
 
-        klog_   LOG_DEBUG, "floppy motor #%u spin up\n", cl
+        KLog    LOG_DEBUG, "floppy motor #%u spin up\n", cl
 
         mov     [ebx + blk.floppy.ctl.device_t.last_drive_number], cl
 
@@ -347,7 +347,7 @@ kproc blk.floppy.ctl._.update_motor_timer ;/////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    eax
         movzx   eax, [ebx + blk.floppy.ctl.device_t.last_drive_number]
-        mov_s_  [ebx + blk.floppy.ctl.device_t.motor_timer + eax * 4], dword[timer_ticks]
+        MovStk  [ebx + blk.floppy.ctl.device_t.motor_timer + eax * 4], dword[timer_ticks]
         pop     eax
         ret
 kendp
@@ -395,7 +395,7 @@ kproc blk.floppy.ctl._.stop_motor ;/////////////////////////////////////////////
         or      al, 00001100b
         out     dx, al
 
-        klog_   LOG_DEBUG, "floppy motor #%u spin down\n", cl
+        KLog    LOG_DEBUG, "floppy motor #%u spin down\n", cl
 
         mov     [ebx + blk.floppy.ctl.device_t.last_drive_number], cl
         and     [ebx + blk.floppy.ctl.device_t.motor_timer + ecx * 4], 0

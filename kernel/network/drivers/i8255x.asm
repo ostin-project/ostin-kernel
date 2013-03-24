@@ -311,7 +311,7 @@ kproc I8255x_probe ;////////////////////////////////////////////////////////////
 ;? Searches for an ethernet card, enables it and clears the rx buffer
 ;? If a card was found, it enables the ethernet -> TCPIP link
 ;-----------------------------------------------------------------------------------------------------------------------
-        klog_   LOG_DEBUG, "Probing i8255x device\n"
+        KLog    LOG_DEBUG, "Probing i8255x device\n"
         mov     eax, [io_addr]
 
         stdcall pci_read_config_word, dword[pci_bus], dword[pci_dev], PCI_COMMAND_MASTER

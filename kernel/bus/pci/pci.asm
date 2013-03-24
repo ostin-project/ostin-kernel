@@ -72,7 +72,7 @@ kproc sysfn.pci_ctl ;///////////////////////////////////////////////////////////
 ;? System function 62: entry point for system PCI calls
 ;-----------------------------------------------------------------------------------------------------------------------
 iglobal
-  jump_table sysfn.pci_ctl, subfn, sysfn.not_implemented, \
+  JumpTable sysfn.pci_ctl, subfn, sysfn.not_implemented, \
     get_version, \ ; 0
     get_last_bus, \ ; 1
     get_access_mode, \ ; 2
@@ -911,23 +911,23 @@ proc adjust_pci_device, bus:byte, devfn:byte ;//////////////////////////////////
 ;? Set device to be a busmaster in case BIOS neglected to do so.
 ;? Also adjust PCI latency timer to a reasonable value, 32.
 ;-----------------------------------------------------------------------------------------------------------------------
-;       klog_   LOG_DEBUG, "adjust_pci_device\n"
+;       KLog    LOG_DEBUG, "adjust_pci_device\n"
 
         stdcall pci_read_config_word, dword[bus], dword[devfn], PCI_COMMAND
         mov     bx, ax
         or      bx, PCI_COMMAND_MASTER or PCI_COMMAND_IO
         cmp     ax, bx
         je      @f
-;       klog_   LOG_WARNING, "adjust_pci_device: The PCI BIOS has not enabled this device!\n"
-;       klog_   LOG_WARNING, "Updating PCI command %x->%x. pci_bus %x pci_device_fn %x\n", ax, bx, [pci_bus]:2, \
+;       KLog    LOG_WARNING, "adjust_pci_device: The PCI BIOS has not enabled this device!\n"
+;       KLog    LOG_WARNING, "Updating PCI command %x->%x. pci_bus %x pci_device_fn %x\n", ax, bx, [pci_bus]:2, \
 ;               [pci_dev]:2
         stdcall pci_write_config_word, dword[bus], dword[devfn], PCI_COMMAND, ebx
 
     @@: stdcall pci_read_config_byte, dword[bus], dword[devfn], PCI_LATENCY_TIMER
         cmp     al, 32
         jae     @f
-;       klog_   LOG_WARNING, "adjust_pci_device: PCI latency timer (CFLT) is unreasonably low at %d.\n", al
-;       klog_   LOG_WARNING, "Setting to 32 clocks.\n", al
+;       KLog    LOG_WARNING, "adjust_pci_device: PCI latency timer (CFLT) is unreasonably low at %d.\n", al
+;       KLog    LOG_WARNING, "Setting to 32 clocks.\n", al
         stdcall pci_write_config_byte, dword[bus], dword[devfn], PCI_LATENCY_TIMER, 32
 
     @@: ret
@@ -953,7 +953,7 @@ proc pci_bar_start, bus:byte, devfn:byte, index:dword ;/////////////////////////
         stdcall pci_read_config_dword, dword[bus], dword[devfn], eax
         or      eax, eax
         jz      .not64
-;       klog_   LOG_WARNING, "pci_bar_start: Unhandled 64bit BAR\n"
+;       KLog    LOG_WARNING, "pci_bar_start: Unhandled 64bit BAR\n"
         add     esp, 4
         or      eax, -1
         ret

@@ -98,7 +98,7 @@ local buffer_number dd ?
 
         mov     ebx, eax ; ebx=pointer to ip_packet_t
 
-;       klog_   LOG_DEBUG, "ip_rx - proto: %u\n", [ebx + ip_packet_t.Protocol]:1
+;       KLog    LOG_DEBUG, "ip_rx - proto: %u\n", [ebx + ip_packet_t.Protocol]:1
 
         ; Validate the IP checksum
         mov     dx, word[ebx + ip_packet_t.header_checksum]
@@ -112,12 +112,12 @@ local buffer_number dd ?
         stdcall checksum_jb, ebx, ecx ; buf_ptr, buf_size
         cmp     dx, ax
 
-;       klog_   LOG_DEBUG, "ip_rx - checksums: %x - %x\n", dx, ax
+;       KLog    LOG_DEBUG, "ip_rx - checksums: %x - %x\n", dx, ax
 
         jnz     .dump.1 ; if CHECKSUM isn't valid then dump packet
         mov     edx, ebx ; EDX (IP-BUFFER POINTER) WILL BE USED FOR *_rx HANDLERS BELOW!!!
 
-;       klog_   LOG_DEBUG, "ip_rx - dest: %x - %x\n", [ebx + ip_packet_t.DestinationAddress], [stack_ip]
+;       KLog    LOG_DEBUG, "ip_rx - dest: %x - %x\n", [ebx + ip_packet_t.DestinationAddress], [stack_ip]
 
         ; Validate the IP address, if it isn't broadcast
         mov     eax, [stack_ip]
@@ -143,17 +143,17 @@ local buffer_number dd ?
     @@: mov     al, [ebx + ip_packet_t.version_and_ihl]
         and     al, 0x0f ; get IHL(header length)
         cmp     al, 0x05 ; if IHL!= 5*4(20 bytes)
-;       klog_   LOG_DEBUG, "ip_rx - ihl: %x - 05\n", al
+;       KLog    LOG_DEBUG, "ip_rx - ihl: %x - 05\n", al
         jnz     .dump.3 ; then dump it
 
-;       klog_   LOG_DEBUG, "ip_rx - ttl: %x - 00\n", [ebx + ip_packet_t.TimeToLive]:2
+;       KLog    LOG_DEBUG, "ip_rx - ttl: %x - 00\n", [ebx + ip_packet_t.TimeToLive]:2
 
         cmp     [ebx + ip_packet_t.ttl_secs], 0
         je      .dump.4 ; if TTL==0 then dump it
 
         mov     ax, [ebx + ip_packet_t.flags_and_fragment_offset]
         and     ax, 0xffbf ; get flags
-;       klog_   LOG_DEBUG, "ip_rx - flags: %x - 0000\n", ax
+;       KLog    LOG_DEBUG, "ip_rx - flags: %x - 0000\n", ax
         cmp     ax, 0 ; if some flags was set then we dump this packet
         jnz     .dump.5 ; the flags should be used for fragmented packets
 
@@ -164,7 +164,7 @@ local buffer_number dd ?
 
         cmp     al , PROTOCOL_TCP
         jne     .not_tcp
-;       klog_   LOG_DEBUG, "ip_rx - TCP packet\n"
+;       KLog    LOG_DEBUG, "ip_rx - TCP packet\n"
         mov     eax, dword[buffer_number]
         call    tcp_rx
         jmp     .exit
@@ -172,7 +172,7 @@ local buffer_number dd ?
   .not_tcp:
         cmp     al, PROTOCOL_UDP
         jne     .not_udp
-;       klog_   LOG_DEBUG, "ip_rx - UDP packet\n"
+;       KLog    LOG_DEBUG, "ip_rx - UDP packet\n"
         mov     eax, dword[buffer_number]
         call    udp_rx
         jmp     .exit
@@ -181,35 +181,35 @@ local buffer_number dd ?
         cmp     al, PROTOCOL_ICMP
         jne     .dump.6 ; protocol ain't supported
 
-;       klog_   LOG_DEBUG, "ip_rx - ICMP packet\n"
+;       KLog    LOG_DEBUG, "ip_rx - ICMP packet\n"
 ;       GET_IHL ecx, ebx + ip_packet_t.VersionAndIHL ; get packet length in ecx
         mov     eax, dword[buffer_number]
         stdcall icmp_rx, eax, ebx, ecx ; buffer_number, IPPacketBase, IPHeaderLength
         jmp     .exit
 
   .dump.1:
-        klog_   LOG_WARNING, "ip_rx - dumped (checksum: 0x%x-0x%x)\n", dx, ax
+        KLog    LOG_WARNING, "ip_rx - dumped (checksum: 0x%x-0x%x)\n", dx, ax
         jmp     .dump.x
 
   .dump.2:
-        klog_   LOG_WARNING, "ip_rx - dumped (ip: %u.%u.%u.%u)\n", [ebx + ip_packet_t.dst_ip + 0]:1, \
+        KLog    LOG_WARNING, "ip_rx - dumped (ip: %u.%u.%u.%u)\n", [ebx + ip_packet_t.dst_ip + 0]:1, \
                 [ebx + ip_packet_t.dst_ip + 1]:1, [ebx + ip_packet_t.dst_ip + 2]:1, [ebx + ip_packet_t.dst_ip + 3]:1
         jmp     .dump.x
 
   .dump.3:
-        klog_   LOG_WARNING, "ip_rx - dumped (ihl: %u)\n", al
+        KLog    LOG_WARNING, "ip_rx - dumped (ihl: %u)\n", al
         jmp     .dump.x
 
   .dump.4:
-        klog_   LOG_WARNING, "ip_rx - dumped (ttl: %u)\n", [ebx + ip_packet_t.ttl_secs]
+        KLog    LOG_WARNING, "ip_rx - dumped (ttl: %u)\n", [ebx + ip_packet_t.ttl_secs]
         jmp     .dump.x
 
   .dump.5:
-        klog_   LOG_WARNING, "ip_rx - dumped (flags: 0x%x)\n", ax
+        KLog    LOG_WARNING, "ip_rx - dumped (flags: 0x%x)\n", ax
         jmp     .dump.x
 
   .dump.6:
-        klog_   LOG_WARNING, "ip_rx - dumped (proto: %u)\n", [ebx + ip_packet_t.protocol]:1
+        KLog    LOG_WARNING, "ip_rx - dumped (proto: %u)\n", [ebx + ip_packet_t.protocol]:1
 
   .dump.x:
         inc     dword[dumped_rx_count]

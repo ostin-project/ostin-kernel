@@ -20,7 +20,7 @@ kproc sysfn.debug_ctl ;/////////////////////////////////////////////////////////
 ;? System function 69
 ;-----------------------------------------------------------------------------------------------------------------------
 iglobal
-  jump_table sysfn.debug_ctl, subfn, sysfn.not_implemented, \
+  JumpTable sysfn.debug_ctl, subfn, sysfn.not_implemented, \
     set_event_data, \ ; 0
     get_context, \ ; 1
     set_context, \ ; 2

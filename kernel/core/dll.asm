@@ -231,7 +231,7 @@ align 4
 
 align 16
   .main:
-        save_ring3_context
+        SaveRing3Context
         mov     eax, [esp + sizeof.regs_context32_t]
         mov     bx, app_data ; os_data
         mov     ds, bx
@@ -281,7 +281,7 @@ end if ; KCONFIG_BLK_FLOPPY
 
     @@: out     0x20, al
 
-        restore_ring3_context
+        RestoreRing3Context
         add     esp, 4
 
         iret
@@ -830,7 +830,7 @@ endl
         test    eax, eax
         jnz     @f
 
-        klog_   LOG_ERROR, "unresolved %s\n", edi
+        KLog    LOG_ERROR, "unresolved %s\n", edi
 
         mov     [retval], 0
 
@@ -1130,11 +1130,11 @@ endl
         ret
 
   .ver_fail:
-        klog_   LOG_ERROR, "incompatible driver version: %s\n", [driver_name]
+        KLog    LOG_ERROR, "incompatible driver version: %s\n", [driver_name]
         jmp     .cleanup
 
   .link_fail:
-        klog_   LOG_ERROR, "in module %s\n", [driver_name]
+        KLog    LOG_ERROR, "in module %s\n", [driver_name]
 
   .cleanup:
         stdcall kernel_free, [img_base]

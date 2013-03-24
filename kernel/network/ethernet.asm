@@ -419,7 +419,7 @@ kproc ether_IP_handler ;////////////////////////////////////////////////////////
         movsd
 
 ;       inc     [ether_IP_handler_cnt]
-;       klog_   LOG_DEBUG, "ether_IP_handler (%u)\n", [ether_IP_handler_cnt]
+;       KLog    LOG_DEBUG, "ether_IP_handler (%u)\n", [ether_IP_handler_cnt]
 
         ; And finally, place the buffer in the IPRX queue
         pop     ebx
@@ -564,18 +564,18 @@ kproc eth_rx ;//////////////////////////////////////////////////////////////////
         cmp     ax, ETHER_ARP
         je      .is_arp ; It is ARP
 
-        klog_   LOG_WARNING, "eth_rx - dumped (%u)\n", ax
+        KLog    LOG_WARNING, "eth_rx - dumped (%u)\n", ax
         inc     [dumped_rx_count]
         jmp     .exit ; If not IP or ARP, ignore
 
   .is_ip:
-;       klog_   LOG_DEBUG, "eth_rx - IP packet\n"
+;       KLog    LOG_DEBUG, "eth_rx - IP packet\n"
         inc     dword[ip_rx_count]
         call    ether_IP_handler
         jmp     .exit
 
   .is_arp:
-;       klog_   LOG_DEBUG, "eth_rx - ARP packet\n"
+;       KLog    LOG_DEBUG, "eth_rx - ARP packet\n"
         ; At this point, the packet is still in the Ether_buffer
         call    arp_handler
 

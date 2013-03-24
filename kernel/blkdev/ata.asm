@@ -24,7 +24,7 @@ iglobal
   blk.ata.last_index  dd 0
   blk.ata.name_prefix db 'ata', 0
 
-  jump_table blk.ata, vftbl, blk.not_implemented, \
+  JumpTable blk.ata, vftbl, blk.not_implemented, \
     destroy, \
     read, \
     write

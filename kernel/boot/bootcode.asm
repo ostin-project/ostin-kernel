@@ -119,7 +119,7 @@ kproc boot.clear_screen ;///////////////////////////////////////////////////////
 ;> cx = count (in chars)
 ;-----------------------------------------------------------------------------------------------------------------------
         push    es ax cx
-        mov_s_  es, 0xb800
+        MovStk  es, 0xb800
 
         mov     ax, 0x0720 ; pack[4(bg color), 4(fg color), 8(char)]
         shl     di, 1
@@ -149,7 +149,7 @@ kproc boot.set_status_line ;////////////////////////////////////////////////////
   .with_color:
         ; clear status area
         push    cx di es
-        mov_s_  es, 0xb800
+        MovStk  es, 0xb800
         mov     cx, 80 * 1
         mov     di, 80 * 24 * 2
         rep
@@ -174,7 +174,7 @@ kendp
 kproc boot.read_ramdisk_from_floppy ;///////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    es
-        mov_s_  es, 0
+        MovStk  es, 0
 
         xor     ax, ax ; reset drive
         xor     dx, dx
@@ -192,7 +192,7 @@ kproc boot.read_ramdisk_from_floppy ;///////////////////////////////////////////
 
         mov     ah, 0x48
         push    ds
-        mov_s_  ds, es
+        MovStk  ds, es
         mov     si, 0xa000
         mov     word[si], 30
         int     0x13
@@ -462,7 +462,7 @@ kproc boot.read_ramdisk_from_floppy ;///////////////////////////////////////////
   .mem_move: ;::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ;-----------------------------------------------------------------------------------------------------------------------
         push    es
-        mov_s_  es, ds
+        MovStk  es, ds
         mov     ah, 0x87
         int     0x15
         pop     es
@@ -556,8 +556,8 @@ kproc boot.start ;//////////////////////////////////////////////////////////////
         mov     sp, 0xec00
 
         ; set up segment registers
-        mov_s_  ds, cs
-        mov_s_  es, cs
+        MovStk  ds, cs
+        MovStk  es, cs
 
         ; set videomode
         mov     ax, 3
@@ -576,7 +576,7 @@ end if
 
         ; clear screen
         push    es
-        mov_s_  es, 0xb800
+        MovStk  es, 0xb800
         mov     ax, 0x0220 ; pack[4(bg color), 4(fg color), 8(char)]
         mov     cx, 80 * (boot.data.s_logo.height + 2)
         xor     di, di
@@ -648,7 +648,7 @@ end if
         ; set up esp
         movzx   esp, sp
 
-        mov_s_  es, 0
+        MovStk  es, 0
         and     [es:boot_var.low.ide_base_addr], 0
 
         ; find HDD IDE DMA PCI device
@@ -830,7 +830,7 @@ end if
 
         les     bx, [boot.data.loader_block]
         mov     eax, [es:bx + 3]
-        mov_s_  es, ds
+        MovStk  es, ds
         test    eax, eax
         jz      .continue_boot_non_interactive
 
@@ -844,7 +844,7 @@ end if
         retf    ; call back
 
   .return_from_save_settings:
-        mov_s_  ds, cs
+        MovStk  ds, cs
 
   .continue_boot_non_interactive:
         xor     si, si
@@ -853,7 +853,7 @@ end if
         ; ASK GRAPHICS MODE
         call    boot.set_vmode_boot_vars
 
-        mov_s_  es, 0
+        MovStk  es, 0
 
         ; GRAPHICS ACCELERATION
         ; force yes
@@ -894,7 +894,7 @@ end if
         out     dx, al
 
         ; SET GRAPHICS
-        mov_s_  es, 0
+        MovStk  es, 0
 
         mov     ax, [es:boot_var.low.vesa_mode] ; vga & 320x200
         mov     bx, ax
@@ -935,5 +935,5 @@ end if
         out     dx, al ; select GDC bit mask register for writes to 0x3cf
 
   .gmok2:
-        mov_s_  es, ds
+        MovStk  es, ds
 kendp

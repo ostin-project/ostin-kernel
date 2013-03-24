@@ -39,7 +39,7 @@ kproc irq0 ;////////////////////////////////////////////////////////////////////
 ;? IRQ0 HANDLER (TIMER INTERRUPT)
 ;-----------------------------------------------------------------------------------------------------------------------
         pushad
-        Mov     ds, ax, app_data
+        Mov3    ds, ax, app_data
         mov     es, ax
         cld
         add     dword[timer_ticks], 1
@@ -169,7 +169,7 @@ kproc find_next_task ;//////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         call    update_counters
         mov     edi, [current_slot]
-        Mov     esi, ebx, [current_slot_ptr]
+        Mov3    esi, ebx, [current_slot_ptr]
 
   .loop:
         cmp     edi, [legacy_slots.last_valid_slot]
@@ -252,8 +252,8 @@ kproc do_change_task ;//////////////////////////////////////////////////////////
         mov     [esi + legacy.slot_t.app.saved_esp], esp
         mov     esp, [ebx + legacy.slot_t.app.saved_esp]
         ; set new thread io-map
-        Mov     dword[page_tabs + ((tss.io_map_0 and -4096) shr 10)], eax, [ebx + legacy.slot_t.app.io_map]
-        Mov     dword[page_tabs + ((tss.io_map_1 and -4096) shr 10)], eax, [ebx + legacy.slot_t.app.io_map + 4]
+        Mov3    dword[page_tabs + ((tss.io_map_0 and -4096) shr 10)], eax, [ebx + legacy.slot_t.app.io_map]
+        Mov3    dword[page_tabs + ((tss.io_map_1 and -4096) shr 10)], eax, [ebx + legacy.slot_t.app.io_map + 4]
         ; set new thread memory-map
         mov     ecx, legacy.slot_t.app.dir_table
         mov     eax, [ebx + ecx] ; offset>0x7F
@@ -262,7 +262,7 @@ kproc do_change_task ;//////////////////////////////////////////////////////////
         mov     cr3, eax
 
     @@: ; set tss.esp0
-        Mov     [tss.esp0], eax, [ebx + legacy.slot_t.app.saved_esp0]
+        Mov3    [tss.esp0], eax, [ebx + legacy.slot_t.app.saved_esp0]
 
         mov     edx, [ebx + legacy.slot_t.app.tls_base]
         cmp     edx, [esi + legacy.slot_t.app.tls_base]
@@ -277,7 +277,7 @@ kproc do_change_task ;//////////////////////////////////////////////////////////
         mov     fs, dx
 
     @@: ; set gs selector unconditionally
-        Mov     gs, ax, graph_data
+        Mov3    gs, ax, graph_data
         ; set CR0.TS
         cmp     bh, byte[fpu_owner] ; bh == incoming task (new)
         clts    ; clear a task switch flag
@@ -295,15 +295,15 @@ kproc do_change_task ;//////////////////////////////////////////////////////////
         mov     dr6, eax
         lea     esi, [ebx + legacy.slot_t.app.dbg_regs] ; offset>0x7F
 
-macro lodsReg [reg]
+macro LodsReg [_reg]
 {
         lodsd
-        mov     reg, eax
+        mov     _reg, eax
 }
 
-        lodsReg dr0, dr1, dr2, dr3, dr7
+        LodsReg dr0, dr1, dr2, dr3, dr7
 
-purge lodsReg
+purge LodsReg
 
     @@: ret
 kendp

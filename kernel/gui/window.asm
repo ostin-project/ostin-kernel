@@ -64,7 +64,7 @@ kproc sysfn.set_draw_state ;////////////////////////////////////////////////////
 ;? System function 12
 ;-----------------------------------------------------------------------------------------------------------------------
 iglobal
-  jump_table sysfn.set_draw_state, subfn, sysfn.not_implemented, \
+  JumpTable sysfn.set_draw_state, subfn, sysfn.not_implemented, \
     begin_drawing, \ ; 1
     end_drawing ; 2
 endg
@@ -191,7 +191,7 @@ kproc sysfn.display_settings_ctl ;//////////////////////////////////////////////
 ;? System function 48
 ;-----------------------------------------------------------------------------------------------------------------------
 iglobal
-  jump_table sysfn.display_settings_ctl, subfn, sysfn.not_implemented, \
+  JumpTable sysfn.display_settings_ctl, subfn, sysfn.not_implemented, \
     redraw_screen, \ ; 0
     set_button_style, \ ; 1
     set_system_color_palette, \ ; 2

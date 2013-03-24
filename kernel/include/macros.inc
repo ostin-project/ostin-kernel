@@ -17,7 +17,7 @@
 ;? Various convenience macros
 ;=======================================================================================================================
 
-macro diff16 title, l1, l2
+macro Diff16 title, l1, l2
 {
   local s, d
   s = l2 - l1
@@ -32,7 +32,7 @@ macro diff16 title, l1, l2
   display 13, 10
 }
 
-macro diff10 title, l1, l2
+macro Diff10 title, l1, l2
 {
   local s, d, z, m
   s = l2 - l1
@@ -57,71 +57,71 @@ macro diff10 title, l1, l2
   display 13, 10
 }
 
-macro mov_s_ a, b
+macro MovStk _dst, _src
 {
-  if (b eqtype 0) & (b > 255) & ~(a in <cs, ds, es, fs, gs, ss>)
-    display "note: using `mov_s_` with `", `b, "` (which is >255) doesn't make much sense", 13, 10
+  if (_src eqtype 0) & (_src > 255) & ~(_dst in <cs, ds, es, fs, gs, ss>)
+    display "note: using `MovStk` with `", `_src, "` (which is >255) doesn't make much sense", 13, 10
   end if
-        push    b
-        pop     a
+        push    _src
+        pop     _dst
 }
 
-macro xchg_s_ a, b
+macro XchgStk _a, _b
 {
-        push    a b
-        pop     a b
+        push    _a _b
+        pop     _a _b
 }
 
-macro Mov op1, op2, op3 ; op1 = op2 = op3
+macro Mov3 _dst1, _dst2, _src ; op1 = op2 = op3
 {
-        mov     op2, op3
-        mov     op1, op2
+        mov     _dst2, _src
+        mov     _dst1, _dst2
 }
 
-macro __list_add new, prev, next
+macro ListInsertImpl _new, _prev, _next
 {
-        mov     [next + linked_list_t.prev_ptr], new
-        mov     [new + linked_list_t.next_ptr], next
-        mov     [new + linked_list_t.prev_ptr], prev
-        mov     [prev + linked_list_t.next_ptr], new
+        mov     [_next + linked_list_t.prev_ptr], _new
+        mov     [_new + linked_list_t.next_ptr], _next
+        mov     [_new + linked_list_t.prev_ptr], _prev
+        mov     [_prev + linked_list_t.next_ptr], _new
 }
 
-macro list_add new, head
+macro ListPrepend _new, _head
 {
-        mov     eax, [head + linked_list_t.next_ptr]
-        __list_add new, head, eax
+        mov     eax, [_head + linked_list_t.next_ptr]
+        ListInsertImpl _new, _head, eax
 }
 
-macro list_add_tail new, head
+macro ListAppend _new, _head
 {
-        mov     eax, [head + linked_list_t.prev_ptr]
-        __list_add new, eax, head
+        mov     eax, [_head + linked_list_t.prev_ptr]
+        ListInsertImpl _new, eax, _head
 }
 
-macro list_del entry
+macro ListDelete _entry
 {
-        mov     edx, [entry + linked_list_t.next_ptr]
-        mov     ecx, [entry + linked_list_t.prev_ptr]
+        mov     edx, [_entry + linked_list_t.next_ptr]
+        mov     ecx, [_entry + linked_list_t.prev_ptr]
         mov     [edx + linked_list_t.prev_ptr], ecx
         mov     [ecx + linked_list_t.next_ptr], edx
 }
 
-macro save_ring3_context
+macro SaveRing3Context
 {
         pushad
 }
 
-macro restore_ring3_context
+macro RestoreRing3Context
 {
         popad
 }
 
-struc utf8 [string_data]
+struc utf8 [_string_data]
 {
 common
   local str_size, str_length, i, x
   if used .
-    . db string_data
+    . db _string_data
     str_size = $ - .
     str_length = 0
     i = 0
@@ -146,93 +146,95 @@ common
   end if
 }
 
-struc max_of [value]
+struc max_of [_value]
 {
 common
   local max
   max = -0x8000000000000000
 forward
-  if defined value
-    if value > max
-      max = value
+  if defined _value
+    if _value > max
+      max = _value
     end if
   end if
 common
   . = max
 }
 
-struc min_of [value]
+struc min_of [_value]
 {
 common
   local min
   min = 0x7fffffffffffffff
 forward
-  if value < min
-    min = value
+  if _value < min
+    min = _value
   end if
 common
   . = min
 }
 
-macro kproc name
+macro kproc _name
 {
-  if ~used name
-    display "unused proc: ", `name, ' [k]', 13, 10
+  if ~used _name
+    display "unused proc: ", `_name, ' [k]', 13, 10
   end if
   align 4
-  name:
+  _name:
 }
 
 kendp fix
 
-macro jump_table_element name, element, dash_element
+macro JumpTable.DeclareElement _name, _element, _dash_element
 {
   local is_dash
   is_dash equ 0
-  match =-, element
+  match =-, _element
   \{
-    dd dash_element
+    dd _dash_element
     is_dash equ 1
   \}
   match =0, is_dash
   \{
-    dd name#.#element
+    dd _name#.#_element
   \}
+  restore is_dash
 }
 
-macro jump_table name, table_name, dash_element, [element]
+macro JumpTable _name, _table_name, _dash_element, [_element]
 {
   common
-    if used name#.#table_name
+    if used _name#.#_table_name
       local is_expr
       align 4
-      label name#.#table_name dword
+      label _name#.#_table_name dword
   forward
       is_expr equ 0
-      match a =? b =: c, element
+      match a =? b =: c, _element
       \{
         if (a)
-          jump_table_element name, b, dash_element
+          JumpTable.DeclareElement _name, b, _dash_element
         else
-          jump_table_element name, c, dash_element
+          JumpTable.DeclareElement _name, c, _dash_element
         end if
         is_expr equ 1
       \}
-      match =0 a =? b, is_expr element
+      match =0 a =? b, is_expr _element
       \{
         if (a)
-          jump_table_element name, b, dash_element
+          JumpTable.DeclareElement _name, b, _dash_element
         end if
         is_expr equ 1
       \}
-      match =0 a, is_expr element
+      match =0 a, is_expr _element
       \{
-        jump_table_element name, a, dash_element
+        JumpTable.DeclareElement _name, a, _dash_element
       \}
   common
-      name#.sizeof.#table_name = $ - name#.#table_name
-      name#.countof.#table_name = ($ - name#.#table_name) / 4
+      _name#.sizeof.#_table_name = $ - _name#.#_table_name
+      _name#.countof.#_table_name = ($ - _name#.#_table_name) / 4
     else
-      display "unused jump table: ", `name, '.', `table_name, 13, 10
+      display "unused jump table: ", `_name, '.', `_table_name, 13, 10
     end if
+    restore is_expr
 }

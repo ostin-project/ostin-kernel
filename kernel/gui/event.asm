@@ -144,7 +144,7 @@ kproc set_event ;///////////////////////////////////////////////////////////////
         mov     [eax + event_t.state], ecx
         mov     [eax + event_t.pid], edx
         inc     [event_uid]
-        Mov     [eax + event_t.id], edx, [event_uid]
+        Mov3    [eax + event_t.id], edx, [event_uid]
         or      esi, esi
         jz      RemoveEventTo
         lea     edi, [eax + event_t.code]

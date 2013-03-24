@@ -69,7 +69,7 @@ kproc boot.print_vmode_menu_item ;//////////////////////////////////////////////
         jae     .exit
 
         push    es
-        mov_s_  es, 0
+        MovStk  es, 0
 
         mov     si, modes_table
         mov     ax, sizeof.boot_vmode_t
@@ -121,7 +121,7 @@ kendp
 kproc boot.init_vesa_info ;/////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    es
-        mov_s_  es, 0
+        MovStk  es, 0
 
         mov     [es:vi.vesa_signature], 'VBE2'
         mov     ax, 0x4f00
@@ -154,7 +154,7 @@ kendp
 kproc boot.init_vmodes_table ;//////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    es
-        mov_s_  es, 0
+        MovStk  es, 0
 
         mov     bx, modes_table
 
@@ -216,7 +216,7 @@ kproc boot.init_vmodes_table ;//////////////////////////////////////////////////
   .add_mode_to_list:
         mov     [es:bx + boot_vmode_t.resolution.width], ax
         mov     [es:bx + boot_vmode_t.resolution.height], dx
-        mov_s_  [es:bx + boot_vmode_t.attributes], [es:mi.mode_attributes]
+        MovStk  [es:bx + boot_vmode_t.attributes], [es:mi.mode_attributes]
         mov     [es:bx + boot_vmode_t.number], cx
         movzx   ax, [es:mi.bits_per_pixel]
         mov     [es:bx + boot_vmode_t.bits_per_pixel], ax
@@ -258,14 +258,14 @@ kproc boot.init_vmodes_table ;//////////////////////////////////////////////////
 
 repeat sizeof.boot_vmode_t / 4
 
-        xchg_s_ dword[es:si + (% - 1) * 4], \
+        XchgStk dword[es:si + (% - 1) * 4], \
                 dword[es:di + (% - 1) * 4]
 
 end repeat
 
 repeat (sizeof.boot_vmode_t mod 4) / 2
 
-        xchg_s_ word[es:si + sizeof.boot_vmode_t / 4 * 4 + (% - 1) * 2], \
+        XchgStk word[es:si + sizeof.boot_vmode_t / 4 * 4 + (% - 1) * 2], \
                 word[es:di + sizeof.boot_vmode_t / 4 * 4 + (% - 1) * 2]
 
 end repeat
@@ -285,7 +285,7 @@ kendp
 kproc boot.load_vmode_to_menu ;/////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    es
-        mov_s_  es, 0
+        MovStk  es, 0
 
         cmp     [boot.params.vmode.resolution.width], -1
         jne     .check_saved_mode
@@ -326,11 +326,11 @@ kproc boot.load_vmode_to_menu ;/////////////////////////////////////////////////
         mov     [boot.data.video_mode_menu + boot_menu_data_t.current_index], ax
 
         mov     di, boot.params.vmode
-        xchg_s_ es, ds
+        XchgStk es, ds
         mov     cx, sizeof.boot_vmode_t / 2
         rep
         movsw
-        mov_s_  ds, es
+        MovStk  ds, es
 
         pop     es
         ret
@@ -374,7 +374,7 @@ kendp
 kproc boot.save_vmode_from_menu ;///////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    es
-        mov_s_  es, 0
+        MovStk  es, 0
 
         mov     si, modes_table
         mov     ax, sizeof.boot_vmode_t
@@ -382,11 +382,11 @@ kproc boot.save_vmode_from_menu ;///////////////////////////////////////////////
         add     si, ax
 
         mov     di, boot.params.vmode
-        xchg_s_ es, ds
+        XchgStk es, ds
         mov     cx, sizeof.boot_vmode_t / 2
         rep
         movsw
-        mov_s_  ds, es
+        MovStk  ds, es
 
         pop     es
         ret
@@ -396,7 +396,7 @@ kendp
 kproc boot.set_vmode_boot_vars ;////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    es
-        mov_s_  es, 0 ; 0x1000
+        MovStk  es, 0 ; 0x1000
 
         mov     cx, [boot.params.vmode.number]
         mov     [es:boot_var.low.vesa_mode], cx
@@ -406,8 +406,8 @@ kproc boot.set_vmode_boot_vars ;////////////////////////////////////////////////
         cmp     cx, 0x13
         je      .mode_x12_x13
 
-        mov_s_  [es:boot_var.low.screen_res.width], [boot.params.vmode.resolution.width]
-        mov_s_  [es:boot_var.low.screen_res.height], [boot.params.vmode.resolution.height]
+        MovStk  [es:boot_var.low.screen_res.width], [boot.params.vmode.resolution.width]
+        MovStk  [es:boot_var.low.screen_res.height], [boot.params.vmode.resolution.height]
 
         cmp     byte[es:vi.vesa_version + 1], 2
         jb      .vesa12
@@ -417,8 +417,8 @@ kproc boot.set_vmode_boot_vars ;////////////////////////////////////////////////
         and     cx, 0x0fff
         mov     di, mi ; 0xa000
         int     0x10
-        mov_s_  [es:boot_var.low.vesa_20_lfb_addr], [es:mi.phys_base_ptr]
-        mov_s_  [es:boot_var.low.scanline_len], [es:mi.bytes_per_scanline]
+        MovStk  [es:boot_var.low.vesa_20_lfb_addr], [es:mi.phys_base_ptr]
+        MovStk  [es:boot_var.low.scanline_len], [es:mi.bytes_per_scanline]
         mov     al, [es:mi.bits_per_pixel]
 ;       cmp     al, 16
 ;       jne     @f

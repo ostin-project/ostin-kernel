@@ -111,33 +111,29 @@ boot_y          dd 10
 syslang         dd 1
 keyboard        dw 1
 
-if KCONFIG_DEBUG
-
-include_debug_strings
-
-end if
+KLog.IncludeDebugStrings
 
 IncludeIGlobals
 
-gdt_begin gdts
+GdtBegin gdts
   ; Attention! Do not change the order of the first four selectors. They are used in Fast System Call
   ; must be: os_code, os_data, app_code, app_data, ....
-  gdt_entry os_code, 0, 0xfffff, cpl0, GDT_FLAG_A + GDT_FLAG_D + GDT_FLAG_G
-  gdt_entry os_data, 0, 0xfffff, drw0, GDT_FLAG_A + GDT_FLAG_D + GDT_FLAG_G
-  gdt_entry app_code, 0, 0xfffff, cpl3, GDT_FLAG_D + GDT_FLAG_G
-  gdt_entry app_data, 0, 0xfffff, drw3, GDT_FLAG_D + GDT_FLAG_G
+  GdtEntry os_code, 0, 0xfffff, cpl0, GDT_FLAG_A + GDT_FLAG_D + GDT_FLAG_G
+  GdtEntry os_data, 0, 0xfffff, drw0, GDT_FLAG_A + GDT_FLAG_D + GDT_FLAG_G
+  GdtEntry app_code, 0, 0xfffff, cpl3, GDT_FLAG_D + GDT_FLAG_G
+  GdtEntry app_data, 0, 0xfffff, drw3, GDT_FLAG_D + GDT_FLAG_G
   ; PCI BIOS
-  gdt_entry pci_code_32, 0, 0, cpl0, GDT_FLAG_D
-  gdt_entry pci_data_32, 0, 0, dpl0, GDT_FLAG_D
+  GdtEntry pci_code_32, 0, 0, cpl0, GDT_FLAG_D
+  GdtEntry pci_data_32, 0, 0, dpl0, GDT_FLAG_D
   ; APM (limit 64 KB)
-  gdt_entry apm_code_32, 0, 0xf, cpl0, GDT_FLAG_A + GDT_FLAG_D + GDT_FLAG_G
-  gdt_entry apm_code_16, 0, 0xf, cpl0, GDT_FLAG_A + GDT_FLAG_G
-  gdt_entry apm_data_16, 0, 0xf, drw0, GDT_FLAG_A + GDT_FLAG_G
+  GdtEntry apm_code_32, 0, 0xf, cpl0, GDT_FLAG_A + GDT_FLAG_D + GDT_FLAG_G
+  GdtEntry apm_code_16, 0, 0xf, cpl0, GDT_FLAG_A + GDT_FLAG_G
+  GdtEntry apm_data_16, 0, 0xf, drw0, GDT_FLAG_A + GDT_FLAG_G
   ; ...
-  gdt_entry graph_data, 0, 0x7ff, drw3, GDT_FLAG_A + GDT_FLAG_D + GDT_FLAG_G
-  gdt_entry tss0, tss, sizeof.tss_t - 1, GDT_ACCESS_AC + GDT_ACCESS_EX + GDT_ACCESS_PR, 0
-  gdt_entry tls_data, 0, 0xfff, drw3, GDT_FLAG_D
-gdt_end
+  GdtEntry graph_data, 0, 0x7ff, drw3, GDT_FLAG_A + GDT_FLAG_D + GDT_FLAG_G
+  GdtEntry tss0, tss, sizeof.tss_t - 1, GDT_ACCESS_AC + GDT_ACCESS_EX + GDT_ACCESS_PR, 0
+  GdtEntry tls_data, 0, 0xfff, drw3, GDT_FLAG_D
+GdtEnd
 
 endofcode:
 

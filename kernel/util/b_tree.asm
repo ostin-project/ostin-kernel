@@ -23,7 +23,7 @@ kproc util.b_tree.find ;////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax ^= actual node
 ;-----------------------------------------------------------------------------------------------------------------------
-        klog_   LOG_TRACE, "util.b_tree.find(%x,%x,%x)\n", eax, ebx, ecx
+        KLog    LOG_TRACE, "util.b_tree.find(%x,%x,%x)\n", eax, ebx, ecx
         push    ebx
 
   .next_node:
@@ -60,7 +60,7 @@ kproc util.b_tree.enumerate ;///////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax ^= 0 (completed) or not 0 (interrupted)
 ;-----------------------------------------------------------------------------------------------------------------------
-        klog_   LOG_TRACE, "util.b_tree.enumerate(%x, %x)\n", ebx, ecx
+        KLog    LOG_TRACE, "util.b_tree.enumerate(%x, %x)\n", ebx, ecx
 
         xor     eax, eax
         test    ebx, ebx
@@ -94,7 +94,7 @@ kproc util.rb_tree.insert ;/////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax ^= new root node
 ;-----------------------------------------------------------------------------------------------------------------------
-        klog_   LOG_TRACE, "util.b_tree.insert(%x,%x,%x)\n", eax, ebx, ecx
+        KLog    LOG_TRACE, "util.b_tree.insert(%x,%x,%x)\n", eax, ebx, ecx
         and     [eax + rb_tree_node_t._.parent_ptr], 0
         and     [eax + rb_tree_node_t._.left_ptr], 0
         and     [eax + rb_tree_node_t._.right_ptr], 0
@@ -122,7 +122,7 @@ kproc util.rb_tree.insert ;/////////////////////////////////////////////////////
         mov     [eax + rb_tree_node_t._.parent_ptr], ebx
 
   .case_1:
-        ;klog_   LOG_DEBUG, "  case 1\n"
+        ;KLog    LOG_DEBUG, "  case 1\n"
         ; eax ^= node
         mov     edx, [eax + rb_tree_node_t._.parent_ptr]
         test    edx, edx
@@ -132,14 +132,14 @@ kproc util.rb_tree.insert ;/////////////////////////////////////////////////////
         jmp     .exit
 
   .case_2:
-        ;klog_   LOG_DEBUG, "  case 2\n"
+        ;KLog    LOG_DEBUG, "  case 2\n"
         ; eax ^= node
         ; edx ^= parent node
         cmp     [edx + rb_tree_node_t._.color], 0
         je      .exit
 
   .case_3:
-        ;klog_   LOG_DEBUG, "  case 3\n"
+        ;KLog    LOG_DEBUG, "  case 3\n"
         ; eax ^= node
         ; edx ^= parent node
         push    eax
@@ -160,7 +160,7 @@ kproc util.rb_tree.insert ;/////////////////////////////////////////////////////
         jmp     .case_1 ; tail recursion here
 
   .case_4:
-        ;klog_   LOG_DEBUG, "  case 4\n"
+        ;KLog    LOG_DEBUG, "  case 4\n"
         ; [esp] ^= node
         ; edx ^= parent node
         ; ecx ^= grandparent node
@@ -192,7 +192,7 @@ kproc util.rb_tree.insert ;/////////////////////////////////////////////////////
         mov     eax, ecx
 
   .case_5:
-        ;klog_   LOG_DEBUG, "  case 5\n"
+        ;KLog    LOG_DEBUG, "  case 5\n"
         ; eax ^= node
         mov     ecx, eax
         mov     edx, [eax + rb_tree_node_t._.parent_ptr]
@@ -236,7 +236,7 @@ kproc util.rb_tree.remove ;/////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax ^= new root node
 ;-----------------------------------------------------------------------------------------------------------------------
-        klog_   LOG_TRACE, "util.b_tree.remove(%x)\n", eax
+        KLog    LOG_TRACE, "util.b_tree.remove(%x)\n", eax
         mov     ecx, [eax + rb_tree_node_t._.left_ptr]
         mov     ebx, [eax + rb_tree_node_t._.right_ptr]
 
@@ -261,7 +261,7 @@ kproc util.rb_tree.remove ;/////////////////////////////////////////////////////
         mov     ebx, [eax + rb_tree_node_t._.right_ptr]
 
   .delete:
-        ;klog_   LOG_DEBUG, "  delete\n"
+        ;KLog    LOG_DEBUG, "  delete\n"
         ; eax ^= node
         ; ebx ^= [presumably] non-null child node (while its sibling is null node for sure)
         cmp     [eax + rb_tree_node_t._.color], 0
@@ -285,14 +285,14 @@ kproc util.rb_tree.remove ;/////////////////////////////////////////////////////
         test    ebx, ebx
         jnz     @f
 
-        ;klog_   LOG_DEBUG, "  replace (null)\n"
+        ;KLog    LOG_DEBUG, "  replace (null)\n"
         mov     ecx, [eax + rb_tree_node_t._.parent_ptr]
         and     [eax + rb_tree_node_t._.parent_ptr], 0
         call    util.b_tree._.fix_parent_pointer
         xchg    eax, ecx
         jmp     .fix_root_color
 
-    @@: ;klog_   LOG_DEBUG, "  replace\n"
+    @@: ;KLog    LOG_DEBUG, "  replace\n"
         call    util.b_tree._.replace
         xchg    eax, ebx
 
@@ -305,14 +305,14 @@ kproc util.rb_tree.remove ;/////////////////////////////////////////////////////
         jmp     .exit
 
   .case_1:
-        ;klog_   LOG_DEBUG, "  case 1\n"
+        ;KLog    LOG_DEBUG, "  case 1\n"
         ; eax ^= node
         mov     ebx, [eax + rb_tree_node_t._.parent_ptr]
         test    ebx, ebx
         jz      .exit
 
   .case_2:
-        ;klog_   LOG_DEBUG, "  case 2\n"
+        ;KLog    LOG_DEBUG, "  case 2\n"
         ; eax ^= node
         ; ebx ^= parent node
         push    eax
@@ -338,7 +338,7 @@ kproc util.rb_tree.remove ;/////////////////////////////////////////////////////
     @@: call    util.b_tree._.rotate_right
 
   .case_3:
-        ;klog_   LOG_DEBUG, "  case 3\n"
+        ;KLog    LOG_DEBUG, "  case 3\n"
         ; [esp] ^= node
         mov     eax, [esp]
 
@@ -374,7 +374,7 @@ kproc util.rb_tree.remove ;/////////////////////////////////////////////////////
         jmp     .case_1 ; tail recursion here
 
   .case_4:
-        ;klog_   LOG_DEBUG, "  case 4\n"
+        ;KLog    LOG_DEBUG, "  case 4\n"
         ; [esp] ^= node
         ; eax ^= sibling node
         ; ebx ^= parent node
@@ -408,7 +408,7 @@ kproc util.rb_tree.remove ;/////////////////////////////////////////////////////
         jmp     .exit_pop
 
   .case_5:
-        ;klog_   LOG_DEBUG, "  case 5\n"
+        ;KLog    LOG_DEBUG, "  case 5\n"
         ; [esp] ^= node
         ; eax ^= sibling node
         ; ebx ^= parent node
@@ -459,7 +459,7 @@ kproc util.rb_tree.remove ;/////////////////////////////////////////////////////
         call    util.b_tree._.rotate_left
 
   .case_6:
-        ;klog_   LOG_DEBUG, "  case 6\n"
+        ;KLog    LOG_DEBUG, "  case 6\n"
         ; [esp] ^= node
         mov     eax, [esp]
         mov     ebx, [eax + rb_tree_node_t._.parent_ptr]
@@ -506,7 +506,7 @@ kproc util.b_tree._.get_root ;//////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax ^= root node
 ;-----------------------------------------------------------------------------------------------------------------------
-        klog_   LOG_TRACE, "util.b_tree._.get_root(%x)\n", eax
+        KLog    LOG_TRACE, "util.b_tree._.get_root(%x)\n", eax
         test    eax, eax
         jz      .exit
 
@@ -597,7 +597,7 @@ kproc util.b_tree._.swap ;//////////////////////////////////////////////////////
 ;> eax ^= first node
 ;> ebx ^= second node
 ;-----------------------------------------------------------------------------------------------------------------------
-        klog_   LOG_TRACE, "util.b_tree._.swap(%x,%x)\n", eax, ebx
+        KLog    LOG_TRACE, "util.b_tree._.swap(%x,%x)\n", eax, ebx
         push    ecx edx ebp
 
         ; T* dummy;
@@ -793,7 +793,7 @@ kproc util.b_tree._.replace ;///////////////////////////////////////////////////
 ;> eax ^= first node
 ;> ebx ^= second node
 ;-----------------------------------------------------------------------------------------------------------------------
-        klog_   LOG_TRACE, "util.b_tree._.replace(%x,%x)\n", eax, ebx
+        KLog    LOG_TRACE, "util.b_tree._.replace(%x,%x)\n", eax, ebx
         mov     ecx, [eax + rb_tree_node_t._.parent_ptr]
         mov     [ebx + rb_tree_node_t._.parent_ptr], ecx
         call    util.b_tree._.fix_parent_pointer
@@ -809,7 +809,7 @@ kproc util.b_tree._.rotate_left ;///////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax ^= node
 ;-----------------------------------------------------------------------------------------------------------------------
-        klog_   LOG_TRACE, "util.b_tree._.rotate_left(%x)\n", eax
+        KLog    LOG_TRACE, "util.b_tree._.rotate_left(%x)\n", eax
         push    eax ecx edx
 
         mov     ecx, eax
@@ -847,7 +847,7 @@ kproc util.b_tree._.rotate_right ;//////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax ^= node
 ;-----------------------------------------------------------------------------------------------------------------------
-        klog_   LOG_TRACE, "util.b_tree._.rotate_right(%x)\n", eax
+        KLog    LOG_TRACE, "util.b_tree._.rotate_right(%x)\n", eax
         push    eax ecx edx
 
         mov     ecx, eax

@@ -22,7 +22,7 @@ kproc sysfn.cd_audio_ctl ;//////////////////////////////////////////////////////
 ;? System function 24
 ;-----------------------------------------------------------------------------------------------------------------------
 iglobal
-  jump_table sysfn.cd_audio_ctl, subfn, sysfn.not_implemented, \
+  JumpTable sysfn.cd_audio_ctl, subfn, sysfn.not_implemented, \
     play, \ ; 1
     get_tracks_info, \ ; 2
     stop, \ ; 3

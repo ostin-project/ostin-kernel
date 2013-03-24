@@ -167,7 +167,7 @@ kproc except_7 ;////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? #NM exception handler
 ;-----------------------------------------------------------------------------------------------------------------------
-        save_ring3_context
+        SaveRing3Context
         clts
         mov     ax, app_data
         mov     ds, ax
@@ -191,7 +191,7 @@ kproc except_7 ;////////////////////////////////////////////////////////////////
         fxrstor [eax]
 
   .exit:
-        restore_ring3_context
+        RestoreRing3Context
         iret
 
   .no_SSE:
@@ -201,7 +201,7 @@ kproc except_7 ;////////////////////////////////////////////////////////////////
         shl     ebx, 9 ; * sizeof.legacy.slot_t
         mov     eax, [legacy_slots + ebx + legacy.slot_t.app.fpu_state]
         frstor  [eax]
-        restore_ring3_context
+        RestoreRing3Context
         iret
 kendp
 

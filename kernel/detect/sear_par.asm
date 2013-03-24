@@ -84,7 +84,7 @@ kproc detect_device_partitions ;////////////////////////////////////////////////
 ;> ebx ^= blk.device_t
 ;-----------------------------------------------------------------------------------------------------------------------
         lea     eax, [ebx + blk.device_t._.name]
-        klog_   LOG_DEBUG, "detect_device_partitions: %s\n", eax
+        KLog    LOG_DEBUG, "detect_device_partitions: %s\n", eax
 
         mov     eax, 512
         call    malloc
@@ -96,7 +96,7 @@ kproc detect_device_partitions ;////////////////////////////////////////////////
         mov     edi, eax
         xor     eax, eax
         cdq
-        mov_s_  ecx, 1
+        MovStk  ecx, 1
         call    blk.read
         test    eax, eax
         jnz     .done
@@ -142,7 +142,7 @@ kproc detect_device_partitions_mbr ;////////////////////////////////////////////
         jne     .done
 
         add     esi, mbr_t.partitions
-        mov_s_  ecx, 4
+        MovStk  ecx, 4
 
   .next_partition:
         push    ebx ecx esi
@@ -160,7 +160,7 @@ kproc detect_device_partitions_mbr ;////////////////////////////////////////////
         je      .skip_partition
 
         mov     edi, extended_types
-        mov_s_  ecx, extended_types_end - extended_types
+        MovStk  ecx, extended_types_end - extended_types
         repne
         scasb
         je      .skip_extended_partition
@@ -170,12 +170,12 @@ kproc detect_device_partitions_mbr ;////////////////////////////////////////////
         test    eax, eax
         jz      .skip_partition
 
-        klog_   LOG_DEBUG, "  detected\n"
+        KLog    LOG_DEBUG, "  detected\n"
 
         mov     edx, eax
         mov     ecx, [ebx + fs.partition_t._.device]
         add     ecx, blk.device_t._.partitions
-        list_add_tail edx, ecx
+        ListAppend edx, ecx
 
         inc     dword[esp + sizeof.fs.partition_t + (3 + 1 + 2 + 2) * 4] ; current partition number
 
@@ -206,7 +206,7 @@ kproc detect_device_partitions_mbr ;////////////////////////////////////////////
         jz      .exit
 
   .extended_mbr:
-        mov_s_  ecx, 1
+        MovStk  ecx, 1
         push    eax edx edi
         call    blk.read
         test    eax, eax

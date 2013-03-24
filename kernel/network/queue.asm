@@ -31,7 +31,7 @@ kproc freeBuff ;////////////////////////////////////////////////////////////////
 ;# This always works, so no error returned
 ;-----------------------------------------------------------------------------------------------------------------------
 ;       inc     [freeBuff_cnt]
-;       klog_   LOG_DEBUG, "freeBuff (%u)\n", [freeBuff_cnt]
+;       KLog    LOG_DEBUG, "freeBuff (%u)\n", [freeBuff_cnt]
         push    ebx
         push    ecx
         mov     ebx, queues + EMPTY_QUEUE * 2
@@ -93,7 +93,7 @@ kproc queue ;///////////////////////////////////////////////////////////////////
 ;# This always works, so no error returned
 ;-----------------------------------------------------------------------------------------------------------------------
 ;       inc     [queue_cnt]
-;       klog_   LOG_DEBUG, "queue (%u)\n", [queue_cnt]
+;       KLog    LOG_DEBUG, "queue (%u)\n", [queue_cnt]
         push    ebx
         shl     ebx, 1
         add     ebx, queueList ; eax now holds address of queue entry
@@ -154,7 +154,7 @@ kproc dequeue ;/////////////////////////////////////////////////////////////////
         cmp     ax, NO_BUFFER
         je      .dq_exit
 ;       inc     [dequeue_cnt]
-;       klog_   LOG_DEBUG, "dequeue (%u)\n", [dequeue_cnt]
+;       KLog    LOG_DEBUG, "dequeue (%u)\n", [dequeue_cnt]
         push    eax
         shl     eax, 1
         add     eax, queueList ; eax now holds address of queue entry

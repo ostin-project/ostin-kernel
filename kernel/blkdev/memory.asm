@@ -23,7 +23,7 @@ iglobal
   blk.memory.last_index  dd 0
   blk.memory.name_prefix db 'ram', 0
 
-  jump_table blk.memory, vftbl, blk.not_implemented, \
+  JumpTable blk.memory, vftbl, blk.not_implemented, \
     destroy, \
     read, \
     write

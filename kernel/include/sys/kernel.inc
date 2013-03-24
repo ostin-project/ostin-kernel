@@ -181,42 +181,42 @@ struct gdt_entry_t
   base_high    db ?
 ends
 
-macro gdt_begin table_name, table_base = 0
+macro GdtBegin _table_name, _table_base = 0
 {
-  name@gdt equ table_name
+  name@Gdt equ _table_name
 
   align 16
-  label table_name
-  dw table_name#.end - $ - 1
-  dd table_name + (table_base)
+  label _table_name
+  dw _table_name#.end - $ - 1
+  dd _table_name + (_table_base)
   dw 0
 
-  macro gdt_entry entry_name, entry_base, limit, access, flags
+  macro GdtEntry _entry_name, _entry_base, _limit, _access, _flags
   \{
-    match gdt_name, name@gdt
+    match _gdt_name, name@Gdt
     \\{
       virtual at $
-        gdt_name\\#.\\#entry_name gdt_entry_t
+        _gdt_name\\#.\\#_entry_name gdt_entry_t
       end virtual
-      offsetof.\\#gdt_name\\#.\\#entry_name = $ - gdt_name
+      offsetof.\\#_gdt_name\\#.\\#_entry_name = $ - _gdt_name
     \\}
 
-    dw (limit) and 0xffff
-    dw (entry_base) and 0xffff
-    db ((entry_base) shr 16) and 0xff
-    db access
-    db ((flags) shl 4) or (((limit) shr 16) and 0xf)
-    db (entry_base) shr 24
+    dw (_limit) and 0xffff
+    dw (_entry_base) and 0xffff
+    db ((_entry_base) shr 16) and 0xff
+    db _access
+    db ((_flags) shl 4) or (((_limit) shr 16) and 0xf)
+    db (_entry_base) shr 24
   \}
 }
 
-macro gdt_end
+macro GdtEnd
 {
-  match table_name, name@gdt
+  match _table_name, name@Gdt
   \{
-    label table_name\#.end
+    label _table_name\#.end
   \}
 
-  restore name@gdt
-  purge gdt_entry
+  restore name@Gdt
+  purge GdtEntry
 }

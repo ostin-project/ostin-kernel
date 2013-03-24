@@ -32,7 +32,7 @@ struct fs.ntfs.partition_data_t
 ends
 
 iglobal
-  jump_table fs.ntfs, vftbl, 0, \
+  JumpTable fs.ntfs, vftbl, 0, \
     read_file, \
     read_directory, \
     -, \
@@ -52,7 +52,7 @@ kproc fs.ntfs.create_from_base ;////////////////////////////////////////////////
 ;> ecx @= BPB version, pack[16(0), 8(major), 8(minor)]
 ;> edi ^= BPB
 ;-----------------------------------------------------------------------------------------------------------------------
-        klog_   LOG_DEBUG, "fs.ntfs.create_from_base\n"
+        KLog    LOG_DEBUG, "fs.ntfs.create_from_base\n"
 
         xor     eax, eax
         ret

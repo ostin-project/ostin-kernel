@@ -35,7 +35,7 @@ struct fs.fat.partition_t fs.partition_t
 ends
 
 iglobal
-  jump_table fs.fat, vftbl, 0, \
+  JumpTable fs.fat, vftbl, 0, \
     read_file, \
     read_directory, \
     create_file, \
@@ -146,7 +146,7 @@ kproc fs.fat.read_file ;////////////////////////////////////////////////////////
 ;< eax #= error code
 ;< ebx #= bytes read (on success)
 ;-----------------------------------------------------------------------------------------------------------------------
-;       klog_   LOG_DEBUG, "fs.fat.read_file('%s')\n", esi
+;       KLog    LOG_DEBUG, "fs.fat.read_file('%s')\n", esi
 
         cmp     byte[esi], 0
         je      .access_denied_error
@@ -268,7 +268,7 @@ kproc fs.fat.read_directory ;///////////////////////////////////////////////////
 ;< eax #= error code
 ;< ebx #= directory entries read (on success)
 ;-----------------------------------------------------------------------------------------------------------------------
-;       klog_   LOG_DEBUG, "fs.fat.read_directory('%s')\n", esi
+;       KLog    LOG_DEBUG, "fs.fat.read_directory('%s')\n", esi
 
         cmp     byte[esi], 0
         je      .root_directory
@@ -448,7 +448,7 @@ kproc fs.fat._.extend_dir ;/////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> ebx ^= fs.fat.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
-        klog_   LOG_ERROR, "FIXME: not implemented: fs.fat._.extend_dir\n"
+        KLog    LOG_ERROR, "FIXME: not implemented: fs.fat._.extend_dir\n"
         mov     eax, ERROR_NOT_IMPLEMENTED
         stc
         ret
@@ -669,7 +669,7 @@ kproc fs.fat._.create_dir_entry ;///////////////////////////////////////////////
         mov     ecx, 8
         repne
         scasb
-        mov_s_  eax, 1 ; 1 entry
+        MovStk  eax, 1 ; 1 entry
         jne     .notilde
 
         ; we need `ceil(strlen(esi) / 13) + 1` additional entries = `floor((strlen(esi) + 12 + 13) / 13)` total
@@ -981,7 +981,7 @@ kproc fs.fat.create_directory ;/////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;-----------------------------------------------------------------------------------------------------------------------
-;       klog_   LOG_DEBUG, "fs.fat.create_directory('%s')\n", esi
+;       KLog    LOG_DEBUG, "fs.fat.create_directory('%s')\n", esi
 
         cmp     byte[esi], 0
         je      .access_denied_error
@@ -1041,7 +1041,7 @@ kproc fs.fat.create_directory ;/////////////////////////////////////////////////
         lea     edi, [ebx + fs.fat.partition_t.buffer + 512]
         push    edi
 
-        mov_s_  ecx, sizeof.fs.fat.dir_entry_t / 4
+        MovStk  ecx, sizeof.fs.fat.dir_entry_t / 4
 
         push    ecx esi
         rep
@@ -1084,7 +1084,7 @@ kproc fs.fat.create_file ;//////////////////////////////////////////////////////
 ;< eax #= error code
 ;< ebx #= bytes written (on success)
 ;-----------------------------------------------------------------------------------------------------------------------
-;       klog_   LOG_DEBUG, "fs.fat.create_file('%s')\n", esi
+;       KLog    LOG_DEBUG, "fs.fat.create_file('%s')\n", esi
 
         cmp     byte[esi], 0
         je      .access_denied_error
@@ -1162,7 +1162,7 @@ kproc fs.fat.write_file ;///////////////////////////////////////////////////////
 ;< eax #= error code
 ;< ebx #= bytes written (on success)
 ;-----------------------------------------------------------------------------------------------------------------------
-;       klog_   LOG_DEBUG, "fs.fat.write_file('%s')\n", esi
+;       KLog    LOG_DEBUG, "fs.fat.write_file('%s')\n", esi
 
         cmp     byte[esi], 0
         je      .access_denied_error
@@ -1252,7 +1252,7 @@ kproc fs.fat.truncate_file ;////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;-----------------------------------------------------------------------------------------------------------------------
-;       klog_   LOG_DEBUG, "fs.fat.truncate_file('%s')\n", esi
+;       KLog    LOG_DEBUG, "fs.fat.truncate_file('%s')\n", esi
 
         cmp     byte[esi], 0
         je      .access_denied_error
@@ -1286,7 +1286,7 @@ kproc fs.fat.truncate_file ;////////////////////////////////////////////////////
     @@: ; set file modification date/time to current
         call    fs.fat.util.update_datetime
 
-        mov_s_  [edi + fs.fat.dir_entry_t.size], dword[edx + fs.truncate_file_query_params_t.new_size]
+        MovStk  [edi + fs.fat.dir_entry_t.size], dword[edx + fs.truncate_file_query_params_t.new_size]
 
         mov     eax, [edi + fs.fat.dir_entry_t.size]
         call    fs.fat._.bytes_to_clusters
@@ -1346,25 +1346,25 @@ kproc fs.fat.truncate_file ;////////////////////////////////////////////////////
         ret
 
   .access_denied_error:
-        mov_s_  eax, ERROR_ACCESS_DENIED
+        MovStk  eax, ERROR_ACCESS_DENIED
         ret
 
   .disk_full_error_2:
         add     esp, 4
 
   .disk_full_error:
-        mov_s_  eax, ERROR_DISK_FULL
+        MovStk  eax, ERROR_DISK_FULL
         ret
 
   .device_error_2:
         add     esp, 4
 
   .device_error:
-        mov_s_  eax, ERROR_DEVICE_FAIL
+        MovStk  eax, ERROR_DEVICE_FAIL
         ret
 
   .file_not_found_error:
-        mov_s_  eax, ERROR_FILE_NOT_FOUND
+        MovStk  eax, ERROR_FILE_NOT_FOUND
         ret
 
   .fat_table_error_2:
@@ -1372,7 +1372,7 @@ kproc fs.fat.truncate_file ;////////////////////////////////////////////////////
 
   .fat_table_error:
         add     esp, 4
-        mov_s_  eax, ERROR_FAT_TABLE
+        MovStk  eax, ERROR_FAT_TABLE
         ret
 kendp
 
@@ -1383,7 +1383,7 @@ kproc fs.fat.get_file_info ;////////////////////////////////////////////////////
 ;> edx ^= fs.get_file_info_query_params_t
 ;> ebx ^= fs.fat.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
-;       klog_   LOG_DEBUG, "fs.fat.get_file_info('%s')\n", esi
+;       KLog    LOG_DEBUG, "fs.fat.get_file_info('%s')\n", esi
 
         cmp     byte[esi], 0
         je      .not_implemented_error
@@ -1419,7 +1419,7 @@ kproc fs.fat.set_file_info ;////////////////////////////////////////////////////
 ;> edx ^= fs.set_file_info_query_params_t
 ;> ebx ^= fs.fat.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
-;       klog_   LOG_DEBUG, "fs.fat.set_file_info('%s')\n", esi
+;       KLog    LOG_DEBUG, "fs.fat.set_file_info('%s')\n", esi
 
         cmp     byte[esi], 0
         je      .not_implemented_error
@@ -1459,7 +1459,7 @@ kproc fs.fat.delete_file ;//////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax #= error code
 ;-----------------------------------------------------------------------------------------------------------------------
-;       klog_   LOG_DEBUG, "fs.fat.delete_file('%s')\n", esi
+;       KLog    LOG_DEBUG, "fs.fat.delete_file('%s')\n", esi
 
         cmp     byte[esi], 0
         je      .access_denied_error ; cannot delete root
@@ -1637,7 +1637,7 @@ kproc fs.fat._.prev_dir_entry ;/////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> ebx ^= fs.fat.partition_t
 ;-----------------------------------------------------------------------------------------------------------------------
-        klog_   LOG_ERROR, "FIXME: not implemented: fs.fat._.prev_dir_entry\n"
+        KLog    LOG_ERROR, "FIXME: not implemented: fs.fat._.prev_dir_entry\n"
         mov     eax, ERROR_NOT_IMPLEMENTED
         stc
         ret
@@ -1759,11 +1759,11 @@ kproc fs.fat._.read_sector ;////////////////////////////////////////////////////
 ;< edi ^= buffer
 ;< eflags[zf] = 1 (ok) or 0 (error)
 ;-----------------------------------------------------------------------------------------------------------------------
-;       klog_   LOG_DEBUG, "fs.fat._.read_sector(0x%x:%u)\n", eax, eax
+;       KLog    LOG_DEBUG, "fs.fat._.read_sector(0x%x:%u)\n", eax, eax
         push    ecx edx
 
         xor     edx, edx
-        mov_s_  ecx, 1
+        MovStk  ecx, 1
         lea     edi, [ebx + fs.fat.partition_t.buffer]
         call    fs.read
 
@@ -1781,11 +1781,11 @@ kproc fs.fat._.write_sector ;///////////////////////////////////////////////////
 ;< eax #= error code
 ;< eflags[zf] = 1 (ok) or 0 (error)
 ;-----------------------------------------------------------------------------------------------------------------------
-;       klog_   LOG_DEBUG, "fs.fat._.write_sector(0x%x:%u)\n", eax, eax
+;       KLog    LOG_DEBUG, "fs.fat._.write_sector(0x%x:%u)\n", eax, eax
         push    ecx edx
 
         xor     edx, edx
-        mov_s_  ecx, 1
+        MovStk  ecx, 1
         lea     esi, [ebx + fs.fat.partition_t.buffer]
         call    fs.write
 

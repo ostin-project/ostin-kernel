@@ -30,43 +30,43 @@
 ; forcing full duplex mode makes sense at some cards and link types
 E3C59X_FORCE_FD = 1
 
-macro virt_to_dma reg
+macro VirtToDma _reg
 {
-        sub     reg, OS_BASE
+        sub     _reg, OS_BASE
 }
 
-macro dma_to_virt reg
+macro DmaToVirt _reg
 {
-        add     reg, OS_BASE
+        add     _reg, OS_BASE
 }
 
-macro zero_to_virt reg
-{
-}
-
-macro virt_to_zero reg
+macro ZeroToVirt reg
 {
 }
 
-macro zero_to_dma reg
+macro VirtToZero _reg
 {
-        sub     reg, OS_BASE
 }
 
-macro dma_to_zero reg
+macro ZeroToDma _reg
 {
-        add     reg, OS_BASE
+        sub     _reg, OS_BASE
 }
 
-macro strtbl name, [string]
+macro DmaToZero _reg
+{
+        add     _reg, OS_BASE
+}
+
+macro StringTable _name, [_string]
 {
   common
-    label name dword
+    label _name dword
   forward
     local label
     dd label
   forward
-    label db string, 0
+    label db _string, 0
 }
 
 ; Ethernet frame symbols
@@ -336,7 +336,7 @@ e3c59x_boomerang_str: db "boomerang", 0
 e3c59x_vortex_str:    db "vortex", 0
 e3c59x_link_type:     dd 0
 
-strtbl e3c59x_link_str, \
+StringTable e3c59x_link_str, \
   "No valid link type detected", \
   "10BASE-T half duplex", \
   "10BASE-T full-duplex", \
@@ -348,7 +348,7 @@ strtbl e3c59x_link_str, \
   "10Mbps COAX (BNC)", \
   "miiDevice - not supported"
 
-strtbl e3c59x_hw_str, \
+StringTable e3c59x_hw_str, \
   "3c590 Vortex 10Mbps", \
   "3c592 EISA 10Mbps Demon/Vortex", \
   "3c597 EISA Fast Demon/Vortex", \
@@ -409,17 +409,17 @@ kproc e3c59x_debug ;////////////////////////////////////////////////////////////
         jz      @f
         mov     esi, e3c59x_vortex_str
 
-    @@: klog_   LOG_DEBUG, "Detected hardware type: %s (%s)\n", [e3c59x_hw_str + ecx * 4], esi
+    @@: KLog    LOG_DEBUG, "Detected hardware type: %s (%s)\n", [e3c59x_hw_str + ecx * 4], esi
 
         ; print device/vendor
-        klog_   LOG_DEBUG, "Device ID: 0x%x\n", [pci_data + 2]:4
-        klog_   LOG_DEBUG, "Vendor ID: 0x%x\n", [pci_data]:4
+        KLog    LOG_DEBUG, "Device ID: 0x%x\n", [pci_data + 2]:4
+        KLog    LOG_DEBUG, "Vendor ID: 0x%x\n", [pci_data]:4
 
         ; print io address
-        klog_   LOG_DEBUG, "IO address: 0x%x\n", [io_addr]:4
+        KLog    LOG_DEBUG, "IO address: 0x%x\n", [io_addr]:4
 
         ; print MAC address
-        klog_   LOG_DEBUG, "MAC address: %x:%x:%x:%x:%x:%x\n", [node_addr]:2, [node_addr + 1]:2, [node_addr + 2]:2, \
+        KLog    LOG_DEBUG, "MAC address: %x:%x:%x:%x:%x:%x\n", [node_addr]:2, [node_addr + 1]:2, [node_addr + 2]:2, \
                 [node_addr + 3]:2, [node_addr + 4]:2, [node_addr + 5]:2
 
         ; print link type
@@ -428,7 +428,7 @@ kproc e3c59x_debug ;////////////////////////////////////////////////////////////
         jz      @f
         sub     ax, 4
 
-    @@: klog_   LOG_DEBUG, "Established link type: %s\n", [e3c59x_link_str + eax * 4]
+    @@: KLog    LOG_DEBUG, "Established link type: %s\n", [e3c59x_link_str + eax * 4]
 
         popad
         ret
@@ -1535,14 +1535,14 @@ kproc e3c59x_rx_reset ;/////////////////////////////////////////////////////////
         jz      .rx_enable
         ; create upd ring
         mov     eax, e3c59x_upd_buff
-        zero_to_virt eax
+        ZeroToVirt eax
         mov     [e3c59x_curr_upd], eax
         mov     esi, eax
-        virt_to_dma esi
+        VirtToDma esi
         mov     edi, e3c59x_rx_buff
-        zero_to_dma edi
+        ZeroToDma edi
         mov     ebx, e3c59x_upd_buff + (E3C59X_NUM_RX_DESC - 1) * E3C59X_UPD_SIZE
-        zero_to_virt ebx
+        ZeroToVirt ebx
         mov     cl, E3C59X_NUM_RX_DESC - 1
 
   .upd_loop:
@@ -1557,7 +1557,7 @@ kproc e3c59x_rx_reset ;/////////////////////////////////////////////////////////
         dec     cl
         jns     .upd_loop
         mov     eax, e3c59x_upd_buff
-        zero_to_dma eax
+        ZeroToDma eax
         lea     edx, [ebp + E3C59X_REG_UP_LIST_PTR]
         out     dx, eax ; write E3C59X_REG_UP_LIST_PTR
         lea     edx, [ebp + E3C59X_REG_COMMAND]
@@ -1940,7 +1940,7 @@ kproc e3c59x_vortex_transmit ;//////////////////////////////////////////////////
         push    esi
         mov     esi, edi
         mov     edi, e3c59x_tx_buff
-        zero_to_virt edi
+        ZeroToVirt edi
         ; copy destination address
         movsd
         movsw
@@ -1965,7 +1965,7 @@ kproc e3c59x_vortex_transmit ;//////////////////////////////////////////////////
         ; program frame address to be sent
         lea     edx, [ebp + E3C59X_REG_MASTER_ADDRESS]
         mov     eax, e3c59x_tx_buff
-        zero_to_dma eax
+        ZeroToDma eax
         out     dx, eax
         ; program frame length
         lea     edx, [ebp + E3C59X_REG_MASTER_LEN]
@@ -2011,7 +2011,7 @@ kproc e3c59x_boomerang_transmit ;///////////////////////////////////////////////
         mov     eax, e3c59x_dpd_buff - E3C59X_DPD_SIZE
 
     @@: add     eax, E3C59X_DPD_SIZE
-        zero_to_virt eax
+        ZeroToVirt eax
         push    eax
         ; check DnListPtr
         lea     edx, [ebp + E3C59X_REG_DN_LIST_PTR]
@@ -2033,7 +2033,7 @@ kproc e3c59x_boomerang_transmit ;///////////////////////////////////////////////
         mov     edi, e3c59x_tx_buff - E3C59X_MAX_ETH_FRAME_SIZE
 
     @@: add     edi, E3C59X_MAX_ETH_FRAME_SIZE
-        zero_to_virt edi
+        ZeroToVirt edi
         mov     eax, edi
         ; copy destination address
         movsd
@@ -2078,11 +2078,11 @@ kproc e3c59x_boomerang_transmit ;///////////////////////////////////////////////
         pop     eax
         and     dword[eax + E3C59X_DPD_DN_NEXT_PTR], 0
         mov     dword[eax + E3C59X_DPD_FRAME_START_HDR], ebx
-        virt_to_dma edi
+        VirtToDma edi
         mov     dword[eax + E3C59X_DPD_DN_FRAG_ADDR], edi
         mov     [eax + E3C59X_DPD_DN_FRAG_LEN], ecx
         ; calculate physical address
-        virt_to_dma eax
+        VirtToDma eax
         push    eax
         cmp     byte[e3c59x_dn_list_ptr_cleared], 0
         jz      .add_to_list
@@ -2109,7 +2109,7 @@ kproc e3c59x_boomerang_transmit ;///////////////////////////////////////////////
         pop     eax
         push    eax
         mov     ebx, [e3c59x_prev_dpd]
-        zero_to_virt ebx
+        ZeroToVirt ebx
         mov     [ebx], eax
         lea     edx, [ebp + E3C59X_REG_DN_LIST_PTR]
         in      eax, dx
@@ -2128,9 +2128,9 @@ kproc e3c59x_boomerang_transmit ;///////////////////////////////////////////////
 
   .finish:
         pop     eax
-        dma_to_zero eax
+        DmaToZero eax
         mov     [e3c59x_prev_dpd], eax
-        dma_to_zero edi
+        DmaToZero edi
         mov     [e3c59x_prev_tx_frame], edi
         ret
 kendp
@@ -2207,7 +2207,7 @@ kproc e3c59x_vortex_poll ;//////////////////////////////////////////////////////
 if defined E3C59X_LINUX
 
         mov     eax, e3c59x_rx_buff
-        zero_to_dma eax
+        ZeroToDma eax
 
 else
 
@@ -2291,7 +2291,7 @@ kproc e3c59x_boomerang_poll ;///////////////////////////////////////////////////
         push    ecx
         mov     [eth_rx_data_len], cx
         mov     esi, [eax + E3C59X_UPD_UP_FRAG_ADDR]
-        dma_to_virt esi
+        DmaToVirt esi
         mov     edi, Ether_buffer
         shr     ecx, 2 ; first copy dword-wise
         rep
@@ -2302,7 +2302,7 @@ kproc e3c59x_boomerang_poll ;///////////////////////////////////////////////////
         movsb   ; copy the rest bytes
         mov     eax, [e3c59x_curr_upd]
         and     dword[eax + E3C59X_UPD_PKT_STATUS], 0
-        virt_to_zero eax
+        VirtToZero eax
         cmp     eax, e3c59x_upd_buff + (E3C59X_NUM_RX_DESC - 1) * E3C59X_UPD_SIZE
         jb      .no_wrap
         ; wrap around
@@ -2310,7 +2310,7 @@ kproc e3c59x_boomerang_poll ;///////////////////////////////////////////////////
 
   .no_wrap:
         add     eax, E3C59X_UPD_SIZE
-        zero_to_virt eax
+        ZeroToVirt eax
         mov     [e3c59x_curr_upd], eax
 
   .finish:
@@ -2330,3 +2330,5 @@ kproc e3c59x_boomerang_poll ;///////////////////////////////////////////////////
         setnz   al
         ret
 kendp
+
+purge VirtToDma, DmaToVirt, ZeroToVirt, VirtToZero, ZeroToDma, DmaToZero, StringTable

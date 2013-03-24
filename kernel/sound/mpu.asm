@@ -69,7 +69,7 @@ kproc sysfn.midi_ctl ;//////////////////////////////////////////////////////////
 ;? System function 20
 ;-----------------------------------------------------------------------------------------------------------------------
 iglobal
-  jump_table sysfn.midi_ctl, subfn, sysfn.not_implemented, \
+  JumpTable sysfn.midi_ctl, subfn, sysfn.not_implemented, \
     reset, \ ; 1
     output_byte ; 2
 endg

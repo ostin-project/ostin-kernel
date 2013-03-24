@@ -685,7 +685,7 @@ end if
 
 ;       xchg    bx, bx
 ;       add     esp, 12 ; clear in stack: locals(.err_addr) + #PF + ret_to_caller
-;       restore_ring3_context
+;       RestoreRing3Context
 ;       iretd
 
   .user_space:
@@ -720,7 +720,7 @@ end if
   .exit:
         ; iret with repeat fault instruction
         add     esp, 12 ; clear in stack: locals(.err_addr) + #PF + ret_to_caller
-        restore_ring3_context
+        RestoreRing3Context
         iretd
 
   .err_access:
@@ -1061,7 +1061,7 @@ kproc sysfn.ipc_ctl ;///////////////////////////////////////////////////////////
 ;? System function 60
 ;-----------------------------------------------------------------------------------------------------------------------
 iglobal
-  jump_table sysfn.ipc_ctl, subfn, sysfn.not_implemented, \
+  JumpTable sysfn.ipc_ctl, subfn, sysfn.not_implemented, \
     set_buffer, \ ; 1
     send_message ; 2
 endg
@@ -1311,7 +1311,7 @@ kproc sysfn.system_service ;////////////////////////////////////////////////////
 ;? System function 68
 ;-----------------------------------------------------------------------------------------------------------------------
 iglobal
-  jump_table sysfn.system_service, subfn, sysfn.not_implemented, \
+  JumpTable sysfn.system_service, subfn, sysfn.not_implemented, \
     get_task_switch_counter, \ ; 0
     change_task, \ ; 1
     performance_ctl, \ ; 2

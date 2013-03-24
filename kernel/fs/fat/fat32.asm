@@ -48,7 +48,7 @@ fs.fat16.delete_file      = fs.fat32.delete_file
 fs.fat16.create_directory = fs.fat32.create_directory
 
 iglobal
-  jump_table fs.fat16, vftbl, 0, \
+  JumpTable fs.fat16, vftbl, 0, \
     read_file, \
     read_directory, \
     create_file, \
@@ -59,7 +59,7 @@ iglobal
     -, \
     delete_file, \
     create_directory
-  jump_table fs.fat32, vftbl, 0, \
+  JumpTable fs.fat32, vftbl, 0, \
     read_file, \
     read_directory, \
     create_file, \
@@ -99,7 +99,7 @@ kproc fs.fat.fat32.create_from_base ;///////////////////////////////////////////
 ;> ecx @= BPB version, pack[16(0), 8(major), 8(minor)]
 ;> edi ^= BPB
 ;-----------------------------------------------------------------------------------------------------------------------
-        klog_   LOG_DEBUG, "fs.fat.fat32.create_from_base\n"
+        KLog    LOG_DEBUG, "fs.fat.fat32.create_from_base\n"
 
         xor     eax, eax
         ret
@@ -646,7 +646,7 @@ kproc add_disk_free_space ;/////////////////////////////////////////////////////
         jne     .add_not_fs
 
         add     [ebx + 0x1e8], ecx
-        mov_s_  dword[ebx + 0x1ec], [fat16x_data.fatStartScan]
+        MovStk  dword[ebx + 0x1ec], [fat16x_data.fatStartScan]
         call    hd_write
 ;       cmp     [hd_error], 0
 ;       jne     .add_not_fs
@@ -1294,7 +1294,7 @@ kproc fat16_root_next_sector ;//////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? read next sector
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov_s_  [longname_sec1], [longname_sec2]
+        MovStk  [longname_sec1], [longname_sec2]
         push    ecx
         mov     ecx, [eax + 4]
         push    ecx
@@ -1378,7 +1378,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc fat_notroot_next_sector ;/////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov_s_  [longname_sec1], [longname_sec2]
+        MovStk  [longname_sec1], [longname_sec2]
         push    eax
         call    fat_get_sector
         mov     [longname_sec2], eax
@@ -1754,7 +1754,7 @@ kproc fs.fat32.create_file ;////////////////////////////////////////////////////
         mov     ecx, 8
         repnz
         scasb
-        mov_s_  eax, 1 ; 1 entry
+        MovStk  eax, 1 ; 1 entry
         jnz     .notilde
         ; we need ceil(strlen(esi)/13) additional entries = floor((strlen(esi)+12+13)/13) total
         xor     eax, eax
@@ -2445,7 +2445,7 @@ kproc hd_extend_file ;//////////////////////////////////////////////////////////
 
   .disk_full:
         pop     eax edx ebp
-        mov_s_  eax, ERROR_DISK_FULL
+        MovStk  eax, ERROR_DISK_FULL
         cmp     [hd_error], 0
         jz      @f
         mov     al, ERROR_DEVICE_FAIL
@@ -2619,7 +2619,7 @@ kproc fs.fat32.truncate_file ;//////////////////////////////////////////////////
 
   .device_err3:
         pop     eax ecx eax edi
-        mov_s_  eax, ERROR_DEVICE_FAIL
+        MovStk  eax, ERROR_DEVICE_FAIL
         ret
 
     @@: ; we will zero data at the end of last sector - remember it
@@ -2839,7 +2839,7 @@ kproc fs.fat32.delete_file ;////////////////////////////////////////////////////
 
   .err2:
         pop     edi
-        mov_s_  eax, ERROR_DEVICE_FAIL
+        MovStk  eax, ERROR_DEVICE_FAIL
         ret
 
   .notempty:
@@ -2873,7 +2873,7 @@ kproc fs.fat32.delete_file ;////////////////////////////////////////////////////
         cmp     [longname_sec2], 0
         jz      .lfndone
         push    [longname_sec2]
-        mov_s_  [longname_sec2], [longname_sec1]
+        MovStk  [longname_sec2], [longname_sec1]
         and     [longname_sec1], 0
         push    ebx
         mov     ebx, buffer

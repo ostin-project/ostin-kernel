@@ -136,7 +136,7 @@ FindHDD: ;//////////////////////////////////////////////////////////////////////
   .exit:
         mov     edx, eax
         mov     ecx, blkdev_list
-        list_add_tail edx, ecx
+        ListAppend edx, ecx
 
   .error:
         ret
@@ -159,7 +159,7 @@ kproc check_for_ide_controller ;////////////////////////////////////////////////
         cmp     ax, 0x0101 ; Mass Storage Controller / IDE Controller
         jne     .exit
 
-        klog_   LOG_DEBUG, "Mass Storage Controller / IDE Controller found\n"
+        KLog    LOG_DEBUG, "Mass Storage Controller / IDE Controller found\n"
 
         ; ...
 

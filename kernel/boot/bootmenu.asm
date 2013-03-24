@@ -146,7 +146,7 @@ kproc boot.set_int_handler ;////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         cli
         push    es bx
-        mov_s_  es, 0
+        MovStk  es, 0
         movzx   bx, cl
         shl     bx, 2
         push    dword[es:bx]
@@ -163,7 +163,7 @@ kproc boot.print_timer_char ;///////////////////////////////////////////////////
 ;> al #= char to display
 ;-----------------------------------------------------------------------------------------------------------------------
         push    es
-        mov_s_  es, 0xb800
+        MovStk  es, 0xb800
         mov     [es:80 * 25 * 2 - 4], al
         pop     es
         ret
@@ -173,7 +173,7 @@ kendp
 kproc boot.int8_handler ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    ds
-        mov_s_  ds, cs
+        MovStk  ds, cs
         pushf
         call    [boot.data.old_int8_handler]
 
@@ -257,8 +257,8 @@ kproc boot.run_menu ;///////////////////////////////////////////////////////////
         call    boot.print_crlf
 
         push    ds bx
-        mov_s_  si, [bx + boot_menu_data_t.items]
-        mov_s_  bx, [bx + boot_menu_data_t.print_callback]
+        MovStk  si, [bx + boot_menu_data_t.items]
+        MovStk  bx, [bx + boot_menu_data_t.print_callback]
         xor     cx, cx
         mov     dx, bp
         lodsw
@@ -282,7 +282,7 @@ if KCONFIG_DEBUG
         add     ah, 'a' - '9' - 1
     @@: add     ax, '00'
         push    es
-        mov_s_  es, 0xb800
+        MovStk  es, 0xb800
         mov     [es:0], ah
         mov     [es:2], al
         pop     es

@@ -207,7 +207,7 @@ kproc blk.ata.ctl.read_pio ;////////////////////////////////////////////////////
 ;> ecx #= size (in blocks)
 ;> edi ^= destination buffer
 ;-----------------------------------------------------------------------------------------------------------------------
-;       klog_   LOG_DEBUG, "blk.ata.ctl.read_pio(0x%x, %u, %u)\n", ebx, eax, ecx
+;       KLog    LOG_DEBUG, "blk.ata.ctl.read_pio(0x%x, %u, %u)\n", ebx, eax, ecx
         push    edi
 
   .next_sectors_block:
@@ -272,7 +272,7 @@ kproc blk.ata.ctl.read_pio ;////////////////////////////////////////////////////
 
   .error_2:
         ; TODO: add error code
-        mov_s_  eax, 8
+        MovStk  eax, 8
 
   .error:
         add     esp, 8
@@ -301,7 +301,7 @@ kproc blk.ata.ctl.write_pio ;///////////////////////////////////////////////////
 ;> ecx #= size (in blocks)
 ;> esi ^= source buffer
 ;-----------------------------------------------------------------------------------------------------------------------
-;       klog_   LOG_DEBUG, "blk.ata.ctl.write_pio(0x%x, %u, %u)\n", ebx, eax, ecx
+;       KLog    LOG_DEBUG, "blk.ata.ctl.write_pio(0x%x, %u, %u)\n", ebx, eax, ecx
         push    esi
 
   .next_sectors_block:
@@ -377,7 +377,7 @@ kproc blk.ata.ctl.write_pio ;///////////////////////////////////////////////////
 
   .error_2:
         ; TODO: add error code
-        mov_s_  eax, 8
+        MovStk  eax, 8
 
   .error:
         add     esp, 8
@@ -467,7 +467,7 @@ kproc blk.ata.ctl._.poll_bsy ;//////////////////////////////////////////////////
 
   .no_device_error:
         ; TODO: add error code
-        mov_s_  eax, 7
+        MovStk  eax, 7
 
   .exit:
         pop     edx ecx
@@ -506,7 +506,7 @@ kproc blk.ata.ctl._.check_for_drq ;/////////////////////////////////////////////
         ret
 
   .device_error:
-        mov_s_  eax, 6
+        MovStk  eax, 6
         ret
 kendp
 
@@ -524,7 +524,7 @@ kproc blk.ata.ctl._.wait_for_drq ;//////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> ebx ^= blk.ata.ctl.device_t
 ;-----------------------------------------------------------------------------------------------------------------------
-;       klog_   LOG_DEBUG, "blk.ata.ctl._.wait_for_drq(0x%x)\n", ebx
+;       KLog    LOG_DEBUG, "blk.ata.ctl._.wait_for_drq(0x%x)\n", ebx
 
         call    blk.ata.ctl._.poll_bsy
         test    eax, eax
@@ -541,7 +541,7 @@ kproc blk.ata.ctl._.wait_for_drdy ;/////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> ebx ^= blk.ata.ctl.device_t
 ;-----------------------------------------------------------------------------------------------------------------------
-;       klog_   LOG_DEBUG, "blk.ata.ctl._.wait_for_drdy(0x%x)\n", ebx
+;       KLog    LOG_DEBUG, "blk.ata.ctl._.wait_for_drdy(0x%x)\n", ebx
 
         call    blk.ata.ctl._.poll_bsy
         test    eax, eax

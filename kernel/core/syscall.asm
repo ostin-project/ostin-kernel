@@ -90,10 +90,11 @@ kendp
 kproc sysfn.not_implemented ;///////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         ; TODO: kill offensive process
-        mov     eax, [current_slot_ptr]
-        add     eax, legacy.slot_t.app.app_name
-        klog_   LOG_ERROR, "unknown sysfn: %u:%u:%u (%s)\n", [esp + 4 + regs_context32_t.eax], \
-                [esp + 4 + regs_context32_t.ebx], [esp + 4 + regs_context32_t.ecx], eax:PROCESS_MAX_NAME_LEN
+        mov     ecx, [current_slot_ptr]
+        lea     eax, [ecx + legacy.slot_t.app.app_name]
+        KLog    LOG_ERROR, "unknown sysfn: %u:%u:%u (#%u, %s)\n", [esp + 4 + regs_context32_t.eax], \
+                [esp + 4 + regs_context32_t.ebx], [esp + 4 + regs_context32_t.ecx], [ecx + legacy.slot_t.task.pid], \
+                eax:PROCESS_MAX_NAME_LEN
         or      [esp + 4 + regs_context32_t.eax], -1
         ret
 kendp
@@ -102,10 +103,11 @@ kendp
 kproc sysfn.not_implemented_cross_order ;///////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         ; TODO: kill offensive process
-        mov     eax, [current_slot_ptr]
-        add     eax, legacy.slot_t.app.app_name
-        klog_   LOG_ERROR, "unknown sysfn (xo): %u:%u:%u (%s)\n", [esp + 8 + regs_context32_t.eax], \
-                [esp + 8 + regs_context32_t.ebx], [esp + 8 + regs_context32_t.ecx], eax:PROCESS_MAX_NAME_LEN
+        mov     ecx, [current_slot_ptr]
+        lea     eax, [ecx + legacy.slot_t.app.app_name]
+        KLog    LOG_ERROR, "unknown sysfn (xo): %u:%u:%u (#%u, %s)\n", [esp + 8 + regs_context32_t.eax], \
+                [esp + 8 + regs_context32_t.ebx], [esp + 8 + regs_context32_t.ecx], [ecx + legacy.slot_t.task.pid], \
+                eax:PROCESS_MAX_NAME_LEN
         or      [esp + 8 + regs_context32_t.eax], -1
         ret
 kendp

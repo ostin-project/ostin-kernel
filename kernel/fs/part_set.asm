@@ -131,7 +131,7 @@ kproc fs.detect_by_mbr_part_entry ;/////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;< eax ^= fs.partition_t (ok; newly allocated) or 0 (error)
 ;-----------------------------------------------------------------------------------------------------------------------
-        klog_   LOG_DEBUG, "* MBR entry type = %x\n", [ecx + mbr_part_entry_t.type]:2
+        KLog    LOG_DEBUG, "* MBR entry type = %x\n", [ecx + mbr_part_entry_t.type]:2
         mov     esi, mbr_part_handlers
 
   .next_handler:
@@ -166,9 +166,9 @@ if KCONFIG_FS_EXT2
 
         add     esp, -512
         mov     edi, esp
-        mov_s_  eax, 2
+        MovStk  eax, 2
         cdq
-        mov_s_  ecx, 1
+        MovStk  ecx, 1
         push    edi
         call    fs.read
         pop     edi
@@ -187,7 +187,7 @@ if KCONFIG_FS_EXT2
         test    eax, not EXT2_FEATURE_INCOMPAT_FILETYPE
         jnz     .error_2
 
-        klog_   LOG_DEBUG, "* ext2 found\n"
+        KLog    LOG_DEBUG, "* ext2 found\n"
 
         call    fs.ext2.create_from_base
 
@@ -245,7 +245,7 @@ kproc fs.detect_by_mbr_part_entry.bpb_based ;///////////////////////////////////
         mov     edi, esp
         xor     eax, eax
         cdq
-        mov_s_  ecx, 1
+        MovStk  ecx, 1
         push    edi
         call    fs.read
         pop     edi
@@ -293,7 +293,7 @@ kproc fs.detect_by_mbr_part_entry.bpb_based ;///////////////////////////////////
 ;       jmp     .find_creator
 
   .find_creator:
-        klog_   LOG_DEBUG, "* v%u.%u BPB found\n", ch, cl
+        KLog    LOG_DEBUG, "* v%u.%u BPB found\n", ch, cl
 
         mov     esi, bpb_based_creators
 
@@ -328,7 +328,7 @@ kproc fs.detect_by_mbr_part_entry.bpb_based ;///////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
   .validate_bpb_fs_type: ;::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ;-----------------------------------------------------------------------------------------------------------------------
-        klog_   LOG_DEBUG, "* validating FS type: '%s'\n", edx:8
+        KLog    LOG_DEBUG, "* validating FS type: '%s'\n", edx:8
         mov     ecx, 8
         push    edx
 
@@ -350,13 +350,13 @@ kproc fs.detect_by_mbr_part_entry.bpb_based ;///////////////////////////////////
         dec     ecx
         jnz     .next_char
 
-        klog_   LOG_DEBUG, "  valid\n"
+        KLog    LOG_DEBUG, "  valid\n"
         pop     edx
         clc
         ret
 
   .invalid:
-        klog_   LOG_DEBUG, "  invalid\n"
+        KLog    LOG_DEBUG, "  invalid\n"
         pop     edx
         stc
         ret

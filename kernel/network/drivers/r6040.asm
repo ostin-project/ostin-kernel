@@ -260,16 +260,6 @@ proc r6040_phy_write stdcall, phy_addr:dword, reg:dword, val:dword ;////////////
         ret
 endp
 
-macro r6040_mdio_write reg, val
-{
-        stdcall r6040_phy_read, [io_addr], [r6040_private.phy_addr], reg
-}
-
-macro r6040_mdio_write reg, val
-{
-        stdcall r6040_phy_write, [io_addr], [r6040_private.phy_addr], reg, val
-}
-
 ;-----------------------------------------------------------------------------------------------------------------------
 proc r6040_init_ring_desc stdcall, desc_ring:dword, size:dword ;////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -334,7 +324,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc r6040_probe ;/////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        klog_   LOG_DEBUG, "Probing r6040\n"
+        KLog    LOG_DEBUG, "Probing r6040\n"
 
         stdcall adjust_pci_device, dword[pci_bus], dword[pci_dev]
 
@@ -366,7 +356,7 @@ kproc r6040_probe ;/////////////////////////////////////////////////////////////
         or      eax, [node_addr]
         test    eax, eax
         jnz     @f
-        klog_   LOG_WARNING, "MAC address not initialized\n" ; , generating random"
+        KLog    LOG_WARNING, "MAC address not initialized\n" ; , generating random"
         ; TODO: Add here generate function call!
         ;       Temporary workaround: init by constant adress
         mov     dword[node_addr], 0x00006000
@@ -381,7 +371,7 @@ kproc r6040_probe ;/////////////////////////////////////////////////////////////
         stdcall r6040_phy_read, 1, 2
         cmp     ax, 0xffff
         jne     @f
-        klog_   LOG_ERROR, "Failed to detect an attached PHY\n" ; , generating random"
+        KLog    LOG_ERROR, "Failed to detect an attached PHY\n" ; , generating random"
         mov     eax, -1
         ret
 
@@ -453,7 +443,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc r6040_reset ;/////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        klog_   LOG_DEBUG, "Resetting r6040\n"
+        KLog    LOG_DEBUG, "Resetting r6040\n"
 
         push    eax ecx edx
         ; Mask off Interrupt
@@ -546,7 +536,7 @@ kproc r6040_reset ;/////////////////////////////////////////////////////////////
 
         pop     edx ecx eax
 
-        klog_   LOG_DEBUG, "reset ok!\n"
+        KLog    LOG_DEBUG, "reset ok!\n"
 
         ; Indicate that we have successfully reset the card
         mov     eax, [pci_data]
@@ -703,7 +693,7 @@ kproc r6040_transmit ;//////////////////////////////////////////////////////////
         movzx   eax, [r6040_private.cur_tx]
         shl     eax, 5
 
-;       klog_   LOG_DEBUG, "R6040: TX buffer status: 0x%x, eax=%u\n", [eax + r6040_tx_ring + r6040_x_head.status]:4, eax
+;       KLog    LOG_DEBUG, "R6040: TX buffer status: 0x%x, eax=%u\n", [eax + r6040_tx_ring + r6040_x_head.status]:4, eax
 
         test    [r6040_tx_ring + eax + r6040_x_head.status], 0x8000 ; check if buffer is available
         jz      .l3
@@ -723,7 +713,7 @@ kproc r6040_transmit ;//////////////////////////////////////////////////////////
 
   .l4:
         pop     esi ecx
-        klog_   LOG_ERROR, "R6040: Send timeout\n"
+        KLog    LOG_ERROR, "R6040: Send timeout\n"
         jmp     .out
 
   .l5:

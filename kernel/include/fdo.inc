@@ -26,202 +26,209 @@ LOG_ERROR   = 5
 LOG_INFO    = 6
 LOG_NONE    = 7
 
-macro DEBUGS _sign, [_str] {
- common
-  local tp
-  tp equ 0
-  match _arg:_num, _str \{
-   DEBUGS_N _sign, _num, _arg
-   tp equ 1
-  \}
-  match =0 _arg, tp _str \{
-   DEBUGS_N _sign, , _arg
-  \}
-}
-
-macro DEBUGS_N _sign, _num, [_str] {
- common
-  pushf
-  pushad
-  local ..str, ..label, is_str
-  is_str = 0
- forward
-  if _str eqtype ''
-   is_str = 1
-  end if
- common
-  if is_str = 1
-   jmp ..label
-   ..str db _str, 0
-   ..label:
-   mov  edx, ..str
-  else
-   esp equ esp + 4 * 8 + 4 + DEBUGF_ESP_ADD
-   mov  edx, _str
-   restore esp
-  end if
-  if ~_num eq
-   if _num eqtype eax
-    if _num in <eax, ebx, ecx, edx, edi, ebp, esp>
-     mov esi, _num
-    else if ~_num eq esi
-     movzx esi, _num
-    end if
-   else if _num eqtype 0
-    mov esi, _num
-   else
+macro KLog.PrintString _sign, [_str]
+{
+  common
     local tp
     tp equ 0
-    match [_arg], _num \{
-     mov esi, dword[_arg]
-     tp equ 1
+    match _arg:_num, _str
+    \{
+      KLog.PrintStringWithWidth _sign, _num, _arg
+      tp equ 1
     \}
-    match =0 =dword[_arg], tp _num \{
-     mov esi, dword[_arg]
-     tp equ 1
+    match =0 _arg, tp _str
+    \{
+      KLog.PrintStringWithWidth _sign, , _arg
     \}
-    match =0 =word[_arg], tp _num \{
-     movzx esi, word[_arg]
-     tp equ 1
-    \}
-    match =0 =byte[_arg], tp _num \{
-     movzx esi, byte[_arg]
-     tp equ 1
-    \}
-    match =0, tp \{
-     'Error: specified string width is incorrect'
-    \}
-   end if
-  else
-   mov esi, 0x7fffffff
+}
+
+macro KLog.PrintStringWithWidth _sign, _num, [_str]
+{
+  common
+    pushad
+    local ..str, ..label, is_str
+    is_str = 0
+  forward
+    if _str eqtype ''
+      is_str = 1
+    end if
+  common
+    if is_str = 1
+      jmp ..label
+      ..str db _str, 0
+      ..label:
+      mov  edx, ..str
+    else
+      esp equ esp + 4 * 8 + add_esp@KLog
+      mov  edx, _str
+      restore esp
+    end if
+    if ~_num eq
+      if _num eqtype eax
+        if _num in <eax, ebx, ecx, edx, edi, ebp, esp>
+          mov esi, _num
+        else if ~_num eq esi
+          movzx esi, _num
+        end if
+      else if _num eqtype 0
+        mov esi, _num
+      else
+        local tp
+        tp equ 0
+        match [_arg], _num
+        \{
+          mov esi, dword[_arg]
+          tp equ 1
+        \}
+        match =0 =dword[_arg], tp _num
+        \{
+          mov esi, dword[_arg]
+          tp equ 1
+        \}
+        match =0 =word[_arg], tp _num
+        \{
+          movzx esi, word[_arg]
+          tp equ 1
+        \}
+        match =0 =byte[_arg], tp _num
+        \{
+          movzx esi, byte[_arg]
+          tp equ 1
+        \}
+        match =0, tp
+        \{
+          err 'Error: specified string width is incorrect'
+        \}
+      end if
+    else
+      mov esi, 0x7fffffff
+    end if
+    call fdo.debug_outstr
+    popad
+}
+
+macro KLog.PrintDecNumber _sign, _dec
+{
+  local tp
+  tp equ 0
+  match _arg:_num, _dec
+  \{
+    KLog.PrintDecNumberWithWidth _sign, _num, _arg
+    tp equ 1
+  \}
+  match =0 _arg, tp _dec
+  \{
+    KLog.PrintDecNumberWithWidth _sign, , _arg
+  \}
+}
+
+macro KLog.PrintDecNumberWithWidth _sign, _num, _dec
+{
+  pushad
+  if (~_num eq)
+    if (_dec eqtype eax | _dec eqtype 0)
+      err 'Error: precision allowed only for in-memory variables'
+    end if
+    if (~_num in <1, 2, 4>)
+      err 'Error: 1, 2 and 4 are only allowed for precision in %d and %u'
+    end if
   end if
-  call fdo.debug_outstr
+  if _dec eqtype eax
+    if _dec in <ebx, ecx, edx, esi, edi, ebp, esp>
+      mov eax, _dec
+    else if ~_dec eq eax
+      if _sign = 1
+        movsx eax, _dec
+      else
+        movzx eax, _dec
+      end if
+    end if
+  else if _dec eqtype 0
+    mov eax, _dec
+  else
+    esp equ esp + 4 * 8 + add_esp@KLog
+    if _num eq
+      mov eax, dword _dec
+    else if _num = 1
+      if _sign = 1
+        movsx eax, byte _dec
+      else
+        movzx eax, byte _dec
+      end if
+    else if _num = 2
+      if _sign = 1
+        movsx eax, word _dec
+      else
+        movzx eax, word _dec
+      end if
+    else
+      mov eax, dword _dec
+    end if
+    restore esp
+  end if
+  mov cl, _sign
+  call fdo.debug_outdec
   popad
-  popf
 }
 
-macro DEBUGD _sign, _dec {
- local tp
- tp equ 0
- match _arg:_num, _dec \{
-  DEBUGD_N _sign, _num, _arg
-  tp equ 1
- \}
- match =0 _arg, tp _dec \{
-  DEBUGD_N _sign, , _arg
- \}
+macro KLog.PrintHexNumber _sign, _hex
+{
+  local tp
+  tp equ 0
+  match _arg:_num, _hex
+  \{
+    KLog.PrintHexNumberWithWidth _sign, _num, _arg
+    tp equ 1
+  \}
+  match =0 _arg, tp _hex
+  \{
+    KLog.PrintHexNumberWithWidth _sign, , _arg
+  \}
 }
 
-macro DEBUGD_N _sign, _num, _dec {
- pushf
- pushad
- if (~_num eq)
-  if (_dec eqtype eax | _dec eqtype 0)
-   err 'Error: precision allowed only for in-memory variables'
+macro KLog.PrintHexNumberWithWidth _sign, _num, _hex
+{
+  pushad
+  if (~_num eq) & (~_num in <1, 2, 3, 4, 5, 6, 7, 8>)
+    err 'Error: 1..8 are only allowed for precision in %x'
   end if
-  if (~_num in <1, 2, 4>)
-   if _sign
-    err 'Error: 1, 2 and 4 are only allowed for precision in %d'
-   else
-    err 'Error: 1, 2 and 4 are only allowed for precision in %u'
-   end if
-  end if
- end if
- if _dec eqtype eax
-  if _dec in <ebx, ecx, edx, esi, edi, ebp, esp>
-   mov eax, _dec
-  else if ~_dec eq eax
-   if _sign = 1
-    movsx eax, _dec
-   else
-    movzx eax, _dec
-   end if
-  end if
- else if _dec eqtype 0
-  mov eax, _dec
- else
-  esp equ esp + 4 * 8 + 4 + DEBUGF_ESP_ADD
-  if _num eq
-   mov eax, dword _dec
-  else if _num = 1
-   if _sign = 1
-    movsx eax, byte _dec
-   else
-    movzx eax, byte _dec
-   end if
-  else if _num = 2
-   if _sign = 1
-    movsx eax, word _dec
-   else
-    movzx eax, word _dec
-   end if
-  else
-   mov eax, dword _dec
-  end if
-  restore esp
- end if
- mov cl, _sign
- call fdo.debug_outdec
- popad
- popf
-}
-
-macro DEBUGH _sign, _hex {
- local tp
- tp equ 0
- match _arg:_num, _hex \{
-  DEBUGH_N _sign, _num, _arg
-  tp equ 1
- \}
- match =0 _arg, tp _hex \{
-  DEBUGH_N _sign, , _arg
- \}
-}
-
-macro DEBUGH_N _sign, _num, _hex {
- pushf
- pushad
- if (~_num eq) & (~_num in <1, 2, 3, 4, 5, 6, 7, 8>)
-  err 'Error: 1..8 are only allowed for precision in %x'
- end if
- if _hex eqtype eax
-  if _hex in <eax, ebx, ecx, edx, esi, edi, ebp, esp>
-   if ~_hex eq eax
+  if _hex eqtype eax
+    if _hex in <eax, ebx, ecx, edx, esi, edi, ebp, esp>
+      if ~_hex eq eax
+        mov eax, _hex
+      end if
+      mov edx, 8
+    else if _hex in <ax, bx, cx, dx, si, di, bp, sp>
+      if ~_hex eq ax
+        movzx eax, _hex
+      end if
+      if (_num eq)
+        mov edx, 4
+      end if
+    else if _hex in <al, ah, bl, bh, cl, ch, dl, dh>
+      if ~_hex eq al
+        movzx eax, _hex
+      end if
+      if (_num eq)
+        mov edx, 2
+      end if
+    end if
+  else if _hex eqtype 0
     mov eax, _hex
-   end if
-   mov edx, 8
-  else if _hex in <ax, bx, cx, dx, si, di, bp, sp>
-   if ~_hex eq ax
-    movzx eax, _hex
-   end if
-   if (_num eq)
-    mov edx, 4
-   end if
-  else if _hex in <al, ah, bl, bh, cl, ch, dl, dh>
-   if ~_hex eq al
-    movzx eax, _hex
-   end if
-   if (_num eq)
-    mov edx, 2
-   end if
+  else
+    esp equ esp + 4 * 8 + add_esp@KLog
+    mov eax, dword _hex
+    restore esp
   end if
- else if _hex eqtype 0
-  mov eax, _hex
- else
-  esp equ esp + 4 * 8 + 4 + DEBUGF_ESP_ADD
-  mov eax, dword _hex
-  restore esp
- end if
- if ~_num eq
-  mov edx, _num
- else
-  if ~_hex eqtype eax
-   mov edx, 8
+  if ~_num eq
+    mov edx, _num
+  else
+    if ~_hex eqtype eax
+      mov edx, 8
+    end if
   end if
- end if
- call fdo.debug_outhex
- popad
- popf
+  call fdo.debug_outhex
+  popad
 }
 
 ;-----------------------------------------------------------------------------
@@ -309,58 +316,58 @@ kendp
 
 ;-----------------------------------------------------------------------------
 
-macro __debugf_output_next_str
+macro KLog.PrintNextPlainPart
 {
   local p1, p2, c
-  debugf@char = 0
-  _debug_str_ equ __debug_str_ # c
-  p1 = debugf@pos
+  fmt_char@KLog = 0
+  str_id@KLog equ str_id@KLog # c
+  p1 = pos@KLog
   virtual at 0
-    db debugf@fmt
-    while debugf@pos < debugf@len
-      load c from debugf@pos
+    db fmt_str@KLog
+    while pos@KLog < len@KLog
+      load c from pos@KLog
       if c = '%'
-        load c from debugf@pos + 1
+        load c from pos@KLog + 1
         if c <> '%'
-          debugf@char = c
+          fmt_char@KLog = c
           break
         end if
-        debugf@pos = debugf@pos + 1
+        pos@KLog = pos@KLog + 1
       end if
-      debugf@pos = debugf@pos + 1
+      pos@KLog = pos@KLog + 1
     end while
   end virtual
-  p2 = debugf@pos
+  p2 = pos@KLog
   if p2 - p1 > 0
-    __debug_strings equ __debug_strings, _debug_str_, <debugf@fmt>, p1, p2 - p1
-    DEBUGS 0, _debug_str_ : p2 - p1
+    all_strs@KLog equ all_strs@KLog, str_id@KLog, <fmt_str@KLog>, p1, p2 - p1
+    KLog.PrintString 0, str_id@KLog : p2 - p1
   end if
 }
 
-macro DEBUGF _format, [_arg]
+macro KLog.Print _format, [_arg]
 {
   common
-    debugf@fmt equ _format
-    debugf@pos = 0
+    fmt_str@KLog equ _format
+    pos@KLog = 0
     virtual at 0
       db _format
-      debugf@len = $
+      len@KLog = $
     end virtual
   forward
-    __debugf_output_next_str
-    if debugf@char
+    KLog.PrintNextPlainPart
+    if fmt_char@KLog
       if _arg eq
         err 'Error: less arguments than expected'
       end if
-      debugf@pos = debugf@pos + 2
-      if debugf@char = 's'
-        DEBUGS 0, _arg
-      else if debugf@char = 'x'
-        DEBUGH 0, _arg
-      else if debugf@char = 'd'
-        DEBUGD 1, _arg
-      else if debugf@char = 'u'
-        DEBUGD 0, _arg
+      pos@KLog = pos@KLog + 2
+      if fmt_char@KLog = 's'
+        KLog.PrintString 0, _arg
+      else if fmt_char@KLog = 'x'
+        KLog.PrintHexNumber 0, _arg
+      else if fmt_char@KLog = 'd'
+        KLog.PrintDecNumber 1, _arg
+      else if fmt_char@KLog = 'u'
+        KLog.PrintDecNumber 0, _arg
       else
         err 'Error: invalid format string'
       end if
@@ -370,11 +377,10 @@ macro DEBUGF _format, [_arg]
       end if
     end if
   common
-    __debugf_output_next_str
-    purge debugf@fmt
+    KLog.PrintNextPlainPart
 }
 
-macro __include_debug_strings dummy, [_id, _fmt, _pos, _len] {
+macro KLog.IncludeDebugStringsImpl _dummy, [_id, _fmt, _pos, _len] {
   common
     local p, l, c
   forward
@@ -398,29 +404,13 @@ macro __include_debug_strings dummy, [_id, _fmt, _pos, _len] {
     end if
 }
 
-macro include_debug_strings {
-  match =1 dbg_str, KCONFIG_DEBUG __debug_strings \{
-    __include_debug_strings dbg_str
+macro KLog.IncludeDebugStrings {
+  match =1 _dbg_str, KCONFIG_DEBUG all_strs@KLog \{
+    KLog.IncludeDebugStringsImpl _dbg_str
   \}
 }
 
-macro klog_ _level, _format, [_args]
-{
-  common
-    match =1, KCONFIG_DEBUG
-    \{
-     if _level >= KCONFIG_DEBUG_LEVEL
-       pushfd
-       cli
-       DEBUGF_ESP_ADD equ 4
-       DEBUGF <"K : ", _format>, _args
-       restore DEBUGF_ESP_ADD
-       popfd
-     end if
-   \}
-}
-
-macro klog2_ _level, _format, [_args]
+macro KLog _level, _format, [_args]
 {
   common
     match =1, KCONFIG_DEBUG
@@ -428,36 +418,52 @@ macro klog2_ _level, _format, [_args]
       if _level >= KCONFIG_DEBUG_LEVEL
         pushfd
         cli
-        DEBUGF_ESP_ADD equ 4
-        DEBUGF _format, _args
-        restore DEBUGF_ESP_ADD
+        add_esp@KLog equ 4
+        KLog.Print <"K : ", _format>, _args
+        restore add_esp@KLog
+        popfd
+      end if
+   \}
+}
+
+macro KLog2 _level, _format, [_args]
+{
+  common
+    match =1, KCONFIG_DEBUG
+    \{
+      if _level >= KCONFIG_DEBUG_LEVEL
+        pushfd
+        cli
+        add_esp@KLog equ 4
+        KLog.Print _format, _args
+        restore add_esp@KLog
         popfd
       end if
     \}
 }
 
-macro cond_klog_begin _name, _cond_var
+macro ConditionalKLogBegin _name, _cond_var
 {
-  macro _name#_ _level, _format, [_args]
+  macro _name _level, _format, [_args]
   \{
     common
       match =1, _cond_var
       \\{
-        klog_ _level, _format, _args
+        KLog _level, _format, _args
       \\}
   \}
-  macro _name#2_ _level, _format, [_args]
+  macro _name#2 _level, _format, [_args]
   \{
     common
       match =1, _cond_var
       \\{
-        klog2_ _level, _format, _args
+        KLog2 _level, _format, _args
       \\}
   \}
 }
 
-macro cond_klog_end _name
+macro ConditionalKLogEnd _name
 {
-  purge _name#_
-  purge _name#2_
+  purge _name#
+  purge _name#2
 }
