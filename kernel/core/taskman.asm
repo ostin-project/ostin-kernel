@@ -43,6 +43,10 @@ ends
 ;  .app_mem     ; 0x10
 ;}
 
+iglobal
+  process_number dd 1
+endg
+
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc sysfn.thread_ctl ;////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -145,7 +149,7 @@ endl
 
     @@: lea     eax, [filename]
         stdcall load_file, eax
-        mov     ecx, -ERROR_FILE_NOT_FOUND
+        mov     esi, -ERROR_FILE_NOT_FOUND
         test    eax, eax
         jz      .err_file
 
@@ -154,7 +158,7 @@ endl
 
         lea     ebx, [hdr_cmdline]
         call    test_app_header
-        mov     ecx, -0x1f
+        mov     esi, -0x1f
         test    eax, eax
         jz      .err_hdr
 
@@ -174,7 +178,7 @@ endl
 
         call    get_new_process_place
         test    eax, eax
-        mov     ecx, -0x20 ; too many processes
+        mov     esi, -0x20 ; too many processes
         jz      .err
 
         mov     [slot], eax
@@ -216,7 +220,7 @@ endl
         mov     [save_cr3], ebx
 
         stdcall create_app_space, [hdr_mem], [file_base], [file_size]
-        mov     ecx, -30 ; no memory
+        mov     esi, -30 ; no memory
         test    eax, eax
         jz      .failed
 
@@ -277,7 +281,7 @@ end if
   .err_file:
         xor     eax, eax
         mov     [application_table_status], eax
-        mov     eax, ecx
+        mov     eax, esi
         ret
 endp
 
@@ -385,8 +389,8 @@ locals
   app_tabs  dd ?
 endl
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     ebx, pg_data.pg_mutex
-        call    wait_mutex ; ebx
+        mov     ecx, pg_data.mutex
+        call    mutex_lock
 
         xor     eax, eax
         mov     [dir_addr], eax
@@ -517,14 +521,19 @@ end if
   .done:
         stdcall map_page, [tmp_task_pdir], 0, PG_UNMAP
 
-        dec     [pg_data.pg_mutex]
+        mov     ecx, pg_data.mutex
+        call    mutex_unlock
+
         mov     eax, [dir_addr]
         ret
 
   .fail:
-        dec     [pg_data.pg_mutex]
+        mov     ecx, pg_data.mutex
+        call    mutex_unlock
+
         cmp     [dir_addr], 0
         je      @f
+
         stdcall destroy_app_space, [dir_addr], 0
 
     @@: xor     eax, eax
@@ -597,10 +606,10 @@ proc destroy_app_space stdcall, pg_dir:dword, dlls_list:dword ;/////////////////
         jg      .ret
         ; if there isn't threads then clear memory.
         mov     esi, [dlls_list]
-        call    destroy_all_hdlls
+        call    destroy_all_hdlls ; ecx ^= legacy.slot_t
 
-        mov     ebx, pg_data.pg_mutex
-        call    wait_mutex ; ebx
+        mov     ecx, pg_data.mutex
+        call    mutex_lock
 
         mov     eax, [pg_dir]
         and     eax, not 0x0fff
@@ -629,7 +638,9 @@ proc destroy_app_space stdcall, pg_dir:dword, dlls_list:dword ;/////////////////
   .exit:
         stdcall map_page, [tmp_task_ptab], 0, PG_UNMAP
         stdcall map_page, [tmp_task_pdir], 0, PG_UNMAP
-        dec     [pg_data.pg_mutex]
+
+        mov     ecx, pg_data.mutex
+        call    mutex_unlock
 
   .ret:
         ret
@@ -1025,26 +1036,6 @@ endl
         dec     eax ; -1
         ret
 endp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc wait_mutex ;//////////////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;> ebx = mutex
-;-----------------------------------------------------------------------------------------------------------------------
-        push    eax
-        push    ebx
-
-  .do_wait:
-        bts     dword[ebx], 0
-        jnc     .locked
-        call    change_task
-        jmp     .do_wait
-
-  .locked:
-        pop     ebx
-        pop     eax
-        ret
-kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc tls_app_entry ;///////////////////////////////////////////////////////////////////////////////////////////////////

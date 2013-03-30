@@ -317,19 +317,23 @@ iglobal
     commit_pages,          'CommitPages',      \ ; eax, ebx, ecx
 \
     create_event,          'CreateEvent',      \ ; ecx, esi
+    destroy_event,         'DestroyEvent',     \
     raise_event,           'RaiseEvent',       \ ; eax, ebx, edx, esi
     wait_event,            'WaitEvent',        \ ; eax, ebx
+    wait_event_timeout,    'WaitEventTimeout', \ ; eax, ebx, ecx
     get_event_ex,          'GetEvent',         \ ; edi
 \
     create_kernel_object,  'CreateObject',     \
     create_ring_buffer,    'CreateRingBuffer', \ ; stdcall
     destroy_kernel_object, 'DestroyObject',    \
     free_kernel_space,     'FreeKernelSpace',  \ ; stdcall
+    free_page,             'FreePage',         \ ; eax
     kernel_alloc,          'KernelAlloc',      \ ; stdcall
     kernel_free,           'KernelFree',       \ ; stdcall
     malloc,                'Kmalloc',          \
     free,                  'Kfree',            \
     map_io_mem,            'MapIoMem',         \ ; stdcall
+    map_page,              'MapPage',          \ ; stdcall
     get_pg_addr,           'GetPgAddr',        \ ; eax
 \
     mutex_init,            'MutexInit',        \ ; gcc fastcall
@@ -338,6 +342,7 @@ iglobal
 \
     get_display,           'GetDisplay',       \
     set_screen,            'SetScreen',        \
+    window.get_rect,       'GetWindowRect',    \ ; gcc fastcall
     pci_api_drv,           'PciApi',           \
     pci_read8,             'PciRead8',         \ ; stdcall
     pci_read16,            'PciRead16',        \ ; stdcall
@@ -346,6 +351,7 @@ iglobal
     pci_write16,           'PciWrite16',       \ ; stdcall
     pci_write32,           'PciWrite32',       \ ; stdcall
 \
+    get_pid,               'GetPid',           \
     get_service,           'GetService',       \ ;
     reg_service,           'RegService',       \ ; stdcall
     attach_int_handler,    'AttachIntHandler', \ ; stdcall

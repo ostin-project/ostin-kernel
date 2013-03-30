@@ -165,11 +165,11 @@ end if ; KCONFIG_BLK_FLOPPY
     dd sysfn.draw_line ; 38
     dd sysfn.get_background_ctl ; 39
     dd sysfn.set_process_event_mask ; 40
-    dd sysfn.get_irq_owner ; 41
-    dd sysfn.get_irq_data ; 42
+    dd sysfn.not_implemented ; 41
+    dd sysfn.not_implemented ; 42
     dd sysfn.write_to_port ; 43
-    dd sysfn.program_irq ; 44
-    dd sysfn.reserve_irq ; 45
+    dd sysfn.not_implemented ; 44
+    dd sysfn.not_implemented ; 45
     dd sysfn.reserve_port_area ; 46
     dd sysfn.draw_number ; 47
     dd sysfn.display_settings_ctl ; 48

@@ -18,6 +18,31 @@ MEM_WB = 6 ; write-back memory
 MEM_WC = 1 ; write combined memory
 MEM_UC = 0 ; uncached memory
 
+ACPI_HI_RSDP_WINDOW_START = 0x000E0000
+ACPI_HI_RSDP_WINDOW_END   = 0x00100000
+ACPI_RSDP_CHECKSUM_LENGTH = 20
+ACPI_MADT_SIGN            = 0x43495041
+
+iglobal
+  acpi_lapic_base dd 0xfee00000 ; default local apic base
+endg
+
+uglobal
+  acpi_rsdp dd ?
+  acpi_rsdt dd ?
+  acpi_madt dd ?
+
+  acpi_dev_data dd ?
+  acpi_dev_size dd ?
+
+  acpi_rsdt_base dd ?
+  acpi_madt_base dd ?
+  acpi_ioapic_base dd ?
+
+  cpu_count dd ?
+  smpt rd 16
+endg
+
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc mem_test ;////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -65,6 +90,9 @@ kproc init_mem ;////////////////////////////////////////////////////////////////
   .calcmax:
         ; round all to pages
         mov     eax, [edi]
+        cmp     byte[edi + phoenix_smap_addr_range_t.type], PHOENIX_SMAP_TYPE_AVAILABLE
+        jne     .unusable
+
         test    eax, 0x0fff
         jz      @f
         neg     eax
@@ -99,7 +127,7 @@ kproc init_mem ;////////////////////////////////////////////////////////////////
         jmp     .usable
 
   .unusable:
-        and     dword[edi + phoenix_smap_addr_range_t.size], 0
+;       and     dword[edi + phoenix_smap_addr_range_t.size], 0
 
   .usable:
         add     edi, sizeof.phoenix_smap_addr_range_t
@@ -215,6 +243,9 @@ kproc init_page_map ;///////////////////////////////////////////////////////////
         mov     edx, [ebx - 4]
 
   .scanmap:
+        cmp     byte[ebx + phoenix_smap_addr_range_t.type], PHOENIX_SMAP_TYPE_AVAILABLE
+        jne     .next
+
         mov     ecx, dword[ebx + phoenix_smap_addr_range_t.size]
         shr     ecx, 12 ; ecx = number of pages
         jz      .next
@@ -291,7 +322,6 @@ kproc init_page_map ;///////////////////////////////////////////////////////////
         add     ebx, [pg_data.pagemap_size - OS_BASE]
         mov     [page_end - OS_BASE], ebx
 
-        mov     [pg_data.pg_mutex - OS_BASE], 0
         ret
 kendp
 
@@ -466,3 +496,142 @@ endl
         and     eax, 0x0f
         ret
 endp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc acpi_locate ;/////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        push    ebx
+        mov     ebx, ACPI_HI_RSDP_WINDOW_START
+
+  .check:
+        cmp     dword[ebx], 0x20445352
+        jne     .next
+        cmp     dword[ebx + 4], 0x20525450
+        jne     .next
+
+        mov     edx, ebx
+        mov     ecx, ACPI_RSDP_CHECKSUM_LENGTH
+        xor     eax, eax
+
+  .sum:
+        add     al, [edx]
+        inc     edx
+        loop    .sum
+
+        test    al, al
+        jnz     .next
+
+        mov     eax, ebx
+        pop     ebx
+        ret
+
+  .next:
+        add     ebx, 16
+        cmp     ebx, ACPI_HI_RSDP_WINDOW_END
+        jb      .check
+
+        pop     ebx
+        xor     eax, eax
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc rsdt_find ;///////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> ecx ^= rsdt
+;> edx ^= SIG
+;-----------------------------------------------------------------------------------------------------------------------
+        push    ebx
+        push    esi
+
+        lea     ebx, [ecx + 36]
+        mov     esi, [ecx + 4]
+        add     esi, ecx
+
+  .next:
+        mov     eax, [ebx]
+        cmp     [eax], edx
+        je      .done
+
+        add     ebx, 4
+        cmp     ebx, esi
+        jb      .next
+
+        xor     eax, eax
+        pop     esi
+        pop     ebx
+        ret
+
+  .done:
+        mov     eax, [ebx]
+        pop     esi
+        pop     ebx
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc check_acpi ;//////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        call    acpi_locate
+        test    eax, eax
+        jz      .done
+
+        mov     ecx, [eax + 16]
+        mov     edx, ACPI_MADT_SIGN
+        mov     [acpi_rsdt_base - OS_BASE], ecx
+        call    rsdt_find
+        test    eax, eax
+        jz      .done
+
+        mov     [acpi_madt_base - OS_BASE], eax
+        mov     ecx, [eax + 36]
+        mov     [acpi_lapic_base - OS_BASE], ecx
+
+        mov     edi, smpt - OS_BASE
+        mov     ebx, [ecx + 0x20]
+        shr     ebx, 24 ; read APIC ID
+ 
+        mov     [edi], ebx ; bootstrap always first
+        inc     [cpu_count - OS_BASE]
+        add     edi, 4
+
+        lea     edx, [eax + 44]
+        mov     ecx, [eax + 4]
+        add     ecx, eax
+
+  .check:
+        mov     eax, [edx]
+        cmp     al, 0
+        jne     .io_apic
+
+        shr     eax, 24 ; get APIC ID
+        cmp     eax, ebx ; skip self
+        je      .next
+ 
+        test    [edx + 4], byte 1 ; is enabled ?
+        jz      .next
+ 
+        cmp     [cpu_count - OS_BASE], 16
+        jae     .next
+ 
+        stosd ; store APIC ID
+        inc     [cpu_count - OS_BASE]
+
+  .next:
+        mov     eax, [edx]
+        movzx   eax, ah
+        add     edx, eax
+        cmp     edx, ecx
+        jb      .check
+
+  .done:
+        ret
+
+  .io_apic:
+        cmp     al, 1
+        jne     .next
+
+        mov     eax, [edx + 4]
+        mov     [acpi_ioapic_base - OS_BASE], eax
+        jmp     .next
+kendp

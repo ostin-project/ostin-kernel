@@ -385,6 +385,23 @@ kproc wait_event ;//////////////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
+kproc wait_event_timeout ;//////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> eax ^= event_t
+;> ebx = uid (for Dummy testing)
+;> ecx = timeout in timer ticks
+;-----------------------------------------------------------------------------------------------------------------------
+;< eax ^= event_t or 0 if timeout
+;-----------------------------------------------------------------------------------------------------------------------
+        call    DummyTest
+        mov     ebx, ecx
+        mov     ecx, eax ; wait_param
+        mov     edx, get_event_alone ; wait_test
+        call    Wait_events_ex
+        jmp     wait_finish
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
 kproc get_event_ex ;////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? sysfn.system_service:14
@@ -600,10 +617,8 @@ kproc get_event_for_app ;///////////////////////////////////////////////////////
         jz      .no_events ; all mask bits reset but didn't find anything???
         btr     ecx, eax ; reset mask bit being checked
         ; jumping to this (eax) bit handler
-        cmp     eax, 16
-        jae     .IRQ ; eax=[16..31]=retvals, events irq0..irq15
         cmp     eax, 9
-        jae     .loop ; eax=[9..15], ignored
+        jae     .loop ; eax=[9..31], ignored
         cmp     eax, 3
         je      .loop ; eax=3, ignored
         ja      .FlagAutoReset ; eax=[4..8], retvals=eax+1
@@ -619,17 +634,6 @@ kproc get_event_for_app ;///////////////////////////////////////////////////////
   .no_events:
         xor     eax, eax
         ret
-
-  .IRQ:
-        ; TODO: do the same as for FlagAutoReset (BgrRedraw,Mouse,IPC,Stack,Debug)
-        mov     edx, [irq_owner + eax * 4 - 64] ; eax==16+irq
-        cmp     edx, [edi + legacy.slot_t.task.pid]
-        jne     .loop
-        mov     edx, eax
-        shl     edx, 12
-        cmp     dword[IRQ_SAVE + edx - 0x10000], 0 ; edx==(16+irq)*0x1000
-        je      .loop ; empty ???
-        ret     ; retval = eax
 
   .FlagAutoReset:
         ; retvals: BgrRedraw=5, Mouse=6, IPC=7, Stack=8, Debug=9

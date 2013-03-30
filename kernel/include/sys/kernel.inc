@@ -46,6 +46,10 @@ ends
 
 ;;----------------------------------------------------------------------------------------------------------------------
 
+struct mutex_t linked_list_t
+  count dd ?
+ends
+
 WSTYLE_HASCAPTION     = 00010000b
 WSTYLE_CLIENTRELATIVE = 00100000b
 

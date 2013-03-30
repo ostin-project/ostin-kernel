@@ -14,10 +14,6 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-struct mutex_t linked_list_t
-  count dd ?
-ends
-
 struct mutex_waiter_t linked_list_t
   task dd ?
 ends
@@ -86,6 +82,10 @@ kproc mutex_unlock ;////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         pushfd
         cli
+
+        lea edx, [ecx + mutex_t.next_ptr]
+        mov eax, [edx]
+        cmp eax, edx
 
         mov     eax, [ecx + mutex_t.next_ptr]
         cmp     eax, ecx

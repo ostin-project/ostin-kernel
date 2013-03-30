@@ -14,10 +14,12 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
+include "apic.asm"
 include "dll.asm"
 include "exports.inc"
 include "fpu.asm"
 include "heap.asm"
+include "irq.asm"
 include "malloc.asm"
 include "memory.asm"
 include "peload.asm"

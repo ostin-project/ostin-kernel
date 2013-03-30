@@ -14,10 +14,9 @@
 ;; <http://www.gnu.org/licenses/>.
 ;;======================================================================================================================
 
-struct memory_block_t
+struct memory_block_t linked_list_t
   prev_block dd ?
   next_block dd ?
-  list       linked_list_t
   range      memory_range32_t
   flags      dd ?
   handle     dd ?
@@ -34,90 +33,117 @@ macro CalcIndex _op
     @@:
 }
 
-macro RemoveFromList _op
-{
-        mov     edx, [_op + memory_block_t.list.next_ptr]
-        mov     ecx, [_op + memory_block_t.list.prev_ptr]
-        test    edx, edx
-        jz      @f
-        mov     [edx + memory_block_t.list.prev_ptr], ecx
-
-    @@: test    ecx, ecx
-        jz      @f
-        mov     [ecx + memory_block_t.list.next_ptr], edx
-
-    @@: mov     [_op + memory_block_t.list.next_ptr], 0
-        mov     [_op + memory_block_t.list.prev_ptr], 0
-}
-
-macro RemoveFromFree _op
-{
-        RemoveFromList _op
-
-        mov     eax, [_op + memory_block_t.range.size]
-        CalcIndex eax
-        cmp     [mem_block_list + eax * 4], _op
-        jne     @f
-        mov     [mem_block_list + eax * 4], edx
-
-    @@: cmp     [mem_block_list + eax * 4], 0
-        jne     @f
-        btr     [mem_block_mask], eax
-
-    @@:
-}
-
-macro RemoveFromUsed _op
-{
-        mov     edx, [_op + memory_block_t.list.next_ptr]
-        mov     ecx, [_op + memory_block_t.list.prev_ptr]
-        mov     [edx + memory_block_t.list.prev_ptr], ecx
-        mov     [ecx + memory_block_t.list.next_ptr], edx
-        mov     [_op + memory_block_t.list.next_ptr], 0
-        mov     [_op + memory_block_t.list.prev_ptr], 0
-}
-
 uglobal
-  mem_block_map    rb 512
-  mem_block_list   rd 64
-  large_block_list rd 31
-  mem_block_mask   rd 2
-  large_block_mask rd 1
-  mem_used         linked_list_t
-  mem_block_arr    rd 1
-  mem_block_start  rd 1
-  mem_block_end    rd 1
-  heap_mutex       rd 1
-  heap_size        rd 1
-  heap_free        rd 1
-  heap_blocks      rd 1
-  free_blocks      rd 1
-  shmem_list       linked_list_t
+  mem_block_list: rb 64 * sizeof.linked_list_t
+  mem_used_list:  rb 64 * sizeof.linked_list_t
+  mem_hash_cnt    rd 64
+  heap_mutex      mutex_t
+  heap_size       rd 1
+  heap_free       rd 1
+  heap_blocks     rd 1
+  free_blocks     rd 1
+  mem_block_mask  rd 2
+  next_memblock   rd 1
+  shmem_list      linked_list_t
 endg
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc md.add_to_used ;//////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        mov     eax, [esi + memory_block_t.range.address]
+        mov     ebx, [esi + memory_block_t.range.address]
+        shr     ebx, 6
+        add     eax, ebx
+        shr     ebx, 6
+        add     eax, ebx
+        shr     eax, 12
+        and     eax, 63
+        inc     [mem_hash_cnt + eax * 4]
+ 
+        lea     ecx, [mem_used_list + eax * sizeof.linked_list_t]
+        ListPrepend esi, ecx
+        mov     [esi + memory_block_t.flags], USED_BLOCK
+        mov     eax, [esi + memory_block_t.range.size]
+        sub     [heap_free], eax
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc md.find_used ;////////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        mov     ecx, eax
+        mov     ebx, eax
+        shr     ebx, 6
+        add     ecx, ebx
+        shr     ebx, 6
+        add     ecx, ebx
+        shr     ecx, 12
+        and     ecx, 63
+ 
+        lea     ebx, [mem_used_list + ecx * sizeof.linked_list_t]
+        mov     esi, ebx
+
+  .next:
+        mov     esi, [esi + linked_list_t.next_ptr]
+        cmp     esi, ebx
+        je      .fail
+ 
+        cmp     eax, [esi + memory_block_t.range.address]
+        jne     .next
+ 
+        ret
+
+  .fail:
+        xor     esi, esi
+        ret
+kendp
+
+;-----------------------------------------------------------------------------------------------------------------------
+kproc md.del_from_used ;////////////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+        call    md.find_used
+        test    esi, esi
+        jz      .done
+ 
+        cmp     [esi + memory_block_t.flags], USED_BLOCK
+        jne     .fatal
+ 
+        dec     [mem_hash_cnt + ecx * 4]
+        ListDelete esi
+
+  .done:
+        ret
+
+  .fatal:
+        ; FIXME panic here
+        xor     esi, esi
+        ret
+kendp
 
 align 4
 ;-----------------------------------------------------------------------------------------------------------------------
 proc init_kernel_heap ;/////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
+;? Initial heap state:
+;?   +heap_size terminator USED_BLOCK
+;?   +4096*MEM_BLOCK.sizeof free space FREE_BLOCK
+;?   HEAP_BASE heap_descriptors USED_BLOCK
+;-----------------------------------------------------------------------------------------------------------------------
         mov     ecx, 64
         mov     edi, mem_block_list
-        xor     eax, eax
-        rep
+
+    @@: mov     eax, edi
         stosd
-
-        mov     ecx, 512 / 4
-        mov     edi, mem_block_map
-        not     eax
-        rep
         stosd
+        loop    @b
 
-        mov     [mem_block_start], mem_block_map
-        mov     [mem_block_end], mem_block_map + 512
-        mov     [mem_block_arr], HEAP_BASE
+        mov     ecx, 64
+        mov     edi, mem_used_list
 
-        mov     eax, mem_used - memory_block_t.list
-        mov     [mem_used.next_ptr], eax
-        mov     [mem_used.prev_ptr], eax
+    @@: mov     eax, edi
+        stosd
+        stosd
+        loop    @b
 
         stdcall alloc_pages, 32
         mov     ecx, 32
@@ -131,21 +157,29 @@ proc init_kernel_heap ;/////////////////////////////////////////////////////////
         dec     ecx
         jnz     .l1
 
-        mov     edi, HEAP_BASE
-        mov     ebx, HEAP_BASE + sizeof.memory_block_t
+        mov     edi, HEAP_BASE ; descriptors
+        mov     ebx, HEAP_BASE + sizeof.memory_block_t ; free space
+        mov     ecx, HEAP_BASE + 2 * sizeof.memory_block_t ; terminator
+
         xor     eax, eax
         mov     [edi + memory_block_t.next_block], ebx
         mov     [edi + memory_block_t.prev_block], eax
-        mov     [edi + memory_block_t.list.next_ptr], eax
-        mov     [edi + memory_block_t.list.prev_ptr], eax
+        mov     [edi + memory_block_t.next_ptr], eax
+        mov     [edi + memory_block_t.prev_ptr], eax
         mov     [edi + memory_block_t.range.address], HEAP_BASE
         mov     [edi + memory_block_t.range.size], 4096 * sizeof.memory_block_t
         mov     [edi + memory_block_t.flags], USED_BLOCK
 
-        mov     [ebx + memory_block_t.next_block], eax
-        mov     [ebx + memory_block_t.prev_block], eax
-        mov     [ebx + memory_block_t.list.next_ptr], eax
-        mov     [ebx + memory_block_t.list.prev_ptr], eax
+        mov     [ecx + memory_block_t.next_block], eax
+        mov     [ecx + memory_block_t.prev_block], ebx
+        mov     [edi + memory_block_t.next_ptr], eax
+        mov     [edi + memory_block_t.prev_ptr], eax
+        mov     [edi + memory_block_t.range.address], eax
+        mov     [edi + memory_block_t.range.size], eax
+        mov     [edi + memory_block_t.flags], USED_BLOCK
+
+        mov     [ebx + memory_block_t.next_block], ecx
+        mov     [ebx + memory_block_t.prev_block], edi
         mov     [ebx + memory_block_t.range.address], HEAP_BASE + 4096 * sizeof.memory_block_t
 
         mov     ecx, [pg_data.kernel_pages]
@@ -159,11 +193,25 @@ proc init_kernel_heap ;/////////////////////////////////////////////////////////
         mov     [mem_block_mask], eax
         mov     [mem_block_mask + 4], 0x80000000
 
-        mov     [mem_block_list + 63 * 4], ebx
-        mov     byte[mem_block_map], 0xfc
-        and     [heap_mutex], 0
-        mov     [heap_blocks], 4095
-        mov     [free_blocks], 4094
+        mov     ecx, mem_block_list + 63 * sizeof.linked_list_t
+        ListPrepend ebx, ecx
+ 
+        mov     ecx, 4096 - 3 - 1
+        mov     eax, HEAP_BASE + 4 * sizeof.memory_block_t
+ 
+        mov     [next_memblock], HEAP_BASE + 3 * sizeof.memory_block_t
+
+    @@: mov     [eax - sizeof.memory_block_t + memory_block_t.next_ptr], eax
+        add     eax, sizeof.memory_block_t
+        loop    @b
+ 
+        mov     [eax - sizeof.memory_block_t + memory_block_t.next_ptr], 0
+
+        mov     ecx, heap_mutex
+        call    mutex_init
+
+        mov     [heap_blocks], 4094
+        mov     [free_blocks], 4093
         ret
 endp
 
@@ -202,11 +250,21 @@ kproc get_small_block ;/////////////////////////////////////////////////////////
         bsf     edi, edx
         jz      .high_mask
         add     ebx, edi
-        mov     edi, [mem_block_list + ebx * 4]
 
-  .check_size:
+        lea     ecx, [mem_block_list + ebx * sizeof.linked_list_t]
+        mov     edi, ecx
+
+  .next:
+        mov     edi, [edi + memory_block_t.next_ptr]
+        cmp     edi, ecx
+        je      .err
+
         cmp     eax, [edi + memory_block_t.range.size]
         ja      .next
+        ret
+
+  .err:
+        xor     edi, edi
         ret
 
   .high_mask:
@@ -216,73 +274,25 @@ kproc get_small_block ;/////////////////////////////////////////////////////////
         add     ebx, 32
         mov     edx, [esi]
         jmp     .find
-
-  .next:
-        mov     edi, [edi + memory_block_t.list.next_ptr]
-        test    edi, edi
-        jnz     .check_size
-
-  .err:
-        xor     edi, edi
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc alloc_mem_block ;/////////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        mov     ebx, [mem_block_start]
-        mov     ecx, [mem_block_end]
-
-  .l1:
-        bsf     eax, [ebx]
-        jnz     .found
-        add     ebx, 4
-        cmp     ebx, ecx
-        jb      .l1
-        xor     eax, eax
-        ret
-
-  .found:
-        btr     [ebx], eax
-        mov     [mem_block_start], ebx
-        sub     ebx, mem_block_map
-        lea     eax, [eax + ebx * 8]
-        shl     eax, 5
-        add     eax, [mem_block_arr]
-        dec     [free_blocks]
-        ret
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc free_mem_block ;//////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     dword[eax], 0
-        mov     dword[eax + 4], 0
-        mov     dword[eax + 8], 0
-        mov     dword[eax + 12], 0
-        mov     dword[eax + 16], 0
-;       mov     dword[eax + 20], 0
-        mov     dword[eax + 24], 0
-        mov     dword[eax + 28], 0
+        mov     ebx, [next_memblock]
+        mov     [eax + memory_block_t.next_ptr], ebx
+        mov     [next_memblock], eax
 
-        sub     eax, [mem_block_arr]
-        shr     eax, 5
+        xor     ebx, ebx
+        mov     [eax + memory_block_t.prev_ptr], ebx
+        mov     [eax + memory_block_t.next_block], ebx
+        mov     [eax + memory_block_t.prev_block], ebx
+        mov     [eax + memory_block_t.range.address], ebx
+;       mov     [eax + memory_block_t.range.size], ebx ; don't clear block size
+        mov     [eax + memory_block_t.flags], ebx
+        mov     [eax + memory_block_t.handle], ebx
 
-        mov     ebx, mem_block_map
-        bts     [ebx], eax
         inc     [free_blocks]
-        shr     eax, 3
-        and     eax, not 3
-        add     eax, ebx
-        cmp     [mem_block_start], eax
-        ja      @f
-        ret
-
-    @@: mov     [mem_block_start], eax
-        ret
-
-  .err:
-        xor     eax, eax
         ret
 kendp
 
@@ -303,18 +313,19 @@ endl
         and     eax, not 4095
         mov     [size], eax
 
-        mov     ebx, heap_mutex
-        call    wait_mutex ; ebx
-
         cmp     eax, [heap_free]
         ja      .error
 
+        mov     ecx, heap_mutex
+        call    mutex_lock
+
+        mov     eax, [size]
         call    get_small_block ; eax
         test    edi, edi
-        jz      .error
+        jz      .error_unlock
 
         cmp     [edi + memory_block_t.flags], FREE_BLOCK
-        jne     .error
+        jne     .error_unlock
 
         mov     [block_ind], ebx ; index of allocated block
 
@@ -322,23 +333,23 @@ endl
         cmp     eax, [size]
         je      .m_eq_size
 
-        call    alloc_mem_block
-        and     eax, eax
-        jz      .error
+        mov     esi, [next_memblock] ; new memory block
+        test    esi, esi
+        jz      .error_unlock
 
-        mov     esi, eax ; esi - splitted block
+        dec     [free_blocks]
+        mov     eax, [esi + memory_block_t.next_ptr]
+        mov     [next_memblock], eax
 
         mov     [esi + memory_block_t.next_block], edi
         mov     eax, [edi + memory_block_t.prev_block]
         mov     [esi + memory_block_t.prev_block], eax
         mov     [edi + memory_block_t.prev_block], esi
-        mov     [esi + memory_block_t.list.next_ptr], 0
-        mov     [esi + memory_block_t.list.prev_ptr], 0
-        and     eax, eax
-        jz      @f
+        mov     [esi + memory_block_t.next_ptr], 0
+        mov     [esi + memory_block_t.prev_ptr], 0
         mov     [eax + memory_block_t.next_block], esi
 
-    @@: mov     ebx, [edi + memory_block_t.range.address]
+        mov     ebx, [edi + memory_block_t.range.address]
         mov     [esi + memory_block_t.range.address], ebx
         mov     edx, [size]
         mov     [esi + memory_block_t.range.size], edx
@@ -346,78 +357,50 @@ endl
         sub     [edi + memory_block_t.range.size], edx
 
         mov     eax, [edi + memory_block_t.range.size]
-        shr     eax, 12
-        sub     eax, 1
-        cmp     eax, 63
-        jna     @f
-        mov     eax, 63
+        CalcIndex eax
+        cmp     eax, [block_ind]
+        je      .add_used
 
-    @@: cmp     eax, [block_ind]
-        je      .m_eq_ind
-
-        RemoveFromList edi
+        ListDelete edi
 
         mov     ecx, [block_ind]
-        mov     [mem_block_list + ecx * 4], edx
-
-        test    edx, edx
-        jnz     @f
+        lea     edx, [mem_block_list + ecx * sizeof.linked_list_t]
+        cmp     edx, [edx + linked_list_t.next_ptr]
+        jne     @f
         btr     [mem_block_mask], ecx
 
-    @@: mov     edx, [mem_block_list + eax * 4]
-        mov     [edi + memory_block_t.list.next_ptr], edx
-        test    edx, edx
-        jz      @f
-        mov     [edx + memory_block_t.list.prev_ptr], edi
+    @@: bts     [mem_block_mask], eax
+        lea     edx, [mem_block_list + eax * sizeof.linked_list_t] ; edx = list head
+        ListPrepend edi, edx
 
-    @@: mov     [mem_block_list + eax * 4], edi
-        bts     [mem_block_mask], eax
+  .add_used:
+        call    md.add_to_used
 
-  .m_eq_ind:
-        mov     ecx, mem_used - memory_block_t.list
-        mov     edx, [ecx + memory_block_t.list.next_ptr]
-        mov     [esi + memory_block_t.list.next_ptr], edx
-        mov     [esi + memory_block_t.list.prev_ptr], ecx
-        mov     [ecx + memory_block_t.list.next_ptr], esi
-        mov     [edx + memory_block_t.list.prev_ptr], esi
+        mov     ecx, heap_mutex
+        call    mutex_unlock
 
-        mov     [esi + memory_block_t.flags], USED_BLOCK
         mov     eax, [esi + memory_block_t.range.address]
-        mov     ebx, [size]
-        sub     [heap_free], ebx
-        and     [heap_mutex], 0
         pop     edi
         pop     esi
         pop     ebx
         ret
 
   .m_eq_size:
-        RemoveFromList edi
-        mov     [mem_block_list + ebx * 4], edx
-        and     edx, edx
-        jnz     @f
+        ListDelete edi
+        lea     edx, [mem_block_list + ebx * sizeof.linked_list_t]
+        cmp     edx, [edx + linked_list_t.next_ptr]
+        jne     @f
         btr     [mem_block_mask], ebx
 
-    @@: mov     ecx, mem_used - memory_block_t.list
-        mov     edx, [ecx + memory_block_t.list.next_ptr]
-        mov     [edi + memory_block_t.list.next_ptr], edx
-        mov     [edi + memory_block_t.list.prev_ptr], ecx
-        mov     [ecx + memory_block_t.list.next_ptr], edi
-        mov     [edx + memory_block_t.list.prev_ptr], edi
+    @@: mov     esi, edi
+        jmp     .add_used
 
-        mov     [edi + memory_block_t.flags], USED_BLOCK
-        mov     eax, [edi + memory_block_t.range.address]
-        mov     ebx, [size]
-        sub     [heap_free], ebx
-        and     [heap_mutex], 0
-        pop     edi
-        pop     esi
-        pop     ebx
-        ret
+  .error_unlock:
+        mov     ecx, heap_mutex
+        call    mutex_unlock
 
   .error:
         xor     eax, eax
-        mov     [heap_mutex], eax
         pop     edi
         pop     esi
         pop     ebx
@@ -428,69 +411,49 @@ align 4
 ;-----------------------------------------------------------------------------------------------------------------------
 proc free_kernel_space stdcall uses ebx ecx edx esi edi, base:dword ;///////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        push    ebx
-        push    esi
-        push    edi
-        mov     ebx, heap_mutex
-        call    wait_mutex ; ebx
+        mov     ecx, heap_mutex
+        call    mutex_lock
 
         mov     eax, [base]
-        mov     esi, [mem_used.next_ptr]
-
-    @@: cmp     esi, mem_used - memory_block_t.list
-        je      .fail
-
-        cmp     [esi + memory_block_t.range.address], eax
-        je      .found
-        mov     esi, [esi + memory_block_t.list.next_ptr]
-        jmp     @b
-
-  .found:
-        cmp     [esi + memory_block_t.flags], USED_BLOCK
-        jne     .fail
+        call    md.del_from_used
+        test    esi, esi
+        jz      .fail
 
         mov     eax, [esi + memory_block_t.range.size]
         add     [heap_free], eax
 
         mov     edi, [esi + memory_block_t.next_block]
-        test    edi, edi
-        jz      .prev
-
         cmp     [edi + memory_block_t.flags], FREE_BLOCK
         jne     .prev
 
-        RemoveFromFree edi
+        ListDelete edi
 
         mov     edx, [edi + memory_block_t.next_block]
         mov     [esi + memory_block_t.next_block], edx
-        test    edx, edx
-        jz      @f
-
         mov     [edx + memory_block_t.prev_block], esi
-
-    @@: mov     ecx, [edi + memory_block_t.range.size]
+        mov     ecx, [edi + memory_block_t.range.size]
         add     [esi + memory_block_t.range.size], ecx
 
-        mov     eax, edi
+        CalcIndex ecx
+ 
+        lea     edx, [mem_block_list + ecx * sizeof.linked_list_t]
+        cmp     edx, [edx + linked_list_t.next_ptr]
+        jne     @f
+        btr     [mem_block_mask], ecx
+
+    @@: mov     eax, edi
         call    free_mem_block
 
   .prev:
         mov     edi, [esi + memory_block_t.prev_block]
-        test    edi, edi
-        jz      .insert
-
         cmp     [edi + memory_block_t.flags], FREE_BLOCK
         jne     .insert
 
-        RemoveFromUsed esi
-
         mov     edx, [esi + memory_block_t.next_block]
         mov     [edi + memory_block_t.next_block], edx
-        test    edx, edx
-        jz      @f
         mov     [edx + memory_block_t.prev_block], edi
 
-    @@: mov     eax, esi
+        mov     eax, esi
         call    free_mem_block
 
         mov     ecx, [edi + memory_block_t.range.size]
@@ -498,70 +461,45 @@ proc free_kernel_space stdcall uses ebx ecx edx esi edi, base:dword ;///////////
         add     eax, ecx
         mov     [edi + memory_block_t.range.size], eax
 
-        CalcIndex eax
-        CalcIndex ecx
+        CalcIndex eax ; new index
+        CalcIndex ecx ; old index
         cmp     eax, ecx
         je      .m_eq
 
         push    ecx
-        RemoveFromList edi
+        ListDelete edi
         pop     ecx
 
-        cmp     [mem_block_list + ecx * 4], edi
-        jne     @f
-        mov     [mem_block_list + ecx * 4], edx
-
-    @@: cmp     [mem_block_list + ecx * 4], 0
-        jne     @f
+        lea     edx, [mem_block_list + ecx * sizeof.linked_list_t]
+        cmp     edx, [edx + linked_list_t.next_ptr]
+        jne     .add_block
         btr     [mem_block_mask], ecx
 
-    @@: mov     esi, [mem_block_list + eax * 4]
-        mov     [mem_block_list + eax * 4], edi
-        mov     [edi + memory_block_t.list.next_ptr], esi
-        test    esi, esi
-        jz      @f
-        mov     [esi + memory_block_t.list.prev_ptr], edi
-
-    @@: bts     [mem_block_mask], eax
+  .add_block:
+        bts     [mem_block_mask], eax
+        lea     edx, [mem_block_list + eax * sizeof.linked_list_t]
+        ListPrepend edi, edx
 
   .m_eq:
+        mov     ecx, heap_mutex
+        call    mutex_unlock
+
         xor     eax, eax
-        mov     [heap_mutex], eax
-        dec     eax
-        pop     edi
-        pop     esi
-        pop     ebx
+        not     eax
         ret
 
   .insert:
-        RemoveFromUsed esi
-
+        mov     [esi + memory_block_t.flags], FREE_BLOCK
         mov     eax, [esi + memory_block_t.range.size]
         CalcIndex eax
-
-        mov     edi, [mem_block_list + eax * 4]
-        mov     [mem_block_list + eax * 4], esi
-        mov     [esi + memory_block_t.list.next_ptr], edi
-        test    edi, edi
-        jz      @f
-        mov     [edi + memory_block_t.list.prev_ptr], esi
-
-    @@: bts     [mem_block_mask], eax
-        mov     [esi + memory_block_t.flags], FREE_BLOCK
-        xor     eax, eax
-        mov     [heap_mutex], eax
-        dec     eax
-        pop     edi
-        pop     esi
-        pop     ebx
-        ret
+        mov     edi, esi
+        jmp     .add_block
 
   .fail:
+        mov     ecx, heap_mutex
+        call    mutex_unlock
+
         xor     eax, eax
-        mov     [heap_mutex], eax
-        pop     edi
-        pop     esi
-        pop     ebx
         ret
 endp
 
@@ -650,38 +588,29 @@ proc kernel_free stdcall, base:dword ;//////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    ebx esi
 
-        mov     ebx, heap_mutex
-        call    wait_mutex ; ebx
+        mov     ecx, heap_mutex
+        call    mutex_lock
 
         mov     eax, [base]
-        mov     esi, [mem_used.next_ptr]
+        call    md.find_used
 
-    @@: cmp     esi, mem_used - memory_block_t.list
-        je      .fail
-
-        cmp     [esi + memory_block_t.range.address], eax
-        je      .found
-        mov     esi, [esi + memory_block_t.list.next_ptr]
-        jmp     @b
-
-  .found:
+        mov     ecx, heap_mutex
         cmp     [esi + memory_block_t.flags], USED_BLOCK
         jne     .fail
 
-        and     [heap_mutex], 0
+        call    mutex_unlock
 
-        push    ecx
+        mov     eax, [esi + memory_block_t.range.address]
         mov     ecx, [esi + memory_block_t.range.size]
         shr     ecx, 12
         call    release_pages ; eax, ecx
-        pop     ecx
         stdcall free_kernel_space, [base]
         pop     esi ebx
         ret
 
   .fail:
+        call    mutex_unlock
         xor     eax, eax
-        mov     [heap_mutex], eax
         pop     esi ebx
         ret
 endp

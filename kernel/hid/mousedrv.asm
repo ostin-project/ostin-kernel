@@ -259,7 +259,18 @@ kproc save_draw_mouse ;/////////////////////////////////////////////////////////
         cmp     esi, [current_cursor]
         je      .draw
 
-        push    esi
+        mov     eax, [legacy_slots.last_valid_slot]
+        movzx   eax, [wnd_pos_to_pslot + eax * 2]
+        shl     eax, 9 ; * sizeof.legacy.slot_t
+
+        cmp     eax, edx
+        je      @f
+
+        mov     esi, [def_cursor]
+        cmp     esi, [current_cursor]
+        je      .draw
+
+    @@: push    esi
         call    [_display.select_cursor]
         mov     [current_cursor], esi
 

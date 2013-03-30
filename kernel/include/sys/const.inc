@@ -165,6 +165,9 @@ SSE_FZ        = 0x8000
 
 SSE_INIT      = SSE_IM + SSE_DM + SSE_ZM + SSE_OM + SSE_UM + SSE_PM
 
+IRQ_PIC  = 0
+IRQ_APIC = 1
+
 struct boot_vars_t
   bpp               db ? ; bits per pixel
   scanline_len      dw ? ; scanline length
@@ -230,15 +233,11 @@ RESERVED_PORTS_MAX_COUNT = 255
 
 virtual at OS_BASE
                         rb 0x1000
-; window_data:          rb MAX_TASK_COUNT * sizeof.window_data_t
-;                       rb OS_BASE + 0x00003000 - $
-; TASK_DATA:            rb MAX_TASK_COUNT * sizeof.task_data_t
-                        rb OS_BASE + 0x00007000 - $
   CDDataBuf:            rb 0x1000
 
 if KCONFIG_BLK_FLOPPY
 
-                        rb OS_BASE + 0x0000d000 - $
+                        rb OS_BASE + 0x00002000 - $
   FDC_DMA_BUFFER        rb BLK_FLOPPY_CTL_BYTES_PER_SECTOR
 
 end if ; KCONFIG_BLK_FLOPPY
@@ -251,7 +250,6 @@ end if ; KCONFIG_BLK_FLOPPY
   sys_pgdir             rd 0x400
   DRIVE_DATA            rb 0x10000
                         rb OS_BASE + 0x00080000 - $
-; SLOT_BASE:            rb MAX_TASK_COUNT * sizeof.app_data_t
   legacy_slots:         rb sizeof.legacy.slot_t + MAX_TASK_COUNT * sizeof.legacy.slot_t
                         rb OS_BASE + 0x000a0000 - $
   VGABasePtr:           rb 0x10000
@@ -268,10 +266,6 @@ end if ; KCONFIG_BLK_FLOPPY
                         rb OS_BASE + 0x002d0000 - $
   RESERVED_PORTS        app_io_ports_header_t
                         rb RESERVED_PORTS_MAX_COUNT * sizeof.app_io_ports_range_t
-                        rb OS_BASE + 0x002e0000 - $
-  IRQ_SAVE:             rb 16 * 4096
-                        rb OS_BASE + 0x002f0000 - $
-  LOW_MEMORY_SAVE       rb 64 * 1024
                         rb OS_BASE + 0x00300000 - $
   stack_data_start:
   eth_data_start:
@@ -279,9 +273,7 @@ end if ; KCONFIG_BLK_FLOPPY
   stack_data:
                         rb OS_BASE + 0x00320000 - $
   resendQ:              rb 32 * 1024
-  VMODE_BASE:           rb 32 * 1024
   skin_data:            rb 32 * 1024
-; draw_data:            rb MAX_TASK_COUNT * sizeof.draw_data_t
                         rb OS_BASE + 0x00340000 - $
   boot_data_area:
                         rb BOOT_VAR_LOW_BASE
@@ -449,17 +441,8 @@ struct display_t
   disable_mouse  dd ?
 ends
 
-; unused
-;struct heap_data_t
-;  mutex     dd ?
-;  refcount  dd ?
-;  heap_base dd ?
-;  heap_top  dd ?
-;  app_mem   dd ?
-;ends
-
 struct memory_state_t
-  mutex     dd ?
+  mutex     mutex_t
   smallmap  dd ?
   treemap   dd ?
   topsize   dd ?
@@ -478,7 +461,7 @@ struct pages_data_t
   kernel_pages  dd ?
   kernel_tables dd ?
   sys_page_dir  dd ?
-  pg_mutex      dd ?
+  mutex         mutex_t
 ends
 
 ;struct library_t
@@ -520,4 +503,9 @@ struct drive_cache_t
   size dd ?
   sys  drive_cache_info_t
   app  drive_cache_info_t
+ends
+
+struct irq_handler_t linked_list_t
+  handler_ptr   dd ?
+  user_data_ptr dd ?
 ends

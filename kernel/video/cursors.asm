@@ -371,6 +371,7 @@ kproc create_cursor ;///////////////////////////////////////////////////////////
 
         stdcall init_cursor, eax, esi
 
+  .add_cursor:
         mov     ecx, [.hcursor]
         lea     ecx, [ecx + cursor_t.list]
         lea     edx, [_display.cr_list]
@@ -381,8 +382,6 @@ kproc create_cursor ;///////////////////////////////////////////////////////////
         popfd
 
         mov     eax, [.hcursor]
-
-  .check_hw:
         cmp     [_display.init_cursor], 0
         je      .fail
 
@@ -407,7 +406,7 @@ kproc create_cursor ;///////////////////////////////////////////////////////////
         mov     ecx, 1024
         rep
         movsd
-        jmp     .check_hw
+        jmp     .add_cursor
 kendp
 
 align 4

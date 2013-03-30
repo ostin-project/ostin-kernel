@@ -922,12 +922,13 @@ proc stateTCB_ESTABLISHED stdcall, sockAddr:DWORD ;/////////////////////////////
         jmp     .exit
 
   .data:
-        push    ebx
-        add     ebx, socket_t.lock
-        call    wait_mutex
-        pop     ebx
-
         push    ecx
+
+        push    ecx edx
+        lea     ecx, [ebx + socket_t.lock]
+        call    mutex_lock
+        pop     edx ecx
+
         push    ebx
         mov     eax, [ebx + socket_t.rx_data_cnt]
         add     eax, ecx
@@ -945,7 +946,9 @@ proc stateTCB_ESTABLISHED stdcall, sockAddr:DWORD ;/////////////////////////////
 
         rep
         movsb   ; copy the data across
-        mov     [ebx + socket_t.lock], 0 ; release mutex
+
+        lea     ecx, [ebx + socket_t.lock]
+        call    mutex_unlock
 
         ; flag an event to the application
         pop     ebx
@@ -991,8 +994,10 @@ proc stateTCB_ESTABLISHED stdcall, sockAddr:DWORD ;/////////////////////////////
   .overflow:
         ; no place in buffer
         ; so simply restore stack and exit
+        lea     ecx, [ebx + socket_t.lock]
+        call    mutex_unlock
+
         pop     eax ecx
-        mov     [ebx + socket_t.lock], 0
         ret
 endp
 

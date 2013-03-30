@@ -47,23 +47,15 @@ iglobal
     times 12 dd unknown_interrupt ; int_20..int_31
 
     ; interrupt handlers addresses (for interrupt gate construction)
+    ; 0x20 .. 0x2F - IRQ handlers
     dd irq0, irq_serv.irq_1, irq_serv.irq_2
-
-if KCONFIG_USE_COM_IRQ
-
     dd irq_serv.irq_3, irq_serv.irq_4
-
-else
-
-    dd p_irq3, p_irq4 ; ??? discrepancy
-
-end if
-
     dd irq_serv.irq_5, irq_serv.irq_6, irq_serv.irq_7
     dd irq_serv.irq_8, irq_serv.irq_9, irq_serv.irq_10
     dd irq_serv.irq_11, irq_serv.irq_12, irqD, irq_serv.irq_14, irq_serv.irq_15
-    times 16 dd unknown_interrupt ; int_0x30..int_0x3F
-
+    dd irq_serv.irq_16, irq_serv.irq_17, irq_serv.irq_18, irq_serv.irq_19
+    dd irq_serv.irq_20, irq_serv.irq_21, irq_serv.irq_22, irq_serv.irq_23
+    times 32 - IRQ_RESERVED dd unknown_interrupt
     ; int_0x40 gate trap (for directly copied)
     dw i40 and 0x0ffff, os_code, 11101111b shl 8, i40 shr 16
 
@@ -135,10 +127,15 @@ reg_eflags equ esp + sizeof.regs_context32_t + 8
 reg_cs3    equ esp + sizeof.regs_context32_t + 4
 reg_eip    equ esp + sizeof.regs_context32_t + 0
 ;-----------------------------------------------------------------------------------------------------------------------
-        Mov3    ds, ax, app_data ; load correct values
-        mov     es, ax ; into segment registers
-        cld     ; and set DF to standard
+        ; load correct values into segment registers
+        mov     ax, app_data
+        mov     ds, ax
+        mov     es, ax
+        ; and set DF to standard
+        cld
+
         movzx   ebx, bl
+
         ; redirect to V86 manager? (EFLAGS & 0x20000) != 0?
         test    byte[reg_eflags + 2], 2
         jnz     v86_exc_c
@@ -212,11 +209,14 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc unknown_interrupt ;///////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
+        ; simply return control to interrupted process
         iretd
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc show_error_parameters ;///////////////////////////////////////////////////////////////////////////////////////////
+;-----------------------------------------------------------------------------------------------------------------------
+;> bl = error vector
 ;-----------------------------------------------------------------------------------------------------------------------
         mov     edx, [current_slot_ptr] ; not scratched below
         lea     eax, [edx + legacy.slot_t.app.app_name]
@@ -255,122 +255,6 @@ restore reg_esp3
 restore reg_eflags
 restore reg_cs
 restore reg_eip
-
-; irq1  ->  hid/keyboard.inc
-macro IrqHandler [_num]
-{
-  p_irq#_num:
-        mov     edi, _num
-        jmp     irqhandler
-}
-
-IrqHandler 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
-
-purge IrqHandler
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc ready_for_next_irq ;//////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, 5
-        mov     [check_idle_semaphore], eax
-;       mov     al, 0x20
-        add     eax, 0x20 - 0x5
-        out     0x20, al
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc ready_for_next_irq_1 ;////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;# destroy eax
-;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, 5
-        mov     [check_idle_semaphore], eax
-;       mov     al, 0x20
-        add     eax, 0x20 - 0x5
-        out     0xa0, al
-        out     0x20, al
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc irqD ;////////////////////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        push    eax
-        xor     eax, eax
-        out     0xf0, al
-        mov     al, 0x20
-        out     0xa0, al
-        out     0x20, al
-        pop     eax
-        iret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc irqhandler ;//////////////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        mov     esi, edi ; 1
-        shl     esi, 6 ; 1
-        add     esi, irq00read ; 1
-        shl     edi, 12 ; 1
-        add     edi, IRQ_SAVE
-        mov     ecx, 16
-
-  .irqnewread:
-        dec     ecx
-        js      .irqover
-
-        movzx   edx, word[esi] ; 2+
-
-        test    edx, edx ; 1
-        jz      .irqover
-
-
-        mov     ebx, [edi]  ; address of begin of buffer in edi; +0x0 dword - data size, +0x4 dword - data begin offset
-        mov     eax, 4000
-        cmp     ebx, eax
-        je      .irqfull
-        add     ebx, [edi + 0x4] ; add data size to data begin offset
-        cmp     ebx, eax ; if end of buffer, begin cycle again
-        jb      @f
-
-        xor     ebx, ebx
-
-    @@: add     ebx, edi
-        movzx   eax, byte[esi + 3] ; get type of data being received 1 - byte, 2 - word
-        dec     eax
-        jz      .irqbyte
-        dec     eax
-        jnz     .noirqword
-
-        in      ax, dx
-        cmp     ebx, 3999 ; check for address odd in the end of buffer
-        jne     .odd
-        mov     [ebx + 0x10], ax
-        jmp     .add_size
-
-  .odd:
-        mov     [ebx + 0x10], al ; I could make mistake here :)
-        mov     [edi + 0x10], ah
-
-  .add_size:
-        add     dword[edi], 2
-        jmp     .nextport
-
-  .irqbyte:
-        in      al, dx
-        mov     [ebx + 0x10], al
-        inc     dword[edi]
-
-  .nextport:
-        add     esi, 4
-        jmp     .irqnewread
-
-  .noirqword:
-  .irqfull:
-  .irqover:
-     ret
-kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc set_application_table_status ;////////////////////////////////////////////////////////////////////////////////////
@@ -631,7 +515,6 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         shl     ebx, 9 ; * sizeof.legacy.slot_t
         push    ebx
         mov     ebx, [legacy_slots + ebx + legacy.slot_t.app.pl0_stack]
-
         stdcall kernel_free, ebx
 
         pop     ebx
@@ -704,28 +587,7 @@ kproc terminate ;///////////////////////////////////////////////////////////////
         and     [bgrlockpid], 0
         and     [bgrlock], 0
 
-    @@: pusha   ; remove all irq reservations
-        mov     eax, esi
-        shl     eax, 9 ; * sizeof.legacy.slot_t
-        mov     eax, [legacy_slots + eax + legacy.slot_t.task.pid]
-        mov     edi, irq_owner
-        xor     ebx, ebx
-        xor     edx, edx
-
-  .newirqfree:
-        cmp     [edi + ebx * 4], eax
-        jne     .nofreeirq
-        mov     [edi + ebx * 4], edx ; remove irq reservation
-        mov     [irq_tab + ebx * 4], edx ; remove irq handler
-        mov     [irq_rights + ebx * 4], edx ; set access rights to full access
-
-  .nofreeirq:
-        inc     ebx
-        cmp     ebx, 16
-        jb      .newirqfree
-        popa
-
-        pusha   ; remove all port reservations
+    @@: pusha   ; remove all port reservations
         mov     edx, esi
         shl     edx, 9 ; * sizeof.legacy.slot_t
         mov     edx, [legacy_slots + edx + legacy.slot_t.task.pid]

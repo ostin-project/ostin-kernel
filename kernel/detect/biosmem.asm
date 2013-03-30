@@ -35,8 +35,8 @@ kproc get_memory_map_from_bios ;////////////////////////////////////////////////
         jnz     .no_e820
 
   .e820_mem_loop:
-        cmp     byte[di + phoenix_smap_addr_range_t.type], PHOENIX_SMAP_TYPE_AVAILABLE ; ignore non-free areas
-        jnz     .e820_mem_next
+;       cmp     byte[di + phoenix_smap_addr_range_t.type], PHOENIX_SMAP_TYPE_AVAILABLE ; ignore non-free areas
+;       jnz     .e820_mem_next
         inc     byte[boot_var.low.phoenix_smap_cnt]
         add     di, sizeof.phoenix_smap_addr_range_t
 

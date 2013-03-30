@@ -24,7 +24,6 @@ uglobal
   mst memory_state_t
 endg
 
-align 16
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc malloc ;//////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -42,8 +41,8 @@ kproc malloc ;//////////////////////////////////////////////////////////////////
         and     esi, -8
         add     esi, 8
 
-        mov     ebx, mst.mutex
-        call    wait_mutex ; ebx
+        mov     ecx, mst.mutex
+        call    mutex_lock
 
         cmp     esi, 256
         jae     .large
@@ -100,8 +99,12 @@ kproc malloc ;//////////////////////////////////////////////////////////////////
         pop     ebp
 
   .done:
+        mov     esi, eax
+        mov     ecx, mst.mutex
+        call    mutex_unlock
+        mov     eax, esi
+
         pop     esi ebx
-        mov     [mst.mutex], 0
         ret
 
   .split:
@@ -140,9 +143,7 @@ kproc malloc ;//////////////////////////////////////////////////////////////////
         mov     [eax + 8], edx ; r->fd = F;
         mov     [eax + 12], ecx ; r->bk = B;
         mov     eax, ebx
-        pop     esi ebx
-        mov     [mst.mutex], 0
-        ret
+        jmp     .done
 
   .small:
         ; if (ms.treemap != 0 && (mem = malloc_small(nb)) != 0)
@@ -154,9 +155,7 @@ kproc malloc ;//////////////////////////////////////////////////////////////////
         call    malloc_small
         test    eax, eax
         jz      .from_top
-        pop     esi ebx
-        and     [mst.mutex], 0
-        ret
+        jmp     .done
 
   .large:
         ; if (ms.treemap != 0 && (mem = malloc_large(nb)) != 0)
@@ -189,15 +188,11 @@ kproc malloc ;//////////////////////////////////////////////////////////////////
         mov     [edx + 4], eax
         mov     [ecx + 4], esi
         lea     eax, [ecx + 8]
-        pop     esi ebx
-        and     [mst.mutex], 0
-        ret
+        jmp     .done
 
   .fail:
         xor     eax, eax
-        pop     esi ebx
-        and     [mst.mutex], 0
-        ret
+        jmp     .done
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -205,6 +200,9 @@ kproc free ;////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax = mem
 ;-----------------------------------------------------------------------------------------------------------------------
+        test    eax, eax
+        jz      .exit
+
         push    ebx edi
         mov     edi, eax
         add     edi, -8
@@ -213,8 +211,8 @@ kproc free ;////////////////////////////////////////////////////////////////////
         test    byte[edi + 4], 2
         je      .fail
 
-        mov     ebx, mst.mutex
-        call    wait_mutex ; ebx
+        mov     ecx, mst.mutex
+        call    mutex_lock
 
         ; psize = p->head & (~3);
         mov     eax, [edi + 4]
@@ -284,11 +282,17 @@ kproc free ;////////////////////////////////////////////////////////////////////
         mov     [edi + 4], eax
 
   .fail2:
-        and     [mst.mutex], 0
+        mov     esi, eax
+        mov     ecx, mst.mutex
+        call    mutex_unlock
+        mov     eax, esi
+
         pop     esi
 
   .fail:
         pop     edi ebx
+
+  .exit:
         ret
 
         ; nsize = next->head & ~INUSE_BITS;
@@ -392,15 +396,21 @@ kproc insert_chunk ;////////////////////////////////////////////////////////////
         mov     [edx + 12], esi ; F->bk = P
         mov     [esi + 8], edx ; P->fd = F
         mov     [esi + 12], eax ; P->bk = B
+
+        mov     ecx, mst.mutex
+        call    mutex_unlock
+
         pop     esi ebx
-        and     [mst.mutex], 0
         ret
 
   .large:
         mov     ebx, eax
         call    insert_large_chunk
+
+        mov     ecx, mst.mutex
+        call    mutex_unlock
+
         pop     esi ebx
-        and     [mst.mutex], 0
         ret
 kendp
 
@@ -958,6 +968,9 @@ kproc init_malloc ;/////////////////////////////////////////////////////////////
         add     eax, 16
         cmp     eax, mst.smallbins + 512
         jb      @b
+
+        mov     ecx, mst.mutex
+        call    mutex_init
 
         ret
 kendp

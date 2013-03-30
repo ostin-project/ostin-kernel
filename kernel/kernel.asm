@@ -154,14 +154,8 @@ B32:
         rep
         stosd
 
-;///        mov     edi, 0x40000
-;///        mov     ecx, (0x90000 - 0x40000) / 4
-;///        rep
-;///        stosd
-
         ; CLEAR KERNEL UNDEFINED GLOBALS
         mov     edi, endofcode - OS_BASE
-;///        mov     ecx, (uglobals_size / 4) + 4
         mov     ecx, (0xa0000 - (endofcode - OS_BASE)) / 4
         rep
         stosd
@@ -180,6 +174,7 @@ B32:
         call    test_cpu
         bts     [cpu_caps - OS_BASE], CAPS_TSC ; force use rdtsc
 
+        call    check_acpi
         call    init_BIOS32
 
         ; MEMORY MODEL
@@ -244,7 +239,35 @@ high_code:
         mov     dword[sys_pgdir + 4], eax
 
         mov     eax, cr3
-        mov     cr3, eax           ; flush TLB
+        mov     cr3, eax ; flush TLB
+
+        mov     ecx, core.process._.tree_mutex
+        call    mutex_init
+        mov     ecx, core.thread._.tree_mutex
+        call    mutex_init
+        mov     ecx, pg_data.mutex
+        call    mutex_init
+
+if KCONFIG_BLK_MEMORY
+
+        mov     ecx, static_test_ram_partition + fs.partition_t._.mutex
+        call    mutex_init
+
+end if ; KCONFIG_BLK_MEMORY
+
+if KCONFIG_BLK_FLOPPY
+
+        mov     ecx, static_test_floppy_partition + fs.partition_t._.mutex
+        call    mutex_init
+
+end if ; KCONFIG_BLK_FLOPPY
+
+if KCONFIG_BLK_ATAPI
+
+        mov     ecx, static_test_atapi_partition + fs.partition_t._.mutex
+        call    mutex_init
+
+end if ; KCONFIG_BLK_ATAPI
 
         ; SAVE REAL MODE VARIABLES
         mov     ax, [boot_var.ide_base_addr]
@@ -454,7 +477,7 @@ high_code:
         mov     ax, tss0
         ltr     ax
 
-        mov     [LFBRange.size], 0x00800000
+        mov     [LFBRange.size], 0x00c00000
         call    init_LFB
         call    init_fpu
         call    init_malloc
@@ -503,12 +526,6 @@ high_code:
         mov     [dll_list.next_ptr], eax
         mov     [dll_list.prev_ptr], eax
 
-        mov     edi, irq_tab
-        xor     eax, eax
-        mov     ecx, 16
-        rep
-        stosd
-
         ; Set base of graphic segment to linear address of LFB
         mov     eax, [LFBRange.address] ; set for gs
         mov     [gdts.graph_data.base_low], ax
@@ -518,32 +535,6 @@ high_code:
 
         stdcall kernel_alloc, [_WinMapRange.size]
         mov     [_WinMapRange.address], eax
-
-        mov     ecx, core.process._.tree_mutex
-        call    mutex_init
-        mov     ecx, core.thread._.tree_mutex
-        call    mutex_init
-
-if KCONFIG_BLK_MEMORY
-
-        mov     ecx, static_test_ram_partition + fs.partition_t._.mutex
-        call    mutex_init
-
-end if ; KCONFIG_BLK_MEMORY
-
-if KCONFIG_BLK_FLOPPY
-
-        mov     ecx, static_test_floppy_partition + fs.partition_t._.mutex
-        call    mutex_init
-
-end if ; KCONFIG_BLK_FLOPPY
-
-if KCONFIG_BLK_ATAPI
-
-        mov     ecx, static_test_atapi_partition + fs.partition_t._.mutex
-        call    mutex_init
-
-end if ; KCONFIG_BLK_ATAPI
 
         xor     eax, eax
         inc     eax
@@ -569,30 +560,36 @@ end if ; KCONFIG_BLK_ATAPI
         stosd
 
         ; REDIRECT ALL IRQ'S TO INT'S 0x20-0x2f
-        call    rerouteirqs
+        call    init_irqs
+        call    pic_init
 
         ; Initialize system V86 machine
         call    init_sys_v86
 
-        ; TIMER SETUP
-        mov     al, 0x34 ; pack[2(counter #0), 2(2 reads/writes), 3(rate generator), 1(binary value)]
-        out     0x43, al
-        mov     ax, 1193180 / KCONFIG_SYS_TIMER_FREQ ; should fit in word
-        out     0x40, al ; lsb (bits 0..7)
-        xchg    al, ah
-        out     0x40, al ; msb (bits 8..15)
+        ; Initialize system timer (IRQ0)
+        call    pit_init
 
-        and     dword[timer_ticks], 0
-        and     dword[timer_ticks + 4], 0
+        ; Try to Initialize APIC
+        call    apic_init
+
+        ; Display APIC status
+        mov     esi, boot_apic_found
+        cmp     [irq_mode], IRQ_APIC
+        je      @f
+        mov     esi, boot_apic_not_found
+
+    @@: call    boot_log
 
         ; Enable timer IRQ (IRQ0) and hard drives IRQs (IRQ14, IRQ15)
         ; they are used: when partitions are scanned, hd_read relies on timer
         ; Also enable IRQ2, because in some configurations
         ; IRQs from slave controller are not delivered until IRQ2 on master is enabled
-        mov     al, 0xfa
-        out     0x21, al
-        mov     al, 0x3f
-        out     0xa1, al
+        call    unmask_timer
+        stdcall enable_irq, 2 ; @#$%! PIC
+        stdcall enable_irq, 6 ; FDD
+        stdcall enable_irq, 13 ; co-processor
+        stdcall enable_irq, 14
+        stdcall enable_irq, 15
 
         ; Enable interrupts in IDE controller
         mov     al, 0
@@ -670,11 +667,6 @@ end if
         mov     esi, boot_resirqports
         call    boot_log
         call    reserve_irqs_ports
-
-        ; SET PORTS FOR IRQ HANDLERS
-;       mov     esi, boot_setrports
-;       call    boot_log
-;       call    setirqreadports
 
         ; SET UP OS TASK
         mov     esi, boot_setostask
@@ -775,11 +767,6 @@ end if
         ; SET VARIABLES
         call    set_variables
 
-        ; SET MOUSE
-;       call    detect_devices
-        stdcall load_driver, szPS2MDriver
-;       stdcall load_driver, szCOM_MDriver
-
         ; PALETTE FOR 320x200 and 640x480 16 col
         cmp     [SCR_MODE], 0x12
         jne     no_pal_vga
@@ -843,7 +830,7 @@ first_app_found:
         and     al, 00000010b
         loopnz  @b
 
-;       mov     al, 0xed ; svetodiody - only for testing!
+;       mov     al, 0xed ; Keyboard LEDs - only for testing!
 ;       call    kb_write
 ;       call    kb_read
 ;       mov     al, 0111b
@@ -857,6 +844,13 @@ first_app_found:
         call    kb_write
 ;       call    kb_read
         call    set_lights
+
+        stdcall attach_int_handler, 1, irq1, 0
+
+        ; SET MOUSE
+;       call    detect_devices
+        stdcall load_driver, szPS2MDriver
+;       stdcall load_driver, szCOM_MDriver
 
         ; Setup serial output console (if enabled)
 
@@ -893,6 +887,13 @@ if KCONFIG_DEBUG_COM_BASE
 
 end if
 
+        mov     eax, [cpu_count]
+        test    eax, eax
+        jnz     @f
+        mov     al, 1 ; at least one CPU
+
+    @@: KLog    LOG_DEBUG, "%d CPU detected\n", eax
+
         ; START MULTITASKING
 
 if KCONFIG_BOOT_LOG_ESC
@@ -907,31 +908,6 @@ if KCONFIG_BOOT_LOG_ESC
 
 end if
 
-;       mov     [ENABLE_TASKSWITCH], 1 ; multitasking enabled
-
-        ; UNMASK ALL IRQ'S
-
-;       mov     esi,boot_allirqs
-;       call    boot_log
-;
-;       cli     ; guarantee forbidance of interrupts.
-;       mov     al, 0 ; unmask all irq's
-;       out     0xa1, al
-;       out     0x21, al
-;
-;       mov     ecx, 32
-;
-;ready_for_irqs:
-;
-;       mov     al, 0x20 ; ready for irqs
-;       out     0x20, al
-;       out     0xa0, al
-;
-;       loop    ready_for_irqs ; flush the queue
-
-        stdcall attach_int_handler, 1, irq1, 0
-
-;       mov     [dma_hdd], 1
         cmp     [IDEContrRegsBaseAddr], 0
         setnz   [dma_hdd]
         mov     [timer_ticks_enable], 1 ; for cd driver
@@ -949,8 +925,6 @@ if KCONFIG_BLK_FLOPPY
 end if ; KCONFIG_BLK_FLOPPY
 
         jmp     osloop
-
-;       jmp     $ ; wait here for timer to take control
 
         ; Fly :)
 
@@ -1102,17 +1076,6 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc reserve_irqs_ports ;//////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        push    eax
-
-        xor     eax, eax
-        inc     eax
-        mov     byte[irq_owner + 4 * 0], al ; timer
-;       mov     byte[irq_owner + 4 * 1], al ; keyboard
-        mov     byte[irq_owner + 4 * 6], al ; floppy diskette
-        mov     byte[irq_owner + 4 * 13], al ; math co-pros
-        mov     byte[irq_owner + 4 * 14], al ; ide I
-        mov     byte[irq_owner + 4 * 15], al ; ide II
-
         ; RESERVE PORTS
         MovStk  [RESERVED_PORTS.count], 4
 
@@ -1136,32 +1099,13 @@ kproc reserve_irqs_ports ;//////////////////////////////////////////////////////
         MovStk  [eax + app_io_ports_range_t.start_port], 0xe5
         MovStk  [eax + app_io_ports_range_t.end_port], 0xff
 
-        pop     eax
         ret
 kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc setirqreadports ;/////////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        mov     dword[irq12read + 0], 0x60 + 0x01000000 ; read port 0x60 , byte
-;       mov     dword[irq12read + 4], 0 ; end of port list
-        and     dword[irq12read + 4], 0 ; end of port list
-;       mov     dword[irq04read + 0], 0x3f8 + 0x01000000 ; read port 0x3f8 , byte
-;       mov     dword[irq04read + 4], 0 ; end of port list
-;       mov     dword[irq03read + 0], 0x2f8 + 0x01000000 ; read port 0x2f8 , byte
-;       mov     dword[irq03read + 4], 0 ; end of port list
-
-        ret
-kendp
-
-iglobal
-  process_number dd 0x1
-endg
 
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc set_variables ;///////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     ecx, 0x100 ; flush port 0x60
+        mov     ecx, 0x16 ; flush port 0x60
 
   .fl60:
         in      al, 0x60
@@ -2785,108 +2729,6 @@ kproc sysfn.delay_hs ;//////////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc sysfn.program_irq ;///////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;? System function 44
-;-----------------------------------------------------------------------------------------------------------------------
-        mov     eax, [current_slot_ptr]
-        add     ebx, [eax + legacy.slot_t.task.mem_start]
-
-        cmp     ecx, 16
-        jae     .not_owner
-        mov     edi, [eax + legacy.slot_t.task.pid]
-        cmp     edi, [irq_owner + ecx * 4]
-        je      .spril1
-
-  .not_owner:
-        xor     ecx, ecx
-        inc     ecx
-        jmp     .end
-
-  .spril1:
-        shl     ecx, 6
-        mov     esi, ebx
-        lea     edi, [irq00read + ecx]
-        push    16
-        pop     ecx
-
-        rep
-        movsd
-
-  .end:
-        mov     [esp + 4 + regs_context32_t.eax], ecx
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc sysfn.get_irq_data ;//////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;? System function 42
-;-----------------------------------------------------------------------------------------------------------------------
-        movzx   esi, bh ; save number of subfunction, if bh = 1, return data size, otherwise, read data
-        xor     bh, bh
-        cmp     ebx, 16
-        jae     .not_owner
-        mov     edx, [irq_owner + ebx * 4] ; check for irq owner
-
-        mov     eax, [current_slot_ptr]
-
-        cmp     edx, [eax + legacy.slot_t.task.pid]
-        je      .gidril1
-
-  .not_owner:
-        xor     edx, edx
-        dec     edx
-        jmp     .gid1
-
-  .gidril1:
-        shl     ebx, 12
-        lea     eax, [IRQ_SAVE + ebx] ; eax = address of the beginning of buffer: +0x0 - data size, +0x4 - data offset
-        mov     edx, [eax]
-        dec     esi
-        jz      .gid1
-        test    edx, edx ; check if buffer is empty
-        jz      .gid1
-
-        mov     ebx, [eax + 0x4]
-        mov     edi, ecx
-
-        mov     ecx, 4000 ; buffer size, used frequently
-
-        cmp     ebx, ecx ; check for the end of buffer, if end of buffer, begin cycle again
-        jb      @f
-
-        xor     ebx, ebx
-
-    @@: lea     esi, [ebx + edx] ; calculate data size and offset
-        cmp     esi, ecx ; if greater than the buffer size, begin cycle again
-        jbe     @f
-
-        sub     ecx, ebx
-        sub     edx, ecx
-
-        lea     esi, [eax + ebx + 0x10]
-        rep
-        movsb
-
-        xor     ebx, ebx
-
-    @@: lea     esi, [eax + ebx + 0x10]
-        mov     ecx, edx
-        add     ebx, edx
-
-        rep
-        movsb
-        mov     edx, [eax]
-        mov     [eax], ecx ; set data size to zero
-        mov     [eax + 0x4], ebx ; set data offset
-
-  .gid1:
-        mov     [esp + 4 + regs_context32_t.eax], edx
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
 kproc set_io_access_rights ;////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    edi eax
@@ -3076,69 +2918,6 @@ kproc r_f_port_area ;///////////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc sysfn.reserve_irq ;///////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;? System function 45
-;-----------------------------------------------------------------------------------------------------------------------
-        xor     esi, esi
-        inc     esi
-        cmp     ecx, 16
-        jae     .ril1
-
-        push    ecx
-        lea     ecx, [irq_owner + ecx * 4]
-        mov     edx, [ecx]
-        mov     eax, [current_slot_ptr]
-        mov     edi, [eax + legacy.slot_t.task.pid]
-        pop     eax
-        dec     ebx
-        jnz     .reserve_irq
-
-        cmp     edx, edi
-        jne     .ril1
-        dec     esi
-        mov     [ecx], esi
-
-        jmp     .ril1
-
-  .reserve_irq:
-        cmp     dword[ecx], 0
-        jne     .ril1
-
-        mov     ebx, [f_irqs + eax * 4]
-
-        stdcall attach_int_handler, eax, ebx, 0
-
-        mov     [ecx], edi
-
-        dec     esi
-
-  .ril1:
-        mov     [esp + 4 + regs_context32_t.eax], esi ; return in eax
-        ret
-kendp
-
-iglobal
-  f_irqs:
-    dd 0
-    dd 0
-    dd p_irq2
-    dd p_irq3
-    dd p_irq4
-    dd p_irq5
-    dd p_irq6
-    dd p_irq7
-    dd p_irq8
-    dd p_irq9
-    dd p_irq10
-    dd p_irq11
-    dd 0
-    dd 0
-    dd 0
-    dd 0
-endg
-
-;-----------------------------------------------------------------------------------------------------------------------
 kproc __sys_drawbar ;///////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;> eax = x beginning
@@ -3170,8 +2949,6 @@ kproc __sys_drawbar ;///////////////////////////////////////////////////////////
         ret
 kendp
 
-if used _rdtsc
-
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc _rdtsc ;//////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -3183,67 +2960,6 @@ kproc _rdtsc ;//////////////////////////////////////////////////////////////////
   .ret_rdtsc:
         mov     edx, 0xffffffff
         mov     eax, 0xffffffff
-        ret
-kendp
-
-end if
-
-;-----------------------------------------------------------------------------------------------------------------------
-kproc rerouteirqs ;/////////////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-        cli
-
-        mov     al, 0x11 ; icw4, edge triggered
-        out     0x20, al
-        call    .pic_delay
-        out     0xa0, al
-        call    .pic_delay
-
-        mov     al, 0x20 ; generate 0x20 +
-        out     0x21, al
-        call    .pic_delay
-        mov     al, 0x28 ; generate 0x28 +
-        out     0xa1, al
-        call    .pic_delay
-
-        mov     al, 0x04 ; slave at irq2
-        out     0x21, al
-        call    .pic_delay
-        mov     al, 0x02 ; at irq9
-        out     0xa1, al
-        call    .pic_delay
-
-        mov     al, 0x01 ; 8086 mode
-        out     0x21, al
-        call    .pic_delay
-        out     0xa1, al
-        call    .pic_delay
-
-        mov     al, 0xff ; mask all irq's
-        out     0xa1, al
-        call    .pic_delay
-        out     0x21, al
-        call    .pic_delay
-
-        mov     ecx, 0x1000
-
-  .picl1:
-        call    .pic_delay
-        loop    .picl1
-
-        mov     al, 0xff ; mask all irq's
-        out     0x0a1, al
-        call    .pic_delay
-        out     0x21, al
-        call    .pic_delay
-
-        cli
-        ret
-
-  .pic_delay:
-        jmp     .pdl1
-
-  .pdl1:
         ret
 kendp
 
@@ -3597,26 +3313,6 @@ kproc sysfn.draw_line ;/////////////////////////////////////////////////////////
 kendp
 
 ;-----------------------------------------------------------------------------------------------------------------------
-kproc sysfn.get_irq_owner ;/////////////////////////////////////////////////////////////////////////////////////////////
-;-----------------------------------------------------------------------------------------------------------------------
-;? System function 41
-;-----------------------------------------------------------------------------------------------------------------------
-        cmp     ebx, 16
-        jae     .err
-
-        cmp     dword[irq_rights + ebx * 4], 2
-        je      .err
-
-        mov     eax, [irq_owner + ebx * 4]
-        mov     [esp + 4 + regs_context32_t.eax], eax
-        ret
-
-  .err:
-        or      [esp + 4 + regs_context32_t.eax], -1
-        ret
-kendp
-
-;-----------------------------------------------------------------------------------------------------------------------
 kproc sysfn.reserve_port_area ;/////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
 ;? System function 46
@@ -3794,9 +3490,7 @@ end if
         mov     edi, RAMDISK + 512
         call    fs.fat12.restore_fat_chain
 
-        mov     al, 0xff
-        out     0x21, al
-        out     0xa1, al
+        call    irq_mask_all
 
 if 0
 

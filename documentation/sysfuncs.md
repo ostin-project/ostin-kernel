@@ -1951,58 +1951,6 @@ Remarks:
   * Events prohibited in the mask are saved anyway, when come; they are simply not informed with event functions.
   * Event functions take into account the mask on moment of function call, not on moment of event arrival.
 
-## Function 41: Get IRQ Owner
-
-Parameters:
-
-  * eax = 41 - function number
-  * ebx = IRQ number, 0..15
-
-Returned value:
-
-  * eax = owner PID
-  * eax = 0, if there is no owner
-  * eax = -1 for incorrect ebx
-
-## Function Group 42: Work With IRQ Data
-
-When an IRQ occurs, the system reads data from ports indicated earlier by function 44 and writes this data to internal buffer. This function reads out data from that buffer.
-
-### Function 42.0: Read Data
-
-Parameters:
-
-  * eax = 42 - function number
-  * bl = IRQ number, 0..15
-  * bh = 0 - subfunction number
-  * rest of ebx must be zeroed
-  * ecx = pointer to a buffer with size not less than 4000 bytes
-
-Returned value: (use value of eax to distinguish)
-
-  * if the thread is not IRQ owner (or IRQ number is incorrect): eax = -1
-  * if there is no data: eax = 0
-  * if all is ok: eax = size of data read (in bytes)
-
-### Function 42.1: Get Size of Data in Buffer
-
-Parameters:
-
-  * eax = 42 - function number
-  * bl = IRQ number, 0..15
-  * bh = 2 - subfunction number
-  * rest of ebx must be zeroed
-
-Returned value:
-
-  * if the thread is not IRQ owner (or IRQ number is incorrect): eax = -1
-  * otherwise eax = size of data in buffer
-
-Remarks:
-
-  * Previously the thread must reserve indicated IRQ for itself by function 45.
-  * The size of data buffer is 4000 bytes, on overflow "fresh" data cease to be written in the buffer.
-
 ## Function Group 43: Input/Output to a Port
 
 ### Output Data to Port
@@ -2035,50 +1983,6 @@ Remarks:
 
   * Previously the thread must reserve the selected port for itself by function 46.
   * Instead of call to this function it is better to use processor instructions in/out - this is much faster and a bit shorter and easier.
-
-## Function 44: Define Operations at IRQ Arrival
-
-At IRQ arrival the system can read the data from ports defined by this function and write these data to internal buffer, whence they can be read by function 42.
-
-Parameters:
-
-  * eax = 44 - function number
-  * ebx = pointer to the array of structures each describing one port:
-    * +0: word: 0 means end of array, otherwise port number
-    * +2: byte: reserved (ignored)
-    * +3: byte: 1=read byte from this port, 2=read word
-  * ecx = IRQ number, 0..15
-
-Returned value:
-
-  * eax = 0 - success
-  * eax = 1 - the thread is not owner of selected IRQ
-
-Remarks:
-
-  * Previously the thread must reserve for itself selected IRQ by function 45.
-  * First 16 ports are considered only.
-  * The current implementation considers incorrect value of field +3 as a signal to terminate IRQ processing.
-
-## Function 45: Reserve/Free IRQ
-
-Parameters:
-
-  * eax = 45 - function number
-  * ebx = 0 - reserve, 1 = free
-  * ecx = IRQ number, 0..15
-
-Returned value:
-
-  * eax = 0 - success
-  * eax = 1 - error (invalid IRQ number or attempt to reserve not free IRQ or to free IRQ, not reserved by this thread)
-
-Remarks:
-
-  * IRQ reservation is required for functions 42 and 44.
-  * Only one thread can reserve the specific IRQ.
-  * IRQs, handled by the system itself, are reserved by the system (thread 1) at booting.
-  * When a thread terminates, all reserved by it IRQs are freed automatically.
 
 ## Function 46: Reserve/Free a Group of Input/Output Ports
 

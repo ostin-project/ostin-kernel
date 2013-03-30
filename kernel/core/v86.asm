@@ -350,8 +350,6 @@ kproc v86_start ;///////////////////////////////////////////////////////////////
         mov     [ecx + legacy.slot_t.app.dir_table], eax
         mov     cr3, eax
 
-;       mov     [irq_tab + 5 * 4], my05
-
         ; We do not enable interrupts, because V86 IRQ redirector assumes that
         ; machine is running
         ; They will be enabled by IRET.
@@ -369,7 +367,7 @@ kproc v86_start ;///////////////////////////////////////////////////////////////
         jz      .noirqhook
 
 uglobal
-  v86_irqhooks rd 16 * 2
+  v86_irqhooks rd IRQ_RESERVED * 2
 endg
 
         cmp     [v86_irqhooks + edx * 8], 0
@@ -841,7 +839,6 @@ end if
         mov     [ecx + legacy.slot_t.app.io_map], ebx
         mov     dword[page_tabs + (tss.io_map_0 shr 10)], ebx
         mov     cr3, eax
-;       mov     [irq_tab + 5 * 4], 0
         sti
 
         popad
@@ -885,7 +882,7 @@ kendp
 ;-----------------------------------------------------------------------------------------------------------------------
 kproc v86_irq ;/////////////////////////////////////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-;> eax = irq
+;> ebp = irq
 ;-----------------------------------------------------------------------------------------------------------------------
 ;# push irq/pushad/jmp v86_irq
 ;-----------------------------------------------------------------------------------------------------------------------
@@ -896,7 +893,7 @@ kproc v86_irq ;/////////////////////////////////////////////////////////////////
         rep
         movsd
         cld
-        mov     edi, eax
+        mov     edi, ebp
         pop     eax
 
   .v86_irq2:
@@ -952,13 +949,11 @@ kproc v86_irq ;/////////////////////////////////////////////////////////////////
   .cont:
         add     ebx, sizeof.legacy.slot_t
         loop    .scan
-        mov     al, 0x20
-        out     0x20, al
-        cmp     edi, 8
-        jb      @f
-        out     0xa0, al
 
-    @@: popad
+        mov     ecx, edi
+        call    irq_eoi
+
+        popad
         iretd
 
   .found:

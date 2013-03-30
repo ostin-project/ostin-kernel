@@ -38,7 +38,7 @@ struct socket_t linked_list_t
   seg_length        dd ? ; segment length
   seg_window        dd ? ; segment window
   window_size_timer dd ? ; window size timer
-  lock              dd ? ; lock mutex
+  lock              mutex_t ; lock mutex
   rx_data           dd ? ; receive data buffer here
 ends
 
@@ -98,6 +98,11 @@ proc net_socket_alloc stdcall uses ebx ecx edx edi ;////////////////////////////
         rep
         stosd
         pop     eax
+
+        mov     ebx, eax
+        lea     ecx, [eax + socket_t.lock]
+        call    mutex_init
+        mov     eax, ebx
 
         ; add socket to the list by changing pointers
         mov     ebx, net_sockets
@@ -754,10 +759,13 @@ proc socket_read stdcall ;//////////////////////////////////////////////////////
         or      eax, eax
         jz      .error
 
-        lea     ebx, [eax + socket_t.lock]
-        call    wait_mutex
-
         mov     ebx, eax
+
+        push    ecx edx
+        lea     ecx, [eax + socket_t.lock]
+        call    mutex_lock
+        pop     edx ecx
+
         mov     eax, [ebx + socket_t.rx_data_cnt] ; get count of bytes
         test    eax, eax
         jz      .error_release
@@ -779,15 +787,20 @@ proc socket_read stdcall ;//////////////////////////////////////////////////////
         rep
         movsb
 
-        mov     [ebx + socket_t.lock], 0
+        lea     ecx, [ebx + socket_t.lock]
         mov     ebx, eax
+        call    mutex_unlock
+        mov     eax, ebx
 
         ret
 
   .error_release:
-        mov     [ebx + socket_t.lock], 0
+        lea     ecx, [ebx + socket_t.lock]
+        call    mutex_unlock
+
   .error:
         xor     ebx, ebx
+        xor     eax, eax
         ret
 endp
 
@@ -811,10 +824,10 @@ proc socket_read_packet stdcall ;///////////////////////////////////////////////
         or      eax, eax
         jz      .error
 
-        lea     ebx, [eax + socket_t.lock]
-        call    wait_mutex
-
         mov     ebx, eax
+        lea     ecx, [eax + socket_t.lock]
+        call    mutex_lock
+
         mov     eax, [ebx + socket_t.rx_data_cnt] ; get count of bytes
         test    eax, eax ; if count of bytes is zero..
         jz      .exit ; exit function (eax will be zero)
@@ -845,7 +858,10 @@ proc socket_read_packet stdcall ;///////////////////////////////////////////////
         movsb   ; copy remaining bytes
 
   .exit:
-        mov     [ebx + socket_t.lock], 0
+        lea     ecx, [ebx + socket_t.lock]
+        mov     ebx, eax
+        call    mutex_unlock
+        mov     eax, ebx
         ret     ; at last, exit
 
   .error:
@@ -856,7 +872,11 @@ proc socket_read_packet stdcall ;///////////////////////////////////////////////
         xor     esi, esi
         mov     [ebx + socket_t.rx_data_cnt], esi ; store new count (zero)
         call    .start_copy
-        mov     [ebx + socket_t.lock], 0
+
+        lea     ecx, [ebx + socket_t.lock]
+        mov     ebx, eax
+        call    mutex_unlock
+        mov     eax, ebx
         ret
 
   .start_copy:

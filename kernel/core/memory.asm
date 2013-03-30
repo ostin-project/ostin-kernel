@@ -205,10 +205,16 @@ proc map_io_mem stdcall, base:dword, size:dword, flags:dword ;//////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
         push    ebx
         push    edi
-        mov     eax, [size]
+
+        mov     eax, [base]
+        add     eax, [size]
         add     eax, 4095
         and     eax, -4096
+        mov     ecx, [base]
+        and     ecx, -4096
+        sub     eax, ecx
         mov     [size], eax
+
         stdcall alloc_kernel_space, eax
         test    eax, eax
         jz      .fail
@@ -224,9 +230,7 @@ proc map_io_mem stdcall, base:dword, size:dword, flags:dword ;//////////////////
         or      edx, [flags]
 
     @@: mov     [page_tabs + eax * 4], edx
-        push    eax
         invlpg  [ebx]
-        pop     eax
         inc     eax
         add     ebx, edi
         add     edx, edi
@@ -250,31 +254,32 @@ kproc commit_pages ;////////////////////////////////////////////////////////////
 ;> ebx = linear address
 ;> ecx = count
 ;-----------------------------------------------------------------------------------------------------------------------
-        push    edi
         test    ecx, ecx
         jz      .fail
 
+        push    edi
+
+        push    eax ecx
+        mov     ecx, pg_data.mutex
+        call    mutex_lock
+        pop     ecx eax
+
         mov     edi, ebx
-        mov     ebx, pg_data.pg_mutex
-        call    wait_mutex ; ebx
+        shr     edi, 12
+        lea     edi, [page_tabs + edi * 4]
 
-        mov     edx, 0x1000
-        mov     ebx, edi
-        shr     ebx, 12
+    @@: stosd
+        invlpg  [ebx]
+        add     eax, 0x1000
+        add     ebx, 0x1000
+        loop    @b
 
-    @@: mov     [page_tabs + ebx * 4], eax
-        push    eax
-        invlpg  [edi]
-        pop     eax
-        add     edi, edx
-        add     eax, edx
-        inc     ebx
-        dec     ecx
-        jnz     @b
-        mov     [pg_data.pg_mutex], ecx
+        pop edi
+
+        mov     ecx, pg_data.mutex
+        call    mutex_unlock
 
   .fail:
-        pop edi
         ret
 kendp
 
@@ -284,15 +289,18 @@ kproc release_pages ;///////////////////////////////////////////////////////////
 ;> eax = base
 ;> ecx = count
 ;-----------------------------------------------------------------------------------------------------------------------
-        pushad
-        mov     ebx, pg_data.pg_mutex
-        call    wait_mutex ; ebx
+        push    ebp esi edi ebx
 
         mov     esi, eax
         mov     edi, eax
 
-        shr     esi, 10
-        add     esi, page_tabs
+        shr     esi, 12
+        lea     esi, [page_tabs + esi * 4]
+
+        push    ecx
+        mov     ecx, pg_data.mutex
+        call    mutex_lock
+        pop     ecx
 
         mov     ebp, [pg_data.pages_free]
         mov     ebx, [page_start]
@@ -300,9 +308,7 @@ kproc release_pages ;///////////////////////////////////////////////////////////
 
     @@: xor     eax, eax
         xchg    eax, [esi]
-        push    eax
         invlpg  [edi]
-        pop     eax
 
         test    eax, 1
         jz      .next
@@ -322,11 +328,14 @@ kproc release_pages ;///////////////////////////////////////////////////////////
   .next:
         add     edi, 0x1000
         add     esi, 4
-        dec     ecx
-        jnz     @b
+        loop    @b
+
         mov     [pg_data.pages_free], ebp
-        and     [pg_data.pg_mutex], 0
-        popad
+
+        mov     ecx, pg_data.mutex
+        call    mutex_unlock
+ 
+        pop     ebx edi esi ebp
         ret
 kendp
 
@@ -467,69 +476,79 @@ align 4
 ;-----------------------------------------------------------------------------------------------------------------------
 proc new_mem_resize stdcall, new_size:dword ;///////////////////////////////////////////////////////////////////////////
 ;-----------------------------------------------------------------------------------------------------------------------
-        mov     ebx, pg_data.pg_mutex
-        call    wait_mutex ; ebx
+        push    ebx esi edi
+ 
+        mov     edx, [current_slot_ptr]
+        cmp     [edx + legacy.slot_t.app.heap_base], 0
+        jne     .exit
 
         mov     edi, [new_size]
         add     edi, 4095
         and     edi, not 4095
         mov     [new_size], edi
 
-        mov     edx, [current_slot_ptr]
-        cmp     [edx + legacy.slot_t.app.heap_base], 0
-        jne     .exit
-
         mov     esi, [edx + legacy.slot_t.app.mem_size]
         add     esi, 4095
         and     esi, not 4095
 
         cmp     edi, esi
-        jae     .expand
+        ja      .expand
+        je      .exit
 
+        mov     ebx, edi
         shr     edi, 12
         shr     esi, 12
+
+        mov     ecx, pg_data.mutex
+        call    mutex_lock
 
     @@: mov     eax, [app_page_tabs + edi * 4]
         test    eax, 1
         jz      .next
-        mov     dword[app_page_tabs + edi * 4], 2
-        mov     ebx, edi
-        shl     ebx, 12
-        push    eax
+
+        mov     dword[app_page_tabs + edi * 4], 0
         invlpg  [ebx]
-        pop     eax
         call    free_page
 
   .next:
-        add     edi, 1
+        inc     edi
+        add     ebx, 0x1000
         cmp     edi, esi
         jb      @b
 
+        mov     ecx, pg_data.mutex
+        call    mutex_unlock
+
   .update_size:
+        mov     edx, [current_slot_ptr]
         mov     ebx, [new_size]
         call    update_mem_size
 
+  .exit:
+        pop     edi esi ebx
         xor     eax, eax
-        dec     [pg_data.pg_mutex]
         ret
 
   .expand:
-        push    esi
-        push    edi
+        mov     ecx, pg_data.mutex
+        call    mutex_lock
+
+        xchg    esi, edi
+
+        push    esi ; new size
+        push    edi ; old size
 
         add     edi, 0x3fffff
         and     edi, not 0x3fffff
         add     esi, 0x3fffff
         and     esi, not 0x3fffff
 
-        cmp     esi, edi
+        cmp     edi, esi
         jae     .grow
-
-        xchg    esi, edi
 
     @@: call    alloc_page
         test    eax, eax
-        jz      .exit_pop
+        jz      .exit_fail
 
         stdcall map_page_table, edi, eax
 
@@ -547,45 +566,32 @@ proc new_mem_resize stdcall, new_size:dword ;///////////////////////////////////
         jb      @b
 
   .grow:
-        pop     edi
-        push    edi
-        mov     esi, [pg_data.pages_free]
-        sub     esi, 1
-        shr     edi, 12
-        cmp     esi, edi
-        jle     .out_of_memory
+        pop     edi ;old size
+        pop     ecx ;new size
 
-        pop     edi
-        pop     esi
+        shr     edi, 10
+        shr     ecx, 10
+        sub     ecx, edi
+        shr     ecx, 2 ;pages count
+        mov     eax, 2
 
-    @@: call    alloc_page
-        test    eax, eax
-        jz      .exit
-        stdcall map_page, esi, eax, PG_UW
-
-        push    edi
-        mov     edi, esi
-        xor     eax, eax
-        mov     ecx, 1024
+        add     edi, app_page_tabs
         rep
         stosd
-        pop     edi
 
-        add     esi, 0x1000
-        cmp     esi, edi
-        jb      @b
+        mov     ecx, pg_data.mutex
+        call    mutex_unlock
 
         jmp     .update_size
 
-  .exit_pop:
-  .out_of_memory:
-        pop     edi
-        pop     esi
+  .exit_fail:
+        mov     ecx, pg_data.mutex
+        call    mutex_unlock
 
-  .exit:
+        add     esp, 8
+        pop     edi esi ebx
         xor     eax, eax
         inc     eax
-        dec     [pg_data.pg_mutex]
         ret
 endp
 
